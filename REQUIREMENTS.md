@@ -69,9 +69,11 @@ C4Context
     Person(user, "User", "User of the assistant")
     System(pa, "PersonalAssistant", "Personal assistant")
     System_Ext(nodes, "Nodes", "Remote hosts")
+    System_Ext(llm_ext, "LLM API / Model", "OpenAI, Ollama, self-hosted")
 
     Rel(user, pa, "Uses via Telegram")
     Rel(pa, nodes, "Manages via SSH")
+    Rel(pa, llm_ext, "Calls for completion")
 ```
 
 ### C2 — Containers
@@ -84,21 +86,31 @@ C4Container
     Container_Boundary(pa, "PersonalAssistant") {
         Container(tg, "Telegram Bot", "Go", "Message adapter")
         Container(core, "Go Core", "Go", "Orchestration, LLM, tools")
+        ContainerDb(cfg, "Config", "YAML/JSON", "Nodes, LLM, paths")
         ContainerDb(mem, "MD Store", "Files", "Long-term memory")
         ContainerDb(vec, "Vector Index", "Embeddings", "Semantic search")
         Container(llm, "LLM Provider", "Go", "Model calls")
+        Container(log, "LLM Logging", "Go", "Request/response audit")
+        ContainerDb(vstate, "Versioned state", "Git", "Config, memory history")
         Container(sched, "Scheduler", "Go", "Scheduled tasks")
         Container(tools, "Tools", "Go", "Extensible tools")
         Container(ssh, "SSH Client", "Go", "Node connections")
     }
     System_Ext(nodes, "Nodes", "Remote hosts")
+    System_Ext(llm_ext, "LLM API", "OpenAI, Ollama, etc.")
 
     Rel(user, tg, "Messages")
-    Rel(tg, core, "Requests/responses")
+    Rel(tg, core, "Forward messages")
+    Rel(core, tg, "Send replies")
+    Rel(core, cfg, "Load at startup")
     Rel(core, mem, "Read/write")
     Rel(core, vec, "Search")
     Rel(core, llm, "Call model")
+    Rel(llm, llm_ext, "HTTP/gRPC")
+    Rel(core, log, "Write logs")
+    Rel(core, vstate, "Commit/read versioned paths")
     Rel(core, sched, "Run tasks")
+    Rel(sched, tools, "Invoke when scheduled")
     Rel(core, tools, "Invoke")
     Rel(core, ssh, "Commands")
     Rel(ssh, nodes, "SSH")
