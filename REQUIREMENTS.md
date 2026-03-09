@@ -208,6 +208,13 @@ THE PersonalAssistant SHALL use a git repository (within the deployment or data 
 
 ---
 
+### Secret protection (prompt injection / exfiltration)
+
+**REQ-017** (Ubiquitous)  
+THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH private keys, or other credentials) in the data sent to the LLM as context (system prompt, message history, or retrieved memory), in user-facing responses in a way that could expose them, or in log output. The implementation SHALL be verified by tests that inject known fake secrets and prompt-injection style user messages and assert that the assistant’s reply and log output do not contain those secrets.
+
+---
+
 ## Requirement index
 
 | Id       | Summary |
@@ -228,6 +235,7 @@ THE PersonalAssistant SHALL use a git repository (within the deployment or data 
 | REQ-014  | Logging subsystem records LLM requests and responses |
 | REQ-015  | Configurable log destination and parseable log format |
 | REQ-016  | Git repository for version history of config, memory, and designated artifacts (scope TBD) |
+| REQ-017  | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests |
 
 ---
 
@@ -251,6 +259,7 @@ THE PersonalAssistant SHALL use a git repository (within the deployment or data 
 | REQ-014   | US-410              | LLM request/response logging |
 | REQ-015   | US-411              | Configurable log destination and format |
 | REQ-016   | US-416              | Git-backed version control for config and memory |
+| REQ-017   | US-417 (Spexus)     | Secret leakage protection; tests for prompt-injection exfiltration (Spexus: REQ-658, AC-1301–AC-1303) |
 
 | User Story | Requirements |
 |------------|--------------|
@@ -269,3 +278,4 @@ THE PersonalAssistant SHALL use a git repository (within the deployment or data 
 | US-414     | REQ-011      |
 | US-415     | REQ-012      |
 | US-416     | REQ-016      |
+| US-417     | REQ-017      |
