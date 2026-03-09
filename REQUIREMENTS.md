@@ -86,7 +86,7 @@ C4Container
     Container_Boundary(pa, "PersonalAssistant") {
         Container(tg, "Telegram Bot", "Go", "Message adapter")
         Container(core, "Go Core", "Go", "Orchestration, LLM, tools")
-        ContainerDb(cfg, "Config", "YAML/JSON", "Nodes, LLM, paths")
+        ContainerDb(cfg, "Config", "JSON", "Nodes, LLM, paths")
         ContainerDb(mem, "MD Store", "Files", "Long-term memory")
         ContainerDb(vec, "Vector Index", "Embeddings", "Semantic search")
         Container(llm, "LLM Provider", "Go", "Model calls")

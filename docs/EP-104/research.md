@@ -163,13 +163,13 @@ Separate containers for bot, core, vector DB. Pros: scale/replace independently.
 ## 6. Section 5: Minimum Viable Increment (MVI)
 
 - **Language/runtime:** Go 1.26+; single static binary for linux/amd64 (`CGO_ENABLED=0` for simplicity).
-- **Telegram:** [go-telegram/bot](https://github.com/go-telegram/bot) — polling for MVP; config: bot token, optional allowed user_id list.
-- **Config:** YAML/JSON: nodes (host, dedicated PA user, auth, command allowlist), LLM (type, endpoint, api_key path), memory/log paths, scheduled tasks. Validated at startup ([REQ-003](../../REQUIREMENTS.md#nodes-and-ssh)).
+- **Telegram:** [go-telegram/bot](https://github.com/go-telegram/bot) — polling for MVP; config: bot token, path to users file (user_id, role: user/admin).
+- **Config:** JSON: nodes (host, dedicated PA user, auth, command_allowlist_path to file), llm_providers (ordered list, fallback), paths (memory_dir, log_path, vector_index_path, scheduled_tasks_path). Scheduled tasks in separate file. Validated at startup ([REQ-003](../../REQUIREMENTS.md#nodes-and-ssh)).
 - **SSH:** `golang.org/x/crypto/ssh`. One user per node ([REQ-013](../../REQUIREMENTS.md#nodes-and-ssh)). Execute only commands allowed by that node’s allowlist ([REQ-005](../../REQUIREMENTS.md#nodes-and-ssh)); build commands via exec-style args, no untrusted shell.
 - **Memory:** Directory of markdown files (structure by user/topic/date — define in config). Read/write by core only; format/schema is part of design ([REQ-006](../../REQUIREMENTS.md#memory-and-indexing)).
 - **Vector index:** Pluggable vector store interface; default implementation chromem-go or vecgo (see §4.1). Index chosen fields from MD (e.g. paragraphs); embeddings via chosen LLM provider. Persist index to disk where supported to survive restarts and cap RAM. Search for user query to inject context ([REQ-007](../../REQUIREMENTS.md#memory-and-indexing)).
 - **LLM:** Interface e.g. `Complete(ctx, messages, opts) (response, usage, err)`. Implementations: OpenAI-compatible HTTP (Ollama, local servers), provider selected from config ([REQ-008](../../REQUIREMENTS.md#llm-and-logging)).
-- **Scheduler:** robfig/cron/v3; tasks in config (cron or @every); execution = call registered tools or send Telegram notification in-process ([REQ-009](../../REQUIREMENTS.md#scheduler-and-tools)).
+- **Scheduler:** robfig/cron/v3; tasks loaded from file at path in config (cron or @every); execution = call registered tools or send Telegram notification in-process ([REQ-009](../../REQUIREMENTS.md#scheduler-and-tools)).
 - **Tools:** Interface `Tool` (Name, Description, ParamsSchema, Run(ctx, params)); registry at startup; new tools = new code + config, image rebuild ([REQ-010](../../REQUIREMENTS.md#scheduler-and-tools), [REQ-011](../../REQUIREMENTS.md#extensibility-and-architecture)).
 - **LLM logging ([REQ-014](../../REQUIREMENTS.md#llm-and-logging), [REQ-015](../../REQUIREMENTS.md#llm-and-logging)):** Dedicated component: on each LLM call write to configurable path (file or directory with rotation) in JSON Lines: request_id, timestamp, direction (request/response), payload (messages, model, response, usage, duration).
 - **Deploy:** Dockerfile multi-stage, final image Alpine or distroless; docker-compose with single core service, volumes for config, memory, logs. Target: DS220+, x86_64 (Intel Celeron J4025).

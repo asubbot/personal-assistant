@@ -20,7 +20,7 @@
 
 ## 1. Overview
 
-Single-binary Go application (Option B from [research §5 Proposed design](research.md#5-section-4-proposed-design-to-be)): one process with clear boundaries between Telegram adapter, core orchestration, memory store, vector index, LLM abstraction, scheduler, tools, SSH client, and LLM logging. Target: Synology DS220+ (Intel Celeron J4025, x86_64), deployed as one Docker container ([REQ-002](../../REQUIREMENTS.md#interface-and-deployment)). Config-driven: nodes, LLM provider, memory/log paths, scheduled tasks, and per-node command allowlist are validated at startup ([REQ-003](../../REQUIREMENTS.md#nodes-and-ssh)).
+Single-binary Go application (Option B from [research §5 Proposed design](research.md#5-section-4-proposed-design-to-be)): one process with clear boundaries between Telegram adapter, core orchestration, memory store, vector index, LLM abstraction, scheduler, tools, SSH client, and LLM logging. Target: Synology DS220+ (Intel Celeron J4025, x86_64), deployed as one Docker container ([REQ-002](../../REQUIREMENTS.md#interface-and-deployment)). Config-driven: nodes, LLM providers (ordered list, fallback on failure), memory/log paths, path to scheduled tasks file, and per-node allowlist file path are validated at startup ([REQ-003](../../REQUIREMENTS.md#nodes-and-ssh)).
 
 ---
 
@@ -40,15 +40,15 @@ C4: see [REQUIREMENTS.md — C4 Diagrams](../../REQUIREMENTS.md#c4-diagrams). No
 
 | Component | Responsibility | Key interface / tech |
 |-----------|----------------|----------------------|
-| **Config** | Load and validate YAML/JSON (nodes, LLM, paths, allowlists, schedules). | Validated structs; fail startup on error ([REQ-003](../../REQUIREMENTS.md#nodes-and-ssh)). |
-| **Telegram adapter** | Poll Bot API, map updates to core messages, send replies. | go-telegram/bot; config: token, optional allowed user_id. |
+| **Config** | Load and validate JSON (nodes, LLM providers, paths, allowlist paths, scheduled_tasks_path). | Validated structs; fail startup on error ([REQ-003](../../REQUIREMENTS.md#nodes-and-ssh)). |
+| **Telegram adapter** | Poll Bot API, map updates to core messages, send replies. | go-telegram/bot; config: token, path to users file (user_id, role: user or admin). |
 | **Core** | Orchestrate conversation: memory read, vector search, LLM call, tool/scheduler dispatch, SSH when needed. | Single entry per user message; uses all below. |
 | **Memory (MD store)** | Read/write markdown files in configured directory layout. | File system; structure defined in config ([REQ-006](../../REQUIREMENTS.md#memory-and-indexing)). |
 | **Vector store** | Pluggable: index embeddings from memory (and optionally conversation), semantic search. | Interface with default impl; see [research §4.1](research.md#41-vector-store-options-req-007-pluggable) and [§4.2](research.md#42-deep-analysis-three-vector-store-options-decades-long-retention-target-hardware). |
-| **LLM provider** | Abstract completion: e.g. `Complete(ctx, messages, opts) (response, usage, err)`. | Implementations: OpenAI-compatible HTTP, Ollama; selected from config ([REQ-008](../../REQUIREMENTS.md#llm-and-logging)). |
-| **Scheduler** | Run tasks at configured times/intervals (cron or @every). | [robfig/cron/v3](https://github.com/robfig/cron); tasks call registered tools or send Telegram notification ([REQ-009](../../REQUIREMENTS.md#scheduler-and-tools)). |
+| **LLM provider** | Abstract completion: e.g. `Complete(ctx, messages, opts) (response, usage, err)`. | Ordered list in config; first available used; fallback to next on failure ([REQ-008](../../REQUIREMENTS.md#llm-and-logging)). |
+| **Scheduler** | Run tasks at times defined in a separate tasks file. | [robfig/cron/v3](https://github.com/robfig/cron); tasks loaded from path in config (JSON array); execution calls tools or Telegram notification ([REQ-009](../../REQUIREMENTS.md#scheduler-and-tools)). |
 | **Tools** | Extensible: Name, Description, ParamsSchema, Run(ctx, params). | In-process registry at startup; config can enable/parameterise ([REQ-010](../../REQUIREMENTS.md#scheduler-and-tools), [REQ-011](../../REQUIREMENTS.md#extensibility-and-architecture)). |
-| **SSH client** | Connect to nodes as dedicated PA user; execute only allowlisted commands. | `golang.org/x/crypto/ssh`; one identity per node ([REQ-013](../../REQUIREMENTS.md#nodes-and-ssh)); allowlist per node ([REQ-005](../../REQUIREMENTS.md#nodes-and-ssh)). |
+| **SSH client** | Connect to nodes as dedicated PA user; execute only allowlisted commands. | `golang.org/x/crypto/ssh`; one identity per node ([REQ-013](../../REQUIREMENTS.md#nodes-and-ssh)); allowlist loaded from file path per node ([REQ-005](../../REQUIREMENTS.md#nodes-and-ssh)). |
 | **LLM logging** | On each LLM call, write request and response to configured path. | JSON Lines; configurable destination and parseable format ([REQ-014](../../REQUIREMENTS.md#llm-and-logging), [REQ-015](../../REQUIREMENTS.md#llm-and-logging)). |
 
 ### Vector store choice (pluggable, [REQ-007](../../REQUIREMENTS.md#memory-and-indexing))
@@ -60,7 +60,7 @@ C4: see [REQUIREMENTS.md — C4 Diagrams](../../REQUIREMENTS.md#c4-diagrams). No
 
 ## 4. Data models
 
-- **Config:** Nodes (host, dedicated_user, auth, command_allowlist), LLM (type, endpoint, api_key_path), paths (memory_dir, log_path, vector_index_path), scheduled_tasks (cron or @every, action ref). See [research §6 MVI](research.md#6-section-5-minimum-viable-increment-mvi).
+- **Config:** Nodes (host, dedicated_user, auth, command_allowlist_path), llm_providers (ordered list), paths (memory_dir, log_path, vector_index_path, scheduled_tasks_path). Scheduled tasks in separate JSON file. See [implementation plan — Config file](implementation-plan.md#config-file-json) and [research §6 MVI](research.md#6-section-5-minimum-viable-increment-mvi).
 - **Long-term memory:** Markdown files under memory_dir; structure (e.g. by user, topic, date) defined in config; content and chunking strategy are part of implementation ([REQ-006](../../REQUIREMENTS.md#memory-and-indexing)).
 - **LLM log entry:** request_id, timestamp, direction (request|response), payload (messages, model, response, usage, duration) in JSON Lines ([REQ-015](../../REQUIREMENTS.md#llm-and-logging)).
 - **Tool:** name, description, params_schema (e.g. JSON Schema), Run(ctx, params) ([REQ-010](../../REQUIREMENTS.md#scheduler-and-tools)).
