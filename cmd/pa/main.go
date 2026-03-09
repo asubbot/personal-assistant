@@ -30,6 +30,7 @@ func main() {
 		logger.Error("load config", "error", err)
 		os.Exit(1)
 	}
+	logger.Info("config loaded", "path", *configPath)
 
 	adapter, err := telegram.NewAdapter(cfg, *configPath)
 	if err != nil {
@@ -46,6 +47,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	logger.Info("starting", "adapter", "telegram")
 	if err := core.Run(ctx, cfg, logger, adapter, llmProvider); err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("run", "error", err)
 		os.Exit(1)
