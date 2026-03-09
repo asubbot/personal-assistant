@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "telegram": { "token_path": "/t", "users_path": "good_users.json" },
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "nodes": {}
+}

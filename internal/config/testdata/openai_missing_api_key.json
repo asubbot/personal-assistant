@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "telegram": { "token_path": "/t", "users_path": "" },
+  "llm_providers": [{ "type": "openai", "endpoint": "https://api.openai.com", "api_key_path": "", "model": "gpt-4" }],
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "nodes": {}
+}

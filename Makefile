@@ -38,4 +38,4 @@ coverage-html:
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
-check: fmt vet lint test
+check: fmt vet lint coverage

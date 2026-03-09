@@ -14,7 +14,7 @@ Tasks are ordered for incremental progress; each step builds on the previous. Op
 
 Config file format and related file formats: see [Config file (JSON)](#config-file-json) (reference at the end of this document).
 
-- [ ] 1. Set up Go module and package structure
+- [x] 1. Set up Go module and package structure
   - Create `go.mod` (Go 1.26+), directories: `cmd/pa`, `internal/config`, `internal/telegram`, `internal/core`, `internal/memory`, `internal/vector`, `internal/llm`, `internal/scheduler`, `internal/tools`, `internal/ssh`, `internal/logging`
   - Minimal `cmd/pa/main.go` that loads config and exits
   - _Requirements: REQ-643, REQ-653_
@@ -25,19 +25,19 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
     - **Other internal packages:** Create each listed directory; add a minimal `doc.go` per package (`// Package <name> ...` + `package <name>`) so directories are valid Go packages and `go build ./...` succeeds. No other code in telegram/core/memory/vector/llm/scheduler/tools/ssh/logging until later tasks.
     - **Verification:** `go build ./...` passes; `go run ./cmd/pa` exits (non-zero without config path or with missing file; zero if stub returns success; exact behaviour is decided in 1.1).
 
-- [ ] 1.1 Implement config load and validation
+- [x] 1.1 Implement config load and validation
   - Define config struct (version; telegram: token_path, users_path; nodes: host, dedicated_user, auth, command_allowlist_path; llm_providers: ordered list; paths: memory_dir, log_path, vector_index_path, scheduled_tasks_path). Validate version for backward compatibility; load and validate users file (user_id, role, optional name).
   - Load JSON from path; validate required fields and node/LLM/path consistency. Config file format: [Config file (JSON)](#config-file-json).
   - On validation failure: log clear error and exit non-zero (do not start serving)
   - _Requirements: REQ-644, REQ-645_
   - _Validates: AC-1278_
 
-- [ ]* 1.2 Write unit tests for config validation
+- [x]* 1.2 Write unit tests for config validation
   - Invalid host or missing authentication → validator returns error
   - Valid config → no error
   - _Validates: AC-1278_
 
-- [ ] 2. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 2. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
 ---
 
