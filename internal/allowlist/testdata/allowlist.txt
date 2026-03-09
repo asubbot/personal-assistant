@@ -1,0 +1,6 @@
+# Allowed commands — one pattern per line
+/usr/bin/rsync*
+/usr/bin/systemctl status *
+/usr/bin/systemctl start *
+/usr/bin/systemctl stop *
+/exact/command

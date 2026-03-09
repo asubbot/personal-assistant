@@ -6,7 +6,7 @@
 **Requirements:** Spexus REQ-642–REQ-658; AC-1274–AC-1303 (incl. US-417 secret leakage)  
 **Testing reference:** [testing-coverage.md](testing-coverage.md)
 
-Tasks are ordered for incremental progress; each step builds on the previous. Optional test sub-tasks are marked with `*` and can be skipped for a faster MVP.
+Tasks are ordered for incremental progress; each step builds on the previous. All steps, including test-writing tasks, are required.
 
 ---
 
@@ -32,7 +32,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: REQ-644, REQ-645_
   - _Validates: AC-1278_
 
-- [x]* 1.2 Write unit tests for config validation
+- [x] 1.2 Write unit tests for config validation
   - Invalid host or missing authentication → validator returns error
   - Valid config → no error
   - _Validates: AC-1278_
@@ -43,36 +43,36 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 ## 2. Config and node security model
 
-- [ ] 2.1 Implement per-node allowlist model
+- [x] 2.1 Implement per-node allowlist model
   - Load allowlist from file per node (path in config; same file can be shared by multiple nodes). File format: one pattern per line; support comments and blank lines.
   - Data structure and lookup: given node ID and requested command/action, return allowed or denied (matching rules: prefix/glob as defined)
   - _Requirements: REQ-646_
   - _Validates: AC-1280, AC-1281_
 
-- [ ] 2.2 Enforce dedicated SSH user per node
+- [x] 2.2 Enforce dedicated SSH user per node
   - Node config exposes exactly one user identity per node; SSH client must use only that identity
   - No shared or alternate account for that node
   - _Requirements: REQ-654_
   - _Validates: AC-1282, AC-1283_
 
-- [ ]* 2.3 Write unit tests for allowlist and dedicated user
+- [x] 2.3 Write unit tests for allowlist and dedicated user
   - Allowlist: only allowlisted commands return allowed; others denied
   - Dedicated user: node config yields single user; multi-node yields correct user per node
   - _Validates: AC-1280, AC-1281, AC-1282_
 
-- [ ] 3. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 3. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
 ---
 
 ## 3. Telegram adapter and core (first conversation flow)
 
-- [ ] 3.1 Implement LLM provider interface and one implementation
+- [x] 3.1 Implement LLM provider interface and one implementation
   - Interface: e.g. `Complete(ctx, messages, opts) (response, usage, err)`
   - One implementation: OpenAI-compatible HTTP or Ollama; provider and params from config
   - _Requirements: REQ-649_
   - _Validates: AC-1288, AC-1289_
 
-- [ ] 3.2 Implement Telegram adapter (polling)
+- [x] 3.2 Implement Telegram adapter (polling)
   - Use go-telegram/bot; config: bot token, path to users file (user_id + role: user|admin)
   - Map incoming text messages to core input; send text replies from core output
   - _Requirements: REQ-642_
@@ -88,7 +88,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: REQ-642_
   - _Validates: AC-1275_
 
-- [ ]* 3.5 Write integration tests for Telegram → core → LLM → reply
+- [ ] 3.5 Write integration tests for Telegram → core → LLM → reply
   - Mock Telegram updates and LLM; assert reply returned within timeout
   - _Validates: AC-1274_
 
@@ -119,7 +119,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - On conversation: read relevant memory, optionally update memory; index content; semantic search and inject context into LLM call
   - _Requirements: REQ-647, REQ-648_
 
-- [ ]* 4.4 Write unit and integration tests for memory and vector
+- [ ] 4.4 Write unit and integration tests for memory and vector
   - Memory: write then read from same structure; reader uses configured path
   - Vector: index content, search returns relevant chunks
   - _Validates: AC-1284, AC-1285, AC-1286, AC-1287_
@@ -141,7 +141,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - On connection/exec failure: log and report to core; no fallback to other users
   - _Requirements: REQ-645, REQ-646, REQ-654_
 
-- [ ]* 5.3 Write integration tests for SSH (mock or test container)
+- [ ] 5.3 Write integration tests for SSH (mock or test container)
   - Valid config → SSH uses config host/user only; allowlist blocks disallowed command
   - _Validates: AC-1279, AC-1280, AC-1281_
 
@@ -170,7 +170,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: REQ-652_
   - _Validates: AC-1297_
 
-- [ ]* 6.5 Write unit and integration tests for tools and scheduler
+- [ ] 6.5 Write unit and integration tests for tools and scheduler
   - Tool: valid input → result; invalid input → validation error, tool not run
   - Scheduler: task at schedule runs; task that would violate security model does not run
   - _Validates: AC-1293, AC-1294, AC-1295, AC-1296_
@@ -196,7 +196,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - LLM request/response log entries must not include token values, API keys, or other credentials; only metadata (e.g. model id, request_id). App logs must not log config fields that hold secrets.
   - _Requirements: REQ-017_
 
-- [ ]* 7.4 Write unit tests for LLM logging
+- [ ] 7.4 Write unit tests for LLM logging
   - Log entry contains request and response fields; entries written to configured path; parseable format
   - _Validates: AC-1290, AC-1291, AC-1292_
 

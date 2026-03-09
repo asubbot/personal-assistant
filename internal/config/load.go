@@ -34,7 +34,7 @@ func Load(path string) (*Config, error) {
 		if !filepath.IsAbs(usersPath) {
 			usersPath = filepath.Join(configDir, usersPath)
 		}
-		if _, err := loadTelegramUsers(usersPath); err != nil {
+		if _, err := LoadTelegramUsers(usersPath); err != nil {
 			return nil, fmt.Errorf("telegram users file %s: %w", usersPath, err)
 		}
 	}
@@ -128,8 +128,8 @@ func validateNodes(c *Config) error {
 	return nil
 }
 
-// loadTelegramUsers reads and validates the Telegram users JSON file. Returns list of users or error.
-func loadTelegramUsers(path string) ([]TelegramUser, error) {
+// LoadTelegramUsers reads and validates the Telegram users JSON file. Returns list of users or error.
+func LoadTelegramUsers(path string) ([]TelegramUser, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
