@@ -13,7 +13,7 @@ This document contains the product requirements for the PersonalAssistant MVP in
 
 ## Introduction
 
-PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems like OpenClaw, with a focus on **reliability and security**. The target platform is Synology DS220+ (Docker). The user interacts via a Telegram bot; a Go core running in a container manages nodes over SSH under a validated security model, stores long-term memory as markdown files, indexes it for vector search, supports swappable LLM backends (including self-hosted), includes a task scheduler, and offers extensible tools. Deployment and adding new nodes or tools are kept simple, and the architecture is designed to evolve without radical redesign.
+PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems like [OpenClaw](https://github.com/openclaw/openclaw), with a focus on **reliability and security**. The target platform is Synology DS220+ (Docker). The user interacts via a Telegram bot; a Go core running in a container manages nodes over SSH under a validated security model, stores long-term memory as markdown files, indexes it for vector search, supports swappable LLM backends (including self-hosted), includes a task scheduler, and offers extensible tools. Deployment and adding new nodes or tools are kept simple, and the architecture is designed to evolve without radical redesign.
 
 **MVP scope in brief:**
 
@@ -29,6 +29,7 @@ PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems 
 - Architecture that allows future evolution without fundamental change.
 - Dedicated user account on each node for PersonalAssistant only.
 - Logging subsystem for LLM requests and responses (for analysis and audit).
+- Version control via an internal git repository for configuration, memory files, and other designated artifacts (exact scope TBD by research).
 
 ---
 
@@ -51,6 +52,7 @@ Terms used in the requirements.
 | **Deployment** | The process of running the stack (core and any separate services) via Docker Compose on DS220+; adding a new node or tool does not require rebuilding the core image when designed via config/plugins. |
 | **Dedicated PA user** | A dedicated user account on each node used only for PersonalAssistant access. All SSH connections to that node use this identity; no other user identity is used for that node. |
 | **Logging subsystem** | Component that records LLM interaction events: requests (input messages, call parameters, request ID) and responses (model output, token counts, metadata, duration) for analysis, debugging, and audit. |
+| **Versioned state** | Configuration, memory files, and other designated artifacts under version control in a git repository within the deployment or data directory; exact set of tracked paths is defined following research. |
 
 ---
 
@@ -187,6 +189,13 @@ THE PersonalAssistant architecture SHALL separate clearly: ingestion adapters (e
 
 ---
 
+### Version control and audit
+
+**REQ-016** (Ubiquitous)  
+THE PersonalAssistant SHALL use a git repository (within the deployment or data directory) to track version history of configuration, memory files, and other designated artifacts; the exact scope of tracked paths (e.g. config, memory directory, other state) SHALL be defined and documented following further research.
+
+---
+
 ## Requirement index
 
 | Id       | Summary |
@@ -206,3 +215,45 @@ THE PersonalAssistant architecture SHALL separate clearly: ingestion adapters (e
 | REQ-013  | One dedicated SSH user per node; no other identity for that node |
 | REQ-014  | Logging subsystem records LLM requests and responses |
 | REQ-015  | Configurable log destination and parseable log format |
+| REQ-016  | Git repository for version history of config, memory, and designated artifacts (scope TBD) |
+
+---
+
+## Requirement–User Story traceability
+
+| REQ       | User Story (Spexus) | Summary |
+|-----------|---------------------|--------|
+| REQ-001   | US-402              | Telegram bot interface |
+| REQ-002   | US-403              | Docker deploy DS220+ |
+| REQ-003   | US-404              | Node config validation |
+| REQ-004   | US-404              | SSH per validated config |
+| REQ-005   | US-405              | Per-node security model (allowlist) |
+| REQ-006   | US-407              | Long-term memory in markdown files |
+| REQ-007   | US-408              | Vector index and semantic search |
+| REQ-008   | US-409              | Pluggable LLM provider |
+| REQ-009   | US-412              | Scheduled tasks |
+| REQ-010   | US-413              | Extensible tools contract |
+| REQ-011   | US-414              | Add nodes/tools without image rebuild |
+| REQ-012   | US-415              | Clear architecture boundaries |
+| REQ-013   | US-406              | Dedicated PA user per node |
+| REQ-014   | US-410              | LLM request/response logging |
+| REQ-015   | US-411              | Configurable log destination and format |
+| REQ-016   | US-416              | Git-backed version control for config and memory |
+
+| User Story | Requirements |
+|------------|--------------|
+| US-402     | REQ-001      |
+| US-403     | REQ-002      |
+| US-404     | REQ-003, REQ-004 |
+| US-405     | REQ-005      |
+| US-406     | REQ-013      |
+| US-407     | REQ-006      |
+| US-408     | REQ-007      |
+| US-409     | REQ-008      |
+| US-410     | REQ-014      |
+| US-411     | REQ-015      |
+| US-412     | REQ-009      |
+| US-413     | REQ-010      |
+| US-414     | REQ-011      |
+| US-415     | REQ-012      |
+| US-416     | REQ-016      |

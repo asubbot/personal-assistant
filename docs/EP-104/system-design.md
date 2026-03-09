@@ -53,8 +53,8 @@ C4: see [REQUIREMENTS.md — C4 Diagrams](../../REQUIREMENTS.md#c4-diagrams). No
 
 ### Vector store choice (pluggable, [REQ-007](../../REQUIREMENTS.md#memory-and-indexing))
 
-- **Default (no CGO):** [vecgo](https://github.com/hupe1980/vecgo) (HNSW) or [chromem-go](https://github.com/philippgille/chromem-go). Persistence: vecgo via Gob file; chromem-go via explicit export/import. Index built from MD content; embeddings from LLM provider. For long-term retention: backup index file and document rebuild-from-MD if needed. See [research §4.2](research.md#42-deep-analysis-three-vector-store-options-decades-long-retention-target-hardware).
-- **Optional (with CGO):** SQLite + sqlite-vec for single-file, durable, vector+FTS storage when decades-long retention is priority; use optional build tag or separate build ([research §4.2 summary](research.md#summary-and-recommendation-for-decades-long-retention)).
+- **Default (with CGO):** SQLite + sqlite-vec for single-file, durable, vector+FTS storage when decades-long retention is priority; use optional build tag or separate build ([research §4.2 summary](research.md#summary-and-recommendation-for-decades-long-retention)).
+- **Optional (no CGO):** [vecgo](https://github.com/hupe1980/vecgo) (HNSW) or [chromem-go](https://github.com/philippgille/chromem-go). Persistence: vecgo via Gob file; chromem-go via explicit export/import. Index built from MD content; embeddings from LLM provider. For long-term retention: backup index file and document rebuild-from-MD if needed. See [research §4.2](research.md#42-deep-analysis-three-vector-store-options-decades-long-retention-target-hardware).
 
 ---
 
