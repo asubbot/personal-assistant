@@ -2,6 +2,7 @@
 
 **Epic:** [EP-104](https://github.com) (Spexus) — PersonalAssistant MVP  
 **Requirements:** [REQUIREMENTS.md](../../REQUIREMENTS.md)  
+**System design:** [system-design.md](system-design.md) — architecture, components, testing  
 **Author:** —  
 **Date:** 2026-03-09  
 **Version:** 1.0  
@@ -86,8 +87,6 @@ Separate containers for bot, core, vector DB. Pros: scale/replace independently.
 | **SQLite + sqlite-vec** | Native (one .sqlite file) | Yes (C extension) | ~10⁵–10⁶ | ✓ Alternative | Single file, vector + FTS in one DB; optional build tag. |
 | **PostgreSQL + pgvector** | Native, ACID | No (client only) | ~10⁶+ | ✓ Alternative | Extra container; use only if Postgres already in stack. |
 | External vector DB (Qdrant, etc.) | External | No | 10⁷+ | ✓ Future | Overkill for MVP; more ops and resources. |
-
-**Recommendation for MVP:** Implement the vector component behind a **pluggable interface** (e.g. `VectorStore` with `Search`, `Upsert`, optional `Load`/`Save`). Ship **chromem-go** or **vecgo** as the default implementation (pure Go, no extra process, optional persistence to disk to limit RAM and survive restarts). Add **SQLite+sqlite-vec** as an optional implementation behind a build tag or config if CGO is acceptable and a single-file index is preferred (OpenClaw-style). Defer PostgreSQL and external vector DBs until a concrete need (e.g. shared DB, much larger scale).
 
 ### 4.2 Deep analysis: three vector-store options (decades-long retention, target hardware)
 
