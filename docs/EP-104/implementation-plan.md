@@ -94,7 +94,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - Tests in `tests/integration/` (build tag `integration`); `make test-integration`
   - _Validates: AC-1274_
 
-- [ ] 4. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 4. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
 ---
 

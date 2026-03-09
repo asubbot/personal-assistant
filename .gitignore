@@ -4,6 +4,7 @@ coverage.html
 
 # Environment and secrets
 .env
+.secrets/
 
 # OS
 .DS_Store
