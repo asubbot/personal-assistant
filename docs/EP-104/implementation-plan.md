@@ -89,8 +89,9 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: REQ-642_
   - _Validates: AC-1275_
 
-- [ ] 3.5 Write integration tests for Telegram → core → LLM → reply
+- [x] 3.5 Write integration tests for Telegram → core → LLM → reply
   - Mock Telegram updates and LLM; assert reply returned within timeout
+  - Tests in `tests/integration/` (build tag `integration`); `make test-integration`
   - _Validates: AC-1274_
 
 - [ ] 3.6 Secret leakage protection (REQ-017)

@@ -1,0 +1,3 @@
+// Package integration_test holds integration tests for PersonalAssistant.
+// Test files use the build tag "integration". Run with: go test -tags=integration ./tests/integration/...
+package integration_test

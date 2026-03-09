@@ -1,20 +1,24 @@
-.PHONY: help fmt test vet lint coverage coverage-html check
+.PHONY: help fmt test test-integration vet lint coverage coverage-html check
 
 help:
 	@echo "Available commands:"
 	@echo "  make fmt    - Format Go code"
-	@echo "  make test   - Run tests"
+	@echo "  make test   - Run all tests (unit + integration)"
+	@echo "  make test-integration - Run only integration tests"
 	@echo "  make vet    - Run go vet"
 	@echo "  make lint   - Run golangci-lint (if installed)"
-	@echo "  make coverage     - Print coverage summary"
+	@echo "  make coverage     - Print coverage summary (all tests)"
 	@echo "  make coverage-html - Build HTML coverage report"
-	@echo "  make check  - Run fmt + vet + lint + test"
+	@echo "  make check  - Run fmt + vet + lint + test (all tests, one coverage)"
 
 fmt:
 	go fmt ./...
 
 test:
-	go test ./...
+	go test -tags=integration ./...
+
+test-integration:
+	go test -tags=integration ./tests/integration/...
 
 vet:
 	go vet ./...
@@ -25,16 +29,16 @@ lint:
 		echo "Install: https://golangci-lint.run/welcome/install/"; \
 		exit 1; \
 	}
-	golangci-lint run ./...
+	golangci-lint run --build-tags=integration ./...
 
 coverage:
 	rm -f coverage.out
-	go test -count=1 ./... -coverpkg=./... -coverprofile=coverage.out -covermode=atomic
+	go test -tags=integration -count=1 ./... -coverpkg=./... -coverprofile=coverage.out -covermode=atomic
 	go tool cover -func=coverage.out
 
 coverage-html:
 	rm -f coverage.out
-	go test -count=1 ./... -coverpkg=./... -coverprofile=coverage.out -covermode=atomic
+	go test -tags=integration -count=1 ./... -coverpkg=./... -coverprofile=coverage.out -covermode=atomic
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 

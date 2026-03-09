@@ -37,11 +37,14 @@ Until config load is implemented (task 1.1), the binary exits with an error if c
 
 ```bash
 make fmt    # Format code
-make test   # Run tests
+make test   # Run all tests (unit + integration)
+make test-integration  # Run only integration tests
 make vet    # go vet
 make lint   # golangci-lint (install separately)
-make check  # fmt + vet + lint + test
+make check  # fmt + vet + lint + test (coverage includes all tests)
 ```
+
+Integration tests live in `tests/integration/` (build tag `integration`). They are included in `make test` and `make check`; coverage is collected from all tests. Use `make test-integration` to run only integration tests.
 
 ---
 
