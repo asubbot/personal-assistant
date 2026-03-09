@@ -19,6 +19,30 @@ func TestLoad_ValidConfig_NoError(t *testing.T) {
 	if cfg.Version != 1 {
 		t.Errorf("Load(valid config): version = %d, want 1", cfg.Version)
 	}
+	if cfg.Telegram.MaxMessageLength != 0 {
+		t.Errorf("Load(valid config without max_message_length): MaxMessageLength = %d, want 0", cfg.Telegram.MaxMessageLength)
+	}
+}
+
+func TestLoad_TelegramMaxMessageLength(t *testing.T) {
+	// Without field: 0
+	pathNoField := filepath.Join("testdata", "valid_no_users.json")
+	cfg, err := Load(pathNoField)
+	if err != nil {
+		t.Fatalf("Load(valid_no_users): %v", err)
+	}
+	if cfg.Telegram.MaxMessageLength != 0 {
+		t.Errorf("MaxMessageLength without field = %d, want 0", cfg.Telegram.MaxMessageLength)
+	}
+	// With max_message_length: value loaded
+	pathWithField := filepath.Join("testdata", "valid_max_message_length.json")
+	cfg, err = Load(pathWithField)
+	if err != nil {
+		t.Fatalf("Load(valid_max_message_length): %v", err)
+	}
+	if cfg.Telegram.MaxMessageLength != 4096 {
+		t.Errorf("MaxMessageLength = %d, want 4096", cfg.Telegram.MaxMessageLength)
+	}
 }
 
 func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {

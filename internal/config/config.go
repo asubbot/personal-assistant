@@ -11,8 +11,9 @@ type Config struct {
 
 // Telegram holds Telegram bot configuration.
 type Telegram struct {
-	TokenPath string `json:"token_path"`
-	UsersPath string `json:"users_path"`
+	TokenPath        string `json:"token_path"`
+	UsersPath        string `json:"users_path"`
+	MaxMessageLength int    `json:"max_message_length"` // max message length in runes; 0 = no limit; over-length messages rejected
 }
 
 // LLMProvider holds one LLM provider configuration (order = priority).

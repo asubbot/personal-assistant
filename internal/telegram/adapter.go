@@ -90,10 +90,6 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender messageSender, handle
 		return
 	}
 	text := strings.TrimSpace(msg.Text)
-	if text == "" {
-		return
-	}
-
 	userID := msg.From.ID
 	if _, ok := a.allowedUserIDs[userID]; !ok {
 		_, _ = sender.SendMessage(ctx, &bot.SendMessageParams{

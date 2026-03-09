@@ -275,21 +275,33 @@ func TestHandleUpdate_nilFrom(t *testing.T) {
 	}
 }
 
-func TestHandleUpdate_emptyText(t *testing.T) {
+func TestHandleUpdate_emptyText_sendsRejectionMessage(t *testing.T) {
+	// Empty or whitespace-only text is passed to the handler; handler returns rejection message, adapter sends it.
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
-	handler := &mockHandler{}
+	handler := &mockHandler{reply: "Please send a non-empty message."}
 	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
 		Message: &models.Message{Text: "", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
 	})
-	if handler.called {
-		t.Error("handler should not be called for empty text")
+	if !handler.called {
+		t.Error("handler should be called for empty text (to return rejection message)")
 	}
+	if handler.text != "" {
+		t.Errorf("handler.text = %q", handler.text)
+	}
+	if len(sender.sent) != 1 || sender.sent[0] != "Please send a non-empty message." {
+		t.Errorf("expected rejection message sent, got: %v", sender.sent)
+	}
+	sender.sent = nil
+	handler.called = false
 	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
 		Message: &models.Message{Text: "  \t\n  ", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
 	})
-	if handler.called {
-		t.Error("handler should not be called for whitespace-only text")
+	if !handler.called {
+		t.Error("handler should be called for whitespace-only text")
+	}
+	if len(sender.sent) != 1 || sender.sent[0] != "Please send a non-empty message." {
+		t.Errorf("expected rejection message sent, got: %v", sender.sent)
 	}
 }
 

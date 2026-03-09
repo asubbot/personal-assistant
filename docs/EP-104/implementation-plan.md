@@ -83,8 +83,9 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - Wire Telegram adapter to core and LLM provider
   - _Requirements: REQ-642, REQ-649_
 
-- [ ] 3.4 Message validation (empty / max length)
+- [x] 3.4 Message validation (empty / max length)
   - Reject or truncate empty message or message exceeding configured max length; clear behaviour documented
+  - **Behaviour:** Empty or whitespace-only → reply "Please send a non-empty message." No LLM call. If `telegram.max_message_length` > 0 and message length (in runes) exceeds it, message is rejected with "Message is too long. Maximum length is N characters." (no LLM call).
   - _Requirements: REQ-642_
   - _Validates: AC-1275_
 
@@ -251,7 +252,8 @@ _Reference material._ Application config is a single JSON file (path from `-conf
   "version": 1,
   "telegram": {
     "token_path": "/run/secrets/telegram_bot_token",
-    "users_path": "/etc/pa/telegram_users.json"
+    "users_path": "/etc/pa/telegram_users.json",
+    "max_message_length": 4096
   },
   "llm_providers": [
     {
@@ -293,7 +295,8 @@ _Reference material._ Application config is a single JSON file (path from `-conf
 ```
 
 - **version**: integer; config schema version for backward compatibility. The loader rejects unsupported versions and can migrate or validate per-version rules.
-- **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin). Format: see [Telegram users file](#telegram-users-file) below. If missing or empty, behaviour is defined at implementation time (e.g. allow none or allow all).
+- **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin).
+- **telegram.max_message_length**: optional; max message length in runes. If > 0, longer messages are rejected with a clear message (no LLM call). 0 or omitted = no limit. Format: see [Telegram users file](#telegram-users-file) below. If missing or empty, behaviour is defined at implementation time (e.g. allow none or allow all).
 - **command_allowlist_path** (per node): path to a file with the list of allowed command patterns. The same path can be used by multiple nodes to share one allowlist. File format: one pattern per line (leading/trailing whitespace ignored; empty lines and lines starting with `#` ignored). Matching rules (prefix/glob/regex) are defined in task 2.1. Example file `/etc/pa/allowlist.txt`:
 
 ```text

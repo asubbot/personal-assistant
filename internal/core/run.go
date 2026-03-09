@@ -16,6 +16,10 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 	if llmProvider == nil {
 		return fmt.Errorf("core: llm provider is nil")
 	}
-	handler := &conversationHandler{provider: llmProvider, logger: logger}
+	maxLen := 0
+	if cfg != nil && cfg.Telegram.MaxMessageLength > 0 {
+		maxLen = cfg.Telegram.MaxMessageLength
+	}
+	handler := &conversationHandler{provider: llmProvider, logger: logger, maxMessageLength: maxLen}
 	return adapter.Run(ctx, handler)
 }

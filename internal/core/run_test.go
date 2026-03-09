@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"pa/internal/config"
 	"pa/internal/llm"
+	"strings"
 	"testing"
 )
 
@@ -66,6 +67,29 @@ func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	}
 	if reply != "ok" {
 		t.Errorf("reply = %q, want %q", reply, "ok")
+	}
+}
+
+func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
+	logger := slog.Default()
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
+	adapter := &capturingAdapter{}
+
+	err := Run(context.Background(), nil, logger, adapter, provider)
+	if err != nil {
+		t.Fatalf("Run(cfg=nil): %v", err)
+	}
+	if adapter.handler == nil {
+		t.Fatal("adapter.handler was not set")
+	}
+	// Handler should have maxMessageLength 0 (no limit); long message goes through
+	longText := strings.Repeat("x", 5000)
+	reply, err := adapter.handler.HandleMessage(context.Background(), 1, longText)
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if reply != "ok" {
+		t.Errorf("reply = %q, want ok (no limit when cfg nil)", reply)
 	}
 }
 

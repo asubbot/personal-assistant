@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "telegram": {
+    "token_path": "/run/secrets/token",
+    "users_path": "",
+    "max_message_length": 4096
+  },
+  "llm_providers": [
+    { "type": "ollama", "endpoint": "http://localhost:11434", "model": "llama3.2" }
+  ],
+  "paths": {
+    "memory_dir": "/data/memory",
+    "log_path": "/data/pa.log",
+    "vector_index_path": "/data/vector.idx",
+    "llm_log_dir": "/data/llm_logs",
+    "scheduled_tasks_path": ""
+  },
+  "nodes": {}
+}
