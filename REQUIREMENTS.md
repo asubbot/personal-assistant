@@ -7,6 +7,8 @@
 
 This document contains the product requirements for the PersonalAssistant MVP in EARS (Easy Approach to Requirements Syntax) form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, no solution-free where applicable).
 
+**Related:** [Technical research (EP-104)](docs/EP-104/research.md) — technology choices, MVI, iteration plan, risks.
+
 ---
 
 ## Introduction
