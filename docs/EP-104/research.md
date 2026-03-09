@@ -162,7 +162,7 @@ Separate containers for bot, core, vector DB. Pros: scale/replace independently.
 
 ## 6. Section 5: Minimum Viable Increment (MVI)
 
-- **Language/runtime:** Go 1.21+; single static binary for linux/amd64 (`CGO_ENABLED=0` for simplicity).
+- **Language/runtime:** Go 1.26+; single static binary for linux/amd64 (`CGO_ENABLED=0` for simplicity).
 - **Telegram:** [go-telegram/bot](https://github.com/go-telegram/bot) — polling for MVP; config: bot token, optional allowed user_id list.
 - **Config:** YAML/JSON: nodes (host, dedicated PA user, auth, command allowlist), LLM (type, endpoint, api_key path), memory/log paths, scheduled tasks. Validated at startup ([REQ-003](../../REQUIREMENTS.md#nodes-and-ssh)).
 - **SSH:** `golang.org/x/crypto/ssh`. One user per node ([REQ-013](../../REQUIREMENTS.md#nodes-and-ssh)). Execute only commands allowed by that node’s allowlist ([REQ-005](../../REQUIREMENTS.md#nodes-and-ssh)); build commands via exec-style args, no untrusted shell.
