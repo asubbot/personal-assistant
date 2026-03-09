@@ -78,7 +78,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: REQ-642_
   - _Validates: AC-1274_
 
-- [ ] 3.3 Implement minimal core orchestration
+- [x] 3.3 Implement minimal core orchestration
   - Single entry: receive user message → call LLM provider → return reply (no memory/vector/tools yet)
   - Wire Telegram adapter to core and LLM provider
   - _Requirements: REQ-642, REQ-649_

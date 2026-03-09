@@ -2,15 +2,20 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"pa/internal/config"
+	"pa/internal/llm"
 )
 
-// Run starts the application (Telegram, scheduler, etc.). For now it returns nil immediately.
-// When the run loop is implemented (task 3.x), Run will block until ctx is cancelled (SIGINT/SIGTERM) for graceful shutdown.
-func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger) error {
-	_ = ctx
-	_ = cfg
-	_ = logger
-	return nil
+// Run starts the application: wires the adapter to the conversation handler (LLM) and blocks until ctx is cancelled.
+func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, llmProvider llm.Provider) error {
+	if adapter == nil {
+		return fmt.Errorf("core: adapter is nil")
+	}
+	if llmProvider == nil {
+		return fmt.Errorf("core: llm provider is nil")
+	}
+	handler := &conversationHandler{provider: llmProvider, logger: logger}
+	return adapter.Run(ctx, handler)
 }
