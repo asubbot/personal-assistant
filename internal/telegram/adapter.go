@@ -72,39 +72,49 @@ func (a *Adapter) Run(ctx context.Context, handler core.MessageHandler) error {
 	return nil
 }
 
+// messageSender sends a message to a chat (used so update handling can be tested with a mock).
+type messageSender interface {
+	SendMessage(ctx context.Context, params *bot.SendMessageParams) (*models.Message, error)
+}
+
 func (a *Adapter) makeUpdateHandler(handler core.MessageHandler) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		msg := update.Message
-		if msg == nil || msg.From == nil {
-			return
-		}
-		text := strings.TrimSpace(msg.Text)
-		if text == "" {
-			return
-		}
+		a.handleUpdate(ctx, b, handler, update)
+	}
+}
 
-		userID := msg.From.ID
-		if _, ok := a.allowedUserIDs[userID]; !ok {
-			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: msg.Chat.ID,
-				Text:   "You are not allowed to use this bot.",
-			})
-			return
-		}
+// handleUpdate processes one update; sender is used to send replies (allows tests to use a mock).
+func (a *Adapter) handleUpdate(ctx context.Context, sender messageSender, handler core.MessageHandler, update *models.Update) {
+	msg := update.Message
+	if msg == nil || msg.From == nil {
+		return
+	}
+	text := strings.TrimSpace(msg.Text)
+	if text == "" {
+		return
+	}
 
-		reply, err := handler.HandleMessage(ctx, userID, text)
-		if err != nil {
-			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: msg.Chat.ID,
-				Text:   "Sorry, an error occurred. Please try again.",
-			})
-			return
-		}
-		if reply != "" {
-			_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: msg.Chat.ID,
-				Text:   reply,
-			})
-		}
+	userID := msg.From.ID
+	if _, ok := a.allowedUserIDs[userID]; !ok {
+		_, _ = sender.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: msg.Chat.ID,
+			Text:   "You are not allowed to use this bot.",
+		})
+		return
+	}
+
+	reply, err := handler.HandleMessage(ctx, userID, text)
+	if err != nil {
+		_, _ = sender.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: msg.Chat.ID,
+			Text:   "Sorry, an error occurred. Please try again.",
+		})
+		return
+	}
+	if reply != "" {
+		_, _ = sender.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: msg.Chat.ID,
+			Text:   reply,
+		})
 	}
 }
