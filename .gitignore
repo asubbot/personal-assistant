@@ -1,0 +1,10 @@
+# Go
+*.out
+coverage.html
+
+# Environment and secrets
+.env
+
+# OS
+.DS_Store
+Thumbs.db
