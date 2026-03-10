@@ -69,7 +69,7 @@ This document is the project’s canonical list of acceptance criteria. IDs: **A
 
 ## AC-011 (US-06)
 
-**Given** a designated memory directory and structure, **When** the assistant writes long-term memory, **Then** files are created or updated as markdown in that structure (e.g. by user, topic or date).
+**Given** a designated memory directory and structure, **When** the assistant writes long-term memory, **Then** files are created or updated as markdown in that structure (e.g. calendar structure year/month/day per [REQ-019](REQUIREMENTS.md#memory-and-indexing)).
 
 ---
 
