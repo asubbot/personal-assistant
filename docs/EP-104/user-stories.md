@@ -3,7 +3,7 @@
 **Epic:** EP-104  
 **Related:** [REQUIREMENTS.md](REQUIREMENTS.md), [acceptance-criteria.md](acceptance-criteria.md), [test-strategy.md](test-strategy.md)
 
-This document is the project’s canonical list of user stories. IDs: **US-01** … **US-17**.
+This document is the project’s canonical list of user stories. IDs: **US-01** … **US-18**.
 
 | ID | Title |
 |----|--------|
@@ -24,6 +24,7 @@ This document is the project’s canonical list of user stories. IDs: **US-01** 
 | [US-15](#us-15--version-control-git) | Version control for config and memory (git) |
 | [US-16](#us-16--secret-leakage-protection) | Secret leakage protection (prompt injection) |
 | [US-17](#us-17--debug-llm-logging) | Debug-level LLM conversation logging |
+| [US-18](#us-18--verify-node-availability) | Verify node availability via CLI parameter |
 
 ---
 
@@ -177,3 +178,12 @@ As a developer or operator, I want to enable debug logging for LLM conversations
 
 **Requirements:** [REQ-021](REQUIREMENTS.md#llm-and-logging).  
 **Acceptance criteria:** [AC-031](acceptance-criteria.md#ac-031-us-17).
+
+---
+
+## US-18 — Verify node availability
+
+As an operator, I want to run the PersonalAssistant binary with a dedicated parameter to verify that SSH access to all configured nodes works, so that I can confirm credentials and allowlist without starting the bot.
+
+**Requirements:** [REQ-022](REQUIREMENTS.md#nodes-and-ssh).  
+**Acceptance criteria:** [AC-032](acceptance-criteria.md#ac-032-us-18).

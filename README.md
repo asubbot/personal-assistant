@@ -43,6 +43,18 @@ go run ./cmd/pa -config=/path/to/config.json
 PA_LOG_LEVEL=debug go run ./cmd/pa
 ```
 
+### Verify node access
+
+To check that SSH access to all configured nodes works (without starting the bot):
+
+```bash
+go run ./cmd/pa -config ./config.json -verify-nodes
+# Optional: use another allowlisted command (e.g. "echo ok")
+go run ./cmd/pa -config ./config.json -verify-nodes -verify-nodes-command "echo ok"
+```
+
+The command loads config and allowlist, connects to each node over SSH, runs one allowlisted command per node (default: `uptime`), and reports success or failure. Exit code 0 only when all nodes succeed. Ensure each node's allowlist file exists and contains the probe command (e.g. copy `config/nas_allowlist.example.txt` to the path set in config).
+
 ---
 
 ## Development

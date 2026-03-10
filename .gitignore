@@ -1,10 +1,13 @@
 # Go
 *.out
 coverage.html
+data/
+pa
 
 # Environment and secrets
 .env
 .secrets/
+.vscode/
 
 # OS
 .DS_Store

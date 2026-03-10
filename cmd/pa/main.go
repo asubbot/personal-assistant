@@ -35,6 +35,8 @@ func logLevelFromEnv() slog.Level {
 
 func main() {
 	configPath := flag.String("config", "", "Path to config JSON file")
+	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
+	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
 	flag.Parse()
 	if *configPath == "" {
 		*configPath = os.Getenv("PA_CONFIG_PATH")
@@ -51,6 +53,11 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info("config loaded", "path", *configPath)
+
+	if *verifyNodes {
+		runVerifyNodes(cfg, *configPath, *verifyNodesCommand, logger)
+		os.Exit(0)
+	}
 
 	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, *configPath, logger)
 	if err != nil {
@@ -78,6 +85,33 @@ func main() {
 	if err := core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner); err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("run", "error", err)
 		os.Exit(1)
+	}
+}
+
+// runVerifyNodes loads allowlist and NodeRunner, runs one allowlisted command on each configured node, reports success or failure per node, then exits (REQ-022, AC-032).
+func runVerifyNodes(cfg *config.Config, configPath, command string, logger *slog.Logger) {
+	if len(cfg.Nodes) == 0 {
+		logger.Info("no nodes in config, nothing to verify")
+		return
+	}
+	al, err := allowlist.NewChecker(cfg, configPath)
+	if err != nil {
+		logger.Error("allowlist", "error", err)
+		os.Exit(1)
+	}
+	runner := noderunner.New(cfg, al, filepath.Dir(configPath), logger)
+	ctx := context.Background()
+	for nodeID := range cfg.Nodes {
+		logger.Info("verify node", "node_id", nodeID, "command", command)
+		stdout, err := runner.RunOnNode(ctx, nodeID, command)
+		if err != nil {
+			logger.Error("node failed", "node_id", nodeID, "error", err)
+			os.Exit(1)
+		}
+		logger.Info("node OK", "node_id", nodeID)
+		if len(stdout) > 0 {
+			logger.Info("node output", "node_id", nodeID, "stdout", stdout)
+		}
 	}
 }
 

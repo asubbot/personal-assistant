@@ -15,8 +15,8 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 
 ### Scope
 
-- **Coverage:** All 31 acceptance criteria ([AC-001](acceptance-criteria.md#ac-001-us-01)–[AC-031](acceptance-criteria.md#ac-031-us-17)) across 17 user stories are in scope. AC are specified in Gherkin (Given/When/Then) in [acceptance-criteria.md](acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-16, AC-028–AC-030) are detailed in §5.
-- **In scope for this strategy:** Unit, Integration, E2E, and Manual testing sufficient to demonstrate each AC. Memory behaviour (single store, calendar layout, summarization inputs) is covered by AC-011, AC-012; any additional summarization tests will be added as per implementation plan and reflected in §3.
+- **Coverage:** All 32 acceptance criteria ([AC-001](acceptance-criteria.md#ac-001-us-01)–[AC-032](acceptance-criteria.md#ac-032-us-18)) across 18 user stories are in scope. AC are specified in Gherkin (Given/When/Then) in [acceptance-criteria.md](acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-16, AC-028–AC-030) are detailed in §5.
+- **In scope for this strategy:** Unit, Integration, E2E, and Manual testing sufficient to demonstrate each AC. Node availability verification (US-18, AC-032) is covered by the strategy in §3. Memory behaviour (single store, calendar layout, summarization inputs) is covered by AC-011, AC-012; any additional summarization tests will be added as per implementation plan and reflected in §3.
 
 ### Strategy
 
@@ -52,6 +52,7 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | AC-025 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (architecture review) |
 | AC-027 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (docs: tracked paths) |
 | AC-017, AC-019–AC-024, AC-026, AC-028–AC-030 | — | — | — | — | No tests yet; feature or task not implemented (see [implementation-plan.md](implementation-plan.md)). |
+| AC-032 | — | —           | —   | ✓      | Manual only; scenario in [manual-test-plan.md](manual-test-plan.md). |
 
 ---
 
@@ -101,6 +102,7 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | AC-029 | US-16 | Integration | Prompt-injection: reply and logs must not contain fake secret after injection message (see §5). |
 | AC-030 | US-16 | Unit, Integration | Captured logs must not contain fake secret values (see §5). |
 | AC-031 | US-17 | Unit, Integration | Unit: with PA_LOG_LEVEL=debug, handler logs full request/response; with INFO, only metadata. Integration: run with env, assert log output content. |
+| AC-032 | US-18 | Manual | Run binary with `-verify-nodes` against real configured nodes; confirm output and exit code. Scenario: [manual-test-plan.md](manual-test-plan.md). |
 
 ---
 
@@ -111,7 +113,7 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | Unit       | 18 AC    | Validators, allowlist, schema, indexer, logger, scheduler, config, context builder (AC-028). |
 | Integration| 25 AC    | Core + adapters, SSH, memory, LLM mock, scheduler, tools, git; prompt-injection (AC-029). |
 | E2E        | 3 AC     | Telegram flow (AC-001), Docker run (AC-003, AC-004). |
-| Manual     | 2 AC     | AC-025 (architecture), AC-027 (documentation). |
+| Manual     | 3 AC     | AC-025 (architecture), AC-027 (documentation), AC-032 (verify nodes via CLI; scenario in manual-test-plan.md). |
 
 *Counts are derived from the table in §3. Some AC are covered at more than one level.*
 

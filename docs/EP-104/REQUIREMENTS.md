@@ -157,6 +157,9 @@ THE PersonalAssistant SHALL enforce a documented security model that defines, pe
 **REQ-013** (State-driven)  
 WHILE the PersonalAssistant connects to a node over SSH, THE PersonalAssistant SHALL use exactly one dedicated user identity per node defined in the node configuration; THE PersonalAssistant SHALL NOT use any other user identity or shared account for that node.
 
+**REQ-022** (Optional feature)  
+WHERE the operator invokes the application with a designated parameter to verify node availability, THE PersonalAssistant SHALL load the validated configuration and SHALL attempt to connect to each configured node over SSH using that node’s credentials and SHALL run one allowlisted command (or a documented probe command) per node; THE PersonalAssistant SHALL report success or failure per node and SHALL exit without starting the normal serving mode (e.g. Telegram bot).
+
 ---
 
 ### Memory and indexing
@@ -253,12 +256,13 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-019  | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
 | REQ-020  | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources) |
 | REQ-021  | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only |
+| REQ-022  | CLI parameter to verify node availability: connect and run one allowlisted command per node; report and exit without serving |
 
 ---
 
 ## Requirement–User Story traceability
 
-User stories are defined in [user-stories.md](user-stories.md) (US-01–US-17).
+User stories are defined in [user-stories.md](user-stories.md) (US-01–US-18).
 
 | REQ       | User Story | Summary |
 |-----------|---------------------|--------|
@@ -283,6 +287,7 @@ User stories are defined in [user-stories.md](user-stories.md) (US-01–US-17).
 | REQ-019   | US-06               | Memory structure and hierarchical summarization (day/month/year); optional approval |
 | REQ-020   | US-06               | Summary sources: LLM logs, tool results, scheduler events |
 | REQ-021   | US-17               | Debug-level LLM conversation logging (PA_LOG_LEVEL, core handler) |
+| REQ-022   | US-18               | CLI parameter to verify node availability |
 
 | User Story | Requirements |
 |------------|--------------|
@@ -303,3 +308,4 @@ User stories are defined in [user-stories.md](user-stories.md) (US-01–US-17).
 | US-15      | REQ-016      |
 | US-16      | REQ-017      |
 | US-17      | REQ-021      |
+| US-18      | REQ-022      |

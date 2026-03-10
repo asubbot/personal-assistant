@@ -60,3 +60,17 @@ If no vector results are found for the query, the system message may contain onl
 - [ ] **Step 4:** If documentation is missing or unclear, record gaps and treat [AC-027](acceptance-criteria.md#ac-027-us-15) as not satisfied until updated.
 
 **Expected:** The exact set of tracked paths is documented, or explicitly marked TBD; no undocumented or vague tracking scope.
+
+---
+
+## [AC-032](acceptance-criteria.md#ac-032-us-18) ([US-18](user-stories.md#us-18--verify-node-availability)) — Verify node availability via CLI
+
+**Criterion:** Given the application is invoked with the designated parameter to verify node availability, when it runs, it loads config, connects to each node over SSH, runs one allowlisted command per node, reports success or failure, and exits without starting the bot.
+
+- [ ] **Precondition:** Config has at least one node with valid host, dedicated user, key path, and allowlist file; allowlist includes a safe command (e.g. `uptime`, `echo ok`).
+- [ ] **Step 1:** Run the binary with the verify parameter (e.g. `go run ./cmd/pa -config ./config.json -verify-nodes` or as documented).
+- [ ] **Step 2:** Confirm output lists each configured node and reports OK or FAIL; on success, probe command output (e.g. uptime) may be shown.
+- [ ] **Step 3:** Confirm the process exits (does not start Telegram polling or webhook).
+- [ ] **Step 4 (optional):** Intentionally break one node (e.g. wrong key or unreachable host), run again; confirm at least one FAIL and non-zero exit code.
+
+**Expected:** Verify run completes without starting the bot; each node is reported as OK or FAIL; exit code 0 only when all nodes succeed.

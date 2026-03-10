@@ -3,7 +3,7 @@
 **Epic:** EP-104  
 **Related:** [user-stories.md](user-stories.md), [REQUIREMENTS.md](REQUIREMENTS.md), [test-strategy.md](test-strategy.md) (test levels and strategy)
 
-This document is the project’s canonical list of acceptance criteria. IDs: **AC-001** … **AC-031**. All criteria are in Gherkin (Given/When/Then).
+This document is the project’s canonical list of acceptance criteria. IDs: **AC-001** … **AC-032**. All criteria are in Gherkin (Given/When/Then).
 
 ---
 
@@ -192,3 +192,9 @@ This document is the project’s canonical list of acceptance criteria. IDs: **A
 **Given** the application is started with `PA_LOG_LEVEL=debug` (or equivalent case-insensitive value), **When** a user message is processed and the core calls the LLM provider, **Then** the core logs the full request (messages sent to the provider, including assembled context from memory and vector search; may be truncated at a documented length) and the full response (model output and usage) at DEBUG level.
 
 **Given** the application is started with the default log level (INFO) or with `PA_LOG_LEVEL=info`, **When** a user message is processed and the core calls the LLM provider, **Then** the core logs only metadata (e.g. message count, response length, token usage) and does NOT log full request or response bodies.
+
+---
+
+## AC-032 (US-18)
+
+**Given** the application is invoked with the designated parameter to verify node availability (e.g. `-verify-nodes`), **When** the application runs, **Then** it loads the validated configuration and for each configured node connects over SSH using that node’s credentials, runs one allowlisted command (e.g. `uptime` or a documented probe), and reports success or failure per node to stdout or stderr; **and** the application exits without starting the normal serving mode (e.g. Telegram bot). **Given** at least one node fails to connect or the allowlist cannot be loaded, **When** the verify run completes, **Then** the application exits with a non-zero status.

@@ -30,9 +30,9 @@
     "nodes": {
       "nas": {
         "host": "192.168.1.99",
-        "dedicated_user": "pa",
+        "dedicated_user": "openclaw-runner",
         "auth": {
-          "private_key_path": "./.secrets/nas_ssh_key"
+          "private_key_path": "/Users/asubbot/.ssh/openclaw_synology"
         },
         "command_allowlist_path": "./config/nas_allowlist.txt"
       }
