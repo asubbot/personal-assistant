@@ -11,9 +11,10 @@ import (
 	"pa/internal/vector"
 )
 
-// Run starts the application: wires the adapter to the conversation handler (LLM, memory, vector) and blocks until ctx is cancelled.
+// Run starts the application: wires the adapter to the conversation handler (LLM, memory, vector, optional node runner) and blocks until ctx is cancelled.
 // memoryStore, vectorStore, and embedder are optional; when provided, the handler reads memory, runs semantic search, and indexes turns (REQ-006, REQ-007, REQ-018).
-func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, llmProvider llm.Provider, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder) error {
+// nodeRunner is optional; when provided, tools can run allowlisted commands on nodes via SSH (REQ-004, REQ-005, REQ-013).
+func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, llmProvider llm.Provider, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner) error {
 	if adapter == nil {
 		return fmt.Errorf("core: adapter is nil")
 	}
@@ -29,6 +30,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 		memoryStore:      memoryStore,
 		vectorStore:      vectorStore,
 		embedder:         embedder,
+		nodeRunner:       nodeRunner,
 		logger:           logger,
 		maxMessageLength: maxLen,
 	}

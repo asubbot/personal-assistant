@@ -37,10 +37,11 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | AC-001 | —    | ✓           | —   | —      | `tests/integration/telegram_flow_test.go` |
 | AC-002 | ✓    | ✓           | —   | —      | Unit: `internal/core/handler_test.go`; integration: `tests/integration/telegram_flow_test.go` (empty, over max length) |
 | AC-005 | ✓    | —           | —   | —      | `internal/config/config_test.go` |
-| AC-007 | ✓    | —           | —   | —      | `internal/allowlist/allowlist_test.go` |
-| AC-008 | ✓    | —           | —   | —      | `internal/allowlist/allowlist_test.go` |
-| AC-009 | ✓    | —           | —   | —      | `internal/ssh/ssh_test.go` |
-| AC-010 | ✓    | —           | —   | —      | `internal/ssh/ssh_test.go` (multi-node user) |
+| AC-006 | ✓    | ✓           | —   | —      | Unit: `internal/ssh/client_test.go` (config-only); integration: `tests/integration/ssh_node_test.go` (uses config node) |
+| AC-007 | ✓    | ✓           | —   | —      | Unit: `internal/allowlist/allowlist_test.go`; integration: `tests/integration/ssh_node_test.go` (allowlist blocks disallowed) |
+| AC-008 | ✓    | ✓           | —   | —      | Unit: `internal/allowlist/allowlist_test.go`; integration: `tests/integration/ssh_node_test.go` (allowlist blocks disallowed) |
+| AC-009 | ✓    | ✓           | —   | —      | Unit: `internal/ssh/ssh_test.go`, `internal/ssh/client_test.go`; integration: `tests/integration/ssh_node_test.go` |
+| AC-010 | ✓    | ✓           | —   | —      | Unit: `internal/ssh/ssh_test.go` (multi-node user); integration: `tests/integration/ssh_node_test.go` |
 | AC-015 | ✓    | —           | —   | —      | `internal/llm/provider_test.go` |
 | AC-016 | —    | ✓           | —   | —      | `tests/integration/telegram_flow_test.go` (different provider per run) |
 | AC-031 | ✓    | —           | —   | —      | `internal/core/handler_test.go` (DEBUG vs INFO logging) |

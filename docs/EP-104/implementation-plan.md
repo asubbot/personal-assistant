@@ -132,18 +132,18 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 ## 5. SSH client and nodes
 
-- [ ] 5.1 Implement SSH client
+- [x] 5.1 Implement SSH client
   - Use golang.org/x/crypto/ssh; connect using credentials from validated node config only (one dedicated user per node)
   - Execute only allowlisted commands; exec-style args, no shell with untrusted input
   - _Requirements: [REQ-004](REQUIREMENTS.md#nodes-and-ssh), [REQ-005](REQUIREMENTS.md#nodes-and-ssh), [REQ-013](REQUIREMENTS.md#nodes-and-ssh)_
   - _Validates:_ [AC-006](acceptance-criteria.md#ac-006-us-03), [AC-009](acceptance-criteria.md#ac-009-us-05), [AC-010](acceptance-criteria.md#ac-010-us-05)
 
-- [ ] 5.2 Integrate SSH into core
+- [x] 5.2 Integrate SSH into core
   - When a tool or flow requires node action: resolve node from config, check allowlist, run via SSH client
   - On connection/exec failure: log and report to core; no fallback to other users
   - _Requirements: [REQ-004](REQUIREMENTS.md#nodes-and-ssh), [REQ-005](REQUIREMENTS.md#nodes-and-ssh), [REQ-013](REQUIREMENTS.md#nodes-and-ssh)_
 
-- [ ] 5.3 Write integration tests for SSH (mock or test container)
+- [x] 5.3 Write integration tests for SSH (mock or test container)
   - Valid config → SSH uses config host/user only; allowlist blocks disallowed command
   - _Validates:_ [AC-006](acceptance-criteria.md#ac-006-us-03), [AC-007](acceptance-criteria.md#ac-007-us-04), [AC-008](acceptance-criteria.md#ac-008-us-04)
 

@@ -25,6 +25,7 @@ type conversationHandler struct {
 	memoryStore      *memory.Store // optional; single store, not per-interlocutor
 	vectorStore      vector.Store  // optional; for semantic search and indexing
 	embedder         embedding.Embedder
+	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-004, REQ-005, REQ-013)
 	logger           *slog.Logger
 	maxMessageLength int
 }

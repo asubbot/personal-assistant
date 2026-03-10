@@ -27,5 +27,14 @@
       "model": "text-embedding-3-small",
       "dimensions": 1536
     },
-    "nodes": {}
+    "nodes": {
+      "nas": {
+        "host": "192.168.1.99",
+        "dedicated_user": "pa",
+        "auth": {
+          "private_key_path": "./.secrets/nas_ssh_key"
+        },
+        "command_allowlist_path": "./config/nas_allowlist.txt"
+      }
+    }
   }

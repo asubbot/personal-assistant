@@ -1,0 +1,8 @@
+# Allowlist for node "nas" (or copy to nas_allowlist.txt and reference in config).
+# One pattern per line. Empty lines and lines starting with # are ignored.
+# Exact match: command must equal the pattern.
+# Prefix match: pattern ending with * matches any command that starts with the prefix (without the *).
+
+echo *
+systemctl status *
+uptime

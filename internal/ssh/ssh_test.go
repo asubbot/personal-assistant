@@ -73,7 +73,7 @@ func TestDedicatedUser_unknownNode(t *testing.T) {
 	if err == nil {
 		t.Fatal("DedicatedUser(nonexistent): expected error, got nil")
 	}
-	if err != nil && !strings.Contains(err.Error(), "not found") {
+	if !strings.Contains(err.Error(), "not found") {
 		t.Errorf("DedicatedUser(nonexistent): error = %v (expect 'not found')", err)
 	}
 }

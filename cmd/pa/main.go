@@ -7,11 +7,13 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"pa/internal/allowlist"
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/embedding"
 	"pa/internal/llm"
 	"pa/internal/memory"
+	"pa/internal/noderunner"
 	"pa/internal/telegram"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
@@ -50,7 +52,7 @@ func main() {
 	}
 	logger.Info("config loaded", "path", *configPath)
 
-	adapter, memoryStore, vectorStore, embedder, err := setup(cfg, *configPath, logger)
+	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, *configPath, logger)
 	if err != nil {
 		logger.Error("setup", "error", err)
 		os.Exit(1)
@@ -73,48 +75,57 @@ func main() {
 	defer stop()
 
 	logger.Info("starting", "adapter", "telegram")
-	if err := core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder); err != nil && !errors.Is(err, context.Canceled) {
+	if err := core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner); err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("run", "error", err)
 		os.Exit(1)
 	}
 }
 
-// setup creates adapter, memory store, vector store, and embedder from config. Caller must close vectorStore.
-func setup(cfg *config.Config, configPath string, _ *slog.Logger) (
+// setup creates adapter, memory store, vector store, embedder, and optional node runner from config. Caller must close vectorStore.
+func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	adapter core.Adapter,
 	memoryStore *memory.Store,
 	vectorStore *sqlite.Store,
 	embedder embedding.Embedder,
+	nodeRunner core.NodeRunner,
 	err error,
 ) {
 	adapter, err = telegram.NewAdapter(cfg, configPath)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	if cfg.Paths.MemoryDir != "" {
 		if mkErr := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); mkErr != nil {
-			return nil, nil, nil, nil, mkErr
+			return nil, nil, nil, nil, nil, mkErr
 		}
 		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, err
 		}
 	}
 
 	embedder, err = embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
 	if mkErr := os.MkdirAll(vecDir, 0o755); mkErr != nil {
-		return nil, nil, nil, nil, mkErr
+		return nil, nil, nil, nil, nil, mkErr
 	}
 	vectorStore, err = sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
-	return adapter, memoryStore, vectorStore, embedder, nil
+	if len(cfg.Nodes) > 0 {
+		al, alErr := allowlist.NewChecker(cfg, configPath)
+		if alErr != nil {
+			return nil, nil, nil, nil, nil, alErr
+		}
+		nodeRunner = noderunner.New(cfg, al, filepath.Dir(configPath), logger)
+	}
+
+	return adapter, memoryStore, vectorStore, embedder, nodeRunner, nil
 }

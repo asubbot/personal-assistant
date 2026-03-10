@@ -70,7 +70,7 @@ func TestMemoryStore_injectsTodayMemory(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, provider, store, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, provider, store, nil, nil, nil)
 		close(done)
 	}()
 
@@ -118,7 +118,7 @@ func TestVectorStore_injectsPastContext(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	done1 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx1, cfg, logger, adapter1, provider, nil, vecStore, emb)
+		_ = core.Run(ctx1, cfg, logger, adapter1, provider, nil, vecStore, emb, nil)
 		close(done1)
 	}()
 
@@ -138,7 +138,7 @@ func TestVectorStore_injectsPastContext(t *testing.T) {
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	done2 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx2, cfg, logger, adapter2, provider, nil, vecStore, emb)
+		_ = core.Run(ctx2, cfg, logger, adapter2, provider, nil, vecStore, emb, nil)
 		close(done2)
 	}()
 
