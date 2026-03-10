@@ -133,7 +133,7 @@ func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 }
 
 func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
-	// Config with users_path pointing to a file that does not exist (relative to config dir)
+	// Config with users_path pointing to a file that does not exist (path is CWD-relative)
 	cfgDir := t.TempDir()
 	configPath := filepath.Join(cfgDir, "config.json")
 	usersPathRel := "nonexistent_users.json"

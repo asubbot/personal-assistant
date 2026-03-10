@@ -17,14 +17,14 @@ func TestRunOnNode_emptyCommand_returnsError(t *testing.T) {
 	_ = os.WriteFile(ap, []byte("echo *\n"), 0o600)
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{
-			"n1": {Host: "h", DedicatedUser: "u", Auth: config.NodeAuth{PrivateKeyPath: "/k"}, CommandAllowlistPath: "allowlist.txt"},
+			"n1": {Host: "h", DedicatedUser: "u", Auth: config.NodeAuth{PrivateKeyPath: "/k"}, CommandAllowlistPath: ap},
 		},
 	}
-	al, err := allowlist.NewChecker(cfg, filepath.Join(dir, "config.json"))
+	al, err := allowlist.NewChecker(cfg)
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}
-	r := New(cfg, al, dir, slog.Default())
+	r := New(cfg, al, slog.Default())
 
 	_, err = r.RunOnNode(context.Background(), "n1", "   ")
 	if err == nil {
@@ -41,22 +41,21 @@ func TestRunOnNode_allowlistDenies_returnsError(t *testing.T) {
 	if err := os.WriteFile(allowlistPath, []byte("echo *\n"), 0o600); err != nil {
 		t.Fatalf("write allowlist: %v", err)
 	}
-	configPath := filepath.Join(dir, "config.json")
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{
 			"n1": {
 				Host:                 "localhost",
 				DedicatedUser:        "pa",
 				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
-				CommandAllowlistPath: "allowlist.txt",
+				CommandAllowlistPath: allowlistPath,
 			},
 		},
 	}
-	al, err := allowlist.NewChecker(cfg, configPath)
+	al, err := allowlist.NewChecker(cfg)
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}
-	r := New(cfg, al, dir, slog.Default())
+	r := New(cfg, al, slog.Default())
 
 	// Command not in allowlist (we only allow "echo *")
 	_, err = r.RunOnNode(context.Background(), "n1", "rm -rf /")
@@ -74,22 +73,21 @@ func TestRunOnNode_allowedCommand_usesExecutorWhenSet(t *testing.T) {
 	if err := os.WriteFile(allowlistPath, []byte("echo *\n"), 0o600); err != nil {
 		t.Fatalf("write allowlist: %v", err)
 	}
-	configPath := filepath.Join(dir, "config.json")
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{
 			"n1": {
 				Host:                 "localhost",
 				DedicatedUser:        "pa",
 				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
-				CommandAllowlistPath: "allowlist.txt",
+				CommandAllowlistPath: allowlistPath,
 			},
 		},
 	}
-	al, err := allowlist.NewChecker(cfg, configPath)
+	al, err := allowlist.NewChecker(cfg)
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}
-	r := New(cfg, al, dir, slog.Default())
+	r := New(cfg, al, slog.Default())
 
 	var gotNodeID, gotCmd string
 	r.SetExecutor(&mockExecutor{

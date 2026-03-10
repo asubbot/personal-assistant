@@ -75,3 +75,7 @@ Integration tests live in `tests/integration/` (build tag `integration`). They a
 ## Config
 
 See [docs/EP-104/implementation-plan.md](docs/EP-104/implementation-plan.md) — section **Config file (JSON)** at the end of the file. Main config is JSON; paths to secrets (tokens, API keys, SSH keys) are set in config, not in env. Related files: Telegram users (JSON), command allowlist (text), scheduled tasks (JSON). Log level for application output is controlled by `PA_LOG_LEVEL` (see Environment variables above).
+
+**Paths in config:** All path fields in the config file (`telegram.token_path`, `telegram.users_path`, `paths.*`, `llm_providers[].api_key_path`, `embedding.api_key_path`, `paths.scheduled_tasks_path`, `nodes.<id>.auth.private_key_path`, `nodes.<id>.command_allowlist_path`, etc.) are interpreted **relative to the project root** — i.e. the process current working directory (CWD) at startup. Run the application from the project root (e.g. `go run ./cmd/pa` from the repo root), or use absolute paths in config.
+
+**Adding nodes and scheduled tasks without rebuild:** Add a new node in config (under `nodes`) or a new task in the scheduled tasks file (path in `paths.scheduled_tasks_path`); restart the application so the new config/tasks are loaded. No Docker image rebuild is required (AC-024).

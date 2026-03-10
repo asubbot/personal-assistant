@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"pa/internal/config"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -23,8 +22,8 @@ type Client struct {
 }
 
 // NewClient connects to the node using credentials from config only (AC-006, REQ-004, REQ-013).
-// configDir is used to resolve relative private_key_path; may be empty to use current directory.
-func NewClient(ctx context.Context, cfg *config.Config, nodeID, configDir string) (*Client, error) {
+// Paths in config (e.g. private_key_path) are relative to project root (CWD at startup) when not absolute.
+func NewClient(ctx context.Context, cfg *config.Config, nodeID string) (*Client, error) {
 	node, ok := cfg.Nodes[nodeID]
 	if !ok {
 		return nil, fmt.Errorf("ssh: node %q not found in config", nodeID)
@@ -37,9 +36,6 @@ func NewClient(ctx context.Context, cfg *config.Config, nodeID, configDir string
 	}
 
 	keyPath := node.Auth.PrivateKeyPath
-	if !filepath.IsAbs(keyPath) && configDir != "" {
-		keyPath = filepath.Join(configDir, keyPath)
-	}
 	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("ssh: read private key %s: %w", keyPath, err)

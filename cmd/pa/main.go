@@ -14,7 +14,9 @@ import (
 	"pa/internal/llm"
 	"pa/internal/memory"
 	"pa/internal/noderunner"
+	"pa/internal/scheduler"
 	"pa/internal/telegram"
+	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"syscall"
@@ -81,10 +83,50 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	toolRegistry := tools.NewRegistry()
+	toolRegistry.Register(tools.NewRunOnNode(nodeRunner))
+	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
+		defer cleanup()
+	}
+
 	logger.Info("starting", "adapter", "telegram")
 	if err := core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner); err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("run", "error", err)
 		os.Exit(1)
+	}
+}
+
+// startSchedulerIfConfigured loads scheduled tasks and starts the scheduler when paths.scheduled_tasks_path is set. Returns a cleanup function to call on exit, or nil.
+func startSchedulerIfConfigured(cfg *config.Config, adapter core.Adapter, toolRegistry *tools.Registry, logger *slog.Logger) func() {
+	if cfg.Paths.ScheduledTasksPath == "" {
+		return nil
+	}
+	tasks, err := scheduler.LoadTasks(cfg.Paths.ScheduledTasksPath)
+	if err != nil {
+		logger.Error("load scheduled tasks", "error", err)
+		os.Exit(1)
+	}
+	if len(tasks) == 0 {
+		return nil
+	}
+	var notifier scheduler.Notifier
+	if tg, ok := adapter.(*telegram.Adapter); ok {
+		notifier = tg
+	}
+	sched, err := scheduler.New(tasks, scheduler.Config{
+		Registry: toolRegistry,
+		Notifier: notifier,
+		Logger:   logger,
+	})
+	if err != nil {
+		logger.Error("create scheduler", "error", err)
+		os.Exit(1)
+	}
+	sched.Start()
+	logger.Info("scheduler started", "tasks", len(tasks))
+	return func() {
+		stopCtx := sched.Stop()
+		<-stopCtx.Done()
 	}
 }
 
@@ -94,12 +136,12 @@ func runVerifyNodes(cfg *config.Config, configPath, command string, logger *slog
 		logger.Info("no nodes in config, nothing to verify")
 		return
 	}
-	al, err := allowlist.NewChecker(cfg, configPath)
+	al, err := allowlist.NewChecker(cfg)
 	if err != nil {
 		logger.Error("allowlist", "error", err)
 		os.Exit(1)
 	}
-	runner := noderunner.New(cfg, al, filepath.Dir(configPath), logger)
+	runner := noderunner.New(cfg, al, logger)
 	ctx := context.Background()
 	for nodeID := range cfg.Nodes {
 		logger.Info("verify node", "node_id", nodeID, "command", command)
@@ -154,11 +196,11 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	}
 
 	if len(cfg.Nodes) > 0 {
-		al, alErr := allowlist.NewChecker(cfg, configPath)
+		al, alErr := allowlist.NewChecker(cfg)
 		if alErr != nil {
 			return nil, nil, nil, nil, nil, alErr
 		}
-		nodeRunner = noderunner.New(cfg, al, filepath.Dir(configPath), logger)
+		nodeRunner = noderunner.New(cfg, al, logger)
 	}
 
 	return adapter, memoryStore, vectorStore, embedder, nodeRunner, nil

@@ -152,18 +152,18 @@ func TestNewAdapter_usersPathRelativeToConfigDir(t *testing.T) {
 	if err := os.WriteFile(tokenPath, []byte("valid-token"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	usersPath := filepath.Join(dir, "users.json")
 	usersJSON := `[{"user_id": 999, "role": "user"}]`
-	if err := os.WriteFile(filepath.Join(dir, "users.json"), []byte(usersJSON), 0o600); err != nil {
+	if err := os.WriteFile(usersPath, []byte(usersJSON), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(dir, "config.json")
-	cfg := &config.Config{Telegram: config.Telegram{TokenPath: tokenPath, UsersPath: "users.json"}}
-	ad, err := NewAdapter(cfg, configPath)
+	cfg := &config.Config{Telegram: config.Telegram{TokenPath: tokenPath, UsersPath: usersPath}}
+	ad, err := NewAdapter(cfg, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := ad.allowedUserIDs[999]; !ok {
-		t.Error("expected user 999 when users_path is relative to config dir")
+		t.Error("expected user 999 when users_path points to valid file")
 	}
 }
 

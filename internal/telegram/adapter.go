@@ -6,7 +6,6 @@ import (
 	"os"
 	"pa/internal/config"
 	"pa/internal/core"
-	"path/filepath"
 	"strings"
 
 	"github.com/go-telegram/bot"
@@ -14,14 +13,17 @@ import (
 )
 
 // Adapter runs the Telegram bot with long polling; filters by allowed users and forwards text to the handler.
+// Implements scheduler.Notifier when bot is set (SendMessage sends to notifyChatID).
 type Adapter struct {
 	allowedUserIDs map[int64]struct{}
 	token          string
+	notifyChatID   int64    // chat ID for scheduler notify; 0 = none
+	bot            *bot.Bot // set in Run before Start() so scheduler can send
 }
 
-// NewAdapter builds an adapter from config. Reads token from telegram.token_path and allowed users from telegram.users_path (relative to config dir).
-// If users_path is empty, no users are allowed (allow-none).
-func NewAdapter(cfg *config.Config, configPath string) (*Adapter, error) {
+// NewAdapter builds an adapter from config. Reads token from telegram.token_path and allowed users from telegram.users_path.
+// All paths are relative to project root (CWD at startup). If users_path is empty, no users are allowed (allow-none).
+func NewAdapter(cfg *config.Config, _ string) (*Adapter, error) {
 	tokenPath := strings.TrimSpace(cfg.Telegram.TokenPath)
 	if tokenPath == "" {
 		return nil, fmt.Errorf("telegram: token_path is required")
@@ -37,12 +39,7 @@ func NewAdapter(cfg *config.Config, configPath string) (*Adapter, error) {
 
 	allowed := make(map[int64]struct{})
 	if cfg.Telegram.UsersPath != "" {
-		configDir := filepath.Dir(configPath)
-		usersPath := cfg.Telegram.UsersPath
-		if !filepath.IsAbs(usersPath) {
-			usersPath = filepath.Join(configDir, usersPath)
-		}
-		users, err := config.LoadTelegramUsers(usersPath)
+		users, err := config.LoadTelegramUsers(cfg.Telegram.UsersPath)
 		if err != nil {
 			return nil, fmt.Errorf("telegram: load users: %w", err)
 		}
@@ -50,8 +47,26 @@ func NewAdapter(cfg *config.Config, configPath string) (*Adapter, error) {
 			allowed[u.UserID] = struct{}{}
 		}
 	}
+	notifyChatID := cfg.Telegram.NotifyChatID
+	if notifyChatID == 0 && len(allowed) > 0 {
+		for uid := range allowed {
+			notifyChatID = uid
+			break
+		}
+	}
+	return &Adapter{allowedUserIDs: allowed, token: token, notifyChatID: notifyChatID}, nil
+}
 
-	return &Adapter{allowedUserIDs: allowed, token: token}, nil
+// SendMessage sends a text message to the notify chat (scheduler.Notifier). No-op if bot not yet started or notifyChatID 0.
+func (a *Adapter) SendMessage(ctx context.Context, text string) error {
+	if a.bot == nil || a.notifyChatID == 0 {
+		return fmt.Errorf("telegram: cannot notify (bot not started or no chat id)")
+	}
+	_, err := a.bot.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: a.notifyChatID,
+		Text:   text,
+	})
+	return err
 }
 
 // Run starts long polling and blocks until ctx is cancelled. Incoming text messages from allowed users are passed to handler; replies are sent back.
@@ -67,7 +82,7 @@ func (a *Adapter) Run(ctx context.Context, handler core.MessageHandler) error {
 	if err != nil {
 		return fmt.Errorf("telegram: create bot: %w", err)
 	}
-
+	a.bot = b
 	b.Start(ctx)
 	return nil
 }

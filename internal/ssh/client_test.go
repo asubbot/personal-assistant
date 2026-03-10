@@ -24,7 +24,7 @@ func TestNewClient_unknownNode_returnsError(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	_, err := NewClient(ctx, cfg, "nonexistent", "")
+	_, err := NewClient(ctx, cfg, "nonexistent")
 	if err == nil {
 		t.Fatal("NewClient(nonexistent): expected error")
 	}
@@ -48,7 +48,7 @@ func TestNewClient_missingKeyFile_returnsError(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	_, err := NewClient(ctx, cfg, "n1", "")
+	_, err := NewClient(ctx, cfg, "n1")
 	if err == nil {
 		t.Fatal("NewClient(missing key file): expected error")
 	}
@@ -76,7 +76,7 @@ func TestNewClient_invalidKeyFile_returnsError(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	_, err := NewClient(ctx, cfg, "n1", "")
+	_, err := NewClient(ctx, cfg, "n1")
 	if err == nil {
 		t.Fatal("NewClient(invalid key): expected error")
 	}

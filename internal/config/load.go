@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -27,15 +26,10 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// Resolve users_path relative to config dir if needed (optional: load users file)
-	configDir := filepath.Dir(path)
+	// All paths in config are relative to project root (CWD at startup). Validate users file if set.
 	if raw.Telegram.UsersPath != "" {
-		usersPath := raw.Telegram.UsersPath
-		if !filepath.IsAbs(usersPath) {
-			usersPath = filepath.Join(configDir, usersPath)
-		}
-		if _, err := LoadTelegramUsers(usersPath); err != nil {
-			return nil, fmt.Errorf("telegram users file %s: %w", usersPath, err)
+		if _, err := LoadTelegramUsers(raw.Telegram.UsersPath); err != nil {
+			return nil, fmt.Errorf("telegram users file %s: %w", raw.Telegram.UsersPath, err)
 		}
 	}
 

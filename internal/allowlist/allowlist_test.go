@@ -82,8 +82,7 @@ func TestNewChecker_sameFileSharedByNodes(t *testing.T) {
 			},
 		},
 	}
-	configPath := "config.json"
-	checker, err := NewChecker(cfg, configPath)
+	checker, err := NewChecker(cfg)
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}
@@ -114,8 +113,8 @@ func mustNewChecker(t *testing.T) (*config.Config, *Checker) {
 			},
 		},
 	}
-	configPath := "config.json" // configDir = package dir so testdata/allowlist.txt resolves
-	checker, err := NewChecker(cfg, configPath)
+	// Paths in config are relative to project root (CWD); test runs from package dir so testdata/allowlist.txt resolves
+	checker, err := NewChecker(cfg)
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"pa/internal/config"
-	"path/filepath"
 	"strings"
 )
 
@@ -17,9 +16,8 @@ type Checker struct {
 }
 
 // NewChecker builds a checker from config. Loads each node's allowlist file (same path shared by multiple nodes is loaded once).
-// configPath is the path to the main config file, used to resolve relative allowlist paths.
-func NewChecker(cfg *config.Config, configPath string) (*Checker, error) {
-	configDir := filepath.Dir(configPath)
+// All paths in config are relative to project root (CWD at startup); absolute paths are used as-is.
+func NewChecker(cfg *config.Config) (*Checker, error) {
 	pathToPatterns := make(map[string][]string)
 	nodePatterns := make(map[string][]string)
 
@@ -27,9 +25,6 @@ func NewChecker(cfg *config.Config, configPath string) (*Checker, error) {
 		path := strings.TrimSpace(node.CommandAllowlistPath)
 		if path == "" {
 			continue
-		}
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(configDir, path)
 		}
 		patterns, ok := pathToPatterns[path]
 		if !ok {

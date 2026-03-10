@@ -18,7 +18,6 @@ import (
 // when command is not on the allowlist, RunOnNode returns error and does not execute.
 func TestNodeRunner_integration_allowlistBlocksDisallowed(t *testing.T) {
 	dir := t.TempDir()
-	configPath := filepath.Join(dir, "config.json")
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
 	if err := os.WriteFile(allowlistPath, []byte("echo *\nsystemctl status *\n"), 0o600); err != nil {
 		t.Fatalf("write allowlist: %v", err)
@@ -29,15 +28,15 @@ func TestNodeRunner_integration_allowlistBlocksDisallowed(t *testing.T) {
 				Host:                 "192.168.1.1",
 				DedicatedUser:        "pa",
 				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
-				CommandAllowlistPath: "allowlist.txt",
+				CommandAllowlistPath: allowlistPath,
 			},
 		},
 	}
-	al, err := allowlist.NewChecker(cfg, configPath)
+	al, err := allowlist.NewChecker(cfg)
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}
-	r := noderunner.New(cfg, al, dir, slog.Default())
+	r := noderunner.New(cfg, al, slog.Default())
 
 	// Command not in allowlist
 	_, err = r.RunOnNode(context.Background(), "node1", "rm -rf /")
@@ -53,7 +52,6 @@ func TestNodeRunner_integration_allowlistBlocksDisallowed(t *testing.T) {
 // when command is allowlisted, RunOnNode uses the node from config (mock executor records nodeID/command).
 func TestNodeRunner_integration_allowedCommand_usesConfigNode(t *testing.T) {
 	dir := t.TempDir()
-	configPath := filepath.Join(dir, "config.json")
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
 	if err := os.WriteFile(allowlistPath, []byte("echo *\n"), 0o600); err != nil {
 		t.Fatalf("write allowlist: %v", err)
@@ -64,15 +62,15 @@ func TestNodeRunner_integration_allowedCommand_usesConfigNode(t *testing.T) {
 				Host:                 "192.168.1.10",
 				DedicatedUser:        "pa_nas",
 				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
-				CommandAllowlistPath: "allowlist.txt",
+				CommandAllowlistPath: allowlistPath,
 			},
 		},
 	}
-	al, err := allowlist.NewChecker(cfg, configPath)
+	al, err := allowlist.NewChecker(cfg)
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}
-	r := noderunner.New(cfg, al, dir, slog.Default())
+	r := noderunner.New(cfg, al, slog.Default())
 
 	var gotNodeID, gotCmd string
 	r.SetExecutor(&mockSSHExecutor{

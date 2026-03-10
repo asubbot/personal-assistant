@@ -19,14 +19,13 @@ type Executor interface {
 type Runner struct {
 	cfg       *config.Config
 	allowlist *allowlist.Checker
-	configDir string
 	logger    *slog.Logger
 	executor  Executor // optional; when set (e.g. in tests) used instead of real SSH
 }
 
-// New returns a Runner that uses the given config and allowlist. configDir is used to resolve relative paths (e.g. private_key_path).
-func New(cfg *config.Config, al *allowlist.Checker, configDir string, logger *slog.Logger) *Runner {
-	return &Runner{cfg: cfg, allowlist: al, configDir: configDir, logger: logger}
+// New returns a Runner that uses the given config and allowlist. Paths in config are relative to project root (CWD).
+func New(cfg *config.Config, al *allowlist.Checker, logger *slog.Logger) *Runner {
+	return &Runner{cfg: cfg, allowlist: al, logger: logger}
 }
 
 // SetExecutor injects an executor for tests; when set, RunOnNode uses it instead of real SSH.
@@ -52,7 +51,7 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 	if r.executor != nil {
 		out, stderr, err = r.executor.Exec(ctx, nodeID, cmd)
 	} else {
-		client, connErr := ssh.NewClient(ctx, r.cfg, nodeID, r.configDir)
+		client, connErr := ssh.NewClient(ctx, r.cfg, nodeID)
 		if connErr != nil {
 			r.logger.Error("ssh connect", "node_id", nodeID, "error", connErr)
 			return "", fmt.Errorf("noderunner: ssh: %w", connErr)
