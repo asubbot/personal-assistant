@@ -120,13 +120,13 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - On conversation: read relevant memory from the single store, optionally update memory; index content; semantic search and inject context into LLM call (full memory accessible regardless of current interlocutor)
   - _Requirements: [REQ-006](REQUIREMENTS.md#memory-and-indexing), [REQ-007](REQUIREMENTS.md#memory-and-indexing), [REQ-018](REQUIREMENTS.md#memory-and-indexing)_
 
-- [ ] 4.4 Write unit and integration tests for memory and vector
+- [x] 4.4 Write unit and integration tests for memory and vector
   - Memory: write then read from calendar structure; reader uses configured path; no per-user partitioning
   - Vector: index content, search returns relevant chunks
   - No summarization tests here; those are in [§8.2](#82-write-unit-and-integration-tests-for-hierarchical-summarization).
   - _Validates:_ [AC-011](acceptance-criteria.md#ac-011-us-06), [AC-012](acceptance-criteria.md#ac-012-us-06), [AC-013](acceptance-criteria.md#ac-013-us-07), [AC-014](acceptance-criteria.md#ac-014-us-07)
 
-- [ ] 5. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 5. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
 ---
 

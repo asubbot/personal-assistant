@@ -1,6 +1,6 @@
 # EP-104: Test Strategy
 
-**Date:** 2026-03-09  
+**Date:** 2026-03-10  
 **Epic:** EP-104  
 **Source:** PROMPT-009 (QA Engineer coverage planning).  
 **Canonical AC text:** [acceptance-criteria.md](acceptance-criteria.md)
@@ -44,10 +44,13 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | AC-015 | ✓    | —           | —   | —      | `internal/llm/provider_test.go` |
 | AC-016 | —    | ✓           | —   | —      | `tests/integration/telegram_flow_test.go` (different provider per run) |
 | AC-031 | ✓    | —           | —   | —      | `internal/core/handler_test.go` (DEBUG vs INFO logging) |
+| AC-011 | ✓    | ✓           | —   | —      | Unit: `internal/memory/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects today memory) |
+| AC-012 | ✓    | ✓           | —   | —      | Unit: `internal/memory/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects today memory) |
+| AC-013 | ✓    | ✓           | —   | ✓      | Unit: `internal/vector/sqlite/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects past context); manual: [manual-test-plan.md](manual-test-plan.md) |
+| AC-014 | ✓    | ✓           | —   | ✓      | Unit: `internal/vector/sqlite/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects past context); manual: [manual-test-plan.md](manual-test-plan.md) |
 | AC-025 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (architecture review) |
 | AC-027 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (docs: tracked paths) |
-| AC-013, AC-014 | — | — | — | ✓ | [manual-test-plan.md](manual-test-plan.md) (vector memory: indexing and search, log check) |
-| AC-011–AC-012, AC-017, AC-019–AC-024, AC-026, AC-028–AC-030 | — | — | — | — | No tests yet; feature or task not implemented (see [implementation-plan.md](implementation-plan.md)). |
+| AC-017, AC-019–AC-024, AC-026, AC-028–AC-030 | — | — | — | — | No tests yet; feature or task not implemented (see [implementation-plan.md](implementation-plan.md)). |
 
 ---
 
