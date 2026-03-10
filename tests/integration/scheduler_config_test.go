@@ -22,12 +22,12 @@ func TestScheduler_loadDifferentTaskFiles(t *testing.T) {
 	dir := t.TempDir()
 	pathA := filepath.Join(dir, "tasks_a.json")
 	pathB := filepath.Join(dir, "tasks_b.json")
-	if err := os.WriteFile(pathA, []byte(`[{"schedule":"0 9 * * *","action":"notify","params":{}}]`), 0o600); err != nil {
+	if err := os.WriteFile(pathA, []byte(`[{"name":"a1","schedule":"0 9 * * *","action":"notify","params":{}}]`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(pathB, []byte(`[
-		{"schedule":"0 9 * * *","action":"notify","params":{}},
-		{"schedule":"@every 1h","action":"run_on_node","params":{"node_id":"nas","command":"uptime"}}
+		{"name":"b1","schedule":"0 9 * * *","action":"notify","params":{}},
+		{"name":"b2","schedule":"@every 1h","action":"run_on_node","params":{"node_id":"nas","command":"uptime"}}
 	]`), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestScheduler_firesAndRunsTool(t *testing.T) {
 	reg.Register(ct)
 	cfg := scheduler.Config{Registry: reg, Logger: nil}
 	tasks := []scheduler.Task{
-		{Schedule: "@every 500ms", Action: "count_tool", Params: map[string]any{}},
+		{Name: "count-every-500ms", Schedule: "@every 500ms", Action: "count_tool", Params: map[string]any{}},
 	}
 	s, err := scheduler.New(tasks, cfg)
 	if err != nil {
@@ -122,7 +122,7 @@ func TestScheduler_disallowedCommandNotExecuted(t *testing.T) {
 	reg := tools.NewRegistry()
 	reg.Register(tools.NewRunOnNode(runner))
 	tasks := []scheduler.Task{
-		{Schedule: "@every 500ms", Action: "run_on_node", Params: map[string]any{"node_id": "n1", "command": "rm -rf /"}},
+		{Name: "disallowed-cmd", Schedule: "@every 500ms", Action: "run_on_node", Params: map[string]any{"node_id": "n1", "command": "rm -rf /"}},
 	}
 	s, err := scheduler.New(tasks, scheduler.Config{Registry: reg, Logger: slog.Default()})
 	if err != nil {

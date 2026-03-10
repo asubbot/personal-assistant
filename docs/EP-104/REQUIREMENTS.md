@@ -202,6 +202,9 @@ WHILE the application is running, THE PersonalAssistant SHALL support a configur
 **REQ-009** (Event-driven)  
 WHEN the scheduled time or interval for a configured task is reached, THE PersonalAssistant scheduler SHALL execute the task (invoking the defined action, e.g. tool or notification) within the constraints of the security model.
 
+**REQ-023** (State-driven)  
+WHEN a scheduled task has action "notify", THE PersonalAssistant SHALL send the notification message to a Telegram chat determined by configuration. WHEN `telegram.notify_chat_id` is set to a non-zero value, THE PersonalAssistant SHALL use that chat ID as the destination. WHEN `telegram.notify_chat_id` is zero or omitted and the allowed-users list (from `telegram.users_path`) is non-empty, THE PersonalAssistant SHALL use the first allowed user’s ID as the destination chat. WHEN no destination is available (zero or omitted `notify_chat_id` and no allowed users), THE PersonalAssistant SHALL NOT send the message and SHALL log or handle the condition according to implementation.
+
 **REQ-010** (Ubiquitous)  
 THE PersonalAssistant SHALL support extensible tools: each tool SHALL have a name, a description, and a validated input schema; tools SHALL be registered with the core and invoked by the core according to a single contract.
 
@@ -257,6 +260,7 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-020  | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources) |
 | REQ-021  | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only |
 | REQ-022  | CLI parameter to verify node availability: connect and run one allowlisted command per node; report and exit without serving |
+| REQ-023  | Scheduler "notify" action: destination chat from telegram.notify_chat_id or first allowed user |
 
 ---
 
@@ -275,6 +279,7 @@ User stories are defined in [user-stories.md](user-stories.md) (US-01–US-18).
 | REQ-007   | US-07               | Vector index and semantic search |
 | REQ-008   | US-08               | Pluggable LLM provider |
 | REQ-009   | US-11               | Scheduled tasks |
+| REQ-023   | US-11               | Scheduler notify destination (notify_chat_id or first user) |
 | REQ-010   | US-12               | Extensible tools contract |
 | REQ-011   | US-13               | Add nodes/tools without image rebuild |
 | REQ-012   | US-14               | Clear architecture boundaries |
@@ -301,7 +306,7 @@ User stories are defined in [user-stories.md](user-stories.md) (US-01–US-18).
 | US-08      | REQ-008      |
 | US-09      | REQ-014      |
 | US-10      | REQ-015      |
-| US-11      | REQ-009      |
+| US-11      | REQ-009, REQ-023 |
 | US-12      | REQ-010      |
 | US-13      | REQ-011      |
 | US-14      | REQ-012      |

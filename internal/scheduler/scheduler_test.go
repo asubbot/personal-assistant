@@ -12,8 +12,8 @@ func TestNew_validTasks(t *testing.T) {
 	reg.Register(&mockTool{name: "run_on_node"})
 	cfg := Config{Registry: reg, Logger: slog.Default()}
 	taskList := []Task{
-		{Schedule: "0 9 * * *", Action: "notify", Params: map[string]any{}},
-		{Schedule: "@every 1h", Action: "run_on_node", Params: map[string]any{"node_id": "n", "command": "uptime"}},
+		{Name: "notify-am", Schedule: "0 9 * * *", Action: "notify", Params: map[string]any{}},
+		{Name: "nas-up", Schedule: "@every 1h", Action: "run_on_node", Params: map[string]any{"node_id": "n", "command": "uptime"}},
 	}
 	s, err := New(taskList, cfg)
 	if err != nil {
@@ -31,7 +31,7 @@ func TestNew_invalidSchedule(t *testing.T) {
 	reg := tools.NewRegistry()
 	cfg := Config{Registry: reg, Logger: slog.Default()}
 	taskList := []Task{
-		{Schedule: "invalid cron!!!", Action: "notify", Params: map[string]any{}},
+		{Name: "bad", Schedule: "invalid cron!!!", Action: "notify", Params: map[string]any{}},
 	}
 	_, err := New(taskList, cfg)
 	if err == nil {
@@ -44,11 +44,11 @@ func TestScheduler_executeTask_unknownAction_skipped(t *testing.T) {
 	mt := &mockTool{name: "only_tool"}
 	reg.Register(mt)
 	cfg := Config{Registry: reg, Logger: slog.Default()}
-	s, err := New([]Task{{Schedule: "@every 1s", Action: "unknown_tool", Params: map[string]any{}}}, cfg)
+	s, err := New([]Task{{Name: "unk", Schedule: "@every 1s", Action: "unknown_tool", Params: map[string]any{}}}, cfg)
 	if err != nil {
 		t.Fatalf("New = %v", err)
 	}
-	s.executeTask(context.Background(), Task{Action: "unknown_tool", Params: map[string]any{}})
+	s.executeTask(context.Background(), Task{Name: "unk", Action: "unknown_tool", Params: map[string]any{}})
 	if mt.runCount != 0 {
 		t.Errorf("executeTask(unknown) should not call tool, runCount = %d", mt.runCount)
 	}
@@ -66,7 +66,7 @@ func TestScheduler_executeTask_invalidParams_skipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New = %v", err)
 	}
-	s.executeTask(context.Background(), Task{Action: "run_on_node", Params: map[string]any{}}) // missing params
+	s.executeTask(context.Background(), Task{Name: "no-params", Action: "run_on_node", Params: map[string]any{}}) // missing params
 	if mt.runCount != 0 {
 		t.Errorf("executeTask(invalid params) should not call tool, runCount = %d", mt.runCount)
 	}

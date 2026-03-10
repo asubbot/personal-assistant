@@ -12,7 +12,9 @@ import (
 const actionNotify = "notify"
 
 // Task is one scheduled task from the JSON file (REQ-009).
+// Name must be unique across all tasks in the file.
 type Task struct {
+	Name     string         `json:"name"`     // unique task identifier (required)
 	Schedule string         `json:"schedule"` // cron e.g. "0 9 * * *" or "@every 1h"
 	Action   string         `json:"action"`   // tool name or "notify"
 	Params   map[string]any `json:"params"`
@@ -58,6 +60,17 @@ func LoadTasks(path string) ([]Task, error) {
 	if err := json.Unmarshal(data, &list); err != nil {
 		return nil, fmt.Errorf("scheduler: parse tasks JSON: %w", err)
 	}
+	seen := make(map[string]struct{})
+	for i := range list {
+		name := list[i].Name
+		if name == "" {
+			return nil, fmt.Errorf("scheduler: task at index %d has empty name", i)
+		}
+		if _, ok := seen[name]; ok {
+			return nil, fmt.Errorf("scheduler: duplicate task name %q", name)
+		}
+		seen[name] = struct{}{}
+	}
 	return list, nil
 }
 
@@ -78,12 +91,13 @@ func New(tasks []Task, cfg Config) (*Scheduler, error) {
 // executeTask runs one task: resolve action to tool or notify, validate params, run (AC-021).
 func (s *Scheduler) executeTask(ctx context.Context, task Task) {
 	if task.Action == "" {
-		s.cfg.Logger.Warn("scheduler: task has empty action", "schedule", task.Schedule)
+		s.cfg.Logger.Warn("scheduler: task has empty action", "task", task.Name, "schedule", task.Schedule)
 		return
 	}
+	attrs := []any{"task", task.Name, "schedule", task.Schedule}
 	if task.Action == actionNotify {
 		if s.cfg.Notifier == nil {
-			s.cfg.Logger.Warn("scheduler: notify action but no notifier configured")
+			s.cfg.Logger.Warn("scheduler: notify action but no notifier configured", attrs...)
 			return
 		}
 		msg := ""
@@ -93,25 +107,29 @@ func (s *Scheduler) executeTask(ctx context.Context, task Task) {
 			}
 		}
 		if err := s.cfg.Notifier.SendMessage(ctx, msg); err != nil {
-			s.cfg.Logger.Error("scheduler: notify failed", "error", err)
+			s.cfg.Logger.Error("scheduler: notify failed", append(attrs, "error", err)...)
 		}
 		return
 	}
+	attrs = append(attrs, "action", task.Action)
 	tool, ok := s.cfg.Registry.Get(task.Action)
 	if !ok {
-		s.cfg.Logger.Warn("scheduler: unknown action", "action", task.Action)
+		s.cfg.Logger.Warn("scheduler: unknown action", attrs...)
 		return
 	}
 	if err := tools.ValidateParams(tool.ParamsSchema(), task.Params); err != nil {
-		s.cfg.Logger.Warn("scheduler: invalid params", "action", task.Action, "error", err)
+		s.cfg.Logger.Warn("scheduler: invalid params", append(attrs, "error", err)...)
 		return
+	}
+	if task.Params != nil {
+		attrs = append(attrs, "params", task.Params)
 	}
 	result, err := tool.Run(ctx, task.Params)
 	if err != nil {
-		s.cfg.Logger.Error("scheduler: tool run failed", "action", task.Action, "error", err)
+		s.cfg.Logger.Error("scheduler: tool run failed", append(attrs, "error", err)...)
 		return
 	}
-	s.cfg.Logger.Info("scheduler: task completed", "action", task.Action, "result_len", len(result))
+	s.cfg.Logger.Info("scheduler: task completed", append(attrs, "result_len", len(result))...)
 }
 
 // Start starts the cron scheduler (non-blocking).

@@ -26,7 +26,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
     - **Verification:** `go build ./...` passes; `go run ./cmd/pa` exits (non-zero without config path or with missing file; zero if stub returns success; exact behaviour is decided in 1.1).
 
 - [x] 1.1 Implement config load and validation
-  - Define config struct (version; telegram: token_path, users_path; nodes: host, dedicated_user, auth, command_allowlist_path; llm_providers: ordered list; paths: memory_dir, log_path, vector_index_path, scheduled_tasks_path). Validate version for backward compatibility; load and validate users file (user_id, role, optional name).
+  - Define config struct (version; telegram: token_path, users_path, notify_chat_id; nodes: host, dedicated_user, auth, command_allowlist_path; llm_providers: ordered list; paths: memory_dir, log_path, vector_index_path, scheduled_tasks_path). Validate version for backward compatibility; load and validate users file (user_id, role, optional name).
   - Load JSON from path; validate required fields and node/LLM/path consistency. Config file format: [Config file (JSON)](#config-file-json).
   - On validation failure: log clear error and exit non-zero (do not start serving)
   - _Requirements: [REQ-003](REQUIREMENTS.md#nodes-and-ssh), [REQ-004](REQUIREMENTS.md#nodes-and-ssh)_
@@ -289,6 +289,7 @@ _Reference material._ Application config is a single JSON file (path from `-conf
   "telegram": {
     "token_path": "/run/secrets/telegram_bot_token",
     "users_path": "/etc/pa/telegram_users.json",
+    "notify_chat_id": 0,
     "max_message_length": 4096
   },
   "llm_providers": [
@@ -340,6 +341,7 @@ _Reference material._ Application config is a single JSON file (path from `-conf
 - **version**: integer; config schema version for backward compatibility. The loader rejects unsupported versions and can migrate or validate per-version rules.
 - **paths.vector_index_path**: path to the vector index file. Use `./data/pa_vectors.sqlite` (or `/data/pa_vectors.sqlite` in production) for the default SQLite+sqlite-vec implementation.
 - **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin).
+- **telegram.notify_chat_id**: optional; Telegram chat ID (e.g. user or group) to which the scheduler sends messages for tasks with `action` `"notify"`. When non-zero, that chat is used. When zero or omitted and `users_path` lists at least one user, the first allowed user’s ID is used as the destination ([REQ-023](REQUIREMENTS.md#scheduler-and-tools)). When no destination is available, the notify action does not send and is handled per implementation (e.g. log).
 - **telegram.max_message_length**: optional; max message length in runes. If > 0, longer messages are rejected with a clear message (no LLM call). 0 or omitted = no limit. Format: see [Telegram users file](#telegram-users-file) below. If missing or empty, behaviour is defined at implementation time (e.g. allow none or allow all).
 - **command_allowlist_path** (per node): path to a file with the list of allowed command patterns. The same path can be used by multiple nodes to share one allowlist. File format: one pattern per line (leading/trailing whitespace ignored; empty lines and lines starting with `#` ignored). Matching rules (prefix/glob/regex) are defined in task 2.1. Example file `/etc/pa/allowlist.txt`:
 
@@ -366,12 +368,12 @@ _Reference material._ Application config is a single JSON file (path from `-conf
 
 Fields: `user_id` (required), `role` (required: `user` or `admin`), `name` (optional, for display/logs). Loader validates role is one of the supported values.
 
-**Scheduled tasks file** (e.g. `/etc/pa/scheduled_tasks.json`): JSON array of task objects. Example:
+**Scheduled tasks file** (e.g. `/etc/pa/scheduled_tasks.json`): JSON array of task objects. Each task must have a unique `name` (string); duplicate or empty names cause load error. Tasks with `action` `"notify"` send the message (from `params.message` if present) to the Telegram chat defined by `telegram.notify_chat_id` or, when that is zero/omitted, to the first allowed user ([REQ-023](REQUIREMENTS.md#scheduler-and-tools)). Example:
 
 ```json
 [
-  { "schedule": "0 9 * * *", "action": "notify", "params": {} },
-  { "schedule": "@every 1h", "action": "some_tool", "params": { "target": "nas" } }
+  { "name": "morning-notify", "schedule": "0 9 * * *", "action": "notify", "params": {} },
+  { "name": "nas-uptime", "schedule": "@every 1h", "action": "some_tool", "params": { "target": "nas" } }
 ]
 ```
 

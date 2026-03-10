@@ -123,7 +123,7 @@ This document is the project’s canonical list of acceptance criteria. IDs: **A
 
 ## AC-020 (US-11)
 
-**Given** a task configured with a schedule (time or interval), **When** the scheduled time or interval is reached, **Then** the scheduler executes the task (e.g. invokes the defined tool or notification) within the security model.
+**Given** a task configured with a schedule (time or interval), **When** the scheduled time or interval is reached, **Then** the scheduler executes the task (e.g. invokes the defined tool or notification) within the security model. For tasks with action "notify", the message is sent to the Telegram chat determined by configuration (see [REQ-023](REQUIREMENTS.md#scheduler-and-tools): `telegram.notify_chat_id` or first allowed user).
 
 ---
 

@@ -1,5 +1,6 @@
 [
   {
+    "name": "morning-notify",
     "schedule": "0 9 * * *",
     "action": "notify",
     "params": {
@@ -7,6 +8,7 @@
     }
   },
   {
+    "name": "nas-uptime",
     "schedule": "@every 1h",
     "action": "run_on_node",
     "params": {
@@ -15,6 +17,7 @@
     }
   },
   {
+    "name": "checkin-every-6h",
     "schedule": "0 */6 * * *",
     "action": "notify",
     "params": {

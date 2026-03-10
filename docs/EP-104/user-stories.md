@@ -120,9 +120,9 @@ As an operator, I want to configure where LLM logs are written and in what parse
 
 ## US-11 — Scheduled tasks
 
-As an operator, I want to define scheduled tasks (time or interval) in configuration, so that the assistant can run periodic actions within the security model.
+As an operator, I want to define scheduled tasks (time or interval) in configuration, so that the assistant can run periodic actions within the security model. Notify actions send messages to a configurable Telegram chat ([REQ-023](REQUIREMENTS.md#scheduler-and-tools)).
 
-**Requirements:** [REQ-009](REQUIREMENTS.md#scheduler-and-tools).  
+**Requirements:** [REQ-009](REQUIREMENTS.md#scheduler-and-tools), [REQ-023](REQUIREMENTS.md#scheduler-and-tools).  
 **Acceptance criteria:** [AC-020](acceptance-criteria.md#ac-020-us-11), [AC-021](acceptance-criteria.md#ac-021-us-11).
 
 ---

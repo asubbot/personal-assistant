@@ -95,7 +95,7 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | AC-017 | US-09 | Unit, Integration | Unit: logger records request/response fields; integration: after LLM call, log entry present and parseable. |
 | AC-018 | US-10 | Unit, Integration | Unit: log destination from config; integration: entries written to configured path/format. |
 | AC-019 | US-10 | Unit, Integration | Unit: error handling when write fails; integration: unavailable destination → documented behaviour. |
-| AC-020 | US-11 | Unit, Integration | Unit: scheduler triggers at time/interval; integration: task runs when schedule fires (mock time if needed). |
+| AC-020 | US-11 | Unit, Integration | Unit: scheduler triggers at time/interval; integration: task runs when schedule fires (mock time if needed). For "notify" action, destination chat is per [REQ-023](REQUIREMENTS.md#scheduler-and-tools) (notify_chat_id or first allowed user); verify by integration test with notify or manually. |
 | AC-021 | US-11 | Unit, Integration | Unit: task filtered by security model; integration: violating task not executed, log/report. |
 | AC-022 | US-12 | Unit, Integration | Unit: tool registry and single contract; integration: core invokes tool with validated input, gets result. |
 | AC-023 | US-12 | Unit, Integration | Unit: schema validation rejects invalid input; integration: core returns error, tool not run. |
