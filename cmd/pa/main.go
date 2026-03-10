@@ -42,7 +42,7 @@ func main() {
 		*configPath = os.Getenv("PA_CONFIG_PATH")
 	}
 	if *configPath == "" {
-		*configPath = "./config.json"
+		*configPath = "./config/config.json"
 	}
 
 	logLevel := logLevelFromEnv()

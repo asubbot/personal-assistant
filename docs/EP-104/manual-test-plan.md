@@ -11,7 +11,7 @@ This document lists manual test scenarios for acceptance criteria that are verif
 
 **Goal:** Confirm that the assistant indexes conversation turns into the vector store and uses semantic search to inject "Relevant past context" into the LLM request for later messages.
 
-- [ ] **Precondition:** Bot is configured with embedding and vector store (e.g. `config.json` has `embedding` block, vector DB path `./data/pa_vectors.sqlite`). Start the bot with **`PA_LOG_LEVEL=debug`** so that full LLM request (including context block) is logged.
+- [ ] **Precondition:** Bot is configured with embedding and vector store (e.g. `config/config.json` has `embedding` block, vector DB path `./data/pa_vectors.sqlite`). Start the bot with **`PA_LOG_LEVEL=debug`** so that full LLM request (including context block) is logged.
 - [ ] **Step 1:** Send a first message that gives a specific fact (e.g. "Запомни: мой любимый цвет — синий" or "My project deadline is March 15").
 - [ ] **Step 2:** Send a follow-up that should retrieve that fact via semantic search (e.g. "Какой у меня любимый цвет?" or "When is my project deadline?"). The assistant should be able to answer using the stored context.
 - [ ] **Step 3:** In the logs for the second (or a later) request, at DEBUG level, find the `llm request` entry for the **system** message (`role=system`). The `content` field must contain the substring **`Relevant past context:`** followed by one or more lines of context (or **`Relevant memory (today):`** if today's memory is used). This confirms that vector search (and/or daily memory) ran and that the built context is passed to the LLM.
@@ -68,7 +68,7 @@ If no vector results are found for the query, the system message may contain onl
 **Criterion:** Given the application is invoked with the designated parameter to verify node availability, when it runs, it loads config, connects to each node over SSH, runs one allowlisted command per node, reports success or failure, and exits without starting the bot.
 
 - [ ] **Precondition:** Config has at least one node with valid host, dedicated user, key path, and allowlist file; allowlist includes a safe command (e.g. `uptime`, `echo ok`).
-- [ ] **Step 1:** Run the binary with the verify parameter (e.g. `go run ./cmd/pa -config ./config.json -verify-nodes` or as documented).
+- [ ] **Step 1:** Run the binary with the verify parameter (e.g. `go run ./cmd/pa -config ./config/config.json -verify-nodes` or as documented).
 - [ ] **Step 2:** Confirm output lists each configured node and reports OK or FAIL; on success, probe command output (e.g. uptime) may be shown.
 - [ ] **Step 3:** Confirm the process exits (does not start Telegram polling or webhook).
 - [ ] **Step 4 (optional):** Intentionally break one node (e.g. wrong key or unreachable host), run again; confirm at least one FAIL and non-zero exit code.

@@ -2,7 +2,7 @@
 
 Go application: Telegram bot, core orchestration, long-term memory (markdown), vector index, LLM providers, scheduler, tools, SSH access to nodes. Target: Synology DS220+ (Docker). See [docs/EP-104/REQUIREMENTS.md](docs/EP-104/REQUIREMENTS.md) and [docs/EP-104/](docs/EP-104/) for design and implementation plan.
 
-**Requirements:** Go 1.26+ (CGO for vector store: SQLite + sqlite-vec). Config is a JSON file (path via `-config` or `PA_CONFIG_PATH`). Secrets (tokens, API keys, SSH keys) are stored in files; config references them by path.
+**Requirements:** Go 1.26+ (CGO for vector store: SQLite + sqlite-vec). Config is a JSON file at `config/config.json` (path overridable via `-config` or `PA_CONFIG_PATH`). Secrets (tokens, API keys, SSH keys) are stored in files; config references them by path.
 
 ---
 
@@ -10,7 +10,7 @@ Go application: Telegram bot, core orchestration, long-term memory (markdown), v
 
 | Variable         | Default      | Description |
 |------------------|--------------|-------------|
-| `PA_CONFIG_PATH` | `./config.json` | Path to the main config JSON file. Overridden by `-config` flag. |
+| `PA_CONFIG_PATH` | `./config/config.json` | Path to the main config JSON file. Overridden by `-config` flag. |
 | `PA_LOG_LEVEL`   | `info`       | Log level: `info` or `debug` (case-insensitive). At `debug`, the core logs full LLM request and response (including memory/vector context) in the handler; at `info`, only metadata (message count, response length, token usage). |
 
 Defined in `.env` (see Setup). With [direnv](https://direnv.net/), `.envrc` loads `.env` into the shell.
@@ -35,7 +35,7 @@ With [direnv](https://direnv.net/): `direnv allow` so `.env` is loaded in the sh
 # Build
 go build -o pa ./cmd/pa
 
-# Run (uses PA_CONFIG_PATH from env or default ./config.json)
+# Run (uses PA_CONFIG_PATH from env or default ./config/config.json)
 go run ./cmd/pa
 go run ./cmd/pa -config=/path/to/config.json
 
@@ -48,9 +48,9 @@ PA_LOG_LEVEL=debug go run ./cmd/pa
 To check that SSH access to all configured nodes works (without starting the bot):
 
 ```bash
-go run ./cmd/pa -config ./config.json -verify-nodes
+go run ./cmd/pa -config ./config/config.json -verify-nodes
 # Optional: use another allowlisted command (e.g. "echo ok")
-go run ./cmd/pa -config ./config.json -verify-nodes -verify-nodes-command "echo ok"
+go run ./cmd/pa -config ./config/config.json -verify-nodes -verify-nodes-command "echo ok"
 ```
 
 The command loads config and allowlist, connects to each node over SSH, runs one allowlisted command per node (default: `uptime`), and reports success or failure. Exit code 0 only when all nodes succeed. Ensure each node's allowlist file exists and contains the probe command (e.g. copy `config/nas_allowlist.example.txt` to the path set in config).

@@ -20,7 +20,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: [REQ-002](REQUIREMENTS.md#interface-and-deployment), [REQ-012](REQUIREMENTS.md#extensibility-and-architecture)_
   - **Execution:**
     - **Module:** `go mod init pa` in repo root; `go 1.26` in go.mod. Module name: `pa`.
-    - **Entrypoint:** Single binary `cmd/pa/main.go`. Thin main: init `slog` (TextHandler to stdout), load config via `config.Load(path)`, on error log and `os.Exit(1)`, then exit 0 (no Telegram/LLM yet). Config path from flag `-config=<path>` or env `PA_CONFIG_PATH`; default e.g. `./config.json` or empty (Load returns error).
+    - **Entrypoint:** Single binary `cmd/pa/main.go`. Thin main: init `slog` (TextHandler to stdout), load config via `config.Load(path)`, on error log and `os.Exit(1)`, then exit 0 (no Telegram/LLM yet). Config path from flag `-config=<path>` or env `PA_CONFIG_PATH`; default `./config/config.json` or empty (Load returns error).
     - **internal/config:** Stub only in this task: e.g. `Load(path string) (*Config, error)` that returns an error (e.g. "config load not implemented") or empty struct until task 1.1. No JSON parsing yet.
     - **Other internal packages:** Create each listed directory; add a minimal `doc.go` per package (`// Package <name> ...` + `package <name>`) so directories are valid Go packages and `go build ./...` succeeds. No other code in telegram/core/memory/vector/llm/scheduler/tools/ssh/logging until later tasks.
     - **Verification:** `go build ./...` passes; `go run ./cmd/pa` exits (non-zero without config path or with missing file; zero if stub returns success; exact behaviour is decided in 1.1).
