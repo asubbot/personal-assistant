@@ -158,31 +158,31 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 ## 6. Scheduler and tools
 
-- [ ] 6.1 Implement tool contract and registry
+- [x] 6.1 Implement tool contract and registry
   - Interface: Name, Description, ParamsSchema, Run(ctx, params); registry at startup; config can enable/parameterise tools
   - _Requirements: [REQ-010](REQUIREMENTS.md#scheduler-and-tools), [REQ-011](REQUIREMENTS.md#extensibility-and-architecture)_
   - _Validates:_ [AC-022](acceptance-criteria.md#ac-022-us-12), [AC-023](acceptance-criteria.md#ac-023-us-12)
 
-- [ ] 6.2 Implement scheduler (cron)
+- [x] 6.2 Implement scheduler (cron)
   - Use robfig/cron/v3; load tasks from file at paths.scheduled_tasks_path (JSON array; schedule cron or @every); execution invokes registered tool or sends Telegram notification within security model
   - _Requirements: [REQ-009](REQUIREMENTS.md#scheduler-and-tools)_
   - _Validates:_ [AC-020](acceptance-criteria.md#ac-020-us-11), [AC-021](acceptance-criteria.md#ac-021-us-11)
 
-- [ ] 6.3 Wire tools and scheduler into core
+- [x] 6.3 Wire tools and scheduler into core
   - Core invokes tools via single contract (validate input, call Run); scheduler runs tasks that call tools or notify
   - _Requirements: [REQ-009](REQUIREMENTS.md#scheduler-and-tools), [REQ-010](REQUIREMENTS.md#scheduler-and-tools)_
 
-- [ ] 6.4 Add node/tool via config without image rebuild
+- [x] 6.4 Add node/tool via config without image rebuild
   - New node or tool in config (or designated extension); after restart (or hot-reload if supported), new entity loaded
   - _Requirements: [REQ-011](REQUIREMENTS.md#extensibility-and-architecture)_
   - _Validates:_ [AC-024](acceptance-criteria.md#ac-024-us-13)
 
-- [ ] 6.5 Write unit and integration tests for tools and scheduler
+- [x] 6.5 Write unit and integration tests for tools and scheduler
   - Tool: valid input → result; invalid input → validation error, tool not run
   - Scheduler: task at schedule runs; task that would violate security model does not run
   - _Validates:_ [AC-020](acceptance-criteria.md#ac-020-us-11), [AC-021](acceptance-criteria.md#ac-021-us-11), [AC-022](acceptance-criteria.md#ac-022-us-12), [AC-023](acceptance-criteria.md#ac-023-us-12)
 
-- [ ] 7. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 7. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
 ---
 
