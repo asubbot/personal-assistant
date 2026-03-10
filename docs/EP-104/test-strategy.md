@@ -51,7 +51,7 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | AC-014 | ✓    | ✓           | —   | ✓      | Unit: `internal/vector/sqlite/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects past context); manual: [manual-test-plan.md](manual-test-plan.md) |
 | AC-025 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (architecture review) |
 | AC-027 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (docs: tracked paths) |
-| AC-020 | —    | ✓           | —   | —      | `tests/integration/scheduler_config_test.go` (scheduler fires and runs tool) |
+| AC-020 | ✓    | ✓           | —   | —      | Unit: `internal/telegram/adapter_test.go` (notify_chat_id [REQ-023]: from config, fallback to first user, zero when none; SendMessage when bot nil); integration: `tests/integration/scheduler_config_test.go` (scheduler fires and runs tool) |
 | AC-021 | —    | ✓           | —   | —      | `tests/integration/scheduler_config_test.go` (task with disallowed command not executed) |
 | AC-022 | ✓    | —           | —   | —      | Unit: `internal/tools/run_on_node_test.go` (valid params, runner invoked), `registry_test.go` (Register/Get/contract) |
 | AC-023 | ✓    | —           | —   | —      | Unit: `internal/tools/run_on_node_test.go` (invalid params rejected), `registry_test.go` (ValidateParams) |

@@ -57,6 +57,9 @@ func NewAdapter(cfg *config.Config, _ string) (*Adapter, error) {
 	return &Adapter{allowedUserIDs: allowed, token: token, notifyChatID: notifyChatID}, nil
 }
 
+// NotifyChatID returns the chat ID used for scheduler notify (for tests).
+func (a *Adapter) NotifyChatID() int64 { return a.notifyChatID }
+
 // SendMessage sends a text message to the notify chat (scheduler.Notifier). No-op if bot not yet started or notifyChatID 0.
 func (a *Adapter) SendMessage(ctx context.Context, text string) error {
 	if a.bot == nil || a.notifyChatID == 0 {

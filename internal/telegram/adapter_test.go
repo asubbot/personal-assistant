@@ -205,6 +205,106 @@ func TestNewAdapter_usersFileInvalidJSON(t *testing.T) {
 	}
 }
 
+// --- NewAdapter: notify_chat_id (REQ-023) ---
+
+func TestNewAdapter_notifyChatID_fromConfig(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token.txt")
+	if err := os.WriteFile(tokenPath, []byte("valid-token"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{Telegram: config.Telegram{TokenPath: tokenPath, NotifyChatID: 123}}
+	ad, err := NewAdapter(cfg, filepath.Join(dir, "config.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ad.NotifyChatID(); got != 123 {
+		t.Errorf("NotifyChatID() = %d, want 123", got)
+	}
+}
+
+func TestNewAdapter_notifyChatID_fallbackToFirstUser(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token.txt")
+	if err := os.WriteFile(tokenPath, []byte("valid-token"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	usersPath := filepath.Join(dir, "users.json")
+	usersJSON := `[{"user_id": 456, "role": "user"}]`
+	if err := os.WriteFile(usersPath, []byte(usersJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{Telegram: config.Telegram{TokenPath: tokenPath, UsersPath: usersPath, NotifyChatID: 0}}
+	ad, err := NewAdapter(cfg, filepath.Join(dir, "config.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ad.NotifyChatID(); got != 456 {
+		t.Errorf("NotifyChatID() = %d, want 456 (first allowed user)", got)
+	}
+}
+
+func TestNewAdapter_notifyChatID_zeroWhenNoUsersAndNotSet(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token.txt")
+	if err := os.WriteFile(tokenPath, []byte("valid-token"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{Telegram: config.Telegram{TokenPath: tokenPath}}
+	ad, err := NewAdapter(cfg, filepath.Join(dir, "config.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ad.NotifyChatID(); got != 0 {
+		t.Errorf("NotifyChatID() = %d, want 0 when no users and not set in config", got)
+	}
+}
+
+func TestNewAdapter_notifyChatID_configOverridesUsers(t *testing.T) {
+	dir := t.TempDir()
+	tokenPath := filepath.Join(dir, "token.txt")
+	if err := os.WriteFile(tokenPath, []byte("valid-token"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	usersPath := filepath.Join(dir, "users.json")
+	usersJSON := `[{"user_id": 111, "role": "user"}]`
+	if err := os.WriteFile(usersPath, []byte(usersJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{Telegram: config.Telegram{TokenPath: tokenPath, UsersPath: usersPath, NotifyChatID: 999}}
+	ad, err := NewAdapter(cfg, filepath.Join(dir, "config.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ad.NotifyChatID(); got != 999 {
+		t.Errorf("NotifyChatID() = %d, want 999 (config overrides first user)", got)
+	}
+}
+
+// --- SendMessage (scheduler Notifier) ---
+
+func TestSendMessage_botNil_returnsError(t *testing.T) {
+	ad := &Adapter{notifyChatID: 123}
+	err := ad.SendMessage(context.Background(), "test")
+	if err == nil {
+		t.Fatal("expected error when bot is nil")
+	}
+	if !strings.Contains(err.Error(), "cannot notify") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestSendMessage_notifyChatIDZero_returnsError(t *testing.T) {
+	ad := &Adapter{notifyChatID: 0}
+	err := ad.SendMessage(context.Background(), "test")
+	if err == nil {
+		t.Fatal("expected error when notify chat ID is 0")
+	}
+	if !strings.Contains(err.Error(), "cannot notify") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 // --- Run ---
 
 func TestRun_nilHandler(t *testing.T) {
