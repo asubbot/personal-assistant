@@ -43,7 +43,8 @@ Terms used in the requirements.
 | **Core** | The main Go service: orchestration of conversations, LLM calls, tool execution, access to memory and scheduler, and SSH-based node management. |
 | **Node** | A remote host (e.g. NAS, server) that the core connects to over SSH to run actions; has a defined capability set and credentials in configuration. |
 | **Security model** | Explicit definition of which nodes are allowed, which commands/tools are permitted on each node, and how inputs and outputs are validated; validated at load and on configuration change. |
-| **Long-term memory** | The assistant’s memory: a single store of facts and context held as markdown files in a defined directory structure; read/write by the core and indexer. It is not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with. |
+| **Long-term memory** | The assistant’s memory: a single store of facts and context held as markdown files in a defined directory structure; read/write by the core and indexer. It is not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with. Structure is calendar-based (year/month/day) with hierarchical summarization (day → month → year). |
+| **Memory summarization** | Process by which the assistant produces summary markdown files: at end of day from that day’s activity, at end of month from that month’s day summaries, at end of year from that year’s month summaries. Inputs include LLM logs, tool execution results, and scheduler execution events for the period. |
 | **Vector store** | Index of embeddings from long-term memory (and optionally conversations) for semantic search; provider (e.g. in-memory, file, DB) is pluggable. |
 | **LLM provider** | Abstraction for calling a language model (OpenAI-compatible API, Ollama, self-hosted); configuration specifies endpoint and parameters without vendor lock-in in code. |
 | **Tool** | Extensible module: name, description, validated input schema, and implementation; registered with the core and invoked via a single contract. |
@@ -166,6 +167,12 @@ WHEN the assistant reads or writes long-term memory, THE PersonalAssistant SHALL
 **REQ-018** (Ubiquitous)  
 THE PersonalAssistant long-term memory SHALL be the assistant’s single memory store. THE PersonalAssistant SHALL NOT subdivide memory into non-overlapping blocks per interlocutor. THE PersonalAssistant SHALL give the assistant access to the full memory store regardless of which user or channel the assistant is currently conversing with.
 
+**REQ-019** (Ubiquitous)  
+THE PersonalAssistant long-term memory SHALL be organized in a calendar directory structure: year / month / day (e.g. 2026/02/16). THE PersonalAssistant SHALL support hierarchical summarization: at the end of each day the assistant SHALL produce a day-level summary markdown file from that day’s activity; at the end of each month a month-level summary from that month’s day summaries; at the end of each year a year-level summary from that year’s month summaries. The operator MAY configure that each such summary SHALL be persisted only after approval by the owner or admin.
+
+**REQ-020** (Ubiquitous)  
+WHEN producing day-level memory summaries, THE PersonalAssistant SHALL use as input at least: (1) LLM request/response logs for that day, (2) results of tool executions that occurred that day, and (3) scheduler task execution events for that day. The implementation MAY include additional sources (e.g. explicit memory writes, errors) as defined in design or configuration.
+
 **REQ-007** (Ubiquitous)  
 THE PersonalAssistant SHALL maintain a vector index of content from the long-term memory store and SHALL support semantic search over that index to retrieve relevant context for user queries.
 
@@ -240,6 +247,8 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-016  | Git repository for version history of config, memory, and designated artifacts (scope TBD) |
 | REQ-017  | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests |
 | REQ-018  | Memory is assistant’s single store; not partitioned by interlocutor; full access regardless of current conversation partner |
+| REQ-019  | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
+| REQ-020  | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources) |
 
 ---
 
@@ -265,6 +274,8 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-016   | US-416              | Git-backed version control for config and memory |
 | REQ-017   | US-417 (Spexus)     | Secret leakage protection; tests for prompt-injection exfiltration (Spexus: REQ-658, AC-1301–AC-1303) |
 | REQ-018   | US-407              | Memory is assistant’s single store; not partitioned by interlocutor |
+| REQ-019   | US-407              | Memory structure and hierarchical summarization (day/month/year); optional approval |
+| REQ-020   | US-407              | Summary sources: LLM logs, tool results, scheduler events |
 
 | User Story | Requirements |
 |------------|--------------|
@@ -273,7 +284,7 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | US-404     | REQ-003, REQ-004 |
 | US-405     | REQ-005      |
 | US-406     | REQ-013      |
-| US-407     | REQ-006, REQ-018 |
+| US-407     | REQ-006, REQ-018, REQ-019, REQ-020 |
 | US-408     | REQ-007      |
 | US-409     | REQ-008      |
 | US-410     | REQ-014      |

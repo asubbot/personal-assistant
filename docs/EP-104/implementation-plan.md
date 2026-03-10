@@ -100,11 +100,15 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 ## 4. Memory store and vector index
 
-Memory is the **assistant’s single store** (REQ-018): not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with. Structure is by topic/date (or similar), not by user.
+Memory is the **assistant’s single store** (REQ-018): not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with.
+
+**Structure (REQ-019):** Calendar hierarchy `year/month/day` (e.g. `2026/02/16`). Hierarchical summarization: at end of day → day summary md; at end of month → month summary from day summaries; at end of year → year summary from month summaries. Optional: operator may require owner/admin approval before persisting each summary.
+
+**Summary sources (REQ-020):** Day-level summaries SHALL use at least: (1) LLM request/response logs for that day, (2) tool execution results for that day, (3) scheduler task execution events for that day. Additional sources (e.g. explicit memory writes, errors) MAY be included as defined in design.
 
 - [ ] 4.1 Implement long-term memory store (markdown files)
-  - Read/write markdown files under configured memory_dir; single store, structure (e.g. by topic, date) from config — no per-user or per-interlocutor partitioning
-  - _Requirements: REQ-647, REQ-018_
+  - Read/write markdown files under configured memory_dir; calendar structure year/month/day; single store, no per-interlocutor partitioning
+  - _Requirements: REQ-647, REQ-018, REQ-019_
   - _Validates: AC-1284, AC-1285_
 
 - [ ] 4.2 Implement pluggable vector store interface and default implementation
@@ -117,9 +121,16 @@ Memory is the **assistant’s single store** (REQ-018): not subdivided by interl
   - On conversation: read relevant memory from the single store, optionally update memory; index content; semantic search and inject context into LLM call (full memory accessible regardless of current interlocutor)
   - _Requirements: REQ-647, REQ-648, REQ-018_
 
-- [ ] 4.4 Write unit and integration tests for memory and vector
-  - Memory: write then read from same structure; reader uses configured path; no per-user partitioning
+- [ ] 4.4 Hierarchical memory summarization (day / month / year)
+  - Scheduled jobs: end-of-day (e.g. after midnight) produce day summary from that day’s inputs; end-of-month produce month summary from day summaries; end-of-year produce year summary from month summaries
+  - Inputs for day summary: LLM logs (REQ-014/015), tool execution results, scheduler execution events; timezone/config for “day” boundary
+  - Optional: approval workflow (e.g. send draft to owner via Telegram, persist only on approve or after timeout per config)
+  - _Requirements: REQ-019, REQ-020_; depends on §7 LLM logging and §6 Scheduler
+
+- [ ] 4.5 Write unit and integration tests for memory and vector
+  - Memory: write then read from calendar structure; reader uses configured path; no per-user partitioning
   - Vector: index content, search returns relevant chunks
+  - Summarization: given mock LLM logs + tool/scheduler events, day summary includes expected inputs (unit or integration)
   - _Validates: AC-1284, AC-1285, AC-1286, AC-1287_
 
 - [ ] 5. Checkpoint — Ensure all tests pass, ask the user if questions arise.

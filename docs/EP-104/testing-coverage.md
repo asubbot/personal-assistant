@@ -9,7 +9,7 @@
 ## 1. Summary
 
 - **Acceptance criteria:** 30 AC (AC-1274–AC-1303) across 16 user stories; all in Gherkin (Given/When/Then). Four AC were updated in Spexus for stricter Gherkin (AC-1285, AC-1292, AC-1298, AC-1300). US-417 (secret leakage protection) adds REQ-658 and AC-1301–AC-1303.
-- **Memory (REQ-018):** Long-term memory is the assistant’s single store; it is not subdivided by interlocutor. Tests for memory (AC-1284, AC-1285) assume one store and structure by topic/date (or similar), not per-user partitioning.
+- **Memory (REQ-018, REQ-019, REQ-020):** Long-term memory is the assistant’s single store; it is not subdivided by interlocutor. Structure is calendar-based (year/month/day) with hierarchical summarization (day → month → year). Day summaries use at least LLM logs, tool execution results, and scheduler events. Tests for memory (AC-1284, AC-1285) assume one store and calendar structure; summarization tests (as added) verify that day summary inputs include the required sources.
 - **Testing:** Each AC is assigned to one or more test levels (unit / integration / e2e). Pyramid: more unit, fewer integration, fewest e2e.
 
 ---
