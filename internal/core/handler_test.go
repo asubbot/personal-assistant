@@ -9,6 +9,26 @@ import (
 	"testing"
 )
 
+// captureHandler records log records for assertion (AC-031, REQ-021).
+type captureHandler struct {
+	level   slog.Level
+	records []struct {
+		level slog.Level
+		msg   string
+	}
+}
+
+func (c *captureHandler) Enabled(_ context.Context, level slog.Level) bool { return level >= c.level }
+func (c *captureHandler) Handle(_ context.Context, r slog.Record) error {
+	c.records = append(c.records, struct {
+		level slog.Level
+		msg   string
+	}{r.Level, r.Message})
+	return nil
+}
+func (c *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return c }
+func (c *captureHandler) WithGroup(string) slog.Handler      { return c }
+
 type mockProvider struct {
 	result *llm.CompletionResult
 	err    error
@@ -63,8 +83,9 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	if len(provider.lastMessages) != 2 {
 		t.Fatalf("len(messages) = %d, want 2", len(provider.lastMessages))
 	}
-	if provider.lastMessages[0].Role != "system" || provider.lastMessages[0].Content != "You are a helpful assistant. Reply concisely." {
-		t.Errorf("messages[0] = %+v, want system + assistant prompt", provider.lastMessages[0])
+	wantSystemPrefix := "You are a helpful assistant. Reply concisely. You have access to relevant past context"
+	if provider.lastMessages[0].Role != "system" || !strings.Contains(provider.lastMessages[0].Content, wantSystemPrefix) {
+		t.Errorf("messages[0] = %+v, want system with %q", provider.lastMessages[0], wantSystemPrefix)
 	}
 	if provider.lastMessages[1].Role != "user" || provider.lastMessages[1].Content != userText {
 		t.Errorf("messages[1] = %+v, want user + %q", provider.lastMessages[1], userText)
@@ -141,6 +162,64 @@ func TestHandleMessage_noLimit_longMessageGoesToProvider(t *testing.T) {
 	}
 	if len(provider.lastMessages) != 2 || provider.lastMessages[1].Content != longText {
 		t.Errorf("provider should receive full long message; got content len %d", len(provider.lastMessages[1].Content))
+	}
+}
+
+// TestHandleMessage_logsMetadataAtInfo covers AC-031 (REQ-021): at INFO level only metadata is logged.
+func TestHandleMessage_logsMetadataAtInfo(t *testing.T) {
+	cap := &captureHandler{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{PromptTokens: 1, CompletionTokens: 2, TotalTokens: 3}}}
+	h := &conversationHandler{provider: provider, logger: logger}
+
+	_, _ = h.HandleMessage(context.Background(), 1, "hi")
+
+	var hasLLMCall bool
+	for _, r := range cap.records {
+		if r.msg == "llm call" && r.level == slog.LevelInfo {
+			hasLLMCall = true
+			break
+		}
+	}
+	if !hasLLMCall {
+		t.Errorf("expected one Info \"llm call\" record, got records: %+v", cap.records)
+	}
+	// No Debug records (request/response) at INFO level
+	for _, r := range cap.records {
+		if r.level == slog.LevelDebug {
+			t.Errorf("at INFO level expected no Debug records, got msg=%q", r.msg)
+		}
+	}
+}
+
+// TestHandleMessage_logsFullRequestResponseAtDebug covers AC-031 (REQ-021): at DEBUG level full request and response are logged.
+func TestHandleMessage_logsFullRequestResponseAtDebug(t *testing.T) {
+	cap := &captureHandler{level: slog.LevelDebug}
+	logger := slog.New(cap)
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello", Usage: llm.Usage{}}}
+	h := &conversationHandler{provider: provider, logger: logger}
+
+	_, _ = h.HandleMessage(context.Background(), 1, "hi")
+
+	var hasRequest, hasCall, hasResponse bool
+	for _, r := range cap.records {
+		switch r.msg {
+		case "llm request":
+			hasRequest = true
+		case "llm call":
+			hasCall = true
+		case "llm response":
+			hasResponse = true
+		}
+	}
+	if !hasRequest {
+		t.Errorf("at DEBUG expected \"llm request\" record, got %+v", cap.records)
+	}
+	if !hasCall {
+		t.Errorf("at DEBUG expected \"llm call\" record, got %+v", cap.records)
+	}
+	if !hasResponse {
+		t.Errorf("at DEBUG expected \"llm response\" record, got %+v", cap.records)
 	}
 }
 

@@ -94,7 +94,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - Tests in `tests/integration/` (build tag `integration`); `make test-integration`
   - _Validates:_ [AC-001](acceptance-criteria.md#ac-001-us-01)
 
-- [ ] 3.6 Debug-level LLM conversation logging
+- [x] 3.6 Debug-level LLM conversation logging
   - Log level from env `PA_LOG_LEVEL` (case-insensitive); default INFO. In core handler: at DEBUG log full request (messages, including memory/vector context; may truncate at documented length) and full response (content, usage); at INFO log only metadata (message count, response length, token usage).
   - _Requirements: [REQ-021](REQUIREMENTS.md#llm-and-logging)_
   - _Validates:_ [AC-031](acceptance-criteria.md#ac-031-us-17)

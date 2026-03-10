@@ -15,7 +15,7 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 
 ### Scope
 
-- **Coverage:** All 30 acceptance criteria ([AC-001](acceptance-criteria.md#ac-001-us-01)–[AC-030](acceptance-criteria.md#ac-030-us-16)) across 16 user stories are in scope. AC are specified in Gherkin (Given/When/Then) in [acceptance-criteria.md](acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-16, AC-028–AC-030) are detailed in §5.
+- **Coverage:** All 31 acceptance criteria ([AC-001](acceptance-criteria.md#ac-001-us-01)–[AC-031](acceptance-criteria.md#ac-031-us-17)) across 17 user stories are in scope. AC are specified in Gherkin (Given/When/Then) in [acceptance-criteria.md](acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-16, AC-028–AC-030) are detailed in §5.
 - **In scope for this strategy:** Unit, Integration, E2E, and Manual testing sufficient to demonstrate each AC. Memory behaviour (single store, calendar layout, summarization inputs) is covered by AC-011, AC-012; any additional summarization tests will be added as per implementation plan and reflected in §3.
 
 ### Strategy
@@ -30,19 +30,24 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 
 ### Current coverage
 
-The table below reflects **tests that exist in the codebase** at the time of the last update. §3 above defines the *target* strategy for all 30 AC; this table shows which AC already have at least one corresponding test. Update this section when adding or removing tests.
+The table below reflects **tests that exist in the codebase** at the time of the last update. §3 above defines the *target* strategy for all 31 AC; this table shows which AC already have at least one corresponding test. Update this section when adding or removing tests.
 
 | AC     | Unit | Integration | E2E | Manual | Notes |
 |--------|------|-------------|-----|--------|-------|
 | AC-001 | —    | ✓           | —   | —      | `tests/integration/telegram_flow_test.go` |
-| AC-002 | ✓    | —           | —   | —      | `internal/core/handler_test.go` (empty, max length) |
+| AC-002 | ✓    | ✓           | —   | —      | Unit: `internal/core/handler_test.go`; integration: `tests/integration/telegram_flow_test.go` (empty, over max length) |
 | AC-005 | ✓    | —           | —   | —      | `internal/config/config_test.go` |
 | AC-007 | ✓    | —           | —   | —      | `internal/allowlist/allowlist_test.go` |
 | AC-008 | ✓    | —           | —   | —      | `internal/allowlist/allowlist_test.go` |
 | AC-009 | ✓    | —           | —   | —      | `internal/ssh/ssh_test.go` |
 | AC-010 | ✓    | —           | —   | —      | `internal/ssh/ssh_test.go` (multi-node user) |
 | AC-015 | ✓    | —           | —   | —      | `internal/llm/provider_test.go` |
-| AC-011–AC-014, AC-016–AC-030 | — | — | — | — | No tests yet; feature or task not implemented (see [implementation-plan.md](implementation-plan.md)). |
+| AC-016 | —    | ✓           | —   | —      | `tests/integration/telegram_flow_test.go` (different provider per run) |
+| AC-031 | ✓    | —           | —   | —      | `internal/core/handler_test.go` (DEBUG vs INFO logging) |
+| AC-025 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (architecture review) |
+| AC-027 | —    | —           | —   | ✓      | [manual-test-plan.md](manual-test-plan.md) (docs: tracked paths) |
+| AC-013, AC-014 | — | — | — | ✓ | [manual-test-plan.md](manual-test-plan.md) (vector memory: indexing and search, log check) |
+| AC-011–AC-012, AC-017, AC-019–AC-024, AC-026, AC-028–AC-030 | — | — | — | — | No tests yet; feature or task not implemented (see [implementation-plan.md](implementation-plan.md)). |
 
 ---
 
@@ -53,7 +58,7 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | **Unit**   | Tests a single unit (function, type, package) in isolation; dependencies mocked or stubbed; no external I/O; fast, in-process. |
 | **Integration** | Tests interaction between two or more components (e.g. core + adapter, service + store); may use mocks for external services; may involve real I/O (files, network to test doubles). |
 | **E2E**    | Tests the full system or a major flow end-to-end (e.g. real Telegram bot, real container); minimal mocks; real or near-real environment. |
-| **Manual** | Performed by a human (e.g. architecture review, documentation review); not automated. |
+| **Manual** | Performed by a human (e.g. architecture review, documentation review); not automated. Scenarios: [manual-test-plan.md](manual-test-plan.md). |
 
 ---
 
@@ -91,6 +96,7 @@ The table below reflects **tests that exist in the codebase** at the time of the
 | AC-028 | US-16 | Unit | LLM context builder: built context must not contain fake secret (see §5). |
 | AC-029 | US-16 | Integration | Prompt-injection: reply and logs must not contain fake secret after injection message (see §5). |
 | AC-030 | US-16 | Unit, Integration | Captured logs must not contain fake secret values (see §5). |
+| AC-031 | US-17 | Unit, Integration | Unit: with PA_LOG_LEVEL=debug, handler logs full request/response; with INFO, only metadata. Integration: run with env, assert log output content. |
 
 ---
 

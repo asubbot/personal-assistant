@@ -3,7 +3,7 @@
 **Epic:** EP-104  
 **Related:** [user-stories.md](user-stories.md), [REQUIREMENTS.md](REQUIREMENTS.md), [test-strategy.md](test-strategy.md) (test levels and strategy)
 
-This document is the project’s canonical list of acceptance criteria. IDs: **AC-001** … **AC-030**. All criteria are in Gherkin (Given/When/Then).
+This document is the project’s canonical list of acceptance criteria. IDs: **AC-001** … **AC-031**. All criteria are in Gherkin (Given/When/Then).
 
 ---
 
@@ -184,3 +184,11 @@ This document is the project’s canonical list of acceptance criteria. IDs: **A
 ## AC-030 (US-16)
 
 **Given** a test logger that captures all log output, **When** a flow that uses secrets (e.g. load config, LLM call, Telegram connect) is executed, **Then** the captured log stream does NOT contain any of the known fake secret values (no accidental logging of tokens, API keys, or credentials).
+
+---
+
+## AC-031 (US-17)
+
+**Given** the application is started with `PA_LOG_LEVEL=debug` (or equivalent case-insensitive value), **When** a user message is processed and the core calls the LLM provider, **Then** the core logs the full request (messages sent to the provider, including assembled context from memory and vector search; may be truncated at a documented length) and the full response (model output and usage) at DEBUG level.
+
+**Given** the application is started with the default log level (INFO) or with `PA_LOG_LEVEL=info`, **When** a user message is processed and the core calls the LLM provider, **Then** the core logs only metadata (e.g. message count, response length, token usage) and does NOT log full request or response bodies.

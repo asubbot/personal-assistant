@@ -18,6 +18,19 @@ import (
 	"syscall"
 )
 
+// logLevelFromEnv returns the slog level from PA_LOG_LEVEL (e.g. "debug", "info"); default is INFO (REQ-021).
+func logLevelFromEnv() slog.Level {
+	env := os.Getenv("PA_LOG_LEVEL")
+	if env == "" {
+		return slog.LevelInfo
+	}
+	var l slog.Level
+	if err := l.UnmarshalText([]byte(env)); err != nil {
+		return slog.LevelInfo
+	}
+	return l
+}
+
 func main() {
 	configPath := flag.String("config", "", "Path to config JSON file")
 	flag.Parse()
@@ -28,7 +41,8 @@ func main() {
 		*configPath = "./config.json"
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logLevel := logLevelFromEnv()
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		logger.Error("load config", "error", err)

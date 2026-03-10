@@ -3,7 +3,7 @@
     "telegram": {
       "token_path": "./.secrets/telegram_bot_token.txt",
       "users_path": "./.secrets/telegram_users.json",
-      "max_message_length": 10
+      "max_message_length": 200
     },
     "llm_providers": [
         {

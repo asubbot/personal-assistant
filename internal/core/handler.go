@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	vectorSearchTopK = 10
-	contextMaxLen    = 4000 // max chars injected from memory + vector for LLM context
+	vectorSearchTopK  = 10
+	contextMaxLen     = 4000 // max chars injected from memory + vector for LLM context
+	logTruncateMaxLen = 2000 // max chars per message/response when logging at DEBUG (REQ-021)
 )
 
 // conversationHandler implements MessageHandler: memory read, vector search, LLM call, optional index (REQ-006, REQ-007, REQ-018).
@@ -42,13 +43,20 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	contextBlock := h.gatherContext(ctx, text)
 
 	messages := []llm.Message{
-		{Role: "system", Content: "You are a helpful assistant. Reply concisely." + contextBlock},
+		{Role: "system", Content: "You are a helpful assistant. Reply concisely. You have access to relevant past context and memory below; use it to personalize replies and to remember what the user has told you." + contextBlock},
 		{Role: "user", Content: text},
+	}
+	if h.logger.Enabled(ctx, slog.LevelDebug) {
+		h.logLLMRequest(ctx, messages)
 	}
 	result, err := h.provider.Complete(ctx, messages, nil)
 	if err != nil {
 		h.logger.Error("llm complete", "error", err)
 		return "", err
+	}
+	h.logLLMMetadata(ctx, len(messages), result)
+	if h.logger.Enabled(ctx, slog.LevelDebug) {
+		h.logLLMResponse(ctx, result)
 	}
 
 	if h.vectorStore != nil && h.embedder != nil {
@@ -100,6 +108,31 @@ func (h *conversationHandler) gatherContext(ctx context.Context, userText string
 		s = s[:contextMaxLen] + "..."
 	}
 	return "\n\nUse the following context if relevant to the user's message.\n\n" + s
+}
+
+// logLLMRequest logs the full request at DEBUG (REQ-021). Content may be truncated.
+func (h *conversationHandler) logLLMRequest(ctx context.Context, messages []llm.Message) {
+	for i, m := range messages {
+		content := m.Content
+		if len(content) > logTruncateMaxLen {
+			content = content[:logTruncateMaxLen] + "...[truncated]"
+		}
+		h.logger.DebugContext(ctx, "llm request", "index", i, "role", m.Role, "content_len", len(m.Content), "content", content)
+	}
+}
+
+// logLLMMetadata logs message count, response length, and usage at INFO (REQ-021).
+func (h *conversationHandler) logLLMMetadata(ctx context.Context, messageCount int, result *llm.CompletionResult) {
+	h.logger.InfoContext(ctx, "llm call", "message_count", messageCount, "response_len", len(result.Content), "prompt_tokens", result.Usage.PromptTokens, "completion_tokens", result.Usage.CompletionTokens, "total_tokens", result.Usage.TotalTokens)
+}
+
+// logLLMResponse logs the full response at DEBUG (REQ-021). Content may be truncated.
+func (h *conversationHandler) logLLMResponse(ctx context.Context, result *llm.CompletionResult) {
+	content := result.Content
+	if len(content) > logTruncateMaxLen {
+		content = content[:logTruncateMaxLen] + "...[truncated]"
+	}
+	h.logger.DebugContext(ctx, "llm response", "content", content, "content_len", len(result.Content), "usage", result.Usage)
 }
 
 // indexTurn adds the user message and assistant reply to the vector store for future semantic search (REQ-007).

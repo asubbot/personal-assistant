@@ -189,6 +189,9 @@ THE PersonalAssistant SHALL provide a logging subsystem that records, for each c
 **REQ-015** (Event-driven)  
 WHEN the operator configures the logging subsystem, THE PersonalAssistant SHALL accept a configurable log destination (e.g. file path or directory) and SHALL write LLM request/response log entries to that destination in a defined, parseable format so that the operator can analyze and retain logs according to local policy.
 
+**REQ-021** (State-driven)  
+WHILE the application is running, THE PersonalAssistant SHALL support a configurable log level for LLM conversation logging. THE default log level SHALL be INFO. WHEN the environment variable `PA_LOG_LEVEL` is set to `debug` (case-insensitive), THE core SHALL log, at the point of each LLM call (in the core handler, so that the full assembled context including memory and vector search is visible), the full request (messages sent to the provider, optionally truncated if exceeding a documented length) and the full response (model output and usage). WHEN the log level is INFO or higher, THE core SHALL log only metadata (e.g. message count, response length, token usage) and SHALL NOT log full request or response bodies.
+
 ---
 
 ### Scheduler and tools
@@ -249,12 +252,13 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-018  | Memory is assistant’s single store; not partitioned by interlocutor; full access regardless of current conversation partner |
 | REQ-019  | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
 | REQ-020  | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources) |
+| REQ-021  | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only |
 
 ---
 
 ## Requirement–User Story traceability
 
-User stories are defined in [user-stories.md](user-stories.md) (US-01–US-16).
+User stories are defined in [user-stories.md](user-stories.md) (US-01–US-17).
 
 | REQ       | User Story | Summary |
 |-----------|---------------------|--------|
@@ -278,6 +282,7 @@ User stories are defined in [user-stories.md](user-stories.md) (US-01–US-16).
 | REQ-018   | US-06               | Memory is assistant’s single store; not partitioned by interlocutor |
 | REQ-019   | US-06               | Memory structure and hierarchical summarization (day/month/year); optional approval |
 | REQ-020   | US-06               | Summary sources: LLM logs, tool results, scheduler events |
+| REQ-021   | US-17               | Debug-level LLM conversation logging (PA_LOG_LEVEL, core handler) |
 
 | User Story | Requirements |
 |------------|--------------|
@@ -297,3 +302,4 @@ User stories are defined in [user-stories.md](user-stories.md) (US-01–US-16).
 | US-14      | REQ-012      |
 | US-15      | REQ-016      |
 | US-16      | REQ-017      |
+| US-17      | REQ-021      |

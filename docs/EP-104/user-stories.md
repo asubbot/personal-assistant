@@ -3,7 +3,7 @@
 **Epic:** EP-104  
 **Related:** [REQUIREMENTS.md](REQUIREMENTS.md), [acceptance-criteria.md](acceptance-criteria.md), [test-strategy.md](test-strategy.md)
 
-This document is the project’s canonical list of user stories. IDs: **US-01** … **US-16**.
+This document is the project’s canonical list of user stories. IDs: **US-01** … **US-17**.
 
 | ID | Title |
 |----|--------|
@@ -23,6 +23,7 @@ This document is the project’s canonical list of user stories. IDs: **US-01** 
 | [US-14](#us-14--architecture-boundaries) | Clear architecture boundaries |
 | [US-15](#us-15--version-control-git) | Version control for config and memory (git) |
 | [US-16](#us-16--secret-leakage-protection) | Secret leakage protection (prompt injection) |
+| [US-17](#us-17--debug-llm-logging) | Debug-level LLM conversation logging |
 
 ---
 
@@ -167,3 +168,12 @@ As an operator or security-conscious user, I want the assistant to never expose 
 
 **Requirements:** [REQ-017](REQUIREMENTS.md#secret-protection-prompt-injection--exfiltration).  
 **Acceptance criteria:** [AC-028](acceptance-criteria.md#ac-028-us-16), [AC-029](acceptance-criteria.md#ac-029-us-16), [AC-030](acceptance-criteria.md#ac-030-us-16).
+
+---
+
+## US-17 — Debug-level LLM logging
+
+As a developer or operator, I want to enable debug logging for LLM conversations via `PA_LOG_LEVEL=debug`, so that I can inspect the full request (including memory and vector context) and response when troubleshooting. By default (INFO level) only metadata is logged.
+
+**Requirements:** [REQ-021](REQUIREMENTS.md#llm-and-logging).  
+**Acceptance criteria:** [AC-031](acceptance-criteria.md#ac-031-us-17).
