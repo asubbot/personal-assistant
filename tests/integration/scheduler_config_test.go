@@ -4,7 +4,11 @@ package integration_test
 
 import (
 	"context"
+	"log/slog"
 	"os"
+	"pa/internal/allowlist"
+	"pa/internal/config"
+	"pa/internal/noderunner"
 	"pa/internal/scheduler"
 	"pa/internal/tools"
 	"path/filepath"
@@ -83,4 +87,62 @@ func TestScheduler_firesAndRunsTool(t *testing.T) {
 	if n := count.Load(); n < 1 {
 		t.Errorf("tool Run was not called (count=%d), want at least 1", n)
 	}
+}
+
+// TestScheduler_disallowedCommandNotExecuted verifies AC-021: when a scheduled task would run a command
+// not on the node's allowlist, the system does not execute the violating action (runner returns error, executor never called).
+func TestScheduler_disallowedCommandNotExecuted(t *testing.T) {
+	dir := t.TempDir()
+	allowlistPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowlistPath, []byte("uptime\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "192.168.1.1",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowlistPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	runner := noderunner.New(cfg, al, slog.Default())
+	var execCalls atomic.Int32
+	runner.SetExecutor(&mockSchedulerExecutor{
+		exec: func(context.Context, string, string) ([]byte, []byte, error) {
+			execCalls.Add(1)
+			return []byte("ok"), nil, nil
+		},
+	})
+	reg := tools.NewRegistry()
+	reg.Register(tools.NewRunOnNode(runner))
+	tasks := []scheduler.Task{
+		{Schedule: "@every 500ms", Action: "run_on_node", Params: map[string]any{"node_id": "n1", "command": "rm -rf /"}},
+	}
+	s, err := scheduler.New(tasks, scheduler.Config{Registry: reg, Logger: slog.Default()})
+	if err != nil {
+		t.Fatalf("New = %v", err)
+	}
+	s.Start()
+	defer func() { <-s.Stop().Done() }()
+	time.Sleep(1200 * time.Millisecond)
+	if n := execCalls.Load(); n != 0 {
+		t.Errorf("AC-021: disallowed command was executed (exec calls=%d), want 0", n)
+	}
+}
+
+type mockSchedulerExecutor struct {
+	exec func(ctx context.Context, nodeID, command string) (stdout, stderr []byte, err error)
+}
+
+func (m *mockSchedulerExecutor) Exec(ctx context.Context, nodeID, command string) ([]byte, []byte, error) {
+	if m.exec != nil {
+		return m.exec(ctx, nodeID, command)
+	}
+	return nil, nil, nil
 }

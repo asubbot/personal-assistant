@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// TestRegistry_RegisterGetList (AC-022): registry Get/List and single contract (tool by name).
 func TestRegistry_RegisterGetList(t *testing.T) {
 	r := NewRegistry()
 	if got := r.List(); len(got) != 0 {
@@ -45,6 +46,7 @@ func TestRegistry_RegisterDuplicate_panics(t *testing.T) {
 	r.Register(&mockTool{name: "x"})
 }
 
+// TestValidateParams_valid (AC-022): params conforming to schema pass validation.
 func TestValidateParams_valid(t *testing.T) {
 	spec := []ParamSpec{
 		{Name: "a", Required: true, Type: "string"},
@@ -58,6 +60,7 @@ func TestValidateParams_valid(t *testing.T) {
 	}
 }
 
+// TestValidateParams_missingRequired (AC-023): missing required param is rejected.
 func TestValidateParams_missingRequired(t *testing.T) {
 	spec := []ParamSpec{{Name: "a", Required: true, Type: "string"}}
 	if err := ValidateParams(spec, map[string]any{}); err == nil {
@@ -68,6 +71,7 @@ func TestValidateParams_missingRequired(t *testing.T) {
 	}
 }
 
+// TestValidateParams_wrongType (AC-023): wrong param type is rejected.
 func TestValidateParams_wrongType(t *testing.T) {
 	spec := []ParamSpec{{Name: "a", Required: true, Type: "string"}}
 	if err := ValidateParams(spec, map[string]any{"a": 123}); err == nil {

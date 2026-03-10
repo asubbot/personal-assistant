@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// TestRunOnNodeTool_Run_validParams (AC-022): tool invoked with validated input returns result from runner.
 func TestRunOnNodeTool_Run_validParams(t *testing.T) {
 	var gotNodeID, gotCmd string
 	runner := &mockRunOnNodeRunner{
@@ -29,6 +30,7 @@ func TestRunOnNodeTool_Run_validParams(t *testing.T) {
 	}
 }
 
+// TestRunOnNodeTool_Run_invalidParams (AC-023): invalid or out-of-schema input is rejected without executing the tool.
 func TestRunOnNodeTool_Run_invalidParams(t *testing.T) {
 	runner := &mockRunOnNodeRunner{run: func(context.Context, string, string) (string, error) { return "", nil }}
 	tool := NewRunOnNode(runner)
