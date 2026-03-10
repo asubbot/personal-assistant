@@ -272,7 +272,7 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-014   | US-410              | LLM request/response logging |
 | REQ-015   | US-411              | Configurable log destination and format |
 | REQ-016   | US-416              | Git-backed version control for config and memory |
-| REQ-017   | US-417 (Spexus)     | Secret leakage protection; tests for prompt-injection exfiltration (Spexus: REQ-658, AC-1301–AC-1303) |
+| REQ-017   | US-417              | Secret leakage protection; tests for prompt-injection exfiltration (AC-028–AC-030) |
 | REQ-018   | US-407              | Memory is assistant’s single store; not partitioned by interlocutor |
 | REQ-019   | US-407              | Memory structure and hierarchical summarization (day/month/year); optional approval |
 | REQ-020   | US-407              | Summary sources: LLM logs, tool results, scheduler events |

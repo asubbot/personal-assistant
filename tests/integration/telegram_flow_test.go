@@ -42,7 +42,7 @@ func (a *fakeAdapter) Run(ctx context.Context, handler core.MessageHandler) erro
 const integrationTimeout = 5 * time.Second
 
 // TestTelegramFlow_OneMessage_ReplyWithinTimeout exercises the path: adapter → core handler → LLM → reply.
-// Mocks: fake adapter (no real Telegram), mock LLM (no real API). Asserts a reply is returned before test timeout (AC-1274).
+// Mocks: fake adapter (no real Telegram), mock LLM (no real API). Asserts a reply is returned before test timeout (AC-001).
 func TestTelegramFlow_OneMessage_ReplyWithinTimeout(t *testing.T) {
 	wantReply := "hello from mock"
 	adapter := &fakeAdapter{userID: 1, text: "hi", done: make(chan result, 1)}

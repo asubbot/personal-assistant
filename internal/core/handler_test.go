@@ -74,6 +74,7 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	}
 }
 
+// TestHandleMessage_emptyReturnsRejectionMessage covers AC-002 (unit): empty or whitespace message rejected with clear message, no LLM call.
 func TestHandleMessage_emptyReturnsRejectionMessage(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
@@ -93,6 +94,7 @@ func TestHandleMessage_emptyReturnsRejectionMessage(t *testing.T) {
 	}
 }
 
+// TestHandleMessage_rejectsWhenOverMaxLength covers AC-002 (unit): message over max length rejected, no LLM call.
 func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -142,6 +144,7 @@ func TestHandleMessage_noLimit_longMessageGoesToProvider(t *testing.T) {
 	}
 }
 
+// TestHandleMessage_maxLength_unicodeRunes covers AC-002 (unit): max length enforced by runes.
 func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}

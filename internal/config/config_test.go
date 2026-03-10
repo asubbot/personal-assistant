@@ -56,7 +56,7 @@ func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 	}
 }
 
-// TestLoad_InvalidOrMissingFields covers AC-1278: config validator with invalid/missing fields (testing-coverage.md §3).
+// TestLoad_InvalidOrMissingFields covers AC-005: config validator with invalid/missing fields (test-strategy.md §3).
 func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	tests := []struct {
 		name       string

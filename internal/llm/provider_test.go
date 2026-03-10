@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestNewProvider_supportedTypes returns a provider for openai, openai-compatible, ollama (AC-1288 unit: provider selected from config).
+// TestNewProvider_supportedTypes returns a provider for openai, openai-compatible, ollama (AC-015 unit: provider selected from config).
 func TestNewProvider_supportedTypes(t *testing.T) {
 	dir := t.TempDir()
 	keyPath := filepath.Join(dir, "key.txt")

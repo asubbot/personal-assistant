@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestChecker_Allow_allowlistedCommands returns allowed (AC-1280).
+// TestChecker_Allow_allowlistedCommands returns allowed (AC-007).
 func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 	_, checker := mustNewChecker(t)
 
@@ -28,7 +28,7 @@ func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 	}
 }
 
-// TestChecker_Allow_deniedWhenNotInAllowlist returns denied (AC-1281).
+// TestChecker_Allow_deniedWhenNotInAllowlist returns denied (AC-008).
 func TestChecker_Allow_deniedWhenNotInAllowlist(t *testing.T) {
 	_, checker := mustNewChecker(t)
 
