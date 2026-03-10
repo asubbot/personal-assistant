@@ -100,7 +100,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 ## 4. Memory store and vector index
 
-- [ ] 4.1 Implement long-term memory store (markdown files)
+- [x] 4.1 Implement long-term memory store (markdown files)
   - Read/write markdown files under configured memory_dir; calendar structure year/month/day; single store, no per-interlocutor partitioning
   - _Requirements: [REQ-006](REQUIREMENTS.md#memory-and-indexing), [REQ-018](REQUIREMENTS.md#memory-and-indexing), [REQ-019](REQUIREMENTS.md#memory-and-indexing)_
   - _Validates:_ [AC-011](acceptance-criteria.md#ac-011-us-06), [AC-012](acceptance-criteria.md#ac-012-us-06)

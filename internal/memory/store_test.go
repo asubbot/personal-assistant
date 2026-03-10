@@ -1,0 +1,119 @@
+package memory
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+// TestNewStore_emptyRootDir
+// Validates: AC-011, AC-012 (REQ-006, REQ-018, REQ-019 — memory in designated dir, single store, calendar structure)
+func TestNewStore_emptyRootDir(t *testing.T) {
+	_, err := NewStore("")
+	if err == nil {
+		t.Fatal("expected error for empty rootDir")
+	}
+	if err.Error() != "memory: rootDir is required" {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// TestWriteDay_createsCalendarPath
+// Validates: AC-011 (REQ-006, REQ-019 — files created in calendar structure year/month/day)
+func TestWriteDay_createsCalendarPath(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	day := time.Date(2026, 3, 9, 12, 0, 0, 0, time.UTC)
+	content := "# Day note\n\nSome content."
+	if err := store.WriteDay(ctx, day, content); err != nil {
+		t.Fatalf("WriteDay: %v", err)
+	}
+
+	wantPath := filepath.Join(dir, "2026", "03", "09.md")
+	if _, err := os.Stat(wantPath); err != nil {
+		t.Fatalf("expected file at %s: %v", wantPath, err)
+	}
+}
+
+// TestWriteDay_ReadDay_roundtrip
+// Validates: AC-011, AC-012 (REQ-006 — read/write markdown in designated structure)
+func TestWriteDay_ReadDay_roundtrip(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	day := time.Date(2026, 2, 16, 0, 0, 0, 0, time.UTC)
+	content := "Memory content for the day."
+	if err := store.WriteDay(ctx, day, content); err != nil {
+		t.Fatalf("WriteDay: %v", err)
+	}
+
+	got, err := store.ReadDay(ctx, day)
+	if err != nil {
+		t.Fatalf("ReadDay: %v", err)
+	}
+	if got != content {
+		t.Errorf("ReadDay: got %q, want %q", got, content)
+	}
+}
+
+// TestReadDay_missingFile_returnsEmpty
+// Validates: AC-012 (REQ-006 — read from structure; missing file returns empty)
+func TestReadDay_missingFile_returnsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	day := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	got, err := store.ReadDay(ctx, day)
+	if err != nil {
+		t.Fatalf("ReadDay: %v", err)
+	}
+	if got != "" {
+		t.Errorf("ReadDay (missing): got %q, want empty", got)
+	}
+}
+
+// TestStore_singleStore_noPerUserPaths
+// Validates: AC-011, AC-012 (REQ-018 — single store, not subdivided by interlocutor; paths are date-only)
+func TestStore_singleStore_noPerUserPaths(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	day := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	path := store.pathForDay(day)
+	// Path must be only rootDir/YYYY/MM/DD.md — no user id or interlocutor segment
+	if filepath.Base(filepath.Dir(path)) != "04" || filepath.Base(filepath.Dir(filepath.Dir(path))) != "2026" {
+		t.Errorf("path must be calendar-only (year/month/day): got %s", path)
+	}
+	if filepath.Base(path) != "01.md" {
+		t.Errorf("file must be DD.md: got %s", filepath.Base(path))
+	}
+
+	_ = store.WriteDay(ctx, day, "content")
+	got, _ := store.ReadDay(ctx, day)
+	if got != "content" {
+		t.Errorf("ReadDay: got %q", got)
+	}
+}
