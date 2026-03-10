@@ -105,7 +105,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: [REQ-006](REQUIREMENTS.md#memory-and-indexing), [REQ-018](REQUIREMENTS.md#memory-and-indexing), [REQ-019](REQUIREMENTS.md#memory-and-indexing)_
   - _Validates:_ [AC-011](acceptance-criteria.md#ac-011-us-06), [AC-012](acceptance-criteria.md#ac-012-us-06)
 
-- [ ] 4.2 Implement pluggable vector store interface and default implementation
+- [x] 4.2 Implement pluggable vector store interface and default implementation
   - Interface: add documents (with embeddings), search by query vector (top-k or threshold)
   - **Default: SQLite + sqlite-vec.** Single `.sqlite` file at configured path (e.g. `paths.vector_index_path` → `/data/pa_vectors.sqlite`). ACID persistence, vector + optional FTS in one DB; best fit for decades-long retention ([system-design](system-design.md#vector-store-choice-pluggable-req-007memory-and-indexing), [research §4.2](research.md#summary-and-recommendation-for-decades-long-retention)). Requires CGO (sqlite-vec is a C extension); use build tag or separate build if pure-Go binary is needed. Alternative (no CGO): vecgo or chromem-go — see research §4.1.
   - _Requirements: [REQ-007](REQUIREMENTS.md#memory-and-indexing)_
@@ -301,6 +301,13 @@ _Reference material._ Application config is a single JSON file (path from `-conf
     "llm_log_dir": "/data/llm_logs",
     "scheduled_tasks_path": "/etc/pa/scheduled_tasks.json"
   },
+  "embedding": {
+    "type": "openai",
+    "endpoint": "https://api.openai.com/v1",
+    "api_key_path": "/run/secrets/openai_api_key",
+    "model": "text-embedding-3-small",
+    "dimensions": 1536
+  },
   "nodes": {
     "nas": {
       "host": "192.168.1.10",
@@ -321,6 +328,7 @@ _Reference material._ Application config is a single JSON file (path from `-conf
 ```
 
 - **version**: integer; config schema version for backward compatibility. The loader rejects unsupported versions and can migrate or validate per-version rules.
+- **paths.vector_index_path**: path to the vector index file. Use `./data/pa_vectors.sqlite` (or `/data/pa_vectors.sqlite` in production) for the default SQLite+sqlite-vec implementation.
 - **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin).
 - **telegram.max_message_length**: optional; max message length in runes. If > 0, longer messages are rejected with a clear message (no LLM call). 0 or omitted = no limit. Format: see [Telegram users file](#telegram-users-file) below. If missing or empty, behaviour is defined at implementation time (e.g. allow none or allow all).
 - **command_allowlist_path** (per node): path to a file with the list of allowed command patterns. The same path can be used by multiple nodes to share one allowlist. File format: one pattern per line (leading/trailing whitespace ignored; empty lines and lines starting with `#` ignored). Matching rules (prefix/glob/regex) are defined in task 2.1. Example file `/etc/pa/allowlist.txt`:
@@ -334,6 +342,7 @@ _Reference material._ Application config is a single JSON file (path from `-conf
 ```
 
 - **llm_providers**: ordered list; the first available provider is used for a request; on failure (e.g. timeout, 5xx) the core may try the next. At least one provider required.
+- **embedding** (required): dedicated provider for vector memory (embeddings). The assistant requires vector memory for good UX. Fields: `type` (e.g. `openai`, `openai-compatible`, `ollama`), `endpoint`, `api_key_path` (required for openai/openai-compatible), `model`, `dimensions` (positive integer; must match the model’s output size).
 - **scheduled_tasks_path**: path to a separate JSON file that defines scheduled tasks (see below). Optional; if missing or empty, no scheduled tasks run.
 
 **Telegram users file** (e.g. `/etc/pa/telegram_users.json`): JSON array of user entries with Telegram user id, role, and optional display name. Example:

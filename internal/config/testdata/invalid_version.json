@@ -2,6 +2,7 @@
   "version": 2,
   "telegram": { "token_path": "/t", "users_path": "" },
   "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
   "nodes": {}
 }

@@ -55,8 +55,34 @@ func validate(c *Config) error {
 	if err := validatePaths(c); err != nil {
 		return err
 	}
+	if err := validateEmbedding(c); err != nil {
+		return err
+	}
 	if err := validateNodes(c); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateEmbedding(c *Config) error {
+	if c.Embedding == nil {
+		return errors.New("config: embedding is required for vector memory (assistant requires it for good UX)")
+	}
+	e := c.Embedding
+	if strings.TrimSpace(e.Type) == "" {
+		return errors.New("config: embedding.type is required when embedding is set")
+	}
+	if strings.TrimSpace(e.Endpoint) == "" {
+		return errors.New("config: embedding.endpoint is required when embedding is set")
+	}
+	if strings.TrimSpace(e.Model) == "" {
+		return errors.New("config: embedding.model is required when embedding is set")
+	}
+	if e.Dimensions <= 0 {
+		return errors.New("config: embedding.dimensions must be positive when embedding is set")
+	}
+	if strings.TrimSpace(e.APIKeyPath) == "" && (e.Type == "openai" || e.Type == "openai-compatible") {
+		return errors.New("config: embedding.api_key_path is required for type openai/openai-compatible")
 	}
 	return nil
 }

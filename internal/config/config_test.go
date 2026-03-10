@@ -22,6 +22,15 @@ func TestLoad_ValidConfig_NoError(t *testing.T) {
 	if cfg.Telegram.MaxMessageLength != 0 {
 		t.Errorf("Load(valid config without max_message_length): MaxMessageLength = %d, want 0", cfg.Telegram.MaxMessageLength)
 	}
+	if cfg.Embedding == nil {
+		t.Fatal("Load(valid config): embedding is required, expected non-nil")
+	}
+	if cfg.Embedding.Dimensions != 768 {
+		t.Errorf("Load(valid config): embedding.dimensions = %d, want 768", cfg.Embedding.Dimensions)
+	}
+	if cfg.Embedding.Model != "nomic-embed-text" {
+		t.Errorf("Load(valid config): embedding.model = %q, want nomic-embed-text", cfg.Embedding.Model)
+	}
 }
 
 func TestLoad_TelegramMaxMessageLength(t *testing.T) {
@@ -74,6 +83,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing auth", "invalid_auth.json", "nodes.node1.auth.private_key_path is required"},
 		{"missing dedicated_user", "missing_dedicated_user.json", "nodes.n1.dedicated_user is required"},
 		{"missing command_allowlist_path", "missing_command_allowlist.json", "nodes.n1.command_allowlist_path is required"},
+		{"missing embedding", "missing_embedding.json", "embedding is required"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -131,7 +141,8 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
   "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
   "nodes": {}
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {

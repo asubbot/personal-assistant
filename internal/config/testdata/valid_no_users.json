@@ -10,9 +10,15 @@
   "paths": {
     "memory_dir": "/data/memory",
     "log_path": "/data/pa.log",
-    "vector_index_path": "/data/vector.idx",
+    "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
     "scheduled_tasks_path": ""
+  },
+  "embedding": {
+    "type": "ollama",
+    "endpoint": "http://localhost:11434",
+    "model": "nomic-embed-text",
+    "dimensions": 768
   },
   "nodes": {}
 }

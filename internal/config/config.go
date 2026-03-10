@@ -2,11 +2,21 @@ package config
 
 // Config holds application configuration loaded from JSON.
 type Config struct {
-	Version      int             `json:"version"`
-	Telegram     Telegram        `json:"telegram"`
-	LLMProviders []LLMProvider   `json:"llm_providers"`
-	Paths        Paths           `json:"paths"`
-	Nodes        map[string]Node `json:"nodes"`
+	Version      int                `json:"version"`
+	Telegram     Telegram           `json:"telegram"`
+	LLMProviders []LLMProvider      `json:"llm_providers"`
+	Embedding    *EmbeddingProvider `json:"embedding"` // optional; dedicated provider for vector memory embeddings
+	Paths        Paths              `json:"paths"`
+	Nodes        map[string]Node    `json:"nodes"`
+}
+
+// EmbeddingProvider is the dedicated provider for vector store embeddings (separate from chat LLM).
+type EmbeddingProvider struct {
+	Type       string `json:"type"`     // e.g. "openai", "openai-compatible", "ollama"
+	Endpoint   string `json:"endpoint"` // base URL for embeddings API
+	APIKeyPath string `json:"api_key_path"`
+	Model      string `json:"model"`      // embedding model name
+	Dimensions int    `json:"dimensions"` // embedding vector size; must match model output
 }
 
 // Telegram holds Telegram bot configuration.
