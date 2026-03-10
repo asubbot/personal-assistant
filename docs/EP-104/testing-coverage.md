@@ -9,6 +9,7 @@
 ## 1. Summary
 
 - **Acceptance criteria:** 30 AC (AC-1274–AC-1303) across 16 user stories; all in Gherkin (Given/When/Then). Four AC were updated in Spexus for stricter Gherkin (AC-1285, AC-1292, AC-1298, AC-1300). US-417 (secret leakage protection) adds REQ-658 and AC-1301–AC-1303.
+- **Memory (REQ-018):** Long-term memory is the assistant’s single store; it is not subdivided by interlocutor. Tests for memory (AC-1284, AC-1285) assume one store and structure by topic/date (or similar), not per-user partitioning.
 - **Testing:** Each AC is assigned to one or more test levels (unit / integration / e2e). Pyramid: more unit, fewer integration, fewest e2e.
 
 ---
@@ -49,8 +50,8 @@ The following AC were updated in Spexus to the text below.
 | AC-1281 | US-405 | Unit, Integration | Unit: denial when action not in allowlist; integration: no execution + log/report. |
 | AC-1282 | US-406 | Unit, Integration | Unit: node config → single user; integration: SSH connection uses that user only (mock SSH). |
 | AC-1283 | US-406 | Integration | Multiple nodes → each connection with correct dedicated user. |
-| AC-1284 | US-407 | Unit, Integration | Unit: memory writer uses directory/structure; integration: write → files on disk in expected layout. |
-| AC-1285 | US-407 | Unit, Integration | Unit: reader reads from configured path/structure; integration: read returns content from that structure. |
+| AC-1284 | US-407 | Unit, Integration | Unit: memory writer uses directory/structure (single store, REQ-018); integration: write → files on disk in expected layout. |
+| AC-1285 | US-407 | Unit, Integration | Unit: reader reads from configured path/structure (single store, REQ-018); integration: read returns content from that structure. |
 | AC-1286 | US-408 | Unit, Integration | Unit: indexer builds index from content; integration: index updated when memory changes. |
 | AC-1287 | US-408 | Unit, Integration | Unit: search returns top-k/threshold; integration: query → relevant chunks from index. |
 | AC-1288 | US-409 | Unit, Integration | Unit: provider selected from config; integration: LLM call goes to configured endpoint (mock). |

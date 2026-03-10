@@ -43,7 +43,7 @@ Terms used in the requirements.
 | **Core** | The main Go service: orchestration of conversations, LLM calls, tool execution, access to memory and scheduler, and SSH-based node management. |
 | **Node** | A remote host (e.g. NAS, server) that the core connects to over SSH to run actions; has a defined capability set and credentials in configuration. |
 | **Security model** | Explicit definition of which nodes are allowed, which commands/tools are permitted on each node, and how inputs and outputs are validated; validated at load and on configuration change. |
-| **Long-term memory** | Storage of user facts and context as markdown files in a defined directory structure; read/write by the core and indexer. |
+| **Long-term memory** | The assistant’s memory: a single store of facts and context held as markdown files in a defined directory structure; read/write by the core and indexer. It is not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with. |
 | **Vector store** | Index of embeddings from long-term memory (and optionally conversations) for semantic search; provider (e.g. in-memory, file, DB) is pluggable. |
 | **LLM provider** | Abstraction for calling a language model (OpenAI-compatible API, Ollama, self-hosted); configuration specifies endpoint and parameters without vendor lock-in in code. |
 | **Tool** | Extensible module: name, description, validated input schema, and implementation; registered with the core and invoked via a single contract. |
@@ -161,7 +161,10 @@ WHILE the PersonalAssistant connects to a node over SSH, THE PersonalAssistant S
 ### Memory and indexing
 
 **REQ-006** (Event-driven)  
-WHEN the assistant reads or writes long-term memory, THE PersonalAssistant SHALL use a designated directory and SHALL store and read content as markdown files in a defined structure (e.g. by user, by topic or date).
+WHEN the assistant reads or writes long-term memory, THE PersonalAssistant SHALL use a designated directory and SHALL store and read content as markdown files in a defined structure (e.g. by topic or date).
+
+**REQ-018** (Ubiquitous)  
+THE PersonalAssistant long-term memory SHALL be the assistant’s single memory store. THE PersonalAssistant SHALL NOT subdivide memory into non-overlapping blocks per interlocutor. THE PersonalAssistant SHALL give the assistant access to the full memory store regardless of which user or channel the assistant is currently conversing with.
 
 **REQ-007** (Ubiquitous)  
 THE PersonalAssistant SHALL maintain a vector index of content from the long-term memory store and SHALL support semantic search over that index to retrieve relevant context for user queries.
@@ -236,6 +239,7 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-015  | Configurable log destination and parseable log format |
 | REQ-016  | Git repository for version history of config, memory, and designated artifacts (scope TBD) |
 | REQ-017  | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests |
+| REQ-018  | Memory is assistant’s single store; not partitioned by interlocutor; full access regardless of current conversation partner |
 
 ---
 
@@ -260,6 +264,7 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-015   | US-411              | Configurable log destination and format |
 | REQ-016   | US-416              | Git-backed version control for config and memory |
 | REQ-017   | US-417 (Spexus)     | Secret leakage protection; tests for prompt-injection exfiltration (Spexus: REQ-658, AC-1301–AC-1303) |
+| REQ-018   | US-407              | Memory is assistant’s single store; not partitioned by interlocutor |
 
 | User Story | Requirements |
 |------------|--------------|
@@ -268,7 +273,7 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | US-404     | REQ-003, REQ-004 |
 | US-405     | REQ-005      |
 | US-406     | REQ-013      |
-| US-407     | REQ-006      |
+| US-407     | REQ-006, REQ-018 |
 | US-408     | REQ-007      |
 | US-409     | REQ-008      |
 | US-410     | REQ-014      |

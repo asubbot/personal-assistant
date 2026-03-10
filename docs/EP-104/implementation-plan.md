@@ -100,9 +100,11 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 ## 4. Memory store and vector index
 
+Memory is the **assistant’s single store** (REQ-018): not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with. Structure is by topic/date (or similar), not by user.
+
 - [ ] 4.1 Implement long-term memory store (markdown files)
-  - Read/write markdown files under configured memory_dir; structure (e.g. by user, topic, date) from config
-  - _Requirements: REQ-647_
+  - Read/write markdown files under configured memory_dir; single store, structure (e.g. by topic, date) from config — no per-user or per-interlocutor partitioning
+  - _Requirements: REQ-647, REQ-018_
   - _Validates: AC-1284, AC-1285_
 
 - [ ] 4.2 Implement pluggable vector store interface and default implementation
@@ -112,11 +114,11 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Validates: AC-1286, AC-1287_
 
 - [ ] 4.3 Wire memory and vector into core
-  - On conversation: read relevant memory, optionally update memory; index content; semantic search and inject context into LLM call
-  - _Requirements: REQ-647, REQ-648_
+  - On conversation: read relevant memory from the single store, optionally update memory; index content; semantic search and inject context into LLM call (full memory accessible regardless of current interlocutor)
+  - _Requirements: REQ-647, REQ-648, REQ-018_
 
 - [ ] 4.4 Write unit and integration tests for memory and vector
-  - Memory: write then read from same structure; reader uses configured path
+  - Memory: write then read from same structure; reader uses configured path; no per-user partitioning
   - Vector: index content, search returns relevant chunks
   - _Validates: AC-1284, AC-1285, AC-1286, AC-1287_
 
