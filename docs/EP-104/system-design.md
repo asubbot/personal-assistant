@@ -1,6 +1,6 @@
 # System Design: EP-104 PersonalAssistant MVP
 
-**Epic:** EP-104 (Spexus)  
+**Epic:** EP-104  
 **Requirements:** [REQUIREMENTS.md](REQUIREMENTS.md)  
 **Research:** [research.md](research.md) — technology choices, MVI, iteration plan, risks  
 **Version:** 1.0  

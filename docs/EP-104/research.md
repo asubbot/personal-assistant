@@ -1,6 +1,6 @@
 # Research: EP-104 PersonalAssistant MVP
 
-**Epic:** [EP-104](https://github.com) (Spexus) — PersonalAssistant MVP  
+**Epic:** EP-104 — PersonalAssistant MVP  
 **Requirements:** [REQUIREMENTS.md](REQUIREMENTS.md)  
 **System design:** [system-design.md](system-design.md) — architecture, components, testing  
 **Author:** —  

@@ -15,7 +15,7 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 
 ### Scope
 
-- **Coverage:** All 30 acceptance criteria ([AC-001](acceptance-criteria.md#ac-001-us-402)–[AC-030](acceptance-criteria.md#ac-030-us-417)) across 16 user stories are in scope. AC are specified in Gherkin (Given/When/Then) in [acceptance-criteria.md](acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-417, AC-028–AC-030) are detailed in §5.
+- **Coverage:** All 30 acceptance criteria ([AC-001](acceptance-criteria.md#ac-001-us-01)–[AC-030](acceptance-criteria.md#ac-030-us-16)) across 16 user stories are in scope. AC are specified in Gherkin (Given/When/Then) in [acceptance-criteria.md](acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-16, AC-028–AC-030) are detailed in §5.
 - **In scope for this strategy:** Unit, Integration, E2E, and Manual testing sufficient to demonstrate each AC. Memory behaviour (single store, calendar layout, summarization inputs) is covered by AC-011, AC-012; any additional summarization tests will be added as per implementation plan and reflected in §3.
 
 ### Strategy
@@ -61,36 +61,36 @@ The table below reflects **tests that exist in the codebase** at the time of the
 
 | AC       | User Story | Recommended test level(s) | Notes |
 |----------|------------|---------------------------|--------|
-| AC-001 | US-402 | Integration, E2E | Happy path: mock Telegram → core → reply; E2E with test bot or mock API. |
-| AC-002 | US-402 | Unit, Integration | Unit: validation for empty/oversized message; integration: adapter rejects or truncates. |
-| AC-003 | US-403 | Integration, E2E | Integration: container start with test config; E2E: run on x86_64 (or CI emulation). |
-| AC-004 | US-403 | Integration, E2E | Build image and run (e.g. in CI); E2E on DS220+ or equivalent. |
-| AC-005 | US-404 | Unit, Integration | Unit: config validator with invalid/missing fields; integration: core fails to start or reports error. |
-| AC-006 | US-404 | Integration | SSH client uses only config-driven host/user; integration test with mock SSH or test container. |
-| AC-007 | US-405 | Unit, Integration | Unit: allowlist check logic; integration: only allowlisted commands run (mock or test node). |
-| AC-008 | US-405 | Unit, Integration | Unit: denial when action not in allowlist; integration: no execution + log/report. |
-| AC-009 | US-406 | Unit, Integration | Unit: node config → single user; integration: SSH connection uses that user only (mock SSH). |
-| AC-010 | US-406 | Integration | Multiple nodes → each connection with correct dedicated user. |
-| AC-011 | US-407 | Unit, Integration | Unit: memory writer uses directory/structure (single store, [REQ-018](REQUIREMENTS.md#memory-and-indexing)); integration: write → files on disk in expected layout. |
-| AC-012 | US-407 | Unit, Integration | Unit: reader reads from configured path/structure (single store, [REQ-018](REQUIREMENTS.md#memory-and-indexing)); integration: read returns content from that structure. |
-| AC-013 | US-408 | Unit, Integration | Unit: indexer builds index from content; integration: index updated when memory changes. |
-| AC-014 | US-408 | Unit, Integration | Unit: search returns top-k/threshold; integration: query → relevant chunks from index. |
-| AC-015 | US-409 | Unit, Integration | Unit: provider selected from config; integration: LLM call goes to configured endpoint (mock). |
-| AC-016 | US-409 | Integration | Restart/hot-reload with new config → new provider used (mock or stub). |
-| AC-017 | US-410 | Unit, Integration | Unit: logger records request/response fields; integration: after LLM call, log entry present and parseable. |
-| AC-018 | US-411 | Unit, Integration | Unit: log destination from config; integration: entries written to configured path/format. |
-| AC-019 | US-411 | Unit, Integration | Unit: error handling when write fails; integration: unavailable destination → documented behaviour. |
-| AC-020 | US-412 | Unit, Integration | Unit: scheduler triggers at time/interval; integration: task runs when schedule fires (mock time if needed). |
-| AC-021 | US-412 | Unit, Integration | Unit: task filtered by security model; integration: violating task not executed, log/report. |
-| AC-022 | US-413 | Unit, Integration | Unit: tool registry and single contract; integration: core invokes tool with validated input, gets result. |
-| AC-023 | US-413 | Unit, Integration | Unit: schema validation rejects invalid input; integration: core returns error, tool not run. |
-| AC-024 | US-414 | Integration | Add node/tool in config, restart (or hot-reload) → new entity loaded (no image rebuild). |
-| AC-025 | US-415 | Manual | Architecture review (checklist or static layout); optional: module-boundary tests or dependency rules. |
-| AC-026 | US-416 | Integration | Enable versioned state, change config/memory → commits (or equivalent) in repo. |
-| AC-027 | US-416 | Manual | Docs review: tracked paths documented or TBD. |
-| AC-028 | US-417 | Unit | LLM context builder: built context must not contain fake secret (see §5). |
-| AC-029 | US-417 | Integration | Prompt-injection: reply and logs must not contain fake secret after injection message (see §5). |
-| AC-030 | US-417 | Unit, Integration | Captured logs must not contain fake secret values (see §5). |
+| AC-001 | US-01 | Integration, E2E | Happy path: mock Telegram → core → reply; E2E with test bot or mock API. |
+| AC-002 | US-01 | Unit, Integration | Unit: validation for empty/oversized message; integration: adapter rejects or truncates. |
+| AC-003 | US-02 | Integration, E2E | Integration: container start with test config; E2E: run on x86_64 (or CI emulation). |
+| AC-004 | US-02 | Integration, E2E | Build image and run (e.g. in CI); E2E on DS220+ or equivalent. |
+| AC-005 | US-03 | Unit, Integration | Unit: config validator with invalid/missing fields; integration: core fails to start or reports error. |
+| AC-006 | US-03 | Integration | SSH client uses only config-driven host/user; integration test with mock SSH or test container. |
+| AC-007 | US-04 | Unit, Integration | Unit: allowlist check logic; integration: only allowlisted commands run (mock or test node). |
+| AC-008 | US-04 | Unit, Integration | Unit: denial when action not in allowlist; integration: no execution + log/report. |
+| AC-009 | US-05 | Unit, Integration | Unit: node config → single user; integration: SSH connection uses that user only (mock SSH). |
+| AC-010 | US-05 | Integration | Multiple nodes → each connection with correct dedicated user. |
+| AC-011 | US-06 | Unit, Integration | Unit: memory writer uses directory/structure (single store, [REQ-018](REQUIREMENTS.md#memory-and-indexing)); integration: write → files on disk in expected layout. |
+| AC-012 | US-06 | Unit, Integration | Unit: reader reads from configured path/structure (single store, [REQ-018](REQUIREMENTS.md#memory-and-indexing)); integration: read returns content from that structure. |
+| AC-013 | US-07 | Unit, Integration | Unit: indexer builds index from content; integration: index updated when memory changes. |
+| AC-014 | US-07 | Unit, Integration | Unit: search returns top-k/threshold; integration: query → relevant chunks from index. |
+| AC-015 | US-08 | Unit, Integration | Unit: provider selected from config; integration: LLM call goes to configured endpoint (mock). |
+| AC-016 | US-08 | Integration | Restart/hot-reload with new config → new provider used (mock or stub). |
+| AC-017 | US-09 | Unit, Integration | Unit: logger records request/response fields; integration: after LLM call, log entry present and parseable. |
+| AC-018 | US-10 | Unit, Integration | Unit: log destination from config; integration: entries written to configured path/format. |
+| AC-019 | US-10 | Unit, Integration | Unit: error handling when write fails; integration: unavailable destination → documented behaviour. |
+| AC-020 | US-11 | Unit, Integration | Unit: scheduler triggers at time/interval; integration: task runs when schedule fires (mock time if needed). |
+| AC-021 | US-11 | Unit, Integration | Unit: task filtered by security model; integration: violating task not executed, log/report. |
+| AC-022 | US-12 | Unit, Integration | Unit: tool registry and single contract; integration: core invokes tool with validated input, gets result. |
+| AC-023 | US-12 | Unit, Integration | Unit: schema validation rejects invalid input; integration: core returns error, tool not run. |
+| AC-024 | US-13 | Integration | Add node/tool in config, restart (or hot-reload) → new entity loaded (no image rebuild). |
+| AC-025 | US-14 | Manual | Architecture review (checklist or static layout); optional: module-boundary tests or dependency rules. |
+| AC-026 | US-15 | Integration | Enable versioned state, change config/memory → commits (or equivalent) in repo. |
+| AC-027 | US-15 | Manual | Docs review: tracked paths documented or TBD. |
+| AC-028 | US-16 | Unit | LLM context builder: built context must not contain fake secret (see §5). |
+| AC-029 | US-16 | Integration | Prompt-injection: reply and logs must not contain fake secret after injection message (see §5). |
+| AC-030 | US-16 | Unit, Integration | Captured logs must not contain fake secret values (see §5). |
 
 ---
 
@@ -109,9 +109,9 @@ The table below reflects **tests that exist in the codebase** at the time of the
 
 ## 5. Secret leakage protection (prompt injection / exfiltration)
 
-> **Note:** This section is **draft material and notes for future implementation**. It will need to be refined when implementing US-417 and the corresponding tests (AC-028–AC-030). Treat it as guidance, not the final test specification.
+> **Note:** This section is **draft material and notes for future implementation**. It will need to be refined when implementing US-16 and the corresponding tests (AC-028–AC-030). Treat it as guidance, not the final test specification.
 
-**Requirement:** [REQ-017](REQUIREMENTS.md#secret-protection-prompt-injection--exfiltration); user story US-417; [AC-028](acceptance-criteria.md#ac-028-us-417)–[AC-030](acceptance-criteria.md#ac-030-us-417).
+**Requirement:** [REQ-017](REQUIREMENTS.md#secret-protection-prompt-injection--exfiltration); user story [US-16](user-stories.md#us-16--secret-leakage-protection); [AC-028](acceptance-criteria.md#ac-028-us-16)–[AC-030](acceptance-criteria.md#ac-030-us-16).
 
 Secrets (tokens, API keys, SSH keys) are stored in files or env; the process must read them to call Telegram, LLM, and SSH. The risk is **exfiltration via crafted user messages** (prompt injection): an attacker sends a message intended to make the system include a secret in the reply or in data the LLM can echo. Protection is achieved by never putting secret values into the LLM context, into user-facing response paths, or into log output. The following tests verify that protection.
 

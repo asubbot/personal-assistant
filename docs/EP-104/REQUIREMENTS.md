@@ -254,44 +254,46 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 
 ## Requirement–User Story traceability
 
-| REQ       | User Story (Spexus) | Summary |
+User stories are defined in [user-stories.md](user-stories.md) (US-01–US-16).
+
+| REQ       | User Story | Summary |
 |-----------|---------------------|--------|
-| REQ-001   | US-402              | Telegram bot interface |
-| REQ-002   | US-403              | Docker deploy DS220+ |
-| REQ-003   | US-404              | Node config validation |
-| REQ-004   | US-404              | SSH per validated config |
-| REQ-005   | US-405              | Per-node security model (allowlist) |
-| REQ-006   | US-407              | Long-term memory in markdown files |
-| REQ-007   | US-408              | Vector index and semantic search |
-| REQ-008   | US-409              | Pluggable LLM provider |
-| REQ-009   | US-412              | Scheduled tasks |
-| REQ-010   | US-413              | Extensible tools contract |
-| REQ-011   | US-414              | Add nodes/tools without image rebuild |
-| REQ-012   | US-415              | Clear architecture boundaries |
-| REQ-013   | US-406              | Dedicated PA user per node |
-| REQ-014   | US-410              | LLM request/response logging |
-| REQ-015   | US-411              | Configurable log destination and format |
-| REQ-016   | US-416              | Git-backed version control for config and memory |
-| REQ-017   | US-417              | Secret leakage protection; tests for prompt-injection exfiltration (AC-028–AC-030) |
-| REQ-018   | US-407              | Memory is assistant’s single store; not partitioned by interlocutor |
-| REQ-019   | US-407              | Memory structure and hierarchical summarization (day/month/year); optional approval |
-| REQ-020   | US-407              | Summary sources: LLM logs, tool results, scheduler events |
+| REQ-001   | US-01               | Telegram bot interface |
+| REQ-002   | US-02               | Docker deploy DS220+ |
+| REQ-003   | US-03               | Node config validation |
+| REQ-004   | US-03               | SSH per validated config |
+| REQ-005   | US-04               | Per-node security model (allowlist) |
+| REQ-006   | US-06               | Long-term memory in markdown files |
+| REQ-007   | US-07               | Vector index and semantic search |
+| REQ-008   | US-08               | Pluggable LLM provider |
+| REQ-009   | US-11               | Scheduled tasks |
+| REQ-010   | US-12               | Extensible tools contract |
+| REQ-011   | US-13               | Add nodes/tools without image rebuild |
+| REQ-012   | US-14               | Clear architecture boundaries |
+| REQ-013   | US-05               | Dedicated PA user per node |
+| REQ-014   | US-09               | LLM request/response logging |
+| REQ-015   | US-10               | Configurable log destination and format |
+| REQ-016   | US-15               | Git-backed version control for config and memory |
+| REQ-017   | US-16               | Secret leakage protection; tests for prompt-injection exfiltration (AC-028–AC-030) |
+| REQ-018   | US-06               | Memory is assistant’s single store; not partitioned by interlocutor |
+| REQ-019   | US-06               | Memory structure and hierarchical summarization (day/month/year); optional approval |
+| REQ-020   | US-06               | Summary sources: LLM logs, tool results, scheduler events |
 
 | User Story | Requirements |
 |------------|--------------|
-| US-402     | REQ-001      |
-| US-403     | REQ-002      |
-| US-404     | REQ-003, REQ-004 |
-| US-405     | REQ-005      |
-| US-406     | REQ-013      |
-| US-407     | REQ-006, REQ-018, REQ-019, REQ-020 |
-| US-408     | REQ-007      |
-| US-409     | REQ-008      |
-| US-410     | REQ-014      |
-| US-411     | REQ-015      |
-| US-412     | REQ-009      |
-| US-413     | REQ-010      |
-| US-414     | REQ-011      |
-| US-415     | REQ-012      |
-| US-416     | REQ-016      |
-| US-417     | REQ-017      |
+| US-01      | REQ-001      |
+| US-02      | REQ-002      |
+| US-03      | REQ-003, REQ-004 |
+| US-04      | REQ-005      |
+| US-05      | REQ-013      |
+| US-06      | REQ-006, REQ-018, REQ-019, REQ-020 |
+| US-07      | REQ-007      |
+| US-08      | REQ-008      |
+| US-09      | REQ-014      |
+| US-10      | REQ-015      |
+| US-11      | REQ-009      |
+| US-12      | REQ-010      |
+| US-13      | REQ-011      |
+| US-14      | REQ-012      |
+| US-15      | REQ-016      |
+| US-16      | REQ-017      |
