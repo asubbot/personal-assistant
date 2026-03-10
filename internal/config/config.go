@@ -24,6 +24,7 @@ type Telegram struct {
 	TokenPath        string `json:"token_path"`
 	UsersPath        string `json:"users_path"`
 	MaxMessageLength int    `json:"max_message_length"` // max message length in runes; 0 = no limit; over-length messages rejected
+	NotifyChatID     int64  `json:"notify_chat_id"`     // optional; chat ID for scheduler "notify" action (e.g. first admin); 0 = use first allowed user
 }
 
 // LLMProvider holds one LLM provider configuration (order = priority).

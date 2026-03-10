@@ -1,0 +1,24 @@
+[
+  {
+    "schedule": "0 9 * * *",
+    "action": "notify",
+    "params": {
+      "message": "Good morning. PersonalAssistant is running."
+    }
+  },
+  {
+    "schedule": "@every 1h",
+    "action": "run_on_node",
+    "params": {
+      "node_id": "nas",
+      "command": "uptime"
+    }
+  },
+  {
+    "schedule": "0 */6 * * *",
+    "action": "notify",
+    "params": {
+      "message": "Scheduled check-in (every 6 hours)."
+    }
+  }
+]
