@@ -55,7 +55,7 @@ func TestTelegramFlow_OneMessage_ReplyWithinTimeout(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, provider)
+		_ = core.Run(ctx, cfg, logger, adapter, provider, nil, nil, nil)
 		close(done)
 	}()
 

@@ -3,7 +3,7 @@
 **Epic:** EP-104  
 **Design:** [system-design.md](system-design.md)  
 **Research:** [research.md](research.md) (MVI, iteration plan)  
-**Requirements:** [REQUIREMENTS.md](REQUIREMENTS.md) (REQ-001–REQ-020); acceptance criteria: [acceptance-criteria.md](acceptance-criteria.md) (AC-001–AC-030); test levels and strategy: [test-strategy.md](test-strategy.md).  
+**Requirements:** [REQUIREMENTS.md](REQUIREMENTS.md) (REQ-001–REQ-021); acceptance criteria: [acceptance-criteria.md](acceptance-criteria.md) (AC-001–AC-031); test levels and strategy: [test-strategy.md](test-strategy.md).  
 **Testing reference:** [test-strategy.md](test-strategy.md)
 
 Tasks are ordered for incremental progress; each step builds on the previous. All steps, including test-writing tasks, are required.
@@ -94,6 +94,11 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - Tests in `tests/integration/` (build tag `integration`); `make test-integration`
   - _Validates:_ [AC-001](acceptance-criteria.md#ac-001-us-01)
 
+- [ ] 3.6 Debug-level LLM conversation logging
+  - Log level from env `PA_LOG_LEVEL` (case-insensitive); default INFO. In core handler: at DEBUG log full request (messages, including memory/vector context; may truncate at documented length) and full response (content, usage); at INFO log only metadata (message count, response length, token usage).
+  - _Requirements: [REQ-021](REQUIREMENTS.md#llm-and-logging)_
+  - _Validates:_ [AC-031](acceptance-criteria.md#ac-031-us-17)
+
 - [x] 4. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
 ---
@@ -111,7 +116,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Requirements: [REQ-007](REQUIREMENTS.md#memory-and-indexing)_
   - _Validates:_ [AC-013](acceptance-criteria.md#ac-013-us-07), [AC-014](acceptance-criteria.md#ac-014-us-07)
 
-- [ ] 4.3 Wire memory and vector into core
+- [x] 4.3 Wire memory and vector into core
   - On conversation: read relevant memory from the single store, optionally update memory; index content; semantic search and inject context into LLM call (full memory accessible regardless of current interlocutor)
   - _Requirements: [REQ-006](REQUIREMENTS.md#memory-and-indexing), [REQ-007](REQUIREMENTS.md#memory-and-indexing), [REQ-018](REQUIREMENTS.md#memory-and-indexing)_
 
@@ -366,5 +371,7 @@ Fields: `user_id` (required), `role` (required: `user` or `admin`), `name` (opti
 ```
 
 Keeping the schedule in a separate file (rather than inline in main config) avoids mixing infra/secrets with task definitions and allows editing tasks without touching the main config. **Alternatives considered:** (1) **Separate JSON file** (chosen for MVP): one file, path in config; simple and clear. (2) **Directory of task files**: one JSON per task, scheduler watches the dir; better for many tasks or dynamic add/remove. (3) **External cron**: host cron calls PA CLI or HTTP endpoint; PA has no built-in scheduler, only task handlers; schedule lives in crontab. (4) **DB or API**: tasks stored in DB, managed via API/CLI; overkill for MVP. For MVP we use (1).
+
+**Log level:** The application log level is controlled by the environment variable `PA_LOG_LEVEL` (e.g. `info`, `debug`; case-insensitive). Default is `info`. When set to `debug`, the core logs full LLM request and response in the handler ([REQ-021](REQUIREMENTS.md#llm-and-logging), task 3.6); at `info` only metadata is logged.
 
 Secrets (tokens, API keys, SSH keys) are stored in files; config references them by path. Env variable substitution is not part of the format; the loader may optionally expand env vars in string values if required.
