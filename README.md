@@ -1,6 +1,6 @@
 # PersonalAssistant
 
-Go application: Telegram bot, core orchestration, long-term memory (markdown), vector index, LLM providers, scheduler, tools, SSH access to nodes. Target: Synology DS220+ (Docker). See [REQUIREMENTS.md](REQUIREMENTS.md) and [docs/EP-104/](docs/EP-104/) for design and implementation plan.
+Go application: Telegram bot, core orchestration, long-term memory (markdown), vector index, LLM providers, scheduler, tools, SSH access to nodes. Target: Synology DS220+ (Docker). See [docs/EP-104/REQUIREMENTS.md](docs/EP-104/REQUIREMENTS.md) and [docs/EP-104/](docs/EP-104/) for design and implementation plan.
 
 **Requirements:** Go 1.26+. Config is a JSON file (path via `-config` or `PA_CONFIG_PATH`). Secrets (tokens, API keys, SSH keys) are stored in files; config references them by path.
 
