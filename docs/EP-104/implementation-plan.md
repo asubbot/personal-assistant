@@ -107,7 +107,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 - [ ] 4.2 Implement pluggable vector store interface and default implementation
   - Interface: add documents (with embeddings), search by query vector (top-k or threshold)
-  - Default: chromem-go or vecgo; persist index to configured path where supported
+  - **Default: SQLite + sqlite-vec.** Single `.sqlite` file at configured path (e.g. `paths.vector_index_path` → `/data/pa_vectors.sqlite`). ACID persistence, vector + optional FTS in one DB; best fit for decades-long retention ([system-design](system-design.md#vector-store-choice-pluggable-req-007memory-and-indexing), [research §4.2](research.md#summary-and-recommendation-for-decades-long-retention)). Requires CGO (sqlite-vec is a C extension); use build tag or separate build if pure-Go binary is needed. Alternative (no CGO): vecgo or chromem-go — see research §4.1.
   - _Requirements: [REQ-007](REQUIREMENTS.md#memory-and-indexing)_
   - _Validates:_ [AC-013](acceptance-criteria.md#ac-013-us-07), [AC-014](acceptance-criteria.md#ac-014-us-07)
 
@@ -297,7 +297,7 @@ _Reference material._ Application config is a single JSON file (path from `-conf
   "paths": {
     "memory_dir": "/data/memory",
     "log_path": "/data/pa.log",
-    "vector_index_path": "/data/vector.idx",
+    "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
     "scheduled_tasks_path": "/etc/pa/scheduled_tasks.json"
   },
