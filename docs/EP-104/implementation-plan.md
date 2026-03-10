@@ -3,7 +3,7 @@
 **Epic:** EP-104  
 **Design:** [system-design.md](system-design.md)  
 **Research:** [research.md](research.md) (MVI, iteration plan)  
-**Requirements:** [REQUIREMENTS.md](REQUIREMENTS.md) (REQ-001–REQ-021); acceptance criteria: [acceptance-criteria.md](acceptance-criteria.md) (AC-001–AC-031); test levels and strategy: [test-strategy.md](test-strategy.md).  
+**Requirements:** [REQUIREMENTS.md](REQUIREMENTS.md) (REQ-001–REQ-022); acceptance criteria: [acceptance-criteria.md](acceptance-criteria.md) (AC-001–AC-032); test levels and strategy: [test-strategy.md](test-strategy.md).  
 **Testing reference:** [test-strategy.md](test-strategy.md)
 
 Tasks are ordered for incremental progress; each step builds on the previous. All steps, including test-writing tasks, are required.
@@ -147,7 +147,12 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - Valid config → SSH uses config host/user only; allowlist blocks disallowed command
   - _Validates:_ [AC-006](acceptance-criteria.md#ac-006-us-03), [AC-007](acceptance-criteria.md#ac-007-us-04), [AC-008](acceptance-criteria.md#ac-008-us-04)
 
-- [ ] 6. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 5.4 Add CLI parameter to verify node availability
+  - Add a designated flag (e.g. `-verify-nodes`) to the main binary. When present: load config, build allowlist and NodeRunner, for each configured node run one allowlisted command (e.g. `uptime` or configurable), report success or failure per node to stdout/stderr, then exit without starting Telegram or other serving mode. On config/allowlist load failure or any node failure, exit with non-zero status. Document the flag and probe command in user-facing docs or help.
+  - _Requirements: [REQ-022](REQUIREMENTS.md#nodes-and-ssh)_
+  - _Validates:_ [AC-032](acceptance-criteria.md#ac-032-us-18)
+
+- [x] 6. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
 ---
 
@@ -270,7 +275,7 @@ _Do this when most functionality is in place._
 ## 12. Final checkpoint
 
 - [ ] 12.1 Final checkpoint — Ensure all acceptance criteria are met by reviewing the code and running unit and integration tests, ask the user if questions arise.
-  - **Validates:** [AC-001–AC-030](acceptance-criteria.md) (see [test-strategy.md](test-strategy.md)). Include secret leakage protection tests ([REQ-017](REQUIREMENTS.md#secret-protection-prompt-injection--exfiltration); [test-strategy.md §5](test-strategy.md#5-secret-leakage-protection-prompt-injection--exfiltration)).
+  - **Validates:** [AC-001–AC-032](acceptance-criteria.md) (see [test-strategy.md](test-strategy.md)). Include secret leakage protection tests ([REQ-017](REQUIREMENTS.md#secret-protection-prompt-injection--exfiltration); [test-strategy.md §5](test-strategy.md#5-secret-leakage-protection-prompt-injection--exfiltration)).
 
 ---
 
