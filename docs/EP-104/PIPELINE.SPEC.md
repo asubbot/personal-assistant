@@ -1,9 +1,9 @@
 # SDLC Pipeline — PersonalAssistant
 
 **Purpose:** This document specifies the **agent development process**: pipeline from product discovery through to implementation planning (stages, inputs, outputs, traceability). It is the single source of truth for how epics are elaborated with agent-driven workflows.  
-**Pipeline:** —  
-**Previous:** —  
-**Next:** —  
+**Pipeline:** SDLC Pipeline (Discovery → Planning).  
+**Previous:** — (top-level pipeline spec).  
+**Next:** Execution (implementation and delivery).  
 **Related:** [01-02-requirements.md](01-02-requirements.md), [03-technical-discovery.md](03-technical-discovery.md), [04-system-design.md](04-system-design.md), [05-delivery-strategy.md](05-delivery-strategy.md), [06-test-strategy.md](06-test-strategy.md), [07-epic-list.md](07-epic-list.md), [08-user-stories.md](08-user-stories.md), [10-acceptance-criteria.md](10-acceptance-criteria.md), [11-12-implementation-plan.md](11-12-implementation-plan.md)
 
 ---
@@ -41,6 +41,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Product Owner |
 | **Purpose** | Capture the product vision, scope, and functional behaviour from a user and business perspective — *what* the system does, not how. |
 | **Answered questions** | 1. What are we building? (vision, scope).<br>2. What terminology do we use? (glossary).<br>3. What must the system do? (functional requirements).<br>4. What is out of scope or deferred? |
 | **Inputs** | Stakeholder vision; problem statement; success criteria; constraints (platform, audience); references (e.g. similar products, regulations). |
@@ -52,6 +53,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Tech Lead |
 | **Purpose** | Define quality attributes and constraints: performance, security, deployability, observability, compliance, and evolution. |
 | **Answered questions** | 1. How should the system behave? (performance, security, deployability, etc.).<br>2. What quality attributes matter?<br>3. What constraints apply? (platform, compliance).<br>4. How do we support evolution? (versioning, extensibility). |
 | **Inputs** | Product requirements; platform and ops constraints; security and compliance needs; known NFR standards (e.g. latency, availability). |
@@ -63,6 +65,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Tech Lead |
 | **Purpose** | Top-level technical investigation to inform architecture and delivery strategy. |
 | **Answered questions** | 1. Can we do this at all? (feasibility).<br> 2. What options exist? (alternatives: technologies, approaches, vendors).<br> 3. What are the pros and cons of each? (comparison and trade-offs).<br> 4. What are the technical risks and how can we mitigate them? (e.g. proof-of-concept to evaluate characteristics). |
 | **Inputs** | Requirements (functional + NFR); target platform; constraints (e.g. hardware, no vendor lock-in); list of open technical questions. |
@@ -74,6 +77,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Tech Lead |
 | **Purpose** | Turn requirements and research into a concrete technical design: components, interfaces, data models, error handling, and key decisions with rationale. |
 | **Answered questions** | 1. What are the main components and how do they interact?<br>2. What are the interfaces and data models?<br>3. How do we handle errors and failures?<br>4. What are the key technical decisions and their rationale? |
 | **Inputs** | Requirements; research (recommendations, risks); C4 or similar context from requirements. |
@@ -85,6 +89,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Product Owner / Tech Lead |
 | **Purpose** | Define the sequence of shippable increments and the value delivered at each step (e.g. prototype for validation, MVP for first use, MLP for "lovable", v1 for GA). |
 | **Answered questions** | 1. In what order do we deliver value? (Prototype, MVP, MLP, v1, v2…).<br>2. What is in scope for each increment?<br>3. What are the dependencies between increments?<br>4. What are the success criteria per increment? |
 | **Inputs** | Product requirements; architecture; risks and dependencies; stakeholder priorities; capacity assumptions. |
@@ -96,6 +101,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | QA Lead |
 | **Purpose** | Define how quality is assured: test levels (unit, integration, E2E, manual), what is tested at each level, and how acceptance criteria map to tests. |
 | **Answered questions** | 1. How do we verify the product? (test levels: unit, integration, E2E, manual).<br>2. What is tested at each level?<br>3. How do acceptance criteria map to tests?<br>4. What special topics need coverage? (e.g. secret leakage). |
 | **Inputs** | Requirements; acceptance criteria (if already drafted); architecture; risk areas (e.g. security, secrets). |
@@ -107,6 +113,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Product Owner |
 | **Purpose** | Break the product into large, coherent themes or initiatives that can be planned and delivered independently (or in a defined order). |
 | **Answered questions** | 1. What are the large themes or initiatives?<br>2. How do we split the product into planable chunks?<br>3. What can be delivered independently (or in what order)?<br>4. What is the scope and success criteria per epic? |
 | **Inputs** | Product scope; delivery strategy; dependencies and priorities. |
@@ -118,6 +125,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Analyst. |
 | **Purpose** | Express scope in user-facing stories: "As a … I want … so that …", one slice of value per story, traceable to requirements. |
 | **Answered questions** | 1. Who wants what and why? (As a / I want / So that).<br>2. What is the scope of each story?<br>3. How do stories trace to requirements?<br>4. What value does each story deliver? |
 | **Inputs** | Requirements; epic scope; stakeholder input. |
@@ -129,6 +137,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Analyst |
 | **Purpose** | Clarify and detail requirements in the context of specific user stories: edge cases, definitions, and constraints so that acceptance criteria can be written unambiguously. |
 | **Answered questions** | 1. What edge cases or ambiguities need clarifying?<br>2. What definitions or terms need to be pinned down?<br>3. What constraints apply per story or theme?<br>4. What "conditions of satisfaction" feed acceptance criteria? |
 | **Inputs** | User stories; product and NFR documents; open questions from design or research. |
@@ -140,6 +149,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | QA Lead |
 | **Purpose** | Define testable conditions for each user story so that "done" is unambiguous. Prefer Gherkin (Given/When/Then) for automation and clarity. |
 | **Answered questions** | 1. When is a user story done? (testable conditions).<br>2. What are the scenarios? (Given/When/Then or equivalent).<br>3. How do AC trace to requirements and test level?<br>4. What format do we use? (e.g. Gherkin for automation). |
 | **Inputs** | User stories; refined requirements; test strategy (levels). |
@@ -151,6 +161,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Tech Lead |
 | **Purpose** | Decompose user stories into individual tasks and define dependencies between them so that execution order and parallelism can be planned. |
 | **Answered questions** | 1. What concrete tasks does each user story (or epic) break into?<br>2. What are the dependencies between tasks? (what must finish before what).<br>3. Which tasks have no mutual dependency? (candidates for parallel work).<br>4. How do tasks trace to US, AC, and REQ? |
 | **Inputs** | User stories; acceptance criteria; architecture; test strategy; delivery strategy (increment boundaries). |
@@ -162,6 +173,7 @@ flowchart TB
 
 | | |
 |---|---|
+| **Role** | Tech Lead |
 | **Purpose** | Take the task list and dependencies, produce an ordered implementation plan with checkpoints and verification; identify which tasks can be executed in parallel. |
 | **Answered questions** | 1. In what order do we execute tasks given dependencies?<br>2. Which tasks can run in parallel? (no dependency path between them).<br>3. Where do we place checkpoints and how do we verify each step?<br>4. Where are config and format references documented? |
 | **Inputs** | Task list (with dependencies); architecture; test strategy; delivery strategy. |
@@ -174,14 +186,14 @@ flowchart TB
 | Stage | Inputs | Outputs | Project docs (EP-104) |
 |-------|--------|---------|------------------------|
 | 1. Product requirements | Vision, problem, constraints, references | Product requirements doc (scope, glossary, functional REQ) | [01-02-requirements.md](01-02-requirements.md) |
-| 2. Non-functional requirements | Product reqs, platform, security/compliance | NFR section or doc (security, deploy, logging, etc.) | [01-02-requirements.md](01-02-requirements.md) (NFR sections) |
+| 2. Non-functional requirements | Product reqs, platform, security/compliance | NFR section or doc (security, deploy, logging, etc.) | [01-02-requirements.md](01-02-requirements.md) |
 | 3. Technical discovery | Reqs, platform, open questions | Research doc(s) (options, recommendation, risks) | [03-technical-discovery.md](03-technical-discovery.md), [research/](research/) |
 | 4. System Design | Reqs, research | System design (components, interfaces, data, decisions) | [04-system-design.md](04-system-design.md) |
 | 5. Delivery strategy | Reqs, architecture, risks, priorities | Increment definitions (Prototype/MVP/MLP/v1/v2) | [05-delivery-strategy.md](05-delivery-strategy.md) |
 | 6. Test strategy | Reqs, AC (if any), architecture | Test strategy doc (levels, AC mapping, coverage) | [06-test-strategy.md](06-test-strategy.md), [06-current-coverage.md](06-current-coverage.md), [06-manual-test-plan.md](06-manual-test-plan.md) |
 | 7. Epics | Scope, delivery strategy | Epic list (ID, title, scope) | [07-epic-list.md](07-epic-list.md) |
 | 8. User stories | Reqs, epic scope | User stories doc (ID, As/I want/So that, REQ links) | [08-user-stories.md](08-user-stories.md) |
-| 9. Requirements refinement | User stories, reqs, questions | Refined reqs, glossary updates | [01-02-requirements.md](01-02-requirements.md), [prompts/](prompts/) |
+| 9. Requirements refinement | User stories, reqs, questions | Refined reqs, glossary updates | n/a |
 | 10. Acceptance criteria | User stories, refined reqs, test strategy | AC doc (Gherkin, REQ/AC traceability) | [10-acceptance-criteria.md](10-acceptance-criteria.md) |
 | 11. Tasks decomposition | User stories, AC, architecture, test strategy | Task list with dependencies, traceability to US/AC/REQ | [11-12-implementation-plan.md](11-12-implementation-plan.md) (task breakdown) |
 | 12. Implementation plan | Task list (dependencies), architecture, test strategy | Ordered plan, checkpoints, verification, parallel work | [11-12-implementation-plan.md](11-12-implementation-plan.md) |
@@ -197,4 +209,52 @@ flowchart TB
 - **Tasks decomposition** → Implementation plan (ordering and parallelism).  
 - **Implementation plan** → System design, Research, Delivery strategy, Test strategy.
 
-Artifacts in this directory that implement the pipeline for EP-104: [01-02-requirements.md](01-02-requirements.md), [03-technical-discovery.md](03-technical-discovery.md), [04-system-design.md](04-system-design.md), [05-delivery-strategy.md](05-delivery-strategy.md), [06-test-strategy.md](06-test-strategy.md), [06-current-coverage.md](06-current-coverage.md), [06-manual-test-plan.md](06-manual-test-plan.md), [07-epic-list.md](07-epic-list.md), [08-user-stories.md](08-user-stories.md), [10-acceptance-criteria.md](10-acceptance-criteria.md), [11-12-implementation-plan.md](11-12-implementation-plan.md).
+---
+
+## 5. Iterations and backflows
+
+The pipeline is ordered (1 → 2 → … → 12), but changes during or after execution are expected. When any document is changed (e.g. a new requirement is added, a user story is split, or design decisions are revised), **all subsequent documents in the pipeline must be reviewed, updated, and kept in sync** so that traceability is preserved.
+
+**Rule:** If stage *N*’s output is modified, every stage *N+1 … 12* that consumes or traces to that output must be **actualised and aligned** with the change.
+
+| If this changes … | … then review and update (at least) |
+|-------------------|-------------------------------------|
+| 1–2. Requirements (product, NFR) | 3–12 (research, design, delivery, test strategy, epics, stories, refinement, AC, tasks, implementation plan). |
+| 3. Technical discovery | 4–12. |
+| 4. System Design | 5–6, 11–12 (delivery, test strategy, tasks, implementation plan). |
+| 5. Delivery strategy | 6–7, 11–12. |
+| 6. Test strategy | 10–12 (AC mapping, tasks, implementation plan). |
+| 7. Epics | 8–12. |
+| 8. User stories | 9–12. |
+| 9. Requirements refinement | 10–12. |
+| 10. Acceptance criteria | 11–12. |
+| 11. Tasks decomposition | 12. |
+| 12. Implementation plan | (no downstream pipeline stages; execution follows). |
+
+**Practices:**
+
+- After editing a document, run through the **Traceability (section 4)** and the table above: identify which later stages are affected and update the corresponding docs.
+- Keep cross-references and IDs consistent (e.g. when adding `REQ-X`, add or adjust traces in epics, user stories, AC, and implementation plan).
+- Prefer small, incremental changes and re-sync often so that drift does not accumulate.
+
+---
+
+## 6. Glossary
+
+| Term | Meaning |
+|------|--------|
+| **AC** | Acceptance criteria — testable conditions that define when a user story is done; often written in Gherkin (Given/When/Then). |
+| **ADR** | Architecture Decision Record — a short document capturing a significant design decision and its rationale. |
+| **C4** | C4 model — a hierarchy of diagrams for software architecture: C1 (context), C2 (container), C3 (component), C4 (code). |
+| **E2E** | End-to-end (test) — a test that runs against the full system or a major flow from user action to outcome. |
+| **EARS** | Easy Approach to Requirements Syntax — a set of sentence patterns for writing clear, consistent requirements (e.g. WHEN … THE system SHALL …). |
+| **FR** | Functional requirement — a requirement that describes what the system must do (behaviour, capability). |
+| **Gherkin** | A language for scenario-based specifications: Given (precondition), When (action), Then (outcome); used for acceptance criteria and automated tests. |
+| **MLP** | Minimum Lovable Product — an increment that delivers a minimal but “lovable” experience, often after MVP. |
+| **MVI** | Minimum Viable Iteration — a small iteration used to validate an option or reduce risk (e.g. proof-of-concept). |
+| **MVP** | Minimum Viable Product — the smallest increment that delivers real value and can be used or shipped. |
+| **NFR** | Non-functional requirement — a requirement that describes how the system should behave (performance, security, deployability, etc.). |
+| **REQ** | Requirement — an item in the requirements baseline; often tagged with an ID (e.g. REQ-01) and a class (FR, NFR). |
+| **US** | User story — a short statement of value in the form “As a … I want … so that …”, with an ID (e.g. US-01). |
+
+---
