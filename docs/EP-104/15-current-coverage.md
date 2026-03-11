@@ -3,10 +3,10 @@
 **Purpose:** Reflect tests that exist in the codebase per AC; companion to test strategy (target coverage).  
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
 **Previous:** [06-test-strategy.md](06-test-strategy.md)  
-**Next:** [08-user-stories.md](08-user-stories.md)  
+**Next:** 16. Deployment (see [PIPELINE.SPEC.md](PIPELINE.SPEC.md)).  
 **Related:** [10-acceptance-criteria.md](10-acceptance-criteria.md)
 
-This table reflects **tests that exist in the codebase** at the time of the last update. The [test strategy](06-test-strategy.md) defines the *target* coverage per AC; this document shows which AC already have at least one corresponding test. **Update this file when adding or removing tests.**
+This table reflects **tests that exist in the codebase** at the time of the last update. The [test strategy](06-test-strategy.md) defines the *target* coverage per AC; this document shows which AC already have at least one corresponding test. **Update this file when adding or removing tests.** (Output of pipeline stage 15 — Test execution.)
 
 | AC     | Unit | Integration | E2E | Manual | Notes |
 |--------|------|-------------|-----|--------|-------|

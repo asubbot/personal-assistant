@@ -3,7 +3,7 @@
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
 **Previous:** [05-delivery-strategy.md](05-delivery-strategy.md)  
 **Next:** [08-user-stories.md](08-user-stories.md)  
-**Related:** [10-acceptance-criteria.md](10-acceptance-criteria.md), [11-12-implementation-plan.md](11-12-implementation-plan.md), [06-current-coverage.md](06-current-coverage.md)
+**Related:** [10-acceptance-criteria.md](10-acceptance-criteria.md), [11-12-implementation-plan.md](11-12-implementation-plan.md), [15-current-coverage.md](15-current-coverage.md)
 
 ---
 
@@ -26,7 +26,7 @@
 
 ### Current coverage
 
-→ [06-current-coverage.md](06-current-coverage.md) — table of tests that exist in the codebase; update that file when adding or removing tests. §3 below defines the *target* strategy per AC.
+→ [15-current-coverage.md](15-current-coverage.md) — table of tests that exist in the codebase; update that file when adding or removing tests. §3 below defines the *target* strategy per AC.
 
 ---
 

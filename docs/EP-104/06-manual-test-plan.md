@@ -4,7 +4,7 @@
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
 **Previous:** [06-test-strategy.md](06-test-strategy.md)  
 **Next:** [08-08-user-stories.md](08-08-user-stories.md)  
-**Related:** [10-acceptance-criteria.md](10-acceptance-criteria.md), [06-current-coverage.md](06-current-coverage.md)
+**Related:** [10-acceptance-criteria.md](10-acceptance-criteria.md), [15-current-coverage.md](15-current-coverage.md)
 
 This document lists manual test scenarios for acceptance criteria that are verified by human review (architecture, documentation) or by manual execution with log inspection. Check off each step when done.
 
