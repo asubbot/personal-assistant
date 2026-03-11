@@ -1,7 +1,10 @@
 # EP-104: Current test coverage
 
-**Epic:** EP-104  
-**Related:** [test-strategy.md](test-strategy.md) (target strategy, §3); [acceptance-criteria.md](acceptance-criteria.md)
+**Purpose:** Reflect tests that exist in the codebase per AC; companion to test strategy (target coverage).  
+**Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
+**Previous:** [test-strategy.md](test-strategy.md)  
+**Next:** [user-stories.md](user-stories.md)  
+**Related:** [acceptance-criteria.md](acceptance-criteria.md)
 
 This table reflects **tests that exist in the codebase** at the time of the last update. The [test strategy](test-strategy.md) defines the *target* coverage per AC; this document shows which AC already have at least one corresponding test. **Update this file when adding or removing tests.**
 

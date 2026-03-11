@@ -1,7 +1,10 @@
 # EP-104: Manual test plan
 
-**Epic:** EP-104  
-**Related:** [test-strategy.md](test-strategy.md) (Manual level), [acceptance-criteria.md](acceptance-criteria.md)
+**Purpose:** Manual test scenarios for acceptance criteria verified by human review or manual execution with log inspection; companion to test strategy (Manual level).  
+**Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
+**Previous:** [test-strategy.md](test-strategy.md)  
+**Next:** [user-stories.md](user-stories.md)  
+**Related:** [acceptance-criteria.md](acceptance-criteria.md), [current-coverage.md](current-coverage.md)
 
 This document lists manual test scenarios for acceptance criteria that are verified by human review (architecture, documentation) or by manual execution with log inspection. Check off each step when done.
 

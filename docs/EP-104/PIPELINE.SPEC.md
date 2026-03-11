@@ -1,10 +1,10 @@
 # SDLC Pipeline — PersonalAssistant
 
-**Document:** Pipeline specification (product and engineering lifecycle)  
-**Audience:** Product, architecture, development  
-**Purpose:** Define the pipeline from product discovery through to implementation planning: stages, inputs, outputs, and traceability.
-
-This pipeline is used at **epic level** (e.g. EP-104). Each stage produces artifacts that feed the next.
+**Purpose:** This document specifies the **agent development process**: pipeline from product discovery through to implementation planning (stages, inputs, outputs, traceability). It is the single source of truth for how epics are elaborated with agent-driven workflows.  
+**Pipeline:** —  
+**Previous:** —  
+**Next:** —  
+**Related:** [requirements.md](requirements.md), [research.md](research.md), [system-design.md](system-design.md), [delivery-strategy.md](delivery-strategy.md), [test-strategy.md](test-strategy.md), [user-stories.md](user-stories.md), [acceptance-criteria.md](acceptance-criteria.md), [implementation-plan.md](implementation-plan.md)
 
 ---
 
@@ -173,15 +173,15 @@ flowchart TB
 
 | Stage | Inputs | Outputs | Project docs (EP-104) |
 |-------|--------|---------|------------------------|
-| 1. Product requirements | Vision, problem, constraints, references | Product requirements doc (scope, glossary, functional REQ) | [REQUIREMENTS.md](REQUIREMENTS.md) |
-| 2. Non-functional requirements | Product reqs, platform, security/compliance | NFR section or doc (security, deploy, logging, etc.) | [REQUIREMENTS.md](REQUIREMENTS.md) (NFR sections) |
+| 1. Product requirements | Vision, problem, constraints, references | Product requirements doc (scope, glossary, functional REQ) | [requirements.md](requirements.md) |
+| 2. Non-functional requirements | Product reqs, platform, security/compliance | NFR section or doc (security, deploy, logging, etc.) | [requirements.md](requirements.md) (NFR sections) |
 | 3. Technical discovery | Reqs, platform, open questions | Research doc(s) (options, recommendation, risks) | [research.md](research.md), [research/](research/) |
 | 4. System Design | Reqs, research | System design (components, interfaces, data, decisions) | [system-design.md](system-design.md) |
-| 5. Delivery strategy | Reqs, architecture, risks, priorities | Increment definitions (Prototype/MVP/MLP/v1/v2) | [research.md](research.md) §5–§6, [implementation-plan.md](implementation-plan.md) (checkpoints) |
+| 5. Delivery strategy | Reqs, architecture, risks, priorities | Increment definitions (Prototype/MVP/MLP/v1/v2) | [delivery-strategy.md](delivery-strategy.md) |
 | 6. Test strategy | Reqs, AC (if any), architecture | Test strategy doc (levels, AC mapping, coverage) | [test-strategy.md](test-strategy.md), [current-coverage.md](current-coverage.md) |
 | 7. Epics | Scope, delivery strategy | Epic list (ID, title, scope) | Epic EP-104 (this directory) |
 | 8. User stories | Reqs, epic scope | User stories doc (ID, As/I want/So that, REQ links) | [user-stories.md](user-stories.md) |
-| 9. Requirements refinement | User stories, reqs, questions | Refined reqs, glossary updates | [REQUIREMENTS.md](REQUIREMENTS.md), [prompts/](prompts/) |
+| 9. Requirements refinement | User stories, reqs, questions | Refined reqs, glossary updates | [requirements.md](requirements.md), [prompts/](prompts/) |
 | 10. Acceptance criteria | User stories, refined reqs, test strategy | AC doc (Gherkin, REQ/AC traceability) | [acceptance-criteria.md](acceptance-criteria.md) |
 | 11. Tasks decomposition | User stories, AC, architecture, test strategy | Task list with dependencies, traceability to US/AC/REQ | [implementation-plan.md](implementation-plan.md) (task breakdown) |
 | 12. Implementation plan | Task list (dependencies), architecture, test strategy | Ordered plan, checkpoints, verification, parallel work | [implementation-plan.md](implementation-plan.md) |
@@ -195,6 +195,6 @@ flowchart TB
 - **User stories** → Acceptance criteria, Tasks decomposition, Implementation plan.  
 - **Acceptance criteria** → Test strategy (levels), Tasks decomposition, Implementation plan (verification), Current coverage (tests).  
 - **Tasks decomposition** → Implementation plan (ordering and parallelism).  
-- **Implementation plan** → System design, Research (e.g. MVI), Test strategy.
+- **Implementation plan** → System design, Research, Delivery strategy, Test strategy.
 
-Artifacts in this directory that implement the pipeline for EP-104: [REQUIREMENTS.md](REQUIREMENTS.md), [research.md](research.md), [system-design.md](system-design.md), [test-strategy.md](test-strategy.md), [user-stories.md](user-stories.md), [acceptance-criteria.md](acceptance-criteria.md), [implementation-plan.md](implementation-plan.md), [current-coverage.md](current-coverage.md).
+Artifacts in this directory that implement the pipeline for EP-104: [requirements.md](requirements.md), [research.md](research.md), [delivery-strategy.md](delivery-strategy.md), [system-design.md](system-design.md), [test-strategy.md](test-strategy.md), [user-stories.md](user-stories.md), [acceptance-criteria.md](acceptance-criteria.md), [implementation-plan.md](implementation-plan.md), [current-coverage.md](current-coverage.md).

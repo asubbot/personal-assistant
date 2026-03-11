@@ -1,13 +1,13 @@
 # PersonalAssistant MVP — Requirements (EARS / INCOSE)
 
-**Document:** Requirements specification  
-**Project:** PersonalAssistant  
-**Version:** 1.0  
-**Language:** English
+**Purpose:** Capture product vision, scope, glossary, and functional and non-functional requirements (EARS/INCOSE) for the MVP.  
+**Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
+**Previous:** —  
+**Next:** [research.md](research.md)  
+**Related:** [research.md](research.md), [system-design.md](system-design.md), [delivery-strategy.md](delivery-strategy.md)
 
-This document contains the product requirements for the PersonalAssistant MVP in EARS (Easy Approach to Requirements Syntax) form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, no solution-free where applicable).
-
-**Related:** [Technical research (EP-104)](research.md) — technology choices, MVI, iteration plan, risks. [System design (EP-104)](system-design.md) — architecture, components, data models, error handling, testing.
+This document contains the product requirements for the PersonalAssistant MVP in EARS (Easy Approach to Requirements Syntax) form, aligned with INCOSE semantic quality rules 
+(active voice, one thought per requirement, explicit and measurable criteria, defined terminology, no solution-free where applicable).
 
 ---
 
@@ -236,31 +236,31 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 
 ## Requirement index
 
-| Id       | Summary |
-|----------|--------|
-| REQ-001  | Telegram bot interface for messages and replies |
-| REQ-002  | Go core, Docker, target DS220+ |
-| REQ-003  | Validate node config at startup; fail or report error if invalid |
-| REQ-004  | Communicate with nodes only over SSH per validated config |
-| REQ-005  | Security model: per-node allow list for commands/tools |
-| REQ-006  | Long-term memory in designated directory as markdown files |
-| REQ-007  | Vector index and semantic search over memory |
-| REQ-008  | Pluggable LLM providers via configuration |
-| REQ-009  | Scheduler runs tasks at scheduled time/interval within security model |
-| REQ-010  | Extensible tools: name, description, validated schema, single contract |
-| REQ-011  | New nodes/tools loadable via config without core image rebuild |
-| REQ-012  | Clear separation: adapters, core, memory, vector, LLM, scheduler, tools |
-| REQ-013  | One dedicated SSH user per node; no other identity for that node |
-| REQ-014  | Logging subsystem records LLM requests and responses |
-| REQ-015  | Configurable log destination and parseable log format |
-| REQ-016  | Git repository for version history of config, memory, and designated artifacts (scope TBD) |
-| REQ-017  | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests |
-| REQ-018  | Memory is assistant’s single store; not partitioned by interlocutor; full access regardless of current conversation partner |
-| REQ-019  | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
-| REQ-020  | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources) |
-| REQ-021  | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only |
-| REQ-022  | CLI parameter to verify node availability: connect and run one allowlisted command per node; report and exit without serving |
-| REQ-023  | Scheduler "notify" action: destination chat from telegram.notify_chat_id or first allowed user |
+| Id       | Type | Summary |
+|----------|------|--------|
+| REQ-001  | FR   | Telegram bot interface for messages and replies |
+| REQ-002  | NFR  | Go core, Docker, target DS220+ |
+| REQ-003  | NFR  | Validate node config at startup; fail or report error if invalid |
+| REQ-004  | FR   | Communicate with nodes only over SSH per validated config |
+| REQ-005  | NFR  | Security model: per-node allow list for commands/tools |
+| REQ-006  | FR   | Long-term memory in designated directory as markdown files |
+| REQ-007  | FR   | Vector index and semantic search over memory |
+| REQ-008  | FR   | Pluggable LLM providers via configuration |
+| REQ-009  | FR   | Scheduler runs tasks at scheduled time/interval within security model |
+| REQ-010  | FR   | Extensible tools: name, description, validated schema, single contract |
+| REQ-011  | FR   | New nodes/tools loadable via config without core image rebuild |
+| REQ-012  | NFR  | Clear separation: adapters, core, memory, vector, LLM, scheduler, tools |
+| REQ-013  | NFR  | One dedicated SSH user per node; no other identity for that node |
+| REQ-014  | NFR  | Logging subsystem records LLM requests and responses |
+| REQ-015  | NFR  | Configurable log destination and parseable log format |
+| REQ-016  | NFR  | Git repository for version history of config, memory, and designated artifacts (scope TBD) |
+| REQ-017  | NFR  | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests |
+| REQ-018  | FR   | Memory is assistant’s single store; not partitioned by interlocutor; full access regardless of current conversation partner |
+| REQ-019  | FR   | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
+| REQ-020  | FR   | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources) |
+| REQ-021  | NFR  | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only |
+| REQ-022  | FR   | CLI parameter to verify node availability: connect and run one allowlisted command per node; report and exit without serving |
+| REQ-023  | FR   | Scheduler "notify" action: destination chat from telegram.notify_chat_id or first allowed user |
 
 ---
 

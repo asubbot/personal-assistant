@@ -1,13 +1,9 @@
 # EP-104: Test Strategy
-
-**Date:** 2026-03-10  
-**Epic:** EP-104  
-**Source:** PROMPT-009 (QA Engineer coverage planning).  
-**Canonical AC text:** [acceptance-criteria.md](acceptance-criteria.md)
-
-### Document purpose
-
-This document defines the **test strategy** for EP-104: test levels, the test pyramid, mapping of acceptance criteria to levels, and special topics (e.g. secret leakage). It does not define a detailed test plan (schedule, environments, ownership); see [implementation-plan.md](implementation-plan.md) for task ordering and test-related steps.
+**Purpose:** This document defines the **test strategy**: test levels, the test pyramid, mapping of acceptance criteria to levels, and special topics (e.g. secret leakage). 
+**Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
+**Previous:** [delivery-strategy.md](delivery-strategy.md)  
+**Next:** [user-stories.md](user-stories.md)  
+**Related:** [acceptance-criteria.md](acceptance-criteria.md), [implementation-plan.md](implementation-plan.md), [current-coverage.md](current-coverage.md)
 
 ---
 
@@ -26,7 +22,7 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 ### Assumptions and limits
 
 - **Assumptions:** E2E runs in CI or on target hardware (e.g. x86_64 / DS220+); no cross-platform test matrix in this epic.
-- **Out of scope for this document:** Performance, load, or stress testing; security testing beyond prompt-injection/exfiltration ([REQ-017](REQUIREMENTS.md#secret-protection-prompt-injection--exfiltration)). Test execution schedule and environments are in the implementation plan.
+- **Out of scope for this document:** Performance, load, or stress testing; security testing beyond prompt-injection/exfiltration ([REQ-017](requirements.md#secret-protection-prompt-injection--exfiltration)). Test execution schedule and environments are in the implementation plan.
 
 ### Current coverage
 
@@ -59,8 +55,8 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 | AC-008 | US-04 | Unit, Integration | Unit: denial when action not in allowlist; integration: no execution + log/report. |
 | AC-009 | US-05 | Unit, Integration | Unit: node config → single user; integration: SSH connection uses that user only (mock SSH). |
 | AC-010 | US-05 | Integration | Multiple nodes → each connection with correct dedicated user. |
-| AC-011 | US-06 | Unit, Integration | Unit: memory writer uses directory/structure (single store, [REQ-018](REQUIREMENTS.md#memory-and-indexing)); integration: write → files on disk in expected layout. |
-| AC-012 | US-06 | Unit, Integration | Unit: reader reads from configured path/structure (single store, [REQ-018](REQUIREMENTS.md#memory-and-indexing)); integration: read returns content from that structure. |
+| AC-011 | US-06 | Unit, Integration | Unit: memory writer uses directory/structure (single store, [REQ-018](requirements.md#memory-and-indexing)); integration: write → files on disk in expected layout. |
+| AC-012 | US-06 | Unit, Integration | Unit: reader reads from configured path/structure (single store, [REQ-018](requirements.md#memory-and-indexing)); integration: read returns content from that structure. |
 | AC-013 | US-07 | Unit, Integration | Unit: indexer builds index from content; integration: index updated when memory changes. |
 | AC-014 | US-07 | Unit, Integration | Unit: search returns top-k/threshold; integration: query → relevant chunks from index. |
 | AC-015 | US-08 | Unit, Integration | Unit: provider selected from config; integration: LLM call goes to configured endpoint (mock). |
@@ -68,7 +64,7 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 | AC-017 | US-09 | Unit, Integration | Unit: logger records request/response fields; integration: after LLM call, log entry present and parseable. |
 | AC-018 | US-10 | Unit, Integration | Unit: log destination from config; integration: entries written to configured path/format. |
 | AC-019 | US-10 | Unit, Integration | Unit: error handling when write fails; integration: unavailable destination → documented behaviour. |
-| AC-020 | US-11 | Unit, Integration | Unit: scheduler triggers at time/interval; integration: task runs when schedule fires (mock time if needed). For "notify" action, destination chat is per [REQ-023](REQUIREMENTS.md#scheduler-and-tools) (notify_chat_id or first allowed user); verify by integration test with notify or manually. |
+| AC-020 | US-11 | Unit, Integration | Unit: scheduler triggers at time/interval; integration: task runs when schedule fires (mock time if needed). For "notify" action, destination chat is per [REQ-023](requirements.md#scheduler-and-tools) (notify_chat_id or first allowed user); verify by integration test with notify or manually. |
 | AC-021 | US-11 | Unit, Integration | Unit: task filtered by security model; integration: violating task not executed, log/report. |
 | AC-022 | US-12 | Unit, Integration | Unit: tool registry and single contract; integration: core invokes tool with validated input, gets result. |
 | AC-023 | US-12 | Unit, Integration | Unit: schema validation rejects invalid input; integration: core returns error, tool not run. |
@@ -101,7 +97,7 @@ This document defines the **test strategy** for EP-104: test levels, the test py
 
 > **Note:** This section is **draft material and notes for future implementation**. It will need to be refined when implementing US-16 and the corresponding tests (AC-028–AC-030). Treat it as guidance, not the final test specification.
 
-**Requirement:** [REQ-017](REQUIREMENTS.md#secret-protection-prompt-injection--exfiltration); user story [US-16](user-stories.md#us-16--secret-leakage-protection); [AC-028](acceptance-criteria.md#ac-028-us-16)–[AC-030](acceptance-criteria.md#ac-030-us-16).
+**Requirement:** [REQ-017](requirements.md#secret-protection-prompt-injection--exfiltration); user story [US-16](user-stories.md#us-16--secret-leakage-protection); [AC-028](acceptance-criteria.md#ac-028-us-16)–[AC-030](acceptance-criteria.md#ac-030-us-16).
 
 Secrets (tokens, API keys, SSH keys) are stored in files or env; the process must read them to call Telegram, LLM, and SSH. The risk is **exfiltration via crafted user messages** (prompt injection): an attacker sends a message intended to make the system include a secret in the reply or in data the LLM can echo. Protection is achieved by never putting secret values into the LLM context, into user-facing response paths, or into log output. The following tests verify that protection.
 

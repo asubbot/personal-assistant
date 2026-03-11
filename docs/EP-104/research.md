@@ -1,12 +1,10 @@
 # Research: EP-104 PersonalAssistant MVP
 
-**Epic:** EP-104 — PersonalAssistant MVP  
-**Requirements:** [REQUIREMENTS.md](REQUIREMENTS.md)  
-**System design:** [system-design.md](system-design.md) — architecture, components, testing  
-**Author:** —  
-**Date:** 2026-03-09  
-**Version:** 1.0  
-**Status:** Draft  
+**Purpose:** Technical discovery — options, comparison, recommendations, risks, and mitigations to inform architecture and delivery strategy.  
+**Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
+**Previous:** [requirements.md](requirements.md)  
+**Next:** [system-design.md](system-design.md)  
+**Related:** [system-design.md](system-design.md), [delivery-strategy.md](delivery-strategy.md)
 
 ---
 
@@ -19,10 +17,9 @@
 5. [Section 4: Proposed design (To-Be)](#5-section-4-proposed-design-to-be)  
    - [4.1 Vector store options](#41-vector-store-options-req-007-pluggable)  
    - [4.2 Deep analysis: three options (decades, DS220+)](#42-deep-analysis-three-vector-store-options-decades-long-retention-target-hardware)
-6. [Section 5: Minimum Viable Increment (MVI)](#6-section-5-minimum-viable-increment-mvi)
-7. [Section 6: Iteration plan](#7-section-6-iteration-plan)
-8. [Section 7: Risks and mitigations](#8-section-7-risks-and-mitigations)
-9. [Sources](#9-sources)
+6. [Delivery strategy](#6-delivery-strategy)
+7. [Risks and mitigations](#7-risks-and-mitigations)
+8. [Sources](#8-sources)
 
 ---
 
@@ -30,19 +27,19 @@
 
 **Objective:** Choose technical options for the PersonalAssistant MVP (EP-104): Telegram bot, Go core in Docker on Synology DS220+, SSH to nodes with an explicit security model, long-term memory in markdown, vector search, swappable LLMs, scheduler, extensible tools, and LLM request/response logging.
 
-**Context:** Requirements are in [REQUIREMENTS.md](REQUIREMENTS.md) ([REQ-001–REQ-020](REQUIREMENTS.md#requirement-index)). This research follows the epic-researcher workflow (PROMPT-008); target platform: DS220+ (x86_64, limited CPU/RAM).
+**Context:** Requirements are in [requirements.md](requirements.md) ([REQ-001–REQ-020](requirements.md#requirement-index)). This research follows the epic-researcher workflow (PROMPT-008); target platform: DS220+ (x86_64, limited CPU/RAM).
 
 ---
 
 ## 2. Section 1: Repository and components
 
-**Current state:** The PersonalAssistant repo contains only the requirements spec and `.gitignore`. No code or prior architecture — green field. The epic and [Glossary in REQUIREMENTS.md](REQUIREMENTS.md#glossary) define the system boundary: Telegram adapter, core (orchestration, LLM, tools), MD store, vector index, scheduler, SSH client, LLM providers, logging subsystem.
+**Current state:** The PersonalAssistant repo contains only the requirements spec and `.gitignore`. No code or prior architecture — green field. The epic and [Glossary in requirements.md](requirements.md#glossary) define the system boundary: Telegram adapter, core (orchestration, LLM, tools), MD store, vector index, scheduler, SSH client, LLM providers, logging subsystem.
 
 ---
 
 ## 3. Section 2: As-Is architecture
 
-No existing architecture. Target behaviour is defined by the epic description and C4 diagrams; requirements [REQ-001–REQ-020](REQUIREMENTS.md#requirement-index) are the source of truth (see [Requirements](REQUIREMENTS.md#requirements) and [Requirement index](REQUIREMENTS.md#requirement-index)).
+No existing architecture. Target behaviour is defined by the epic description and C4 diagrams; requirements [REQ-001–REQ-020](requirements.md#requirement-index) are the source of truth (see [Requirements](requirements.md#requirements) and [Requirement index](requirements.md#requirement-index)).
 
 ---
 
@@ -72,13 +69,13 @@ Telegram: low-level HTTP to Bot API. SSH: stdlib only. Vector: simple in-memory 
 Telegram: [go-telegram/bot](https://github.com/go-telegram/bot). SSH: `golang.org/x/crypto/ssh`, allowlist per node (patterns/regex in config). Vector: [chromem-go](https://github.com/philippgille/chromem-go) or [vecgo](https://github.com/hupe1980/vecgo). LLM: [llmhub](https://pkg.go.dev/github.com/smhanov/llmhub) or similar with a single interface (OpenAI-compatible + Ollama). Scheduler: [robfig/cron/v3](https://github.com/robfig/cron). Tools: in-process registry (interface + Register), config for name/params; no runtime plugin. Logging: JSON Lines to a configurable path (request_id, messages, model, response, tokens, duration). Pros: fast MVP, less custom code, single x86_64 build. Cons: dependency on chosen libraries (all open and maintained).
 
 **Option C — Microservices**  
-Separate containers for bot, core, vector DB. Pros: scale/replace independently. Cons: heavier deploy and config on DS220+, more resource use; overkill for MVP ([REQ-002](REQUIREMENTS.md#interface-and-deployment) expects a single core image).
+Separate containers for bot, core, vector DB. Pros: scale/replace independently. Cons: heavier deploy and config on DS220+, more resource use; overkill for MVP ([REQ-002](requirements.md#interface-and-deployment) expects a single core image).
 
-**Choice:** Option B best fits MVP, [REQ-012](REQUIREMENTS.md#extensibility-and-architecture) (clear separation), and DS220+ constraints.
+**Choice:** Option B best fits MVP, [REQ-012](requirements.md#extensibility-and-architecture) (clear separation), and DS220+ constraints.
 
-### 4.1 Vector store options ([REQ-007](REQUIREMENTS.md#memory-and-indexing), pluggable)
+### 4.1 Vector store options ([REQ-007](requirements.md#memory-and-indexing), pluggable)
 
-[REQ-007](REQUIREMENTS.md#memory-and-indexing) requires a vector index and semantic search over long-term memory. The [Glossary](REQUIREMENTS.md#glossary) defines the vector store as **pluggable** (in-memory, file, or DB). The following fits DS220+ (single container, limited RAM), [REQ-012](REQUIREMENTS.md#extensibility-and-architecture) (replaceable component), and MVI goal of `CGO_ENABLED=0` where possible.
+[REQ-007](requirements.md#memory-and-indexing) requires a vector index and semantic search over long-term memory. The [Glossary](requirements.md#glossary) defines the vector store as **pluggable** (in-memory, file, or DB). The following fits DS220+ (single container, limited RAM), [REQ-012](requirements.md#extensibility-and-architecture) (replaceable component), and MVI goal of `CGO_ENABLED=0` where possible.
 
 | Option | Persistence | CGO | Scale (order) | Pluggable fit | Note |
 |--------|-------------|-----|---------------|---------------|------|
@@ -160,36 +157,13 @@ Separate containers for bot, core, vector DB. Pros: scale/replace independently.
 
 ---
 
-## 6. Section 5: Minimum Viable Increment (MVI)
+## 6. Delivery strategy
 
-- **Language/runtime:** Go 1.26+; single static binary for linux/amd64 (`CGO_ENABLED=0` for simplicity).
-- **Telegram:** [go-telegram/bot](https://github.com/go-telegram/bot) — polling for MVP; config: bot token, path to users file (user_id, role: user/admin).
-- **Config:** JSON: nodes (host, dedicated PA user, auth, command_allowlist_path to file), llm_providers (ordered list, fallback), paths (memory_dir, log_path, vector_index_path, llm_log_dir, scheduled_tasks_path), telegram (token, users_path, optional notify_chat_id for scheduler notify [REQ-023](REQUIREMENTS.md#scheduler-and-tools)). Scheduled tasks in separate file. Validated at startup ([REQ-003](REQUIREMENTS.md#nodes-and-ssh)).
-- **SSH:** `golang.org/x/crypto/ssh`. One user per node ([REQ-013](REQUIREMENTS.md#nodes-and-ssh)). Execute only commands allowed by that node’s allowlist ([REQ-005](REQUIREMENTS.md#nodes-and-ssh)); build commands via exec-style args, no untrusted shell.
-- **Memory:** The assistant’s single store: directory of markdown files in calendar structure year/month/day ([REQ-019](REQUIREMENTS.md#memory-and-indexing)); hierarchical summarization (day → month → year) from LLM logs, tool execution results, and scheduler events ([REQ-020](REQUIREMENTS.md#memory-and-indexing)); not partitioned by interlocutor ([REQ-018](REQUIREMENTS.md#memory-and-indexing)). Read/write by core only; optional approval before persisting summaries; format/schema is part of design ([REQ-006](REQUIREMENTS.md#memory-and-indexing)).
-- **Vector index:** Pluggable vector store interface; default implementation chromem-go or vecgo (see §4.1). Index chosen fields from MD (e.g. paragraphs); embeddings via chosen LLM provider. Persist index to disk where supported to survive restarts and cap RAM. Search for user query to inject context ([REQ-007](REQUIREMENTS.md#memory-and-indexing)).
-- **LLM:** Interface e.g. `Complete(ctx, messages, opts) (response, usage, err)`. Implementations: OpenAI-compatible HTTP (Ollama, local servers), provider selected from config ([REQ-008](REQUIREMENTS.md#llm-and-logging)).
-- **Scheduler:** robfig/cron/v3; tasks loaded from file at path in config (cron or @every); execution = call registered tools or send Telegram notification in-process ([REQ-009](REQUIREMENTS.md#scheduler-and-tools)).
-- **Tools:** Interface `Tool` (Name, Description, ParamsSchema, Run(ctx, params)); registry at startup; new tools = new code + config, image rebuild ([REQ-010](REQUIREMENTS.md#scheduler-and-tools), [REQ-011](REQUIREMENTS.md#extensibility-and-architecture)).
-- **LLM logging ([REQ-014](REQUIREMENTS.md#llm-and-logging), [REQ-015](REQUIREMENTS.md#llm-and-logging)):** Dedicated component: on each LLM call write to configurable path (file or directory with rotation) in JSON Lines: request_id, timestamp, direction (request/response), payload (messages, model, response, usage, duration).
-- **Deploy:** Dockerfile multi-stage, final image Alpine or distroless; docker-compose with single core service, volumes for config, memory, logs. Target: DS220+, x86_64 (Intel Celeron J4025).
+Delivery strategy (named increments, MVP stack, iteration plan, and success criteria) is defined in **[delivery-strategy.md](delivery-strategy.md)**. It is informed by the technology options and recommendations in this research (e.g. [§4 Proposed design](#5-section-4-proposed-design-to-be)).
 
 ---
 
-## 7. Section 6: Iteration plan
-
-1. **Skeleton:** Packages (cmd, config, telegram, core, memory, vector, llm, scheduler, tools, ssh, logging), config load and validate, minimal main.
-2. **Config and node security:** Load and validate ([REQ-003](REQUIREMENTS.md#nodes-and-ssh)), allowlist model per node ([REQ-005](REQUIREMENTS.md#nodes-and-ssh), [REQ-013](REQUIREMENTS.md#nodes-and-ssh)).
-3. **Telegram + core:** Receive messages, call LLM (one provider), reply in chat ([REQ-001](REQUIREMENTS.md#interface-and-deployment), [REQ-008](REQUIREMENTS.md#llm-and-logging)).
-4. **Memory and vector:** Read/write MD, index, semantic search and context injection ([REQ-006](REQUIREMENTS.md#memory-and-indexing), [REQ-007](REQUIREMENTS.md#memory-and-indexing)).
-5. **SSH nodes:** Connect as dedicated user, run only allowed commands ([REQ-004](REQUIREMENTS.md#nodes-and-ssh), [REQ-013](REQUIREMENTS.md#nodes-and-ssh)).
-6. **Scheduler and tools:** Cron jobs, tool registry, invoke from core ([REQ-009](REQUIREMENTS.md#scheduler-and-tools), [REQ-010](REQUIREMENTS.md#scheduler-and-tools)).
-7. **LLM logging:** Write request/response to configurable path ([REQ-014](REQUIREMENTS.md#llm-and-logging), [REQ-015](REQUIREMENTS.md#llm-and-logging)).
-8. **Deploy:** Dockerfile and compose for DS220+, validate on x86_64 ([REQ-002](REQUIREMENTS.md#interface-and-deployment)).
-
----
-
-## 8. Section 7: Risks and mitigations
+## 7. Risks and mitigations
 
 | Risk | Mitigation |
 |------|------------|
@@ -203,7 +177,7 @@ Separate containers for bot, core, vector DB. Pros: scale/replace independently.
 
 ---
 
-## 9. Sources
+## 8. Sources
 
 - Telegram: [go-telegram/bot](https://pkg.go.dev/github.com/go-telegram/bot), [mr-linch/go-tg](https://pkg.go.dev/github.com/mr-linch/go-tg).
 - SSH: [golang.org/x/crypto/ssh](https://pkg.go.dev/golang.org/x/crypto/ssh), [ssh-shield](https://github.com/morriswinkler/ssh-shield), [PrivX command restrictions](https://privx.docs.ssh.com/docs/ssh-command-restrictions).

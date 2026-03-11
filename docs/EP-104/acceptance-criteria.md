@@ -1,9 +1,10 @@
 # EP-104: Acceptance Criteria (project source of truth)
 
-**Epic:** EP-104  
-**Related:** [user-stories.md](user-stories.md), [REQUIREMENTS.md](REQUIREMENTS.md), [test-strategy.md](test-strategy.md) (test levels and strategy)
-
-This document is the project’s canonical list of acceptance criteria. IDs: **AC-001** … **AC-032**. All criteria are in Gherkin (Given/When/Then).
+**Purpose:** Canonical list of testable acceptance criteria (Gherkin Given/When/Then) per user story, traceable to requirements and test levels.  
+**Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
+**Previous:** [user-stories.md](user-stories.md)  
+**Next:** [implementation-plan.md](implementation-plan.md)  
+**Related:** [requirements.md](requirements.md), [test-strategy.md](test-strategy.md)
 
 ---
 
@@ -69,7 +70,7 @@ This document is the project’s canonical list of acceptance criteria. IDs: **A
 
 ## AC-011 (US-06)
 
-**Given** a designated memory directory and structure, **When** the assistant writes long-term memory, **Then** files are created or updated as markdown in that structure (e.g. calendar structure year/month/day per [REQ-019](REQUIREMENTS.md#memory-and-indexing)).
+**Given** a designated memory directory and structure, **When** the assistant writes long-term memory, **Then** files are created or updated as markdown in that structure (e.g. calendar structure year/month/day per [REQ-019](requirements.md#memory-and-indexing)).
 
 ---
 
@@ -123,7 +124,7 @@ This document is the project’s canonical list of acceptance criteria. IDs: **A
 
 ## AC-020 (US-11)
 
-**Given** a task configured with a schedule (time or interval), **When** the scheduled time or interval is reached, **Then** the scheduler executes the task (e.g. invokes the defined tool or notification) within the security model. For tasks with action "notify", the message is sent to the Telegram chat determined by configuration (see [REQ-023](REQUIREMENTS.md#scheduler-and-tools): `telegram.notify_chat_id` or first allowed user).
+**Given** a task configured with a schedule (time or interval), **When** the scheduled time or interval is reached, **Then** the scheduler executes the task (e.g. invokes the defined tool or notification) within the security model. For tasks with action "notify", the message is sent to the Telegram chat determined by configuration (see [REQ-023](requirements.md#scheduler-and-tools): `telegram.notify_chat_id` or first allowed user).
 
 ---
 
