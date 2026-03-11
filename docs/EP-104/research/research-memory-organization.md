@@ -1,7 +1,7 @@
 # Research: Memory organization for AI agents — from raw interaction to reusable knowledge
 
 **Epic:** EP-104 — PersonalAssistant  
-**Related:** [requirements.md](../requirements.md) (REQ-006, REQ-007, REQ-018–REQ-020), [system-design.md](../system-design.md), [research.md](../research.md)  
+**Related:** [01-02-requirements.md](../01-02-requirements.md) (REQ-006, REQ-007, REQ-018–REQ-020), [04-system-design.md](../04-system-design.md), [03-technical-discovery.md](../03-technical-discovery.md)  
 **Source:** Microsoft Research blog, March 2026 — *From raw interaction to reusable knowledge: Rethinking memory for AI agents*  
 **Date:** 2026-03-10  
 **Purpose:** Ground memory design (including explicit “remember” and day-level storage) in current research and update recommendations.
@@ -173,4 +173,4 @@ This section outlines concrete ways to implement the article’s approach (struc
 
 - Microsoft Research blog (2026): [From raw interaction to reusable knowledge: Rethinking memory for AI agents](https://www.microsoft.com/en-us/research/blog/from-raw-interaction-to-reusable-knowledge-rethinking-memory-for-ai-agents/).  
 - Paper: *PlugMem: A Task-Agnostic Plugin Memory Module for LLM Agents*; code and experiments on GitHub (linked from the blog).  
-- EP-104: [requirements.md](../requirements.md) (REQ-006, REQ-007, REQ-018–REQ-020), [research.md](../research.md), [system-design.md](../system-design.md).
+- EP-104: [01-02-requirements.md](../01-02-requirements.md) (REQ-006, REQ-007, REQ-018–REQ-020), [03-technical-discovery.md](../03-technical-discovery.md), [04-system-design.md](../04-system-design.md).

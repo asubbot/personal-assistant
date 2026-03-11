@@ -2,9 +2,9 @@
 
 **Purpose:** Technical discovery — options, comparison, recommendations, risks, and mitigations to inform architecture and delivery strategy.  
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
-**Previous:** [requirements.md](requirements.md)  
-**Next:** [system-design.md](system-design.md)  
-**Related:** [system-design.md](system-design.md), [delivery-strategy.md](delivery-strategy.md)
+**Previous:** [01-02-requirements.md](01-02-requirements.md)  
+**Next:** [04-system-design.md](04-system-design.md)  
+**Related:** [04-system-design.md](04-system-design.md), [05-delivery-strategy.md](05-delivery-strategy.md)
 
 ---
 
@@ -27,19 +27,19 @@
 
 **Objective:** Choose technical options for the PersonalAssistant MVP (EP-104): Telegram bot, Go core in Docker on Synology DS220+, SSH to nodes with an explicit security model, long-term memory in markdown, vector search, swappable LLMs, scheduler, extensible tools, and LLM request/response logging.
 
-**Context:** Requirements are in [requirements.md](requirements.md) ([REQ-001–REQ-020](requirements.md#requirement-index)). This research follows the epic-researcher workflow (PROMPT-008); target platform: DS220+ (x86_64, limited CPU/RAM).
+**Context:** Requirements are in [01-02-requirements.md](01-02-requirements.md) ([REQ-001–REQ-020](01-02-requirements.md#requirement-index)). This research follows the epic-researcher workflow (PROMPT-008); target platform: DS220+ (x86_64, limited CPU/RAM).
 
 ---
 
 ## 2. Section 1: Repository and components
 
-**Current state:** The PersonalAssistant repo contains only the requirements spec and `.gitignore`. No code or prior architecture — green field. The epic and [Glossary in requirements.md](requirements.md#glossary) define the system boundary: Telegram adapter, core (orchestration, LLM, tools), MD store, vector index, scheduler, SSH client, LLM providers, logging subsystem.
+**Current state:** The PersonalAssistant repo contains only the requirements spec and `.gitignore`. No code or prior architecture — green field. The epic and [Glossary in 01-02-requirements.md](01-02-requirements.md#glossary) define the system boundary: Telegram adapter, core (orchestration, LLM, tools), MD store, vector index, scheduler, SSH client, LLM providers, logging subsystem.
 
 ---
 
 ## 3. Section 2: As-Is architecture
 
-No existing architecture. Target behaviour is defined by the epic description and C4 diagrams; requirements [REQ-001–REQ-020](requirements.md#requirement-index) are the source of truth (see [Requirements](requirements.md#requirements) and [Requirement index](requirements.md#requirement-index)).
+No existing architecture. Target behaviour is defined by the epic description and C4 diagrams; requirements [REQ-001–REQ-020](01-02-requirements.md#requirement-index) are the source of truth (see [Requirements](01-02-requirements.md#requirements) and [Requirement index](01-02-requirements.md#requirement-index)).
 
 ---
 
@@ -69,13 +69,13 @@ Telegram: low-level HTTP to Bot API. SSH: stdlib only. Vector: simple in-memory 
 Telegram: [go-telegram/bot](https://github.com/go-telegram/bot). SSH: `golang.org/x/crypto/ssh`, allowlist per node (patterns/regex in config). Vector: [chromem-go](https://github.com/philippgille/chromem-go) or [vecgo](https://github.com/hupe1980/vecgo). LLM: [llmhub](https://pkg.go.dev/github.com/smhanov/llmhub) or similar with a single interface (OpenAI-compatible + Ollama). Scheduler: [robfig/cron/v3](https://github.com/robfig/cron). Tools: in-process registry (interface + Register), config for name/params; no runtime plugin. Logging: JSON Lines to a configurable path (request_id, messages, model, response, tokens, duration). Pros: fast MVP, less custom code, single x86_64 build. Cons: dependency on chosen libraries (all open and maintained).
 
 **Option C — Microservices**  
-Separate containers for bot, core, vector DB. Pros: scale/replace independently. Cons: heavier deploy and config on DS220+, more resource use; overkill for MVP ([REQ-002](requirements.md#interface-and-deployment) expects a single core image).
+Separate containers for bot, core, vector DB. Pros: scale/replace independently. Cons: heavier deploy and config on DS220+, more resource use; overkill for MVP ([REQ-002](01-02-requirements.md#interface-and-deployment) expects a single core image).
 
-**Choice:** Option B best fits MVP, [REQ-012](requirements.md#extensibility-and-architecture) (clear separation), and DS220+ constraints.
+**Choice:** Option B best fits MVP, [REQ-012](01-02-requirements.md#extensibility-and-architecture) (clear separation), and DS220+ constraints.
 
-### 4.1 Vector store options ([REQ-007](requirements.md#memory-and-indexing), pluggable)
+### 4.1 Vector store options ([REQ-007](01-02-requirements.md#memory-and-indexing), pluggable)
 
-[REQ-007](requirements.md#memory-and-indexing) requires a vector index and semantic search over long-term memory. The [Glossary](requirements.md#glossary) defines the vector store as **pluggable** (in-memory, file, or DB). The following fits DS220+ (single container, limited RAM), [REQ-012](requirements.md#extensibility-and-architecture) (replaceable component), and MVI goal of `CGO_ENABLED=0` where possible.
+[REQ-007](01-02-requirements.md#memory-and-indexing) requires a vector index and semantic search over long-term memory. The [Glossary](01-02-requirements.md#glossary) defines the vector store as **pluggable** (in-memory, file, or DB). The following fits DS220+ (single container, limited RAM), [REQ-012](01-02-requirements.md#extensibility-and-architecture) (replaceable component), and MVI goal of `CGO_ENABLED=0` where possible.
 
 | Option | Persistence | CGO | Scale (order) | Pluggable fit | Note |
 |--------|-------------|-----|---------------|---------------|------|
@@ -159,7 +159,7 @@ Separate containers for bot, core, vector DB. Pros: scale/replace independently.
 
 ## 6. Delivery strategy
 
-Delivery strategy (named increments, MVP stack, iteration plan, and success criteria) is defined in **[delivery-strategy.md](delivery-strategy.md)**. It is informed by the technology options and recommendations in this research (e.g. [§4 Proposed design](#5-section-4-proposed-design-to-be)).
+Delivery strategy (named increments, MVP stack, iteration plan, and success criteria) is defined in **[05-delivery-strategy.md](05-delivery-strategy.md)**. It is informed by the technology options and recommendations in this research (e.g. [§4 Proposed design](#5-section-4-proposed-design-to-be)).
 
 ---
 

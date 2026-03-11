@@ -3,8 +3,8 @@
 **Purpose:** Capture product vision, scope, glossary, and functional and non-functional requirements (EARS/INCOSE) for the MVP.  
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
 **Previous:** —  
-**Next:** [research.md](research.md)  
-**Related:** [research.md](research.md), [system-design.md](system-design.md), [delivery-strategy.md](delivery-strategy.md)
+**Next:** [03-technical-discovery.md](03-technical-discovery.md)  
+**Related:** [03-technical-discovery.md](03-technical-discovery.md), [04-system-design.md](04-system-design.md), [05-delivery-strategy.md](05-delivery-strategy.md)
 
 This document contains the product requirements for the PersonalAssistant MVP in EARS (Easy Approach to Requirements Syntax) form, aligned with INCOSE semantic quality rules 
 (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, no solution-free where applicable).
@@ -266,7 +266,7 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 
 ## Requirement–User Story traceability
 
-User stories are defined in [user-stories.md](user-stories.md) (US-01–US-18).
+User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US-18).
 
 | REQ       | User Story | Summary |
 |-----------|---------------------|--------|

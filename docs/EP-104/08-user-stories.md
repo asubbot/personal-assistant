@@ -2,9 +2,9 @@
 
 **Purpose:** Canonical list of user stories (As a… I want… So that…), traceable to requirements and acceptance criteria.  
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
-**Previous:** [test-strategy.md](test-strategy.md)  
-**Next:** [acceptance-criteria.md](acceptance-criteria.md)  
-**Related:** [requirements.md](requirements.md), [acceptance-criteria.md](acceptance-criteria.md)
+**Previous:** [07-epic-list.md](07-epic-list.md)  
+**Next:** [10-10-acceptance-criteria.md](10-10-acceptance-criteria.md)  
+**Related:** [01-02-requirements.md](01-02-requirements.md), [10-acceptance-criteria.md](10-acceptance-criteria.md)
 
 This document is the project’s canonical list of user stories. IDs: **US-01** … **US-18**.
 
@@ -35,8 +35,8 @@ This document is the project’s canonical list of user stories. IDs: **US-01** 
 
 As a user, I want to send text messages to the assistant via a Telegram bot and receive text replies, so that I can interact without installing a separate app.
 
-**Requirements:** [REQ-001](requirements.md#interface-and-deployment).  
-**Acceptance criteria:** [AC-001](acceptance-criteria.md#ac-001-us-01), [AC-002](acceptance-criteria.md#ac-002-us-01).
+**Requirements:** [REQ-001](01-02-requirements.md#interface-and-deployment).  
+**Acceptance criteria:** [AC-001](10-acceptance-criteria.md#ac-001-us-01), [AC-002](10-acceptance-criteria.md#ac-002-us-01).
 
 ---
 
@@ -44,8 +44,8 @@ As a user, I want to send text messages to the assistant via a Telegram bot and 
 
 As an operator, I want to run the PersonalAssistant core as a single Docker container (including on Synology DS220+), so that I can deploy with one command.
 
-**Requirements:** [REQ-002](requirements.md#interface-and-deployment).  
-**Acceptance criteria:** [AC-003](acceptance-criteria.md#ac-003-us-02), [AC-004](acceptance-criteria.md#ac-004-us-02).
+**Requirements:** [REQ-002](01-02-requirements.md#interface-and-deployment).  
+**Acceptance criteria:** [AC-003](10-acceptance-criteria.md#ac-003-us-02), [AC-004](10-acceptance-criteria.md#ac-004-us-02).
 
 ---
 
@@ -53,8 +53,8 @@ As an operator, I want to run the PersonalAssistant core as a single Docker cont
 
 As an operator, I want to define nodes (host, SSH user, authentication) in configuration and have the system validate at startup, so that configuration errors are caught before serving.
 
-**Requirements:** [REQ-003](requirements.md#nodes-and-ssh), [REQ-004](requirements.md#nodes-and-ssh).  
-**Acceptance criteria:** [AC-005](acceptance-criteria.md#ac-005-us-03), [AC-006](acceptance-criteria.md#ac-006-us-03).
+**Requirements:** [REQ-003](01-02-requirements.md#nodes-and-ssh), [REQ-004](01-02-requirements.md#nodes-and-ssh).  
+**Acceptance criteria:** [AC-005](10-acceptance-criteria.md#ac-005-us-03), [AC-006](10-acceptance-criteria.md#ac-006-us-03).
 
 ---
 
@@ -62,8 +62,8 @@ As an operator, I want to define nodes (host, SSH user, authentication) in confi
 
 As an operator, I want a documented security model that defines, per node, which commands or tools are allowed, so that only permitted actions run on each node.
 
-**Requirements:** [REQ-005](requirements.md#nodes-and-ssh).  
-**Acceptance criteria:** [AC-007](acceptance-criteria.md#ac-007-us-04), [AC-008](acceptance-criteria.md#ac-008-us-04).
+**Requirements:** [REQ-005](01-02-requirements.md#nodes-and-ssh).  
+**Acceptance criteria:** [AC-007](10-acceptance-criteria.md#ac-007-us-04), [AC-008](10-acceptance-criteria.md#ac-008-us-04).
 
 ---
 
@@ -71,8 +71,8 @@ As an operator, I want a documented security model that defines, per node, which
 
 As an operator, I want to configure one dedicated user account per node for PersonalAssistant SSH access, so that all actions are attributed to that identity.
 
-**Requirements:** [REQ-013](requirements.md#nodes-and-ssh).  
-**Acceptance criteria:** [AC-009](acceptance-criteria.md#ac-009-us-05), [AC-010](acceptance-criteria.md#ac-010-us-05).
+**Requirements:** [REQ-013](01-02-requirements.md#nodes-and-ssh).  
+**Acceptance criteria:** [AC-009](10-acceptance-criteria.md#ac-009-us-05), [AC-010](10-acceptance-criteria.md#ac-010-us-05).
 
 ---
 
@@ -80,8 +80,8 @@ As an operator, I want to configure one dedicated user account per node for Pers
 
 As the assistant (system), I want to store long-term memory in markdown files in a defined directory structure, so that data is human-readable and easy to back up.
 
-**Requirements:** [REQ-006](requirements.md#memory-and-indexing), [REQ-018](requirements.md#memory-and-indexing), [REQ-019](requirements.md#memory-and-indexing), [REQ-020](requirements.md#memory-and-indexing).  
-**Acceptance criteria:** [AC-011](acceptance-criteria.md#ac-011-us-06), [AC-012](acceptance-criteria.md#ac-012-us-06).
+**Requirements:** [REQ-006](01-02-requirements.md#memory-and-indexing), [REQ-018](01-02-requirements.md#memory-and-indexing), [REQ-019](01-02-requirements.md#memory-and-indexing), [REQ-020](01-02-requirements.md#memory-and-indexing).  
+**Acceptance criteria:** [AC-011](10-acceptance-criteria.md#ac-011-us-06), [AC-012](10-acceptance-criteria.md#ac-012-us-06).
 
 ---
 
@@ -89,8 +89,8 @@ As the assistant (system), I want to store long-term memory in markdown files in
 
 As the assistant (system), I want to index long-term memory in a vector store and run semantic search, so that relevant context can be retrieved for replies.
 
-**Requirements:** [REQ-007](requirements.md#memory-and-indexing).  
-**Acceptance criteria:** [AC-013](acceptance-criteria.md#ac-013-us-07), [AC-014](acceptance-criteria.md#ac-014-us-07).
+**Requirements:** [REQ-007](01-02-requirements.md#memory-and-indexing).  
+**Acceptance criteria:** [AC-013](10-acceptance-criteria.md#ac-013-us-07), [AC-014](10-acceptance-criteria.md#ac-014-us-07).
 
 ---
 
@@ -98,8 +98,8 @@ As the assistant (system), I want to index long-term memory in a vector store an
 
 As an operator, I want to choose and configure the LLM provider via configuration without code changes, so that I can avoid vendor lock-in.
 
-**Requirements:** [REQ-008](requirements.md#llm-and-logging).  
-**Acceptance criteria:** [AC-015](acceptance-criteria.md#ac-015-us-08), [AC-016](acceptance-criteria.md#ac-016-us-08).
+**Requirements:** [REQ-008](01-02-requirements.md#llm-and-logging).  
+**Acceptance criteria:** [AC-015](10-acceptance-criteria.md#ac-015-us-08), [AC-016](10-acceptance-criteria.md#ac-016-us-08).
 
 ---
 
@@ -107,8 +107,8 @@ As an operator, I want to choose and configure the LLM provider via configuratio
 
 As an operator or developer, I want a logging subsystem that records each LLM request and response, so that I can analyse usage and perform audits.
 
-**Requirements:** [REQ-014](requirements.md#llm-and-logging).  
-**Acceptance criteria:** [AC-017](acceptance-criteria.md#ac-017-us-09).
+**Requirements:** [REQ-014](01-02-requirements.md#llm-and-logging).  
+**Acceptance criteria:** [AC-017](10-acceptance-criteria.md#ac-017-us-09).
 
 ---
 
@@ -116,17 +116,17 @@ As an operator or developer, I want a logging subsystem that records each LLM re
 
 As an operator, I want to configure where LLM logs are written and in what parseable format, so that I can control retention and analysis.
 
-**Requirements:** [REQ-015](requirements.md#llm-and-logging).  
-**Acceptance criteria:** [AC-018](acceptance-criteria.md#ac-018-us-10), [AC-019](acceptance-criteria.md#ac-019-us-10).
+**Requirements:** [REQ-015](01-02-requirements.md#llm-and-logging).  
+**Acceptance criteria:** [AC-018](10-acceptance-criteria.md#ac-018-us-10), [AC-019](10-acceptance-criteria.md#ac-019-us-10).
 
 ---
 
 ## US-11 — Scheduled tasks
 
-As an operator, I want to define scheduled tasks (time or interval) in configuration, so that the assistant can run periodic actions within the security model. Notify actions send messages to a configurable Telegram chat ([REQ-023](requirements.md#scheduler-and-tools)).
+As an operator, I want to define scheduled tasks (time or interval) in configuration, so that the assistant can run periodic actions within the security model. Notify actions send messages to a configurable Telegram chat ([REQ-023](01-02-requirements.md#scheduler-and-tools)).
 
-**Requirements:** [REQ-009](requirements.md#scheduler-and-tools), [REQ-023](requirements.md#scheduler-and-tools).  
-**Acceptance criteria:** [AC-020](acceptance-criteria.md#ac-020-us-11), [AC-021](acceptance-criteria.md#ac-021-us-11).
+**Requirements:** [REQ-009](01-02-requirements.md#scheduler-and-tools), [REQ-023](01-02-requirements.md#scheduler-and-tools).  
+**Acceptance criteria:** [AC-020](10-acceptance-criteria.md#ac-020-us-11), [AC-021](10-acceptance-criteria.md#ac-021-us-11).
 
 ---
 
@@ -134,8 +134,8 @@ As an operator, I want to define scheduled tasks (time or interval) in configura
 
 As a developer, I want to add new tools via a single contract without changing core orchestration code, so that capabilities can be extended in a modular way.
 
-**Requirements:** [REQ-010](requirements.md#scheduler-and-tools).  
-**Acceptance criteria:** [AC-022](acceptance-criteria.md#ac-022-us-12), [AC-023](acceptance-criteria.md#ac-023-us-12).
+**Requirements:** [REQ-010](01-02-requirements.md#scheduler-and-tools).  
+**Acceptance criteria:** [AC-022](10-acceptance-criteria.md#ac-022-us-12), [AC-023](10-acceptance-criteria.md#ac-023-us-12).
 
 ---
 
@@ -143,8 +143,8 @@ As a developer, I want to add new tools via a single contract without changing c
 
 As an operator, I want to add new nodes and register new tools through configuration, so that I can scale without rebuilding the core image.
 
-**Requirements:** [REQ-011](requirements.md#extensibility-and-architecture).  
-**Acceptance criteria:** [AC-024](acceptance-criteria.md#ac-024-us-13).
+**Requirements:** [REQ-011](01-02-requirements.md#extensibility-and-architecture).  
+**Acceptance criteria:** [AC-024](10-acceptance-criteria.md#ac-024-us-13).
 
 ---
 
@@ -152,8 +152,8 @@ As an operator, I want to add new nodes and register new tools through configura
 
 As an architect or developer, I want the system to clearly separate adapters, core, memory, vector, LLM, scheduler, and tools, so that we can evolve or replace each part.
 
-**Requirements:** [REQ-012](requirements.md#extensibility-and-architecture).  
-**Acceptance criteria:** [AC-025](acceptance-criteria.md#ac-025-us-14).
+**Requirements:** [REQ-012](01-02-requirements.md#extensibility-and-architecture).  
+**Acceptance criteria:** [AC-025](10-acceptance-criteria.md#ac-025-us-14).
 
 ---
 
@@ -161,8 +161,8 @@ As an architect or developer, I want the system to clearly separate adapters, co
 
 As an operator, I want the assistant to use a git repository to track configuration, memory, and designated data, so that I can review history and roll back if needed.
 
-**Requirements:** [REQ-016](requirements.md#version-control-and-audit).  
-**Acceptance criteria:** [AC-026](acceptance-criteria.md#ac-026-us-15), [AC-027](acceptance-criteria.md#ac-027-us-15).
+**Requirements:** [REQ-016](01-02-requirements.md#version-control-and-audit).  
+**Acceptance criteria:** [AC-026](10-acceptance-criteria.md#ac-026-us-15), [AC-027](10-acceptance-criteria.md#ac-027-us-15).
 
 ---
 
@@ -170,8 +170,8 @@ As an operator, I want the assistant to use a git repository to track configurat
 
 As an operator or security-conscious user, I want the assistant to never expose secret values in LLM context, user-facing responses, or logs, so that credentials cannot be extracted via crafted prompts.
 
-**Requirements:** [REQ-017](requirements.md#secret-protection-prompt-injection--exfiltration).  
-**Acceptance criteria:** [AC-028](acceptance-criteria.md#ac-028-us-16), [AC-029](acceptance-criteria.md#ac-029-us-16), [AC-030](acceptance-criteria.md#ac-030-us-16).
+**Requirements:** [REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration).  
+**Acceptance criteria:** [AC-028](10-acceptance-criteria.md#ac-028-us-16), [AC-029](10-acceptance-criteria.md#ac-029-us-16), [AC-030](10-acceptance-criteria.md#ac-030-us-16).
 
 ---
 
@@ -179,8 +179,8 @@ As an operator or security-conscious user, I want the assistant to never expose 
 
 As a developer or operator, I want to enable debug logging for LLM conversations via `PA_LOG_LEVEL=debug`, so that I can inspect the full request (including memory and vector context) and response when troubleshooting. By default (INFO level) only metadata is logged.
 
-**Requirements:** [REQ-021](requirements.md#llm-and-logging).  
-**Acceptance criteria:** [AC-031](acceptance-criteria.md#ac-031-us-17).
+**Requirements:** [REQ-021](01-02-requirements.md#llm-and-logging).  
+**Acceptance criteria:** [AC-031](10-acceptance-criteria.md#ac-031-us-17).
 
 ---
 
@@ -188,5 +188,5 @@ As a developer or operator, I want to enable debug logging for LLM conversations
 
 As an operator, I want to run the PersonalAssistant binary with a dedicated parameter to verify that SSH access to all configured nodes works, so that I can confirm credentials and allowlist without starting the bot.
 
-**Requirements:** [REQ-022](requirements.md#nodes-and-ssh).  
-**Acceptance criteria:** [AC-032](acceptance-criteria.md#ac-032-us-18).
+**Requirements:** [REQ-022](01-02-requirements.md#nodes-and-ssh).  
+**Acceptance criteria:** [AC-032](10-acceptance-criteria.md#ac-032-us-18).

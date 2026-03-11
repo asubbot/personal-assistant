@@ -4,7 +4,7 @@
 **Pipeline:** —  
 **Previous:** —  
 **Next:** —  
-**Related:** [requirements.md](requirements.md), [research.md](research.md), [system-design.md](system-design.md), [delivery-strategy.md](delivery-strategy.md), [test-strategy.md](test-strategy.md), [user-stories.md](user-stories.md), [acceptance-criteria.md](acceptance-criteria.md), [implementation-plan.md](implementation-plan.md)
+**Related:** [01-02-requirements.md](01-02-requirements.md), [03-technical-discovery.md](03-technical-discovery.md), [04-system-design.md](04-system-design.md), [05-delivery-strategy.md](05-delivery-strategy.md), [06-test-strategy.md](06-test-strategy.md), [07-epic-list.md](07-epic-list.md), [08-user-stories.md](08-user-stories.md), [10-acceptance-criteria.md](10-acceptance-criteria.md), [11-12-implementation-plan.md](11-12-implementation-plan.md)
 
 ---
 
@@ -173,18 +173,18 @@ flowchart TB
 
 | Stage | Inputs | Outputs | Project docs (EP-104) |
 |-------|--------|---------|------------------------|
-| 1. Product requirements | Vision, problem, constraints, references | Product requirements doc (scope, glossary, functional REQ) | [requirements.md](requirements.md) |
-| 2. Non-functional requirements | Product reqs, platform, security/compliance | NFR section or doc (security, deploy, logging, etc.) | [requirements.md](requirements.md) (NFR sections) |
-| 3. Technical discovery | Reqs, platform, open questions | Research doc(s) (options, recommendation, risks) | [research.md](research.md), [research/](research/) |
-| 4. System Design | Reqs, research | System design (components, interfaces, data, decisions) | [system-design.md](system-design.md) |
-| 5. Delivery strategy | Reqs, architecture, risks, priorities | Increment definitions (Prototype/MVP/MLP/v1/v2) | [delivery-strategy.md](delivery-strategy.md) |
-| 6. Test strategy | Reqs, AC (if any), architecture | Test strategy doc (levels, AC mapping, coverage) | [test-strategy.md](test-strategy.md), [current-coverage.md](current-coverage.md) |
-| 7. Epics | Scope, delivery strategy | Epic list (ID, title, scope) | Epic EP-104 (this directory) |
-| 8. User stories | Reqs, epic scope | User stories doc (ID, As/I want/So that, REQ links) | [user-stories.md](user-stories.md) |
-| 9. Requirements refinement | User stories, reqs, questions | Refined reqs, glossary updates | [requirements.md](requirements.md), [prompts/](prompts/) |
-| 10. Acceptance criteria | User stories, refined reqs, test strategy | AC doc (Gherkin, REQ/AC traceability) | [acceptance-criteria.md](acceptance-criteria.md) |
-| 11. Tasks decomposition | User stories, AC, architecture, test strategy | Task list with dependencies, traceability to US/AC/REQ | [implementation-plan.md](implementation-plan.md) (task breakdown) |
-| 12. Implementation plan | Task list (dependencies), architecture, test strategy | Ordered plan, checkpoints, verification, parallel work | [implementation-plan.md](implementation-plan.md) |
+| 1. Product requirements | Vision, problem, constraints, references | Product requirements doc (scope, glossary, functional REQ) | [01-02-requirements.md](01-02-requirements.md) |
+| 2. Non-functional requirements | Product reqs, platform, security/compliance | NFR section or doc (security, deploy, logging, etc.) | [01-02-requirements.md](01-02-requirements.md) (NFR sections) |
+| 3. Technical discovery | Reqs, platform, open questions | Research doc(s) (options, recommendation, risks) | [03-technical-discovery.md](03-technical-discovery.md), [research/](research/) |
+| 4. System Design | Reqs, research | System design (components, interfaces, data, decisions) | [04-system-design.md](04-system-design.md) |
+| 5. Delivery strategy | Reqs, architecture, risks, priorities | Increment definitions (Prototype/MVP/MLP/v1/v2) | [05-delivery-strategy.md](05-delivery-strategy.md) |
+| 6. Test strategy | Reqs, AC (if any), architecture | Test strategy doc (levels, AC mapping, coverage) | [06-test-strategy.md](06-test-strategy.md), [06-current-coverage.md](06-current-coverage.md), [06-manual-test-plan.md](06-manual-test-plan.md) |
+| 7. Epics | Scope, delivery strategy | Epic list (ID, title, scope) | [07-epic-list.md](07-epic-list.md) |
+| 8. User stories | Reqs, epic scope | User stories doc (ID, As/I want/So that, REQ links) | [08-user-stories.md](08-user-stories.md) |
+| 9. Requirements refinement | User stories, reqs, questions | Refined reqs, glossary updates | [01-02-requirements.md](01-02-requirements.md), [prompts/](prompts/) |
+| 10. Acceptance criteria | User stories, refined reqs, test strategy | AC doc (Gherkin, REQ/AC traceability) | [10-acceptance-criteria.md](10-acceptance-criteria.md) |
+| 11. Tasks decomposition | User stories, AC, architecture, test strategy | Task list with dependencies, traceability to US/AC/REQ | [11-12-implementation-plan.md](11-12-implementation-plan.md) (task breakdown) |
+| 12. Implementation plan | Task list (dependencies), architecture, test strategy | Ordered plan, checkpoints, verification, parallel work | [11-12-implementation-plan.md](11-12-implementation-plan.md) |
 
 ---
 
@@ -197,4 +197,4 @@ flowchart TB
 - **Tasks decomposition** → Implementation plan (ordering and parallelism).  
 - **Implementation plan** → System design, Research, Delivery strategy, Test strategy.
 
-Artifacts in this directory that implement the pipeline for EP-104: [requirements.md](requirements.md), [research.md](research.md), [delivery-strategy.md](delivery-strategy.md), [system-design.md](system-design.md), [test-strategy.md](test-strategy.md), [user-stories.md](user-stories.md), [acceptance-criteria.md](acceptance-criteria.md), [implementation-plan.md](implementation-plan.md), [current-coverage.md](current-coverage.md).
+Artifacts in this directory that implement the pipeline for EP-104: [01-02-requirements.md](01-02-requirements.md), [03-technical-discovery.md](03-technical-discovery.md), [04-system-design.md](04-system-design.md), [05-delivery-strategy.md](05-delivery-strategy.md), [06-test-strategy.md](06-test-strategy.md), [06-current-coverage.md](06-current-coverage.md), [06-manual-test-plan.md](06-manual-test-plan.md), [07-epic-list.md](07-epic-list.md), [08-user-stories.md](08-user-stories.md), [10-acceptance-criteria.md](10-acceptance-criteria.md), [11-12-implementation-plan.md](11-12-implementation-plan.md).

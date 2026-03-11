@@ -2,15 +2,15 @@
 
 **Purpose:** Manual test scenarios for acceptance criteria verified by human review or manual execution with log inspection; companion to test strategy (Manual level).  
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
-**Previous:** [test-strategy.md](test-strategy.md)  
-**Next:** [user-stories.md](user-stories.md)  
-**Related:** [acceptance-criteria.md](acceptance-criteria.md), [current-coverage.md](current-coverage.md)
+**Previous:** [06-test-strategy.md](06-test-strategy.md)  
+**Next:** [08-08-user-stories.md](08-08-user-stories.md)  
+**Related:** [10-acceptance-criteria.md](10-acceptance-criteria.md), [06-current-coverage.md](06-current-coverage.md)
 
 This document lists manual test scenarios for acceptance criteria that are verified by human review (architecture, documentation) or by manual execution with log inspection. Check off each step when done.
 
 ---
 
-## [AC-013](acceptance-criteria.md#ac-013-us-07), [AC-014](acceptance-criteria.md#ac-014-us-07) ([US-07](user-stories.md#us-07--semantic-memory)) — Vector memory: indexing and search
+## [AC-013](10-acceptance-criteria.md#ac-013-us-07), [AC-014](10-acceptance-criteria.md#ac-014-us-07) ([US-07](08-user-stories.md#us-07--semantic-memory)) — Vector memory: indexing and search
 
 **Goal:** Confirm that the assistant indexes conversation turns into the vector store and uses semantic search to inject "Relevant past context" into the LLM request for later messages.
 
@@ -36,7 +36,7 @@ If no vector results are found for the query, the system message may contain onl
 
 ---
 
-## [AC-025](acceptance-criteria.md#ac-025-us-14) ([US-14](user-stories.md#us-14--architecture-boundaries)) — Module boundaries and separation
+## [AC-025](10-acceptance-criteria.md#ac-025-us-14) ([US-14](08-user-stories.md#us-14--architecture-boundaries)) — Module boundaries and separation
 
 **Criterion:** Given the codebase, when an architect or developer reviews the module boundaries, then ingestion adapters (e.g. Telegram), core, memory store, vector index, LLM abstraction, scheduler, and tools are clearly separated so that replacing or extending one part does not require a full redesign.
 
@@ -46,13 +46,13 @@ If no vector results are found for the query, the system message may contain onl
 - [ ] **Step 3:** Identify memory store and vector index. Confirm they are separate from core and from each other; replacing one does not force redesign of the other.
 - [ ] **Step 4:** Identify LLM abstraction (provider interface). Confirm core uses the abstraction; swapping provider does not require core changes.
 - [ ] **Step 5:** Identify scheduler and tools (if present). Confirm they are clearly separated from core and from adapters.
-- [ ] **Step 6:** Document any violations (e.g. direct dependency that would require a full redesign to replace). If none, [AC-025](acceptance-criteria.md#ac-025-us-14) is satisfied.
+- [ ] **Step 6:** Document any violations (e.g. direct dependency that would require a full redesign to replace). If none, [AC-025](10-acceptance-criteria.md#ac-025-us-14) is satisfied.
 
 **Expected:** Module boundaries are clear; no unjustified coupling that would require full redesign to replace or extend one part.
 
 ---
 
-## [AC-027](acceptance-criteria.md#ac-027-us-15) ([US-15](user-stories.md#us-15--version-control-git)) — Versioned state: tracked paths documented
+## [AC-027](10-acceptance-criteria.md#ac-027-us-15) ([US-15](08-user-stories.md#us-15--version-control-git)) — Versioned state: tracked paths documented
 
 **Criterion:** Given the versioned state feature is implemented or in design, when the operator or developer consults the documentation, then the exact set of tracked paths is documented or explicitly marked TBD until research is done.
 
@@ -60,13 +60,13 @@ If no vector results are found for the query, the system message may contain onl
 - [ ] **Step 1:** Find the section or page that describes which paths/directories are tracked (e.g. config, memory files, other artifacts).
 - [ ] **Step 2:** If the feature is implemented: confirm the list of tracked paths is explicit and matches the implementation (no vague “and other files” without listing).
 - [ ] **Step 3:** If the feature is not yet implemented or in design: confirm the doc states either the planned tracked paths or “TBD” (or equivalent) until research is done.
-- [ ] **Step 4:** If documentation is missing or unclear, record gaps and treat [AC-027](acceptance-criteria.md#ac-027-us-15) as not satisfied until updated.
+- [ ] **Step 4:** If documentation is missing or unclear, record gaps and treat [AC-027](10-acceptance-criteria.md#ac-027-us-15) as not satisfied until updated.
 
 **Expected:** The exact set of tracked paths is documented, or explicitly marked TBD; no undocumented or vague tracking scope.
 
 ---
 
-## [AC-032](acceptance-criteria.md#ac-032-us-18) ([US-18](user-stories.md#us-18--verify-node-availability)) — Verify node availability via CLI
+## [AC-032](10-acceptance-criteria.md#ac-032-us-18) ([US-18](08-user-stories.md#us-18--verify-node-availability)) — Verify node availability via CLI
 
 **Criterion:** Given the application is invoked with the designated parameter to verify node availability, when it runs, it loads config, connects to each node over SSH, runs one allowlisted command per node, reports success or failure, and exits without starting the bot.
 

@@ -2,9 +2,9 @@
 
 **Purpose:** Canonical list of testable acceptance criteria (Gherkin Given/When/Then) per user story, traceable to requirements and test levels.  
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
-**Previous:** [user-stories.md](user-stories.md)  
-**Next:** [implementation-plan.md](implementation-plan.md)  
-**Related:** [requirements.md](requirements.md), [test-strategy.md](test-strategy.md)
+**Previous:** [08-user-stories.md](08-user-stories.md)  
+**Next:** [11-12-implementation-plan.md](11-12-implementation-plan.md)  
+**Related:** [01-02-requirements.md](01-02-requirements.md), [06-test-strategy.md](06-test-strategy.md)
 
 ---
 
@@ -70,7 +70,7 @@
 
 ## AC-011 (US-06)
 
-**Given** a designated memory directory and structure, **When** the assistant writes long-term memory, **Then** files are created or updated as markdown in that structure (e.g. calendar structure year/month/day per [REQ-019](requirements.md#memory-and-indexing)).
+**Given** a designated memory directory and structure, **When** the assistant writes long-term memory, **Then** files are created or updated as markdown in that structure (e.g. calendar structure year/month/day per [REQ-019](01-02-requirements.md#memory-and-indexing)).
 
 ---
 
@@ -124,7 +124,7 @@
 
 ## AC-020 (US-11)
 
-**Given** a task configured with a schedule (time or interval), **When** the scheduled time or interval is reached, **Then** the scheduler executes the task (e.g. invokes the defined tool or notification) within the security model. For tasks with action "notify", the message is sent to the Telegram chat determined by configuration (see [REQ-023](requirements.md#scheduler-and-tools): `telegram.notify_chat_id` or first allowed user).
+**Given** a task configured with a schedule (time or interval), **When** the scheduled time or interval is reached, **Then** the scheduler executes the task (e.g. invokes the defined tool or notification) within the security model. For tasks with action "notify", the message is sent to the Telegram chat determined by configuration (see [REQ-023](01-02-requirements.md#scheduler-and-tools): `telegram.notify_chat_id` or first allowed user).
 
 ---
 
