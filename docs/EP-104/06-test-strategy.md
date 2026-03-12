@@ -61,9 +61,9 @@
 | AC-014 | US-07 | Unit, Integration | Unit: search returns top-k/threshold; integration: query → relevant chunks from index. |
 | AC-015 | US-08 | Unit, Integration | Unit: provider selected from config; integration: LLM call goes to configured endpoint (mock). |
 | AC-016 | US-08 | Integration | Restart/hot-reload with new config → new provider used (mock or stub). |
-| AC-017 | US-09 | Unit, Integration | Unit: logger records request/response fields; integration: after LLM call, log entry present and parseable. |
-| AC-018 | US-10 | Unit, Integration | Unit: log destination from config; integration: entries written to configured path/format. |
-| AC-019 | US-10 | Unit, Integration | Unit: error handling when write fails; integration: unavailable destination → documented behaviour. |
+| AC-017 | US-09 | Unit, Integration; optional Manual | Unit: logger records request/response fields; integration: after LLM call, log entry present and parseable. Optional manual: [06-manual-test-plan.md](06-manual-test-plan.md) (§7 LLM logging) — run bot, send message, confirm JSONL file and required fields. |
+| AC-018 | US-10 | Unit, Integration; optional Manual | Unit: log destination from config; integration: entries written to configured path/format. Optional manual: [06-manual-test-plan.md](06-manual-test-plan.md) (§7) — entries in configured path, parseable JSONL. |
+| AC-019 | US-10 | Unit, Integration; optional Manual | Unit: error handling when write fails; integration: unavailable destination → documented behaviour. Optional manual: [06-manual-test-plan.md](06-manual-test-plan.md) (§7) — invalid/read-only path → startup error or non-crash per docs. |
 | AC-020 | US-11 | Unit, Integration | Unit: scheduler triggers at time/interval; integration: task runs when schedule fires (mock time if needed). For "notify" action, destination chat is per [REQ-023](01-02-requirements.md#scheduler-and-tools) (notify_chat_id or first allowed user); verify by integration test with notify or manually. |
 | AC-021 | US-11 | Unit, Integration | Unit: task filtered by security model; integration: violating task not executed, log/report. |
 | AC-022 | US-12 | Unit, Integration | Unit: tool registry and single contract; integration: core invokes tool with validated input, gets result. |
@@ -88,7 +88,7 @@
 | Unit       | 18 AC    | Validators, allowlist, schema, indexer, logger, scheduler, config, context builder (AC-028). |
 | Integration| 25 AC    | Core + adapters, SSH, memory, LLM mock, scheduler, tools, git; prompt-injection (AC-029). |
 | E2E        | 3 AC     | Telegram flow (AC-001), Docker run (AC-003, AC-004). |
-| Manual     | 3 AC     | AC-025 (architecture), AC-027 (documentation), AC-032 (verify nodes via CLI; scenario in 06-manual-test-plan.md). |
+| Manual     | 3 AC (+ optional §7) | AC-025 (architecture), AC-027 (documentation), AC-032 (verify nodes via CLI; scenario in 06-manual-test-plan.md). Optional manual scenario for §7 LLM logging (AC-017, AC-018, AC-019) in same document. |
 
 *Counts are derived from the table in §3. Some AC are covered at more than one level.*
 

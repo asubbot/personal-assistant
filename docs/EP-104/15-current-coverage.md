@@ -27,9 +27,9 @@ Table rules: rows are ordered by **AC number ascending**. AC that have no tests 
 | [AC-014](10-acceptance-criteria.md#ac-014-us-07) | ✓ | ✓ | — | ✓ | Unit: `internal/vector/sqlite/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects past context); manual: [06-manual-test-plan.md](06-manual-test-plan.md) |
 | [AC-015](10-acceptance-criteria.md#ac-015-us-08) | ✓ | — | — | — | `internal/llm/provider_test.go` |
 | [AC-016](10-acceptance-criteria.md#ac-016-us-08) | — | ✓ | — | — | `tests/integration/telegram_flow_test.go` (different provider per run) |
-| [AC-017](10-acceptance-criteria.md#ac-017-us-09) | ✓ | — | — | — | `internal/llmlog/llmlog_test.go` (TestLog_writesParseableJSONLWithRequiredFields: request/response recorded in parseable JSONL). |
-| [AC-018](10-acceptance-criteria.md#ac-018-us-10) | ✓ | — | — | — | `internal/llmlog/llmlog_test.go` (TestLog_writesParseableJSONLWithRequiredFields: required fields, parseable format). |
-| [AC-019](10-acceptance-criteria.md#ac-019-us-10) | ✓ | — | — | — | `internal/llmlog/llmlog_test.go` (TestNewWriter_rejectsPathThatIsFile, rejectsReadOnlyDirectory: destination unavailable → error). |
+| [AC-017](10-acceptance-criteria.md#ac-017-us-09) | ✓ | — | — | ✓ | Unit: `internal/llmlog/llmlog_test.go` (TestLog_writesParseableJSONLWithRequiredFields). Manual: [06-manual-test-plan.md](06-manual-test-plan.md) (§7 LLM logging). |
+| [AC-018](10-acceptance-criteria.md#ac-018-us-10) | ✓ | — | — | ✓ | Unit: `internal/llmlog/llmlog_test.go` (required fields, parseable format). Manual: [06-manual-test-plan.md](06-manual-test-plan.md) (§7). |
+| [AC-019](10-acceptance-criteria.md#ac-019-us-10) | ✓ | — | — | ✓ | Unit: `internal/llmlog/llmlog_test.go` (TestNewWriter_rejectsPathThatIsFile, rejectsReadOnlyDirectory). Manual: [06-manual-test-plan.md](06-manual-test-plan.md) (§7). |
 | [AC-020](10-acceptance-criteria.md#ac-020-us-11) | ✓ | ✓ | — | — | Unit: `internal/telegram/adapter_test.go` (notify_chat_id [REQ-023]: from config, fallback to first user, zero when none; SendMessage when bot nil); integration: `tests/integration/scheduler_config_test.go` (scheduler fires and runs tool) |
 | [AC-021](10-acceptance-criteria.md#ac-021-us-11) | — | ✓ | — | — | `tests/integration/scheduler_config_test.go` (task with disallowed command not executed) |
 | [AC-022](10-acceptance-criteria.md#ac-022-us-12) | ✓ | — | — | — | Unit: `internal/tools/run_on_node_test.go` (valid params, runner invoked), `registry_test.go` (Register/Get/contract, empty/duplicate name panics) |

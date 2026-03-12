@@ -77,3 +77,22 @@ If no vector results are found for the query, the system message may contain onl
 - [ ] **Step 4 (optional):** Intentionally break one node (e.g. wrong key or unreachable host), run again; confirm at least one FAIL and non-zero exit code.
 
 **Expected:** Verify run completes without starting the bot; each node is reported as OK or FAIL; exit code 0 only when all nodes succeed.
+
+---
+
+## [AC-017](10-acceptance-criteria.md#ac-017-us-09), [AC-018](10-acceptance-criteria.md#ac-018-us-10), [AC-019](10-acceptance-criteria.md#ac-019-us-10) ([US-09](08-user-stories.md#us-09--llm-logging), [US-10](08-user-stories.md#us-10--log-destination-and-format)) — LLM logging (§7 plan)
+
+**Goal:** Confirm that on each LLM call the application writes request and response to the configured destination in parseable JSONL format, and that an unavailable destination is handled per documented behaviour (fail at startup or best-effort at write time).
+
+- [ ] **Precondition:** Config has `paths.llm_log_dir` set to a writable directory (e.g. `llm_logs` or `./llm_logs`). Ensure the directory exists or can be created by the app (or create it manually). Start the bot (e.g. `go run ./cmd/pa` or run the binary with `-config=config/config.json`).
+- [ ] **Step 1:** Send one text message to the bot (e.g. "Hello" or any short message). Wait for a reply.
+- [ ] **Step 2:** In the configured LLM log directory, find the daily file `llm-YYYY-MM-DD.jsonl` (date in UTC). Open it and confirm there is at least one line.
+- [ ] **Step 3:** Parse the line as JSON. Confirm the object has the required fields: `request_id`, `messages`, `response_content`, `usage`, `duration_ms`. Optionally check that `messages` is an array with role/content entries and that `usage` has token counts. This satisfies AC-017 (request/response recorded) and AC-018 (written to configured destination, parseable format).
+- [ ] **Step 4 (AC-019 — unavailable destination):** Stop the bot. Set `llm_log_dir` to a path that is a file (not a directory), or to a read-only directory. Start the bot again. Confirm either (a) the application refuses to start with a clear error (e.g. "llm log path is not a directory" or "not writable"), or (b) the application starts and on first write logs a warning and does not crash. Behaviour is documented in [internal/llmlog/doc.go](../../internal/llmlog/doc.go) (startup: fail-fast; write-time: log warning, skip entry).
+
+**Expected:** After one conversation turn, `llm_log_dir/llm-YYYY-MM-DD.jsonl` contains one JSON line with `request_id`, `messages`, `response_content`, `usage`, `duration_ms`. Unavailable destination yields either startup error or non-crashing write-time handling per docs.
+
+### Optional: Redaction (AC-038–AC-041)
+
+- [ ] **Redaction in log file:** Send a message that contains a string matching a built-in redaction pattern (e.g. a fake API key like `sk-abc123def456ghi789jkl012`). Open the same JSONL file and confirm the raw string does **not** appear in `messages` or `response_content`; the replacement (e.g. `[REDACTED]`) appears instead.
+- [ ] **Config validation (AC-041):** Add to config `log_redaction.additional_patterns` an entry with `"id": "api_key_openai"` (reserved). Restart the app; confirm it refuses to start with a clear error (e.g. "reserved pattern id"). Remove that entry and add a pattern with invalid `"regex": "[["`. Restart; confirm it refuses to start with an error about invalid regex.
