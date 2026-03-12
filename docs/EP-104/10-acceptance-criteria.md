@@ -194,6 +194,32 @@
 
 ---
 
+## AC-038 (US-16)
+
+**Given** built-in redaction patterns are defined in code, **When** the application writes any string to the LLM request/response log or to application log output, **Then** each built-in pattern is applied and matching substrings are replaced by the pattern’s replacement string before the line is written.
+
+---
+
+## AC-039 (US-16)
+
+**Given** configuration does not define `log_redaction` or defines an empty `additional_patterns` list, **When** the application starts, **Then** only built-in redaction patterns are used and the application starts successfully.
+
+---
+
+## AC-040 (US-16)
+
+**Given** configuration defines `log_redaction.additional_patterns` with one or more entries (pattern identifier, regex, replacement), **When** the application writes to logs, **Then** built-in patterns and additional patterns are both applied, and no additional pattern identifier equals a built-in pattern identifier.
+
+---
+
+## AC-041 (US-16)
+
+**Given** configuration defines an additional pattern whose identifier equals a built-in pattern identifier, **When** the application loads configuration, **Then** the application refuses to start and reports a clear error message that the pattern identifier is reserved.
+
+**Given** configuration defines an additional pattern whose regular expression is invalid (e.g. does not compile), **When** the application loads configuration, **Then** the application refuses to start and reports a clear error message indicating the invalid pattern (e.g. by identifier or index).
+
+---
+
 ## AC-031 (US-17)
 
 **Given** the application is started with `PA_LOG_LEVEL=debug` (or equivalent case-insensitive value), **When** a user message is processed and the core calls the LLM provider, **Then** the core logs the full request (messages sent to the provider, including assembled context from memory and vector search; may be truncated at a documented length) and the full response (model output and usage) at DEBUG level.

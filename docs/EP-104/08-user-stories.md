@@ -169,10 +169,10 @@ As an operator, I want the assistant to use a git repository to track configurat
 
 ## US-16 — Secret leakage protection
 
-As an operator or security-conscious user, I want the assistant to never expose secret values in LLM context, user-facing responses, or logs, so that credentials cannot be extracted via crafted prompts.
+As an operator or security-conscious user, I want the assistant to never expose secret values in LLM context, user-facing responses, or logs, so that credentials cannot be extracted via crafted prompts. Redaction SHALL use built-in patterns (defined in code and not overridable by configuration) and optional additional patterns from `log_redaction.additional_patterns`; configuration SHALL NOT override or disable built-in patterns.
 
-**Requirements:** [REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration).  
-**Acceptance criteria:** [AC-028](10-acceptance-criteria.md#ac-028-us-16), [AC-029](10-acceptance-criteria.md#ac-029-us-16), [AC-030](10-acceptance-criteria.md#ac-030-us-16).
+**Requirements:** [REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-026](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-027](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-028](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-029](01-02-requirements.md#secret-protection-prompt-injection--exfiltration).  
+**Acceptance criteria:** [AC-028](10-acceptance-criteria.md#ac-028-us-16), [AC-029](10-acceptance-criteria.md#ac-029-us-16), [AC-030](10-acceptance-criteria.md#ac-030-us-16), [AC-038](10-acceptance-criteria.md#ac-038-us-16), [AC-039](10-acceptance-criteria.md#ac-039-us-16), [AC-040](10-acceptance-criteria.md#ac-040-us-16), [AC-041](10-acceptance-criteria.md#ac-041-us-16).
 
 ---
 

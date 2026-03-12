@@ -238,6 +238,18 @@ THE PersonalAssistant SHALL use a git repository (within the deployment or data 
 **REQ-017** (Ubiquitous)  
 THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH private keys, or other credentials) in the data sent to the LLM as context (system prompt, message history, or retrieved memory), in user-facing responses in a way that could expose them, or in log output. The implementation SHALL be verified by tests that inject known fake secrets and prompt-injection style user messages and assert that the assistant’s reply and log output do not contain those secrets.
 
+**REQ-026** (Ubiquitous)  
+THE PersonalAssistant SHALL apply configurable redaction to all data written to the LLM request/response log and to application log output so that configured secret patterns are replaced by a non-secret placeholder before writing.
+
+**REQ-027** (Ubiquitous)  
+THE PersonalAssistant SHALL provide a fixed set of built-in redaction patterns (pattern identifier, regular expression, replacement string) defined in code and SHALL apply these patterns to log output; configuration SHALL NOT override or disable built-in patterns.
+
+**REQ-028** (Event-driven)  
+WHEN the operator supplies a valid `log_redaction.additional_patterns` configuration, THE PersonalAssistant SHALL apply those patterns in addition to the built-in patterns; each additional pattern SHALL have a unique pattern identifier that SHALL NOT match any built-in pattern identifier.
+
+**REQ-029** (Event-driven)  
+WHEN the application loads configuration, THE PersonalAssistant SHALL validate the redaction configuration: if an additional pattern identifier equals a built-in identifier, or if a pattern regular expression fails to compile, THE PersonalAssistant SHALL refuse to start and SHALL report a clear error message stating the cause (e.g. reserved identifier or invalid regex).
+
 ---
 
 ## Requirement index
@@ -269,6 +281,10 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-023  | FR   | Scheduler "notify" action: destination chat from telegram.notify_chat_id or first allowed user |
 | REQ-024  | NFR  | Startup validation: refuse to start or clear error for invalid/incomplete config (file, Telegram, users, LLM, embedding) |
 | REQ-025  | NFR  | LLM/embedding provider errors handled without crash (4xx, empty, network, context canceled) |
+| REQ-026  | NFR  | Redaction applied to LLM log and application log output before writing |
+| REQ-027  | NFR  | Built-in redaction patterns in code; not overridable by configuration |
+| REQ-028  | NFR  | Additional redaction patterns from config; ids must not clash with built-in |
+| REQ-029  | NFR  | Config load validates redaction; refuse start on reserved id or invalid regex |
 
 ---
 
@@ -296,6 +312,10 @@ User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US
 | REQ-015   | US-10               | Configurable log destination and format |
 | REQ-016   | US-15               | Git-backed version control for config and memory |
 | REQ-017   | US-16               | Secret leakage protection; tests for prompt-injection exfiltration (AC-028–AC-030) |
+| REQ-026   | US-16               | Log redaction before writing to LLM and app logs |
+| REQ-027   | US-16               | Built-in redaction patterns (non-overridable) |
+| REQ-028   | US-16               | Additional redaction patterns from config |
+| REQ-029   | US-16               | Redaction config validation at load |
 | REQ-018   | US-06               | Memory is assistant’s single store; not partitioned by interlocutor |
 | REQ-019   | US-06               | Memory structure and hierarchical summarization (day/month/year); optional approval |
 | REQ-020   | US-06               | Summary sources: LLM logs, tool results, scheduler events |
@@ -321,7 +341,7 @@ User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US
 | US-13      | REQ-011      |
 | US-14      | REQ-012      |
 | US-15      | REQ-016      |
-| US-16      | REQ-017      |
+| US-16      | REQ-017, REQ-026, REQ-027, REQ-028, REQ-029 |
 | US-17      | REQ-021      |
 | US-18      | REQ-022      |
 | US-19      | REQ-024      |
