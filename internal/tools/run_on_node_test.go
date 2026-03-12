@@ -49,6 +49,7 @@ func TestRunOnNodeTool_Run_invalidParams(t *testing.T) {
 	}
 }
 
+// No AC: RunOnNode tool contract — nil runner returns error.
 func TestRunOnNodeTool_Run_nilRunner(t *testing.T) {
 	tool := NewRunOnNode(nil)
 	_, err := tool.Run(context.Background(), map[string]any{"node_id": "nas", "command": "uptime"})
@@ -57,6 +58,7 @@ func TestRunOnNodeTool_Run_nilRunner(t *testing.T) {
 	}
 }
 
+// No AC: RunOnNode tool propagates runner error (e.g. allowlist denial).
 func TestRunOnNodeTool_Run_runnerError(t *testing.T) {
 	wantErr := errors.New("disallowed")
 	runner := &mockRunOnNodeRunner{

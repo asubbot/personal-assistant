@@ -24,6 +24,7 @@ func TestLoad_ValidConfig_EmptyScheduledTasksPath(t *testing.T) {
 	}
 }
 
+// TestLoad_ValidConfig_NoError — Supporting test for AC-005 (US-03): valid config loads without error.
 func TestLoad_ValidConfig_NoError(t *testing.T) {
 	path := filepath.Join("testdata", "valid_no_users.json")
 	cfg, err := Load(path)
@@ -50,6 +51,7 @@ func TestLoad_ValidConfig_NoError(t *testing.T) {
 	}
 }
 
+// TestLoad_TelegramMaxMessageLength — Supporting test for AC-002 (US-01): max_message_length from config (0 when omitted, value when set).
 func TestLoad_TelegramMaxMessageLength(t *testing.T) {
 	// Without field: 0
 	pathNoField := filepath.Join("testdata", "valid_no_users.json")
@@ -71,6 +73,7 @@ func TestLoad_TelegramMaxMessageLength(t *testing.T) {
 	}
 }
 
+// No AC: valid config with users_path loads; supporting test for adapter/allowlist config.
 func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 	path := filepath.Join("testdata", "valid_with_good_users.json")
 	cfg, err := Load(path)
@@ -116,6 +119,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 }
 
+// No AC: config loader error path — missing file returns error.
 func TestLoad_MissingFile_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "nonexistent.json"))
 	if err == nil {
@@ -126,6 +130,7 @@ func TestLoad_MissingFile_ReturnsError(t *testing.T) {
 	}
 }
 
+// No AC: config loader error path — invalid JSON returns error.
 func TestLoad_InvalidJSON_ReturnsError(t *testing.T) {
 	path := filepath.Join("testdata", "not_valid_json.json")
 	_, err := Load(path)
@@ -137,6 +142,7 @@ func TestLoad_InvalidJSON_ReturnsError(t *testing.T) {
 	}
 }
 
+// No AC: config validation — users file with invalid role returns error.
 func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	// Config points to invalid_users.json (role "superuser" not allowed)
 	path := filepath.Join("testdata", "valid_with_users.json")
@@ -149,6 +155,7 @@ func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	}
 }
 
+// No AC: config loader error path — users_path points to nonexistent file returns error.
 func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	// Config with users_path pointing to a file that does not exist (path is CWD-relative)
 	cfgDir := t.TempDir()

@@ -62,7 +62,7 @@ func TestDedicatedUser_multiNode(t *testing.T) {
 	}
 }
 
-// TestDedicatedUser_unknownNode returns error.
+// No AC: DedicatedUser for unknown node returns error.
 func TestDedicatedUser_unknownNode(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{

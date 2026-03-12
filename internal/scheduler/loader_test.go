@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// No AC: LoadTasks with empty path returns nil tasks, no error.
 func TestLoadTasks_emptyPath(t *testing.T) {
 	tasks, err := LoadTasks("")
 	if err != nil {
@@ -17,6 +18,7 @@ func TestLoadTasks_emptyPath(t *testing.T) {
 	}
 }
 
+// No AC: LoadTasks with missing file returns nil tasks, no error.
 func TestLoadTasks_missingFile(t *testing.T) {
 	tasks, err := LoadTasks(filepath.Join(t.TempDir(), "nonexistent.json"))
 	if err != nil {
@@ -27,6 +29,7 @@ func TestLoadTasks_missingFile(t *testing.T) {
 	}
 }
 
+// Covers AC-024 (US-13): tasks loaded from JSON file (extension mechanism for scheduled tasks).
 func TestLoadTasks_validJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "tasks.json")
@@ -52,6 +55,7 @@ func TestLoadTasks_validJSON(t *testing.T) {
 	}
 }
 
+// No AC: LoadTasks validation — duplicate task name returns error.
 func TestLoadTasks_duplicateName_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "tasks.json")
@@ -71,6 +75,7 @@ func TestLoadTasks_duplicateName_returnsError(t *testing.T) {
 	}
 }
 
+// No AC: LoadTasks validation — empty task name returns error.
 func TestLoadTasks_emptyName_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "tasks.json")
@@ -87,6 +92,7 @@ func TestLoadTasks_emptyName_returnsError(t *testing.T) {
 	}
 }
 
+// No AC: LoadTasks error path — invalid JSON returns error.
 func TestLoadTasks_invalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.json")

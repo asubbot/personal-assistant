@@ -31,7 +31,10 @@ You are the implementation (coding) agent for this epic. Your task is to execute
 - Do not change task order without explicit instruction.
 - Do not add new external dependencies without agreement.
 - IF a task is marked with "*", execute it only when the user explicitly asks.
-- When writing tests, add a comment with covered AC and REQ: `// Test <description> — Validates: AC-XXX (REQ-YYY - description)` (or equivalent in the project language).
+- **Test traceability:** For every new or modified test, add a comment immediately above the test function:
+  - If the test validates an acceptance criterion: state the AC (and optionally US/REQ), e.g. `// Covers AC-XXX (US-YY): <short description>` or `// Validates: AC-XXX (REQ-YYY — description)`.
+  - If the test cannot be traced to an AC (e.g. contract, infrastructure, error path, or supporting behaviour): explicitly mark it with `// No AC: <short reason>`, e.g. `// No AC: config loader error path — missing file returns error.`
+  - Do not leave tests without either a covered AC or an explicit "No AC" comment.
 
 **When gaps are found:** If design is unclear, requirement is missing, or config is undefined, report and offer to return to requirements or design before continuing.
 

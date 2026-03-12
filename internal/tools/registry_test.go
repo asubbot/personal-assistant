@@ -25,6 +25,7 @@ func TestRegistry_RegisterGetList(t *testing.T) {
 	}
 }
 
+// No AC: registry contract — Register with empty name panics.
 func TestRegistry_RegisterEmptyName_panics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
@@ -35,6 +36,7 @@ func TestRegistry_RegisterEmptyName_panics(t *testing.T) {
 	r.Register(&mockTool{name: ""})
 }
 
+// No AC: registry contract — Register duplicate name panics.
 func TestRegistry_RegisterDuplicate_panics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

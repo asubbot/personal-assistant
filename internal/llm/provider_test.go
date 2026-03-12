@@ -37,7 +37,7 @@ func TestNewProvider_supportedTypes(t *testing.T) {
 	}
 }
 
-// TestNewProvider_unsupportedType returns error.
+// No AC: NewProvider(unsupported type) returns error.
 func TestNewProvider_unsupportedType(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "unknown", Endpoint: "http://x", Model: "m"}
 	_, err := NewProvider(cfg)

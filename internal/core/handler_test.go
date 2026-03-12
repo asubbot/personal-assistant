@@ -83,6 +83,7 @@ func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vecto
 
 func (m *mockVectorStore) Close() error { return nil }
 
+// No AC: handler contract — provider success returns content to caller.
 func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello back"}}
@@ -97,6 +98,7 @@ func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	}
 }
 
+// No AC: handler contract — provider error is propagated to caller.
 func TestHandleMessage_returnsProviderError(t *testing.T) {
 	wantErr := errors.New("provider failed")
 	logger := slog.Default()
@@ -112,6 +114,7 @@ func TestHandleMessage_returnsProviderError(t *testing.T) {
 	}
 }
 
+// No AC: handler contract — system and user messages are passed to LLM provider.
 func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -187,6 +190,7 @@ func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 	}
 }
 
+// No AC: when max length is 0, long message is not truncated and goes to provider.
 func TestHandleMessage_noLimit_longMessageGoesToProvider(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}

@@ -50,7 +50,7 @@ func TestChecker_Allow_deniedWhenNotInAllowlist(t *testing.T) {
 	}
 }
 
-// TestChecker_Allow_unknownNode returns false for unknown node.
+// No AC: Allow(unknown node) returns false (supporting behaviour for AC-007/AC-008).
 func TestChecker_Allow_unknownNode(t *testing.T) {
 	_, checker := mustNewChecker(t)
 	if checker.Allow("nonexistent", "any") {
@@ -58,7 +58,7 @@ func TestChecker_Allow_unknownNode(t *testing.T) {
 	}
 }
 
-// TestNewChecker_sameFileSharedByNodes loads allowlist once per path when multiple nodes share it.
+// No AC: NewChecker shares allowlist by path when multiple nodes use same file.
 func TestNewChecker_sameFileSharedByNodes(t *testing.T) {
 	cfg := &config.Config{
 		Version:  1,

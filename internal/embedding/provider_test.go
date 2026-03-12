@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// No AC: NewEmbedder(nil config) returns error.
 func TestNewEmbedder_nilConfig_returnsError(t *testing.T) {
 	_, err := NewEmbedder(nil)
 	if err == nil {
@@ -17,6 +18,7 @@ func TestNewEmbedder_nilConfig_returnsError(t *testing.T) {
 	}
 }
 
+// No AC: NewEmbedder(unsupported type) returns error.
 func TestNewEmbedder_unsupportedType_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
 		Type:       "custom",
@@ -33,6 +35,7 @@ func TestNewEmbedder_unsupportedType_returnsError(t *testing.T) {
 	}
 }
 
+// No AC: NewEmbedder(supported types) returns non-nil embedder (factory contract).
 func TestNewEmbedder_supportedTypes_returnsEmbedder(t *testing.T) {
 	types := []string{"openai", "openai-compatible", "ollama", "OpenAI", "OLLAMA"}
 	for _, typ := range types {
@@ -54,6 +57,7 @@ func TestNewEmbedder_supportedTypes_returnsEmbedder(t *testing.T) {
 	}
 }
 
+// No AC: NewEmbedder(openai, missing API key file) returns error.
 func TestNewEmbedder_openaiWithAPIKeyPath_missingFile_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
 		Type:       "openai",

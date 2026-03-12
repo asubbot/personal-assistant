@@ -33,7 +33,7 @@ func TestNewClient_unknownNode_returnsError(t *testing.T) {
 	}
 }
 
-// TestNewClient_missingKeyFile_returnsError validates that client uses only configured key path.
+// Covers AC-006 (US-03): client uses only configured credentials; missing key file returns error.
 func TestNewClient_missingKeyFile_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.Config{
@@ -57,7 +57,7 @@ func TestNewClient_missingKeyFile_returnsError(t *testing.T) {
 	}
 }
 
-// TestNewClient_invalidKeyFile_returnsError validates parse error for non-PEM content.
+// No AC: SSH client parse error for non-PEM key file returns error.
 func TestNewClient_invalidKeyFile_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	keyPath := filepath.Join(dir, "badkey")
