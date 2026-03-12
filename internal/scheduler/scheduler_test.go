@@ -27,11 +27,13 @@ func TestNew_validTasks(t *testing.T) {
 	<-ctx.Done()
 }
 
-func TestNew_invalidSchedule(t *testing.T) {
+// TestNew_invalidSchedule_returnsError verifies AC-020: invalid schedule is rejected when building the scheduler.
+// robfig/cron AddFunc returns error for invalid cron strings; New propagates it.
+func TestNew_invalidSchedule_returnsError(t *testing.T) {
 	reg := tools.NewRegistry()
 	cfg := Config{Registry: reg, Logger: slog.Default()}
 	taskList := []Task{
-		{Name: "bad", Schedule: "invalid cron!!!", Action: "notify", Params: map[string]any{}},
+		{Name: "bad", Schedule: "not-a-valid-cron", Action: "notify", Params: map[string]any{}},
 	}
 	_, err := New(taskList, cfg)
 	if err == nil {

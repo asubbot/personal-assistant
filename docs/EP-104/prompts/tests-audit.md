@@ -53,18 +53,12 @@
 
 Этап 3. Выполни аудит по каждой задаче:
 - Прогони анализ по шаблону “Mini-prompt: Analysis”.
-- Результаты добавь в `description` Epic (раздел `## Review Results`).
-- Одновременно дублируй результат в docs:
-  - Стратегия хранения: 
-    - `docs/test-audit/README.md` (индекс и статус)
-    - `docs/test-audit/components/<component_name>.md` (детали по компоненту)
-  - Если папки нет — создай.
+- Результаты добавь в `description` Epic (раздел `## Review Results`), если используется Spexus.
+- Итоги аудита выводи в ответе в чате (разделы Scope, Review Results с деталями по компонентам). Не создавай файлы в `docs/test-audit/`.
 
 Этап 4. Сформируй fix-задачи:
 - Для каждого найденного гэпа сформируй отдельный mini-prompt по шаблону “Mini-prompt: Fix”.
-- Сохрани их:
-  - в Epic (`## Gap Fix Prompts`)
-  - в `docs/test-audit/fix-prompts/<component_name>.md`
+- Сохрани их в Epic (`## Gap Fix Prompts`), если используется Spexus. Fix-prompts выводи в ответе в чате (раздел Gap Fix Prompts). Не создавай файлы в `docs/test-audit/fix-prompts/`.
 
 Этап 5. Финальная сверка:
 - Убедись, что каждый компонент имеет:

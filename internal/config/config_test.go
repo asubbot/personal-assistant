@@ -7,6 +7,23 @@ import (
 	"testing"
 )
 
+// TestLoad_ValidConfig_EmptyScheduledTasksPath — Validates: GAP-C1 (config format)
+// Config with empty or omitted scheduled_tasks_path should load successfully.
+// scheduled_tasks_path is NOT in validatePaths required list, so empty is valid.
+func TestLoad_ValidConfig_EmptyScheduledTasksPath(t *testing.T) {
+	path := filepath.Join("testdata", "valid_no_users.json")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load(config with empty scheduled_tasks_path): unexpected error: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("Load(config with empty scheduled_tasks_path): got nil config")
+	}
+	if cfg.Paths.ScheduledTasksPath != "" {
+		t.Errorf("Load(config with empty scheduled_tasks_path): ScheduledTasksPath = %q, want empty", cfg.Paths.ScheduledTasksPath)
+	}
+}
+
 func TestLoad_ValidConfig_NoError(t *testing.T) {
 	path := filepath.Join("testdata", "valid_no_users.json")
 	cfg, err := Load(path)

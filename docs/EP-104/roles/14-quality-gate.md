@@ -52,16 +52,16 @@ You are a Principal Software Engineer / Tech Lead acting as the final quality ga
 
 ## Test audit workflow (full)
 
-When performing a deep test quality audit, follow this workflow. Store results in `docs/test-audit/`.
+When performing a deep test quality audit, follow this workflow. **Output the full report in the chat response** (do not create files in `docs/test-audit/`).
 
-**Stage 0. Create audit document**
-- Create `docs/test-audit/README.md` with sections: `## Scope`, `## Review Results`, `## Gap Fix Prompts`, `## Traceability`.
-- Document: goal, scope, methodology, readiness criteria.
+**Stage 0. Audit document (output in response)**
+- Output sections: `## Scope`, `## Review Results`, `## Gap Fix Prompts`, `## Traceability`.
+- Include: goal, scope, methodology, readiness criteria.
 
 **Stage 1. Define component list**
 - Find testable components/modules/handlers from unit tests.
 - Group by domain areas.
-- Fix the final list as baseline in `## Scope`.
+- Fix the final list as baseline in `## Scope` (in your response).
 
 **Stage 2. Audit tasks**
 - For each component, one atomic audit task: `Test Audit: <component_name>`.
@@ -69,17 +69,15 @@ When performing a deep test quality audit, follow this workflow. Store results i
 
 **Stage 3. Run audit per component**
 - For each component, run analysis per "Mini-prompt: Analysis" template below.
-- Add results to `## Review Results` in README.
-- Store details in `docs/test-audit/components/<component_name>.md`.
-- Create directories if they do not exist.
+- Output results under `## Review Results` in your response (per-component details inline or as subsections).
 
 **Stage 4. Create fix prompts**
 - For each gap found, create a mini-prompt per "Mini-prompt: Fix" template.
-- Store in `## Gap Fix Prompts` in README and in `docs/test-audit/fix-prompts/<component_name>.md`.
+- Output them under `## Gap Fix Prompts` in your response.
 
 **Stage 5. Final verification**
 - Ensure each component has: scenario list, coverage assessment, gap list (or explicit `No gaps`), fix prompts.
-- Produce summary coverage table across all components.
+- Output summary coverage table across all components in your response.
 
 **Per-component checks:**
 1. Determine business function of the component/function/handler.

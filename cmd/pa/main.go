@@ -74,6 +74,7 @@ func main() {
 		}
 	}()
 
+	// Only the first LLM provider is used; fallback to next on failure is TBD for a future increment.
 	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
 	if err != nil {
 		logger.Error("create llm provider", "error", err)

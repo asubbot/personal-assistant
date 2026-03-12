@@ -3,10 +3,16 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"os"
 	"pa/internal/llm"
+	"pa/internal/memory"
+	"pa/internal/vector"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // captureHandler records log records for assertion (AC-031, REQ-021).
@@ -42,6 +48,40 @@ func (m *mockProvider) Complete(ctx context.Context, messages []llm.Message, opt
 	m.lastOpts = opts
 	return m.result, m.err
 }
+
+type mockEmbedder struct {
+	vec []float32
+	err error
+}
+
+func (m *mockEmbedder) Embed(_ context.Context, _ string) ([]float32, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.vec, nil
+}
+
+type mockVectorStore struct {
+	addErr        error
+	searchResults []vector.SearchResult
+	searchErr     error
+}
+
+func (m *mockVectorStore) Add(_ context.Context, _ string, _ []float32, _ string) error {
+	return m.addErr
+}
+
+func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vector.SearchResult, error) {
+	if m.searchErr != nil {
+		return nil, m.searchErr
+	}
+	if m.searchResults != nil {
+		return m.searchResults, nil
+	}
+	return nil, nil
+}
+
+func (m *mockVectorStore) Close() error { return nil }
 
 func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	logger := slog.Default()
@@ -254,5 +294,99 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	}
 	if len(provider.lastMessages) != 0 {
 		t.Error("provider should not be called when over limit (runes)")
+	}
+}
+
+// TestHandleMessage_memoryReadError_stillIncludesVectorContext — Validates: GAP-H1 (REQ-006, REQ-007)
+// When memoryStore.ReadDay returns error, gatherContext should still include vector search results if available.
+func TestHandleMessage_memoryReadError_stillIncludesVectorContext(t *testing.T) {
+	// Create memory store root with today's path as a directory so ReadDay fails (os.ReadFile on dir returns error).
+	rootDir := t.TempDir()
+	now := time.Now().UTC()
+	y, m, d := now.Year(), int(now.Month()), now.Day()
+	dayPath := filepath.Join(rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), fmt.Sprintf("%02d.md", d))
+	if err := os.MkdirAll(filepath.Dir(dayPath), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.Mkdir(dayPath, 0o755); err != nil {
+		t.Fatalf("mkdir day path as dir: %v", err)
+	}
+
+	memStore, err := memory.NewStore(rootDir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	// Verify ReadDay fails (path is a directory, not a file).
+	_, err = memStore.ReadDay(context.Background(), now)
+	if err == nil {
+		t.Fatal("ReadDay must fail when path is a directory")
+	}
+
+	vecStore := &mockVectorStore{
+		searchResults: []vector.SearchResult{{Text: "User said: my favorite color is blue"}},
+	}
+	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
+	logger := slog.Default()
+
+	h := &conversationHandler{
+		provider:    provider,
+		memoryStore: memStore,
+		vectorStore: vecStore,
+		embedder:    emb,
+		logger:      logger,
+	}
+
+	reply, err := h.HandleMessage(context.Background(), 1, "what is my favorite color?")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if reply != "ok" {
+		t.Errorf("reply = %q, want %q", reply, "ok")
+	}
+
+	sys := provider.lastMessages[0].Content
+	if !strings.Contains(sys, "Relevant past context:") {
+		t.Errorf("system message must contain vector context; got:\n%s", sys)
+	}
+	if strings.Contains(sys, "Relevant memory (today)") {
+		t.Errorf("system message must NOT contain memory content when ReadDay fails; got:\n%s", sys)
+	}
+}
+
+// TestHandleMessage_indexTurnError_stillReturnsReply — Validates: GAP-H2 (REQ-007)
+// When indexTurn fails (embedder or vectorStore error), handler still returns reply; error is logged.
+func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
+	embedErr := errors.New("embed failed")
+	cap := &captureHandler{level: slog.LevelError}
+	logger := slog.New(cap)
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello back"}}
+	emb := &mockEmbedder{err: embedErr}
+	vs := &mockVectorStore{}
+
+	h := &conversationHandler{
+		provider:    provider,
+		vectorStore: vs,
+		embedder:    emb,
+		logger:      logger,
+	}
+
+	reply, err := h.HandleMessage(context.Background(), 1, "hi")
+	if err != nil {
+		t.Fatalf("HandleMessage err = %v, want nil (caller must not see index error)", err)
+	}
+	if reply != "hello back" {
+		t.Errorf("reply = %q, want %q", reply, "hello back")
+	}
+
+	var hasIndexTurnError bool
+	for _, r := range cap.records {
+		if r.msg == "index turn" && r.level == slog.LevelError {
+			hasIndexTurnError = true
+			break
+		}
+	}
+	if !hasIndexTurnError {
+		t.Errorf("expected Error \"index turn\" record, got records: %+v", cap.records)
 	}
 }
