@@ -1,5 +1,8 @@
 package config
 
+// ConfigFileName is the name of the main config file inside the config directory (PA_CONFIG_DIR).
+const ConfigFileName = "config.json"
+
 // Config holds application configuration loaded from JSON.
 type Config struct {
 	Version      int                `json:"version"`

@@ -35,7 +35,7 @@
         "auth": {
           "private_key_path": "/Users/asubbot/.ssh/openclaw_synology"
         },
-        "command_allowlist_path": "./config/nas_allowlist.txt"
+        "command_allowlist_path": "nas_allowlist.txt"
       }
     }
   }

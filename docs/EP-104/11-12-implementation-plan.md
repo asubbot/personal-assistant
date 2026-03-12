@@ -22,7 +22,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Acceptance Criteria:_ —
   - **Execution:**
     - **Module:** `go mod init pa` in repo root; `go 1.26` in go.mod. Module name: `pa`.
-    - **Entrypoint:** Single binary `cmd/pa/main.go`. Thin main: init `slog` (TextHandler to stdout), load config via `config.Load(path)`, on error log and `os.Exit(1)`, then exit 0 (no Telegram/LLM yet). Config path from flag `-config=<path>` or env `PA_CONFIG_PATH`; default `./config/config.json` or empty (Load returns error).
+    - **Entrypoint:** Single binary `cmd/pa/main.go`. Thin main: init `slog` (TextHandler to stdout), load config via `config.Load(path)`, on error log and `os.Exit(1)`, then exit 0 (no Telegram/LLM yet). Config path from env `PA_CONFIG_DIR` (directory); config file is always `config.json` inside that directory. Default `PA_CONFIG_DIR=./config`, so default config file is `./config/config.json`. If unset or empty, `./config` is used.
     - **internal/config:** Stub only in this task: e.g. `Load(path string) (*Config, error)` that returns an error (e.g. "config load not implemented") or empty struct until task 1.1. No JSON parsing yet.
     - **Other internal packages:** Create each listed directory; add a minimal `doc.go` per package (`// Package <name> ...` + `package <name>`) so directories are valid Go packages and `go build ./...` succeeds. No other code in telegram/core/memory/vector/llm/scheduler/tools/ssh/logging until later tasks.
     - **Verification:** `go build ./...` passes; `go run ./cmd/pa` exits (non-zero without config path or with missing file; zero if stub returns success; exact behaviour is decided in 1.1).
@@ -234,26 +234,26 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 ## 7. LLM logging
 
-- [ ] 7.1 Implement LLM logging subsystem
+- [x] 7.1 Implement LLM logging subsystem
   - On each LLM call: write request (input messages, model params, request_id) and response (output, token counts, duration/model id) to configurable destination
   - Format: JSON Lines; configurable path or directory
   - _Requirements:_ [REQ-014](01-02-requirements.md#llm-and-logging), [REQ-015](01-02-requirements.md#llm-and-logging)
   - _User Stories:_ [US-09](08-user-stories.md#us-09--llm-logging), [US-10](08-user-stories.md#us-10--log-destination-and-format)
   - _Acceptance Criteria:_ [AC-017](10-acceptance-criteria.md#ac-017-us-09), [AC-018](10-acceptance-criteria.md#ac-018-us-10)
 
-- [ ] 7.2 Handle unavailable log destination
+- [x] 7.2 Handle unavailable log destination
   - When destination is configured but unavailable (e.g. path not writable): fail-safe or fallback per documented behaviour
   - _Requirements:_ [REQ-015](01-02-requirements.md#llm-and-logging)
   - _User Stories:_ [US-10](08-user-stories.md#us-10--log-destination-and-format)
   - _Acceptance Criteria:_ [AC-019](10-acceptance-criteria.md#ac-019-us-10)
 
-- [ ] 7.3 Ensure logs never contain secret values; redaction with built-in + additional patterns ([REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), REQ-026–REQ-029)
+- [x] 7.3 Ensure logs never contain secret values; redaction with built-in + additional patterns ([REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), REQ-026–REQ-029)
   - Apply redaction to all data written to the LLM request/response log and to application log output (REQ-026). Built-in redaction patterns are defined in code and SHALL NOT be overridable by configuration (REQ-027). Config may add patterns via `log_redaction.additional_patterns`; additional pattern ids must not match built-in ids (REQ-028). At config load, validate redaction config: refuse to start with clear error if an additional pattern id is reserved or regex does not compile (REQ-029). App logs must not log config fields that hold secrets.
   - _Requirements:_ [REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-026](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-027](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-028](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-029](01-02-requirements.md#secret-protection-prompt-injection--exfiltration)
   - _User Stories:_ [US-16](08-user-stories.md#us-16--secret-leakage-protection)
   - _Acceptance Criteria:_ [AC-028](10-acceptance-criteria.md#ac-028-us-16), [AC-029](10-acceptance-criteria.md#ac-029-us-16), [AC-030](10-acceptance-criteria.md#ac-030-us-16), [AC-038](10-acceptance-criteria.md#ac-038-us-16), [AC-039](10-acceptance-criteria.md#ac-039-us-16), [AC-040](10-acceptance-criteria.md#ac-040-us-16), [AC-041](10-acceptance-criteria.md#ac-041-us-16)
 
-- [ ] 7.4 Write unit tests for LLM logging
+- [x] 7.4 Write unit tests for LLM logging
   - Log entry contains request and response fields; entries written to configured path; parseable format
   - _Requirements:_ [REQ-014](01-02-requirements.md#llm-and-logging), [REQ-015](01-02-requirements.md#llm-and-logging)
   - _User Stories:_ [US-09](08-user-stories.md#us-09--llm-logging), [US-10](08-user-stories.md#us-10--log-destination-and-format)
@@ -289,14 +289,14 @@ _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM loggi
 
 ## 9. Docker and deploy (DS220+)
 
-- [ ] 9.1 Add Dockerfile and docker-compose
+- [x] 9.1 Add Dockerfile and docker-compose
   - Multi-stage build; final image linux/amd64 (Alpine or distroless); volumes for config, memory, logs
   - Single core service; target Synology DS220+ (x86_64)
   - _Requirements:_ [REQ-002](01-02-requirements.md#interface-and-deployment)
   - _User Stories:_ [US-02](08-user-stories.md#us-02--docker-deploy)
   - _Acceptance Criteria:_ [AC-003](10-acceptance-criteria.md#ac-003-us-02), [AC-004](10-acceptance-criteria.md#ac-004-us-02)
 
-- [ ] 9.2 Verify container start and one conversation
+- [x] 9.2 Verify container start and one conversation
   - Container starts with test config; one message in → reply out (e.g. via test bot or curl if API exposed for tests)
   - _Requirements:_ [REQ-002](01-02-requirements.md#interface-and-deployment)
   - _User Stories:_ [US-02](08-user-stories.md#us-02--docker-deploy)
@@ -348,7 +348,7 @@ _Do this when most functionality is in place._
 
 ## Config file (JSON)
 
-_Reference material._ Application config is a single JSON file (path from `-config` or `PA_CONFIG_PATH`). Example:
+_Reference material._ Application config is a single JSON file at `config.json` inside the config directory (from `PA_CONFIG_DIR`; default `./config`). Example:
 
 ```json
 {

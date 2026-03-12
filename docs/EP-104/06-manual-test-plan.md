@@ -71,7 +71,7 @@ If no vector results are found for the query, the system message may contain onl
 **Criterion:** Given the application is invoked with the designated parameter to verify node availability, when it runs, it loads config, connects to each node over SSH, runs one allowlisted command per node, reports success or failure, and exits without starting the bot.
 
 - [ ] **Precondition:** Config has at least one node with valid host, dedicated user, key path, and allowlist file; allowlist includes a safe command (e.g. `uptime`, `echo ok`).
-- [ ] **Step 1:** Run the binary with the verify parameter (e.g. `go run ./cmd/pa -config ./config/config.json -verify-nodes` or as documented).
+- [ ] **Step 1:** Run the binary with the verify parameter (e.g. `go run ./cmd/pa -verify-nodes` or as documented).
 - [ ] **Step 2:** Confirm output lists each configured node and reports OK or FAIL; on success, probe command output (e.g. uptime) may be shown.
 - [ ] **Step 3:** Confirm the process exits (does not start Telegram polling or webhook).
 - [ ] **Step 4 (optional):** Intentionally break one node (e.g. wrong key or unreachable host), run again; confirm at least one FAIL and non-zero exit code.

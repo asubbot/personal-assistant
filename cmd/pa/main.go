@@ -22,6 +22,15 @@ import (
 	"syscall"
 )
 
+// configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./config") joined with config.ConfigFileName.
+func configFilePath() string {
+	dir := os.Getenv("PA_CONFIG_DIR")
+	if dir == "" {
+		dir = "./config"
+	}
+	return filepath.Join(dir, config.ConfigFileName)
+}
+
 // logLevelFromEnv returns the slog level from PA_LOG_LEVEL (e.g. "debug", "info"); default is INFO (REQ-021).
 func logLevelFromEnv() slog.Level {
 	env := os.Getenv("PA_LOG_LEVEL")
@@ -36,32 +45,27 @@ func logLevelFromEnv() slog.Level {
 }
 
 func main() {
-	configPath := flag.String("config", "", "Path to config JSON file")
 	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
 	flag.Parse()
-	if *configPath == "" {
-		*configPath = os.Getenv("PA_CONFIG_PATH")
-	}
-	if *configPath == "" {
-		*configPath = "./config/config.json"
-	}
+
+	configFilePath := configFilePath()
 
 	logLevel := logLevelFromEnv()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
-	cfg, err := config.Load(*configPath)
+	cfg, err := config.Load(configFilePath)
 	if err != nil {
 		logger.Error("load config", "error", err)
 		os.Exit(1)
 	}
-	logger.Info("config loaded", "path", *configPath)
+	logger.Info("config loaded", "path", configFilePath)
 
 	if *verifyNodes {
-		runVerifyNodes(cfg, *configPath, *verifyNodesCommand, logger)
+		runVerifyNodes(cfg, configFilePath, *verifyNodesCommand, logger)
 		os.Exit(0)
 	}
 
-	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, *configPath, logger)
+	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, configFilePath, logger)
 	if err != nil {
 		logger.Error("setup", "error", err)
 		os.Exit(1)

@@ -27,7 +27,9 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
-	// All paths in config are relative to project root (CWD at startup). Validate users file if set.
+	ResolvePaths(&raw, path)
+
+	// Validate users file if set (path is now resolved).
 	if raw.Telegram.UsersPath != "" {
 		if _, err := LoadTelegramUsers(raw.Telegram.UsersPath); err != nil {
 			return nil, fmt.Errorf("telegram users file %s: %w", raw.Telegram.UsersPath, err)

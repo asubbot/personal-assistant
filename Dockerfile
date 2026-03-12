@@ -18,7 +18,7 @@ RUN apk add --no-cache ca-certificates
 RUN adduser -D -g "" pa
 USER pa
 COPY --from=builder /pa /pa
-# Config path can be overridden via PA_CONFIG_PATH or -config.
-ENV PA_CONFIG_PATH=/etc/pa/config.json
+# Config directory; config file is config.json inside it. Override via PA_CONFIG_DIR.
+ENV PA_CONFIG_DIR=/etc/pa
 ENTRYPOINT ["/pa"]
-CMD ["-config", "/etc/pa/config.json"]
+CMD []
