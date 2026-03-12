@@ -108,6 +108,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing dedicated_user", "missing_dedicated_user.json", "nodes.n1.dedicated_user is required"},
 		{"missing command_allowlist_path", "missing_command_allowlist.json", "nodes.n1.command_allowlist_path is required"},
 		{"missing embedding", "missing_embedding.json", "embedding is required"},
+		{"invalid pa_timezone", "invalid_pa_timezone.json", "invalid pa_timezone"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -180,6 +181,36 @@ func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "log_redaction") || !strings.Contains(err.Error(), "invalid regex") {
 		t.Errorf("Load: error = %v (expect log_redaction invalid regex message)", err)
+	}
+}
+
+// TestLoad_InvalidPATimezone_ReturnsError — invalid IANA timezone in pa_timezone refuses start.
+func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
+	_, err := Load(filepath.Join("testdata", "invalid_pa_timezone.json"))
+	if err == nil {
+		t.Fatal("Load(invalid pa_timezone): expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "pa_timezone") {
+		t.Errorf("Load(invalid pa_timezone): error = %v (expect pa_timezone in message)", err)
+	}
+}
+
+// TestLoad_ValidPATimezone_loads — valid pa_timezone (e.g. Europe/Moscow, UTC) loads successfully.
+func TestLoad_ValidPATimezone_loads(t *testing.T) {
+	cfg, err := Load(filepath.Join("testdata", "valid_pa_timezone.json"))
+	if err != nil {
+		t.Fatalf("Load(valid_pa_timezone): %v", err)
+	}
+	if cfg.PATimezone != "Europe/Moscow" {
+		t.Errorf("PATimezone = %q, want Europe/Moscow", cfg.PATimezone)
+	}
+	// Empty/omitted pa_timezone loads (valid_no_users.json has no pa_timezone)
+	cfg2, err := Load(filepath.Join("testdata", "valid_no_users.json"))
+	if err != nil {
+		t.Fatalf("Load(valid_no_users): %v", err)
+	}
+	if cfg2.PATimezone != "" {
+		t.Errorf("PATimezone when omitted = %q, want empty", cfg2.PATimezone)
 	}
 }
 

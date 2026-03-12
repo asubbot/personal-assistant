@@ -12,6 +12,7 @@ type Config struct {
 	Paths        Paths              `json:"paths"`
 	Nodes        map[string]Node    `json:"nodes"`
 	LogRedaction *LogRedaction      `json:"log_redaction"` // optional; additional redaction patterns (built-in are always applied)
+	PATimezone   string             `json:"pa_timezone"`   // optional; IANA timezone for assistant's day (e.g. Europe/Moscow); used for summarization date; empty = UTC
 }
 
 // LogRedaction holds optional additional redaction patterns (REQ-028). Built-in patterns cannot be overridden (REQ-027).

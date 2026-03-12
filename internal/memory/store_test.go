@@ -37,7 +37,7 @@ func TestWriteDay_createsCalendarPath(t *testing.T) {
 		t.Fatalf("WriteDay: %v", err)
 	}
 
-	wantPath := filepath.Join(dir, "2026", "03", "09.md")
+	wantPath := filepath.Join(dir, "2026", "03", "09", "full.md")
 	if _, err := os.Stat(wantPath); err != nil {
 		t.Fatalf("expected file at %s: %v", wantPath, err)
 	}
@@ -103,17 +103,85 @@ func TestStore_singleStore_noPerUserPaths(t *testing.T) {
 
 	day := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	path := store.pathForDay(day)
-	// Path must be only rootDir/YYYY/MM/DD.md — no user id or interlocutor segment
-	if filepath.Base(filepath.Dir(path)) != "04" || filepath.Base(filepath.Dir(filepath.Dir(path))) != "2026" {
-		t.Errorf("path must be calendar-only (year/month/day): got %s", path)
+	// Path must be rootDir/YYYY/MM/DD/full.md — no user id or interlocutor segment
+	if filepath.Base(path) != "full.md" {
+		t.Errorf("file must be full.md: got %s", filepath.Base(path))
 	}
-	if filepath.Base(path) != "01.md" {
-		t.Errorf("file must be DD.md: got %s", filepath.Base(path))
+	if filepath.Base(filepath.Dir(path)) != "01" || filepath.Base(filepath.Dir(filepath.Dir(path))) != "04" {
+		t.Errorf("path must be calendar-only (year/month/day): got %s", path)
 	}
 
 	_ = store.WriteDay(ctx, day, "content")
 	got, _ := store.ReadDay(ctx, day)
 	if got != "content" {
 		t.Errorf("ReadDay: got %q", got)
+	}
+}
+
+// TestWriteDaySummary_ReadDaySummary_roundtrip — day summary path layout and overwrite.
+func TestWriteDaySummary_ReadDaySummary_roundtrip(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
+	content := "Day summary: discussed X and Y."
+	if err := store.WriteDaySummary(ctx, day, content); err != nil {
+		t.Fatalf("WriteDaySummary: %v", err)
+	}
+
+	got, err := store.ReadDaySummary(ctx, day)
+	if err != nil {
+		t.Fatalf("ReadDaySummary: %v", err)
+	}
+	if got != content {
+		t.Errorf("ReadDaySummary: got %q, want %q", got, content)
+	}
+
+	// Overwrite
+	content2 := "Updated summary."
+	if err := store.WriteDaySummary(ctx, day, content2); err != nil {
+		t.Fatalf("WriteDaySummary overwrite: %v", err)
+	}
+	got, _ = store.ReadDaySummary(ctx, day)
+	if got != content2 {
+		t.Errorf("ReadDaySummary after overwrite: got %q, want %q", got, content2)
+	}
+}
+
+// TestReadDaySummary_missingFile_returnsEmpty — missing summary file returns empty string.
+func TestReadDaySummary_missingFile_returnsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	day := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	got, err := store.ReadDaySummary(ctx, day)
+	if err != nil {
+		t.Fatalf("ReadDaySummary: %v", err)
+	}
+	if got != "" {
+		t.Errorf("ReadDaySummary (missing): got %q, want empty", got)
+	}
+}
+
+// TestPathMonthSummary_PathYearSummary — path helpers for future month/year summaries.
+func TestPathMonthSummary_PathYearSummary(t *testing.T) {
+	root := filepath.Join("data", "memory")
+	wantMonth := filepath.Join(root, "2026", "03", "summary.md")
+	if got := PathMonthSummary(root, 2026, 3); got != wantMonth {
+		t.Errorf("PathMonthSummary = %q, want %q", got, wantMonth)
+	}
+	wantYear := filepath.Join(root, "2026", "summary.md")
+	if got := PathYearSummary(root, 2026); got != wantYear {
+		t.Errorf("PathYearSummary = %q, want %q", got, wantYear)
 	}
 }

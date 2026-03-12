@@ -121,3 +121,20 @@ See [docs/EP-104/implementation-plan.md](docs/EP-104/implementation-plan.md) —
 **Scheduled tasks:** The file at `paths.scheduled_tasks_path` is a JSON array of tasks. Each task has a unique `name` (string), `schedule` (cron or `@every` interval), `action` (tool name or `notify`), and `params`. Duplicate or empty names cause a load error. Task names appear in logs when a task runs. Full format and examples: implementation plan, **Config file (JSON)** → Scheduled tasks file.
 
 **Adding nodes and scheduled tasks without rebuild:** Add a new node in config (under `nodes`) or a new task in the scheduled tasks file (path in `paths.scheduled_tasks_path`); restart the application so the new config/tasks are loaded. No Docker image rebuild is required (AC-024).
+
+---
+
+## Log redaction (secrets)
+
+All data written to the LLM request/response log and to application log output is redacted: matching secret-like values are replaced with `[REDACTED]` before writing.
+
+**Built-in patterns** (always applied; cannot be disabled or overridden by config):
+
+| What is redacted        | Pattern / format |
+|-------------------------|------------------|
+| OpenAI API keys         | `sk-` followed by 20+ alphanumeric characters |
+| Telegram bot tokens     | Numeric bot ID, colon, 35-character token (e.g. `1234567890:AAH...`) |
+| Bearer tokens           | Word `Bearer` (case-insensitive) followed by the token (e.g. JWT) |
+| Paths to secret files   | File paths containing `token`, `secret`, `key`, `credential`, or `password` (e.g. `/run/secrets/openai_key`) |
+
+**Additional patterns:** You can add more patterns in config under `log_redaction.additional_patterns`: each entry has `id`, `regex`, and `replacement`. Pattern `id` must not equal any built-in id (`api_key_openai`, `telegram_bot_token`, `bearer_token`, `generic_secret_path`); the regex must be valid or the app refuses to start. See the implementation plan, **Config file (JSON)** → `log_redaction`, for the full format and examples.

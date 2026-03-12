@@ -1,12 +1,14 @@
 package llmlog
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"pa/internal/llm"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -133,4 +135,39 @@ func (w *fileWriter) logWriteError(op string, err error) {
 	if w.log != nil {
 		w.log.Warn("llm log write failed", "op", op, "error", err)
 	}
+}
+
+// ReadEntriesForDay reads all LLM log entries for the given calendar day (UTC).
+// File name is llm-YYYY-MM-DD.jsonl under dir. Returns empty slice and nil error if the file does not exist.
+func ReadEntriesForDay(dir string, day time.Time) ([]Entry, error) {
+	dir = filepath.Clean(dir)
+	dateStr := day.UTC().Format("2006-01-02")
+	name := "llm-" + dateStr + ".jsonl"
+	path := filepath.Join(dir, name)
+	f, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("llmlog: read %s: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	var entries []Entry
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		var e Entry
+		if err := json.Unmarshal([]byte(line), &e); err != nil {
+			return nil, fmt.Errorf("llmlog: parse %s: %w", path, err)
+		}
+		entries = append(entries, e)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("llmlog: read %s: %w", path, err)
+	}
+	return entries, nil
 }

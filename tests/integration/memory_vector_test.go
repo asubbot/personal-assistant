@@ -46,7 +46,7 @@ func TestMemoryStore_injectsTodayMemory(t *testing.T) {
 	dir := t.TempDir()
 	now := time.Now().UTC()
 	y, m, d := now.Year(), int(now.Month()), now.Day()
-	calPath := filepath.Join(dir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), fmt.Sprintf("%02d.md", d))
+	calPath := filepath.Join(dir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), fmt.Sprintf("%02d", d), "full.md")
 	if err := os.MkdirAll(filepath.Dir(calPath), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}

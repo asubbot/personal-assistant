@@ -259,7 +259,7 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _User Stories:_ [US-09](08-user-stories.md#us-09--llm-logging), [US-10](08-user-stories.md#us-10--log-destination-and-format)
   - _Acceptance Criteria:_ [AC-017](10-acceptance-criteria.md#ac-017-us-09), [AC-018](10-acceptance-criteria.md#ac-018-us-10), [AC-019](10-acceptance-criteria.md#ac-019-us-10)
 
-- [ ] 8. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 8. Checkpoint — Ensure all tests pass, ask the user if questions arise.
   - _Requirements:_ — _User Stories:_ — _Acceptance Criteria:_ (all from §7)
 
 ---
@@ -268,16 +268,24 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM logging](#7-llm-logging). Implement this section after both are in place._
 
-- [ ] 8.1 Hierarchical memory summarization (day / month / year)
-  - Scheduled jobs: end-of-day (e.g. after midnight) produce day summary from that day's inputs; end-of-month produce month summary from day summaries; end-of-year produce year summary from month summaries
-  - Inputs for day summary: LLM logs ([REQ-014](01-02-requirements.md#llm-and-logging), [REQ-015](01-02-requirements.md#llm-and-logging)), tool execution results, scheduler execution events; timezone/config for day boundary
-  - Optional: approval workflow (e.g. send draft to owner via Telegram, persist only on approve or after timeout per config)
+**Day summarization (implemented):** Built only from LLM logs (no tool/scheduler events). Config field `pa_timezone` (IANA, e.g. `Europe/Moscow`) defines the assistant’s timezone for “yesterday” and day boundaries. Summary paths: day → `memory_dir/YYYY/MM/DD/summary.md`; month → `memory_dir/YYYY/MM/summary.md`; year → `memory_dir/YYYY/summary.md` (month/year paths reserved for later). No approval workflow; summaries are written directly. Vector index: Option 1 — after writing the summary file, the summary text is embedded and added to the vector store (id `summary:day:YYYY-MM-DD`; re-run replaces via Delete then Add). CLI: `pa -summarize-day` (optional `-date=YYYY-MM-DD`; default = yesterday in `pa_timezone` or UTC). Cron or external scheduler can run the binary with this flag; no built-in scheduled task action is required.
+
+**Day summarization flow:** Read LLM log entries for the day (`llm_log_dir/llm-YYYY-MM-DD.jsonl`) → build transcript → one LLM call to summarize → write to `memory_dir/YYYY/MM/DD/summary.md` → vector store Delete(id) then Add(id, embedding, summary). If there are no log entries, no write or vector update is performed.
+
+- [x] 8.1 Day summarization (LLM logs only)
+  - Day summary from LLM logs only; `pa_timezone` in config; paths `memory_dir/YYYY/MM/DD/summary.md` (and month/year path convention); no approval; vector index Option 1; CLI `-summarize-day`
   - _Requirements:_ [REQ-019](01-02-requirements.md#memory-and-indexing), [REQ-020](01-02-requirements.md#memory-and-indexing)
   - _User Stories:_ [US-06](08-user-stories.md#us-06--memory-store)
   - _Acceptance Criteria:_ [AC-011](10-acceptance-criteria.md#ac-011-us-06), [AC-012](10-acceptance-criteria.md#ac-012-us-06)
 
-- [ ] 8.2 Write unit and integration tests for hierarchical summarization
-  - Given mock LLM logs and tool/scheduler events, day summary includes expected inputs (unit or integration)
+- [ ] 8.1b Month/year summarization (deferred)
+  - End-of-month and end-of-year summaries from day/month summaries; path convention in place
+  - _Requirements:_ [REQ-019](01-02-requirements.md#memory-and-indexing), [REQ-020](01-02-requirements.md#memory-and-indexing)
+  - _User Stories:_ [US-06](08-user-stories.md#us-06--memory-store)
+  - _Acceptance Criteria:_ (to be defined when implemented)
+
+- [x] 8.2 Write unit and integration tests for day summarization
+  - Unit tests: config pa_timezone, memory WriteDaySummary/ReadDaySummary, llmlog ReadEntriesForDay, vector Delete, summarize.Day (no entries skip; with entries: one LLM call, memory write, vector add). CLI test: `-summarize-day -date=...` exits 0
   - _Requirements:_ [REQ-019](01-02-requirements.md#memory-and-indexing), [REQ-020](01-02-requirements.md#memory-and-indexing)
   - _User Stories:_ [US-06](08-user-stories.md#us-06--memory-store)
   - _Acceptance Criteria:_ [AC-011](10-acceptance-criteria.md#ac-011-us-06), [AC-012](10-acceptance-criteria.md#ac-012-us-06) (summarization inputs and structure)
@@ -405,6 +413,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 ```
 
 - **version**: integer; config schema version for backward compatibility. The loader rejects unsupported versions and can migrate or validate per-version rules.
+- **pa_timezone** (optional): IANA timezone name (e.g. `Europe/Moscow`, `UTC`) for the assistant’s “day” and day boundaries. Used for day summarization (e.g. default “yesterday” when running `pa -summarize-day` without `-date`). If empty or omitted, UTC is used. Invalid value refuses start with clear error (e.g. “invalid pa_timezone: unknown timezone …”).
 - **paths.vector_index_path**: path to the vector index file. Use `./data/pa_vectors.sqlite` (or `/data/pa_vectors.sqlite` in production) for the default SQLite+sqlite-vec implementation.
 - **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin). Format: see [Telegram users file](#telegram-users-file) below.
 - **telegram.notify_chat_id**: optional; Telegram chat ID (e.g. user or group) to which the scheduler sends messages for tasks with `action` `"notify"`. When non-zero, that chat is used. When zero or omitted and `users_path` lists at least one user, the first allowed user’s ID is used as the destination ([REQ-023](01-02-requirements.md#scheduler-and-tools)). When no destination is available, the notify action does not send and is handled per implementation (e.g. log).

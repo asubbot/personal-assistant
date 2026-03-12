@@ -23,10 +23,16 @@ func NewStore(rootDir string) (*Store, error) {
 	return &Store{rootDir: filepath.Clean(rootDir)}, nil
 }
 
-// pathForDay returns the file path for the given calendar day: rootDir/YYYY/MM/DD.md.
+// pathForDay returns the file path for the given calendar day: rootDir/YYYY/MM/DD/full.md.
 func (s *Store) pathForDay(t time.Time) string {
 	y, m, d := t.UTC().Date()
-	return filepath.Join(s.rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", int(m)), fmt.Sprintf("%02d.md", d))
+	return filepath.Join(s.rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", int(m)), fmt.Sprintf("%02d", d), "full.md")
+}
+
+// pathForDaySummary returns the path for the day summary: rootDir/YYYY/MM/DD/summary.md.
+func (s *Store) pathForDaySummary(day time.Time) string {
+	y, m, d := day.UTC().Date()
+	return filepath.Join(s.rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", int(m)), fmt.Sprintf("%02d", d), "summary.md")
 }
 
 // WriteDay writes content as markdown for the given calendar day (UTC).
@@ -55,4 +61,42 @@ func (s *Store) ReadDay(ctx context.Context, day time.Time) (string, error) {
 		return "", fmt.Errorf("memory: read %s: %w", path, err)
 	}
 	return string(data), nil
+}
+
+// WriteDaySummary writes the day summary markdown for the given calendar day (UTC).
+// Path: rootDir/YYYY/MM/DD/summary.md. Creates parent directories as needed. Overwrites existing file.
+func (s *Store) WriteDaySummary(ctx context.Context, day time.Time, content string) error {
+	path := s.pathForDaySummary(day)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("memory: mkdir %s: %w", dir, err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("memory: write %s: %w", path, err)
+	}
+	return nil
+}
+
+// ReadDaySummary reads the day summary for the given calendar day (UTC).
+// Returns empty string and nil error if the file does not exist.
+func (s *Store) ReadDaySummary(ctx context.Context, day time.Time) (string, error) {
+	path := s.pathForDaySummary(day)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("memory: read %s: %w", path, err)
+	}
+	return string(data), nil
+}
+
+// PathMonthSummary returns the path for the month summary: rootDir/YYYY/MM/summary.md (for future use).
+func PathMonthSummary(rootDir string, year int, month int) string {
+	return filepath.Join(rootDir, fmt.Sprintf("%04d", year), fmt.Sprintf("%02d", month), "summary.md")
+}
+
+// PathYearSummary returns the path for the year summary: rootDir/YYYY/summary.md (for future use).
+func PathYearSummary(rootDir string, year int) string {
+	return filepath.Join(rootDir, fmt.Sprintf("%04d", year), "summary.md")
 }

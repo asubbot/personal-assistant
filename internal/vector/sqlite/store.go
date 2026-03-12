@@ -81,6 +81,18 @@ func (s *Store) Add(ctx context.Context, id string, embedding []float32, text st
 	return nil
 }
 
+// Delete implements vector.Store. Removes the row with the given id. No-op if id does not exist.
+func (s *Store) Delete(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx,
+		fmt.Sprintf("DELETE FROM %s WHERE id = ?", tableName),
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("vector/sqlite: delete: %w", err)
+	}
+	return nil
+}
+
 // Search implements vector.Store.
 func (s *Store) Search(ctx context.Context, queryEmbedding []float32, topK int) ([]vector.SearchResult, error) {
 	if len(queryEmbedding) != s.dimensions {

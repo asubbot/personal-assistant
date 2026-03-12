@@ -15,6 +15,7 @@ import (
 	"pa/internal/memory"
 	"pa/internal/noderunner"
 	"pa/internal/scheduler"
+	"pa/internal/summarize"
 	"pa/internal/telegram"
 	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
@@ -47,6 +48,8 @@ func logLevelFromEnv() slog.Level {
 func main() {
 	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
+	summarizeDay := flag.Bool("summarize-day", false, "Run day summarization for the given date and exit (do not start the bot)")
+	summarizeDayDate := flag.String("date", "", "Date for -summarize-day in YYYY-MM-DD (default: yesterday in pa_timezone or UTC)")
 	flag.Parse()
 
 	configFilePath := configFilePath()
@@ -63,6 +66,11 @@ func main() {
 	if *verifyNodes {
 		runVerifyNodes(cfg, configFilePath, *verifyNodesCommand, logger)
 		os.Exit(0)
+	}
+
+	if *summarizeDay {
+		runSummarizeDay(cfg, *summarizeDayDate, logger)
+		return
 	}
 
 	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, configFilePath, logger)
@@ -133,6 +141,68 @@ func startSchedulerIfConfigured(cfg *config.Config, adapter core.Adapter, toolRe
 		stopCtx := sched.Stop()
 		<-stopCtx.Done()
 	}
+}
+
+// runSummarizeDay runs day summarization for the given date (or yesterday in pa_timezone), then exits.
+func runSummarizeDay(cfg *config.Config, dateFlag string, logger *slog.Logger) {
+	day, err := summarize.ParseDayDate(dateFlag, cfg.PATimezone)
+	if err != nil {
+		logger.Error("summarize-day: invalid date", "error", err, "date", dateFlag)
+		os.Exit(1)
+	}
+
+	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
+		logger.Error("summarize-day: mkdir memory", "error", err)
+		os.Exit(1)
+	}
+	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
+	if err != nil {
+		logger.Error("summarize-day: memory store", "error", err)
+		os.Exit(1)
+	}
+
+	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
+	if err != nil {
+		logger.Error("summarize-day: llm provider", "error", err)
+		os.Exit(1)
+	}
+
+	embedder, err := embedding.NewEmbedder(cfg.Embedding)
+	if err != nil {
+		logger.Error("summarize-day: embedder", "error", err)
+		os.Exit(1)
+	}
+
+	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
+	if err := os.MkdirAll(vecDir, 0o755); err != nil {
+		logger.Error("summarize-day: mkdir vector", "error", err)
+		os.Exit(1)
+	}
+	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
+	if err != nil {
+		logger.Error("summarize-day: vector store", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if closeErr := vectorStore.Close(); closeErr != nil {
+			logger.Error("summarize-day: close vector store", "error", closeErr)
+		}
+	}()
+
+	ctx := context.Background()
+	err = summarize.Day(ctx, day, summarize.DayConfig{
+		LLMLogDir:   cfg.Paths.LLMLogDir,
+		LLMProvider: llmProvider,
+		MemoryStore: memoryStore,
+		Embedder:    embedder,
+		VectorStore: vectorStore,
+		Logger:      logger,
+	})
+	if err != nil {
+		logger.Error("summarize-day", "error", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
 
 // runVerifyNodes loads allowlist and NodeRunner, runs one allowlisted command on each configured node, reports success or failure per node, then exits (REQ-022, AC-032).

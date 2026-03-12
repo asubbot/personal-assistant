@@ -7,6 +7,7 @@ import (
 	"os"
 	"pa/internal/logredact"
 	"strings"
+	"time"
 )
 
 const supportedVersion = 1
@@ -60,6 +61,19 @@ func validate(c *Config) error {
 	}
 	if err := validateLogRedaction(c); err != nil {
 		return err
+	}
+	if err := validatePATimezone(c); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validatePATimezone(c *Config) error {
+	if strings.TrimSpace(c.PATimezone) == "" {
+		return nil
+	}
+	if _, err := time.LoadLocation(c.PATimezone); err != nil {
+		return fmt.Errorf("config: invalid pa_timezone %q: %w", c.PATimezone, err)
 	}
 	return nil
 }

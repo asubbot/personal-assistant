@@ -71,6 +71,8 @@ func (m *mockVectorStore) Add(_ context.Context, _ string, _ []float32, _ string
 	return m.addErr
 }
 
+func (m *mockVectorStore) Delete(_ context.Context, _ string) error { return nil }
+
 func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vector.SearchResult, error) {
 	if m.searchErr != nil {
 		return nil, m.searchErr
@@ -303,11 +305,11 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 
 // Supporting AC-036 (US-08): when memory read fails, handler still returns reply and includes vector context; system does not crash.
 func TestHandleMessage_memoryReadError_stillIncludesVectorContext(t *testing.T) {
-	// Create memory store root with today's path as a directory so ReadDay fails (os.ReadFile on dir returns error).
+	// Create memory store root with today's full.md path as a directory so ReadDay fails (os.ReadFile on dir returns error).
 	rootDir := t.TempDir()
 	now := time.Now().UTC()
 	y, m, d := now.Year(), int(now.Month()), now.Day()
-	dayPath := filepath.Join(rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), fmt.Sprintf("%02d.md", d))
+	dayPath := filepath.Join(rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), fmt.Sprintf("%02d", d), "full.md")
 	if err := os.MkdirAll(filepath.Dir(dayPath), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}

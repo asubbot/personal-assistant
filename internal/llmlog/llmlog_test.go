@@ -2,6 +2,7 @@ package llmlog
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"pa/internal/llm"
 	"pa/internal/logredact"
@@ -188,5 +189,81 @@ func TestLog_redactsSecretInWrittenFile(t *testing.T) {
 	}
 	if !strings.Contains(content, "[REDACTED]") {
 		t.Errorf("log file must contain redaction replacement [REDACTED]\ncontent: %s", content)
+	}
+}
+
+// TestReadEntriesForDay_missingFile_returnsEmptySlice — missing log file returns nil slice, nil error.
+func TestReadEntriesForDay_missingFile_returnsEmptySlice(t *testing.T) {
+	dir := t.TempDir()
+	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
+	entries, err := ReadEntriesForDay(dir, day)
+	if err != nil {
+		t.Fatalf("ReadEntriesForDay: %v", err)
+	}
+	if entries != nil {
+		t.Errorf("ReadEntriesForDay(missing file): got %d entries, want nil", len(entries))
+	}
+}
+
+// TestReadEntriesForDay_oneEntry_parsed — one JSONL line is parsed as one Entry.
+func TestReadEntriesForDay_oneEntry_parsed(t *testing.T) {
+	dir := t.TempDir()
+	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
+	path := filepath.Join(dir, "llm-2026-03-12.jsonl")
+	entry := &Entry{
+		RequestID:       "r1",
+		Messages:        []llm.Message{{Role: "user", Content: "hi"}},
+		ResponseContent: "hello",
+		Usage:           llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+		DurationMs:      100,
+	}
+	line, _ := json.Marshal(entry)
+	if err := os.WriteFile(path, append(line, '\n'), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	entries, err := ReadEntriesForDay(dir, day)
+	if err != nil {
+		t.Fatalf("ReadEntriesForDay: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("ReadEntriesForDay: got %d entries, want 1", len(entries))
+	}
+	if entries[0].RequestID != "r1" || entries[0].ResponseContent != "hello" {
+		t.Errorf("entry: request_id=%q response_content=%q", entries[0].RequestID, entries[0].ResponseContent)
+	}
+}
+
+// TestReadEntriesForDay_twoEntries_parsed — two JSONL lines are parsed as two entries.
+func TestReadEntriesForDay_twoEntries_parsed(t *testing.T) {
+	dir := t.TempDir()
+	day := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)
+	path := filepath.Join(dir, "llm-2026-03-15.jsonl")
+	var lines []byte
+	for i, content := range []string{"first", "second"} {
+		e := &Entry{
+			RequestID:       fmt.Sprintf("req-%d", i),
+			Messages:        []llm.Message{{Role: "user", Content: content}},
+			ResponseContent: "reply-" + content,
+			Usage:           llm.Usage{},
+			DurationMs:      int64(i),
+		}
+		line, _ := json.Marshal(e)
+		lines = append(lines, line...)
+		lines = append(lines, '\n')
+	}
+	if err := os.WriteFile(path, lines, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	entries, err := ReadEntriesForDay(dir, day)
+	if err != nil {
+		t.Fatalf("ReadEntriesForDay: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("ReadEntriesForDay: got %d entries, want 2", len(entries))
+	}
+	if entries[0].ResponseContent != "reply-first" || entries[1].ResponseContent != "reply-second" {
+		t.Errorf("entries: got %q, %q", entries[0].ResponseContent, entries[1].ResponseContent)
 	}
 }

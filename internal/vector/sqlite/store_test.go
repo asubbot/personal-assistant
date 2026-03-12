@@ -67,6 +67,37 @@ func TestStore_Add_Search_topK(t *testing.T) {
 	}
 }
 
+// TestStore_Delete_removesById — Delete removes the row with the given id; no-op if id does not exist.
+func TestStore_Delete_removesById(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vec.db")
+	ctx := context.Background()
+
+	store, err := New(path, testDimensions)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	if err := store.Add(ctx, "summary:day:2026-03-12", []float32{1, 0, 0, 0}, "Day summary."); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	results, _ := store.Search(ctx, []float32{1, 0, 0, 0}, 1)
+	if len(results) != 1 {
+		t.Fatalf("before Delete: expected 1 result, got %d", len(results))
+	}
+	if err := store.Delete(ctx, "summary:day:2026-03-12"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	results, _ = store.Search(ctx, []float32{1, 0, 0, 0}, 1)
+	if len(results) != 0 {
+		t.Errorf("after Delete: expected 0 results, got %d", len(results))
+	}
+	// No-op when id does not exist
+	if err := store.Delete(ctx, "nonexistent"); err != nil {
+		t.Errorf("Delete(nonexistent): %v", err)
+	}
+}
+
 // TestStore_Add_wrongDimensions
 // Validates: AC-013 (REQ-007 — validated input)
 func TestStore_Add_wrongDimensions(t *testing.T) {
