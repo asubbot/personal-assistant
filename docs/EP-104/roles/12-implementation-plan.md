@@ -10,7 +10,7 @@
 
 You are the Tech Lead for this epic. Your task is to produce the implementation plan (stage 12): ordering, checkpoints, and verification.
 
-**Goal:** Produce the implementation plan: ordered tasks with checkpoints, verification per task, traceability to REQ/AC, indication of parallel work, and config/format references where needed.
+**Goal:** Produce the implementation plan: ordered tasks with checkpoints, verification per task, traceability to REQ, US, and AC (each task must include the three link blocks below), indication of parallel work, and config/format references where needed.
 
 **Inputs:** Task list (with dependencies), architecture, test strategy, and delivery strategy.
 
@@ -22,6 +22,8 @@ You are the Tech Lead for this epic. Your task is to produce the implementation 
 - ## Checkpoints (where and what)
 - ## Parallel work (which tasks can run in parallel)
 - ## Config and format references (where defined)
+
+**Traceability:** Each plan task (including checkpoints) MUST include three link lines: **_Requirements:_** REQ-X …; **_User Stories:_** US-X …; **_Acceptance Criteria:_** AC-X … (links to 01-02-requirements.md, 08-user-stories.md, 10-acceptance-criteria.md). Use "—" when a task has no direct link (e.g. checkpoints: "all from §N").
 
 **Verification:** Each step MUST have a verification criterion (how to confirm done: run tests, lint, build, check). Checkpoint format: "Ensure all tests pass, ask the user if questions arise." Multiple checkpoints at reasonable breaks.
 

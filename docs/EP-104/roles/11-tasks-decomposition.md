@@ -22,7 +22,11 @@ You are the Tech Lead for this epic. Your task is to decompose work into tasks (
 - Checkpoint tasks at reasonable breaks
 
 **Task format:**
-- Each task: clear objective (writing, modifying, or testing code); sub-bullets with details; specific references to REQ/AC/US (granular).
+- Each task: clear objective (writing, modifying, or testing code); sub-bullets with details; **traceability block** with three link lines:
+  - **_Requirements:_** REQ-X … (links to 01-02-requirements.md)
+  - **_User Stories:_** US-X … (links to 08-user-stories.md)
+  - **_Acceptance Criteria:_** AC-X … (links to 10-acceptance-criteria.md)
+  Use "—" for a line when the task has no direct link (e.g. checkpoints). Every implementation or test task must list at least one of each where applicable.
 - Tasks must be actionable: specify files or components to create or modify; concrete; scoped to specific coding activities (e.g. "Implement X function" rather than "Support X feature").
 - Convert design into incremental steps; each step builds on previous; no hanging or orphaned code.
 - Test-related sub-tasks (unit, property, integration) as sub-tasks under parent; mark optional with "*" (only sub-tasks, never top-level).
@@ -45,4 +49,4 @@ You are the Tech Lead for this epic. Your task is to decompose work into tasks (
 - After each iteration, ask for explicit approval. Do not proceed until clear approval ("yes", "approved", "looks good", etc.). Offer to return to requirements or design if gaps are found.
 - This workflow creates planning artifacts only; actual implementation is done separately.
 
-**Rules:** Use English. Every task must trace to at least one US/AC/REQ. Respect increment boundaries.
+**Rules:** Use English. Every task must include the three traceability lines (Requirements, User Stories, Acceptance Criteria); use "—" only when the task has no direct link. Respect increment boundaries.
