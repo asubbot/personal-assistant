@@ -25,7 +25,7 @@ func TestRegistry_RegisterGetList(t *testing.T) {
 	}
 }
 
-// No AC: registry contract — Register with empty name panics.
+// Covers AC-022 (US-12): tool registration with empty name is rejected (fail fast).
 func TestRegistry_RegisterEmptyName_panics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
@@ -36,7 +36,7 @@ func TestRegistry_RegisterEmptyName_panics(t *testing.T) {
 	r.Register(&mockTool{name: ""})
 }
 
-// No AC: registry contract — Register duplicate name panics.
+// Covers AC-022 (US-12): tool registration with duplicate name is rejected (fail fast).
 func TestRegistry_RegisterDuplicate_panics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

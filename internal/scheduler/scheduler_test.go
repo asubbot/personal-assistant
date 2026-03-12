@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// No AC: scheduler constructor — valid task list builds and Start/Stop run.
+// Covers AC-020 (US-11): scheduler with valid task list builds and Start/Stop run.
 func TestNew_validTasks(t *testing.T) {
 	reg := tools.NewRegistry()
 	reg.Register(&mockTool{name: "run_on_node"})
@@ -42,7 +42,7 @@ func TestNew_invalidSchedule_returnsError(t *testing.T) {
 	}
 }
 
-// No AC: scheduler does not invoke tool for unknown action (skipped).
+// Covers AC-021 (US-11): scheduler does not execute unknown action (skipped).
 func TestScheduler_executeTask_unknownAction_skipped(t *testing.T) {
 	reg := tools.NewRegistry()
 	mt := &mockTool{name: "only_tool"}
@@ -58,7 +58,7 @@ func TestScheduler_executeTask_unknownAction_skipped(t *testing.T) {
 	}
 }
 
-// No AC: scheduler does not invoke tool when params fail validation (skipped).
+// Covers AC-021 (US-11): scheduler does not execute when params fail validation (skipped).
 func TestScheduler_executeTask_invalidParams_skipped(t *testing.T) {
 	reg := tools.NewRegistry()
 	mt := &mockTool{name: "run_on_node", schema: []tools.ParamSpec{

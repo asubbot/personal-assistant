@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// No AC: RunOnNode contract — empty/whitespace command returns error.
+// Covers AC-008 (US-04): RunOnNode does not execute empty/whitespace command; returns error.
 func TestRunOnNode_emptyCommand_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	ap := filepath.Join(dir, "allowlist.txt")
@@ -69,7 +69,7 @@ func TestRunOnNode_allowlistDenies_returnsError(t *testing.T) {
 	}
 }
 
-// No AC: RunOnNode invokes executor with node ID and command when allowlist allows.
+// Covers AC-007 (US-04): RunOnNode invokes executor with node ID and command when allowlist allows.
 func TestRunOnNode_allowedCommand_usesExecutorWhenSet(t *testing.T) {
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")

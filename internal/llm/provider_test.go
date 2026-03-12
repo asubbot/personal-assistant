@@ -37,7 +37,7 @@ func TestNewProvider_supportedTypes(t *testing.T) {
 	}
 }
 
-// No AC: NewProvider(unsupported type) returns error.
+// Covers AC-033 (US-19): NewProvider(unsupported type) returns error (startup validation).
 func TestNewProvider_unsupportedType(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "unknown", Endpoint: "http://x", Model: "m"}
 	_, err := NewProvider(cfg)

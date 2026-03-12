@@ -62,7 +62,7 @@ func TestDedicatedUser_multiNode(t *testing.T) {
 	}
 }
 
-// No AC: DedicatedUser for unknown node returns error.
+// Covers AC-009 (US-05): DedicatedUser for unknown node returns error (config-only; no other identity used).
 func TestDedicatedUser_unknownNode(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{

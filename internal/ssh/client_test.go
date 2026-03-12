@@ -57,7 +57,7 @@ func TestNewClient_missingKeyFile_returnsError(t *testing.T) {
 	}
 }
 
-// No AC: SSH client parse error for non-PEM key file returns error.
+// Covers AC-006 (US-03): SSH client uses only validated credentials; invalid key file format returns error.
 func TestNewClient_invalidKeyFile_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	keyPath := filepath.Join(dir, "badkey")

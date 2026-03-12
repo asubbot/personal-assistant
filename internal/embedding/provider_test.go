@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// No AC: NewEmbedder(nil config) returns error.
+// Covers AC-033 (US-19): NewEmbedder(nil config) returns error (startup validation).
 func TestNewEmbedder_nilConfig_returnsError(t *testing.T) {
 	_, err := NewEmbedder(nil)
 	if err == nil {
@@ -18,7 +18,7 @@ func TestNewEmbedder_nilConfig_returnsError(t *testing.T) {
 	}
 }
 
-// No AC: NewEmbedder(unsupported type) returns error.
+// Covers AC-033 (US-19): NewEmbedder(unsupported type) returns error (startup validation).
 func TestNewEmbedder_unsupportedType_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
 		Type:       "custom",
@@ -35,7 +35,7 @@ func TestNewEmbedder_unsupportedType_returnsError(t *testing.T) {
 	}
 }
 
-// No AC: NewEmbedder(supported types) returns non-nil embedder (factory contract).
+// Supporting AC-013, AC-014 (US-07): NewEmbedder(supported types) returns non-nil embedder.
 func TestNewEmbedder_supportedTypes_returnsEmbedder(t *testing.T) {
 	types := []string{"openai", "openai-compatible", "ollama", "OpenAI", "OLLAMA"}
 	for _, typ := range types {
@@ -57,7 +57,7 @@ func TestNewEmbedder_supportedTypes_returnsEmbedder(t *testing.T) {
 	}
 }
 
-// No AC: NewEmbedder(openai, missing API key file) returns error.
+// Covers AC-033 (US-19): NewEmbedder(openai, missing API key file) returns error (startup validation).
 func TestNewEmbedder_openaiWithAPIKeyPath_missingFile_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
 		Type:       "openai",

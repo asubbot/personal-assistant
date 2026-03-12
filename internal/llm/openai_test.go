@@ -26,7 +26,7 @@ func TestNewOpenAICompatible_validConfig_noAPIKey(t *testing.T) {
 	}
 }
 
-// No AC: LLM provider — missing API key file returns error.
+// Covers AC-033 (US-19): LLM provider — missing API key file returns error (startup validation).
 func TestNewOpenAICompatible_missingAPIKeyFile(t *testing.T) {
 	cfg := &config.LLMProvider{
 		Type:       "openai",
@@ -43,7 +43,7 @@ func TestNewOpenAICompatible_missingAPIKeyFile(t *testing.T) {
 	}
 }
 
-// No AC: Complete success path (contract test; AC-001/AC-016 covered by integration).
+// Supporting AC-001, AC-016 (US-01, US-08): Complete success path (contract test).
 func TestOpenAICompatible_Complete_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/chat/completions" {
@@ -75,7 +75,7 @@ func TestOpenAICompatible_Complete_success(t *testing.T) {
 	}
 }
 
-// No AC: Complete error path — empty choices returns error.
+// Covers AC-036 (US-08): Complete error path — empty choices returns error; system does not crash.
 func TestOpenAICompatible_Complete_emptyChoices(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -99,7 +99,7 @@ func TestOpenAICompatible_Complete_emptyChoices(t *testing.T) {
 	}
 }
 
-// No AC: Complete error path — 4xx/5xx response returns error.
+// Covers AC-036 (US-08): Complete error path — 4xx/5xx returns error; system does not crash.
 func TestOpenAICompatible_Complete_apiError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -123,7 +123,7 @@ func TestOpenAICompatible_Complete_apiError(t *testing.T) {
 	}
 }
 
-// No AC: Complete error path — invalid JSON response returns error.
+// Covers AC-036 (US-08): Complete error path — invalid JSON returns error; system does not crash.
 func TestOpenAICompatible_Complete_invalidJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -147,7 +147,7 @@ func TestOpenAICompatible_Complete_invalidJSON(t *testing.T) {
 	}
 }
 
-// No AC: Complete error path — canceled context returns error.
+// Covers AC-036 (US-08): Complete error path — canceled context returns error; system does not crash.
 func TestOpenAICompatible_Complete_contextCanceled(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -173,7 +173,7 @@ func TestOpenAICompatible_Complete_contextCanceled(t *testing.T) {
 	}
 }
 
-// No AC: Complete error path — unreachable server returns error.
+// Covers AC-036 (US-08): Complete error path — unreachable server returns error; system does not crash.
 func TestOpenAICompatible_Complete_serverUnreachable(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://127.0.0.1:19999", Model: "m"}
 	p, err := NewOpenAICompatible(cfg)

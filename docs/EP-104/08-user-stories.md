@@ -6,7 +6,7 @@
 **Next:** [10-10-acceptance-criteria.md](10-10-acceptance-criteria.md)  
 **Related:** [01-02-requirements.md](01-02-requirements.md), [10-acceptance-criteria.md](10-acceptance-criteria.md)
 
-This document is the project’s canonical list of user stories. IDs: **US-01** … **US-18**.
+This document is the project’s canonical list of user stories. IDs: **US-01** … **US-19**.
 
 | ID | Title |
 |----|--------|
@@ -28,6 +28,7 @@ This document is the project’s canonical list of user stories. IDs: **US-01** 
 | [US-16](#us-16--secret-leakage-protection) | Secret leakage protection (prompt injection) |
 | [US-17](#us-17--debug-llm-logging) | Debug-level LLM conversation logging |
 | [US-18](#us-18--verify-node-availability) | Verify node availability via CLI parameter |
+| [US-19](#us-19--startup-validation) | Startup validation — refuse to start on invalid config |
 
 ---
 
@@ -190,3 +191,12 @@ As an operator, I want to run the PersonalAssistant binary with a dedicated para
 
 **Requirements:** [REQ-022](01-02-requirements.md#nodes-and-ssh).  
 **Acceptance criteria:** [AC-032](10-acceptance-criteria.md#ac-032-us-18).
+
+---
+
+## US-19 — Startup validation
+
+As an operator, I want the system to validate all configuration (nodes, Telegram, LLM, embedding, paths) at startup and refuse to start with a clear error when invalid, so that I can fix configuration before serving.
+
+**Requirements:** [REQ-024](01-02-requirements.md#nodes-and-ssh).  
+**Acceptance criteria:** [AC-033](10-acceptance-criteria.md#ac-033-us-19).

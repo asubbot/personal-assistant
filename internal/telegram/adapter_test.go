@@ -15,7 +15,7 @@ import (
 
 // --- NewAdapter: token_path ---
 
-// No AC: adapter construction — missing token_path returns error.
+// Covers AC-033 (US-19): adapter construction — missing token_path returns error (startup validation).
 func TestNewAdapter_missingTokenPath(t *testing.T) {
 	cfg := &config.Config{Telegram: config.Telegram{TokenPath: ""}}
 	_, err := NewAdapter(cfg, "/etc/pa/config.json")
@@ -27,7 +27,7 @@ func TestNewAdapter_missingTokenPath(t *testing.T) {
 	}
 }
 
-// No AC: adapter construction — whitespace-only token_path returns error.
+// Covers AC-033 (US-19): adapter construction — whitespace-only token_path returns error.
 func TestNewAdapter_tokenPathWhitespaceOnly(t *testing.T) {
 	cfg := &config.Config{Telegram: config.Telegram{TokenPath: "  \t  "}}
 	_, err := NewAdapter(cfg, "/etc/pa/config.json")
@@ -39,7 +39,7 @@ func TestNewAdapter_tokenPathWhitespaceOnly(t *testing.T) {
 	}
 }
 
-// No AC: adapter construction — token file not found returns error.
+// Covers AC-033 (US-19): adapter construction — token file not found returns error.
 func TestNewAdapter_tokenFileNotFound(t *testing.T) {
 	cfg := &config.Config{Telegram: config.Telegram{TokenPath: "/nonexistent/token.txt"}}
 	_, err := NewAdapter(cfg, "/etc/pa/config.json")
@@ -51,7 +51,7 @@ func TestNewAdapter_tokenFileNotFound(t *testing.T) {
 	}
 }
 
-// No AC: adapter construction — empty token file returns error.
+// Covers AC-033 (US-19): adapter construction — empty token file returns error.
 func TestNewAdapter_tokenFileEmpty(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -68,7 +68,7 @@ func TestNewAdapter_tokenFileEmpty(t *testing.T) {
 	}
 }
 
-// No AC: adapter construction — whitespace-only token returns error.
+// Covers AC-033 (US-19): adapter construction — whitespace-only token returns error.
 func TestNewAdapter_tokenFileWhitespaceOnly(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -87,7 +87,7 @@ func TestNewAdapter_tokenFileWhitespaceOnly(t *testing.T) {
 
 // --- NewAdapter: no users_path (allow-none) ---
 
-// No AC: adapter construction — valid token without users_path succeeds; no allowed users.
+// Covers AC-033 (US-19): adapter construction — valid token without users_path succeeds (optional users).
 func TestNewAdapter_validTokenNoUsersPath(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -107,7 +107,7 @@ func TestNewAdapter_validTokenNoUsersPath(t *testing.T) {
 	}
 }
 
-// No AC: adapter construction — empty users_path yields no allowed users.
+// Covers AC-033 (US-19): adapter construction — empty users_path yields no allowed users.
 func TestNewAdapter_validTokenEmptyUsersPath(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -126,7 +126,7 @@ func TestNewAdapter_validTokenEmptyUsersPath(t *testing.T) {
 
 // --- NewAdapter: valid users_path ---
 
-// No AC: adapter construction — valid token and users file loads allowed user IDs.
+// Covers AC-033 (US-19): adapter construction — valid token and users file loads allowed user IDs.
 func TestNewAdapter_validTokenAndUsersFile(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -154,7 +154,7 @@ func TestNewAdapter_validTokenAndUsersFile(t *testing.T) {
 	}
 }
 
-// No AC: adapter construction — users_path relative to config dir is resolved.
+// Covers AC-033 (US-19): adapter construction — users_path relative to config dir is resolved.
 func TestNewAdapter_usersPathRelativeToConfigDir(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -178,7 +178,7 @@ func TestNewAdapter_usersPathRelativeToConfigDir(t *testing.T) {
 
 // --- NewAdapter: invalid users_path ---
 
-// No AC: adapter construction — users file not found returns error.
+// Covers AC-033 (US-19): adapter construction — users file not found returns error.
 func TestNewAdapter_usersFileNotFound(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -195,7 +195,7 @@ func TestNewAdapter_usersFileNotFound(t *testing.T) {
 	}
 }
 
-// No AC: adapter construction — invalid users JSON returns error.
+// Covers AC-033 (US-19): adapter construction — invalid users JSON returns error.
 func TestNewAdapter_usersFileInvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -310,7 +310,7 @@ func TestSendMessage_botNil_returnsError(t *testing.T) {
 	}
 }
 
-// No AC: SendMessage when notify_chat_id is 0 returns error (cannot determine target chat).
+// Covers AC-020, REQ-023 (US-11): SendMessage when notify_chat_id is 0 returns error (no destination).
 func TestSendMessage_notifyChatIDZero_returnsError(t *testing.T) {
 	ad := &Adapter{notifyChatID: 0}
 	err := ad.SendMessage(context.Background(), "test")
@@ -324,7 +324,7 @@ func TestSendMessage_notifyChatIDZero_returnsError(t *testing.T) {
 
 // --- Run ---
 
-// No AC: adapter.Run contract — nil handler returns error.
+// Covers AC-003 (US-02): adapter.Run with nil handler returns error and does not start serving.
 func TestRun_nilHandler(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{}, token: "dummy"}
 	err := ad.Run(context.Background(), nil)
@@ -365,7 +365,7 @@ func (m *mockHandler) HandleMessage(_ context.Context, userID int64, text string
 	return m.reply, m.errReply
 }
 
-// No AC: handleUpdate — nil Message does not call handler or send.
+// Supporting AC-001 (US-01): handleUpdate with nil Message does not call handler or send.
 func TestHandleUpdate_nilMessage(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -379,7 +379,7 @@ func TestHandleUpdate_nilMessage(t *testing.T) {
 	}
 }
 
-// No AC: handleUpdate — nil From does not call handler or send.
+// Supporting AC-001 (US-01): handleUpdate with nil From does not call handler or send.
 func TestHandleUpdate_nilFrom(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -426,7 +426,7 @@ func TestHandleUpdate_emptyText_sendsRejectionMessage(t *testing.T) {
 	}
 }
 
-// No AC: handleUpdate — disallowed user gets "not allowed" message, handler not called.
+// Supporting AC-001 (US-01): disallowed user gets "not allowed" message, handler not called.
 func TestHandleUpdate_disallowedUser(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -462,7 +462,7 @@ func TestHandleUpdate_allowedUser_callsHandlerAndSendsReply(t *testing.T) {
 	}
 }
 
-// No AC: handleUpdate — handler error results in generic error message to user.
+// Supporting AC-001 (US-01): handler error results in generic error message to user.
 func TestHandleUpdate_allowedUser_handlerErrorSendsGenericMessage(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -478,7 +478,7 @@ func TestHandleUpdate_allowedUser_handlerErrorSendsGenericMessage(t *testing.T) 
 	}
 }
 
-// No AC: handleUpdate — empty reply from handler sends no message.
+// Supporting AC-001 (US-01): empty reply from handler sends no message.
 func TestHandleUpdate_allowedUser_emptyReplySendsNothing(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}

@@ -148,6 +148,9 @@ THE PersonalAssistant core SHALL be implemented in Go and SHALL be deployable as
 **REQ-003** (Event-driven)  
 WHEN the operator adds or updates node configuration (host, SSH user, authentication method), THE PersonalAssistant SHALL validate the configuration at startup and SHALL refuse to start or SHALL report a clear error if the configuration is invalid or incomplete.
 
+**REQ-024** (Event-driven)  
+WHEN the operator provides invalid or incomplete configuration (e.g. config file missing or invalid JSON, Telegram token_path missing or token file unreadable, users file invalid, LLM or embedding provider type unsupported or API key file missing), THE PersonalAssistant SHALL refuse to start or SHALL report a clear error identifying the failure.
+
 **REQ-004** (State-driven)  
 WHILE the PersonalAssistant is running, THE PersonalAssistant SHALL communicate with nodes only over SSH using credentials and hosts defined in the validated node configuration.
 
@@ -185,6 +188,9 @@ THE PersonalAssistant SHALL maintain a vector index of content from the long-ter
 
 **REQ-008** (Ubiquitous)  
 THE PersonalAssistant SHALL support pluggable LLM providers (e.g. OpenAI-compatible API, Ollama, self-hosted); the active provider and its parameters SHALL be selected via configuration without code changes.
+
+**REQ-025** (State-driven)  
+WHEN an LLM or embedding provider call fails (e.g. 4xx/5xx, empty response, network error, context canceled), THE PersonalAssistant SHALL handle the error (e.g. propagate to caller or return a safe response) and SHALL NOT crash.
 
 **REQ-014** (Ubiquitous)  
 THE PersonalAssistant SHALL provide a logging subsystem that records, for each call to an LLM provider: the request (input messages, model parameters, and a request identifier) and the response (model output, token counts when available, and response metadata such as duration and model identifier).
@@ -261,12 +267,14 @@ THE PersonalAssistant SHALL NOT include secret values (tokens, API keys, SSH pri
 | REQ-021  | NFR  | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only |
 | REQ-022  | FR   | CLI parameter to verify node availability: connect and run one allowlisted command per node; report and exit without serving |
 | REQ-023  | FR   | Scheduler "notify" action: destination chat from telegram.notify_chat_id or first allowed user |
+| REQ-024  | NFR  | Startup validation: refuse to start or clear error for invalid/incomplete config (file, Telegram, users, LLM, embedding) |
+| REQ-025  | NFR  | LLM/embedding provider errors handled without crash (4xx, empty, network, context canceled) |
 
 ---
 
 ## Requirement–User Story traceability
 
-User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US-18).
+User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US-19).
 
 | REQ       | User Story | Summary |
 |-----------|---------------------|--------|
@@ -293,6 +301,8 @@ User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US
 | REQ-020   | US-06               | Summary sources: LLM logs, tool results, scheduler events |
 | REQ-021   | US-17               | Debug-level LLM conversation logging (PA_LOG_LEVEL, core handler) |
 | REQ-022   | US-18               | CLI parameter to verify node availability |
+| REQ-024   | US-19               | Startup validation (config, Telegram, users, LLM, embedding) |
+| REQ-025   | US-08, US-07        | LLM/embedding provider error handling |
 
 | User Story | Requirements |
 |------------|--------------|
@@ -314,3 +324,4 @@ User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US
 | US-16      | REQ-017      |
 | US-17      | REQ-021      |
 | US-18      | REQ-022      |
+| US-19      | REQ-024      |

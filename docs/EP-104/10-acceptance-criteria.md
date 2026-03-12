@@ -24,6 +24,8 @@
 
 **Given** a valid Docker image of the PersonalAssistant core, **When** the operator runs the container on an x86_64 host (e.g. Synology DS220+), **Then** the core starts and exposes or uses the configured interfaces (e.g. Telegram webhook, config mount).
 
+**Given** the core is invoked with invalid wiring (e.g. nil adapter, nil provider, or nil handler passed to the Telegram adapter), **When** Run is called, **Then** the core (or adapter) returns an error and does not start serving.
+
 ---
 
 ## AC-004 (US-02)
@@ -35,6 +37,8 @@
 ## AC-005 (US-03)
 
 **Given** node configuration with invalid host or missing authentication, **When** the core starts, **Then** the core refuses to start or reports a clear error listing the validation failure.
+
+**Given** the main config file is missing, unreadable, or invalid JSON, or a referenced file (e.g. `users_path`) is missing or invalid (e.g. invalid role), **When** the core loads configuration, **Then** the core refuses to start or reports a clear error.
 
 ---
 
@@ -138,6 +142,8 @@
 
 **Given** a tool with name, description, and validated input schema registered with the core, **When** the core invokes the tool, **Then** the invocation follows the single contract (e.g. input validated, result returned).
 
+**Given** tool registration with invalid data (e.g. empty name or duplicate name), **When** Register is called, **Then** the system rejects or fails fast (e.g. panic or error).
+
 ---
 
 ## AC-023 (US-12)
@@ -199,3 +205,33 @@
 ## AC-032 (US-18)
 
 **Given** the application is invoked with the designated parameter to verify node availability (e.g. `-verify-nodes`), **When** the application runs, **Then** it loads the validated configuration and for each configured node connects over SSH using that node’s credentials, runs one allowlisted command (e.g. `uptime` or a documented probe), and reports success or failure per node to stdout or stderr; **and** the application exits without starting the normal serving mode (e.g. Telegram bot). **Given** at least one node fails to connect or the allowlist cannot be loaded, **When** the verify run completes, **Then** the application exits with a non-zero status.
+
+---
+
+## AC-033 (US-19)
+
+**Given** the configuration is invalid or incomplete (e.g. config file missing or invalid JSON, Telegram token_path missing or token file empty, users file missing or invalid, LLM or embedding provider unsupported type or missing API key file), **When** the core starts, **Then** the system refuses to start or reports a clear error listing the validation failure.
+
+---
+
+## AC-034 (US-11)
+
+**Given** the scheduled tasks file is missing, path is empty, JSON is invalid, or task names are duplicate or empty, **When** the core loads tasks, **Then** the system returns an empty list or reports a clear error and does not start invalid tasks.
+
+---
+
+## AC-035 (US-12)
+
+**Given** a tool is invoked with a nil runner (or equivalent invalid dependency) or the runner returns an error, **When** the tool Run is called, **Then** the tool returns an error to the caller and does not execute the violating action.
+
+---
+
+## AC-036 (US-08)
+
+**Given** the LLM provider returns an error or invalid response (e.g. 4xx/5xx, empty choices, invalid JSON, context canceled, unreachable server), **When** the core uses the provider, **Then** the system handles the error (e.g. returns error to caller or fallback) and does not crash.
+
+---
+
+## AC-037 (US-07)
+
+**Given** the embedding provider returns an error or invalid response (e.g. 4xx, empty data, invalid JSON, context canceled, unreachable server), **When** the core uses the embedder, **Then** the system handles the error and does not crash.

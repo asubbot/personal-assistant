@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// No AC: core.Run contract — nil adapter returns error.
+// Covers AC-003 (US-02): core.Run with nil adapter returns error and does not start serving.
 func TestRun_nilAdapter_returnsError(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
@@ -24,7 +24,7 @@ func TestRun_nilAdapter_returnsError(t *testing.T) {
 	}
 }
 
-// No AC: core.Run contract — nil provider returns error.
+// Covers AC-003 (US-02): core.Run with nil provider returns error and does not start serving.
 func TestRun_nilProvider_returnsError(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
@@ -49,7 +49,7 @@ func (a *capturingAdapter) Run(ctx context.Context, handler MessageHandler) erro
 	return nil
 }
 
-// No AC: core.Run contract — adapter.Run is called with non-nil handler.
+// Covers AC-003 (US-02): core.Run calls adapter.Run with non-nil handler (valid wiring).
 func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
@@ -73,7 +73,7 @@ func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	}
 }
 
-// No AC: core.Run with nil config does not panic; handler gets zero max length (no limit).
+// Covers AC-003 (US-02): core.Run with nil config does not panic; handler gets zero max length (no limit).
 func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}

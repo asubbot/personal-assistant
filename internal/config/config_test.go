@@ -73,7 +73,7 @@ func TestLoad_TelegramMaxMessageLength(t *testing.T) {
 	}
 }
 
-// No AC: valid config with users_path loads; supporting test for adapter/allowlist config.
+// Supporting AC-005 (US-03): valid config with users_path loads.
 func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 	path := filepath.Join("testdata", "valid_with_good_users.json")
 	cfg, err := Load(path)
@@ -119,7 +119,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 }
 
-// No AC: config loader error path — missing file returns error.
+// Covers AC-005 (US-03): config file missing returns clear error (refuse to start or report error).
 func TestLoad_MissingFile_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "nonexistent.json"))
 	if err == nil {
@@ -130,7 +130,7 @@ func TestLoad_MissingFile_ReturnsError(t *testing.T) {
 	}
 }
 
-// No AC: config loader error path — invalid JSON returns error.
+// Covers AC-005 (US-03): config invalid JSON returns clear error.
 func TestLoad_InvalidJSON_ReturnsError(t *testing.T) {
 	path := filepath.Join("testdata", "not_valid_json.json")
 	_, err := Load(path)
@@ -142,7 +142,7 @@ func TestLoad_InvalidJSON_ReturnsError(t *testing.T) {
 	}
 }
 
-// No AC: config validation — users file with invalid role returns error.
+// Covers AC-005 (US-03): referenced users file with invalid role returns clear error.
 func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	// Config points to invalid_users.json (role "superuser" not allowed)
 	path := filepath.Join("testdata", "valid_with_users.json")
@@ -155,7 +155,7 @@ func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	}
 }
 
-// No AC: config loader error path — users_path points to nonexistent file returns error.
+// Covers AC-005 (US-03): users_path points to nonexistent file returns clear error.
 func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	// Config with users_path pointing to a file that does not exist (path is CWD-relative)
 	cfgDir := t.TempDir()
