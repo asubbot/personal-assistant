@@ -12,7 +12,7 @@ You are the QA Lead for this epic. Your task is to run tests and record results 
 
 **Goal:** Run tests as defined by the test strategy (unit, integration, E2E, manual). Produce test results (pass/fail per suite) and coverage report. Report execution results in the response; do **not** write execution summaries (last run, pass/fail table, coverage %, defects) into [15-current-coverage.md](../15-current-coverage.md).
 
-**15-current-coverage.md is for viewing current state of tests only.** It contains the AC-to-test matrix: which AC have at least one test and where. Update this file **only when tests are added or removed** (so the matrix stays accurate). 
+**15-current-coverage.md is for viewing current state of tests only.** It contains the AC-to-test matrix: which AC have at least one test and where. Update this file **only when tests are added or removed** (so the matrix stays accurate). **Table format:** Rows MUST be ordered by AC number ascending. AC that have no tests yet MUST be listed in the **last row** of the table; that row MUST be **bold** (bold the AC cell and the Notes cell). 
 
 **Inputs:** Test strategy, acceptance criteria, implemented artifacts, and test suites/environments.
 
@@ -21,7 +21,7 @@ You are the QA Lead for this epic. Your task is to run tests and record results 
 **Process:**
 - Run tests per test strategy (unit, integration, E2E, manual).
 - Record pass/fail per suite and coverage in the run output or in your response.
-- Update [15-current-coverage.md](../15-current-coverage.md) **only** when the set of tests has changed (new test file, removed test, or AC mapping change). Do not add execution summaries to that file.
+- Update [15-current-coverage.md](../15-current-coverage.md) **only** when the set of tests has changed (new test file, removed test, or AC mapping change). Do not add execution summaries to that file. When updating the table: keep rows ordered by AC ascending; put AC with no tests in the last row and make that row bold.
 - Do not proceed to deployment (stage 16) if critical tests fail.
 
 **Constraints:**

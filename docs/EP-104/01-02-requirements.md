@@ -143,6 +143,13 @@ THE PersonalAssistant core SHALL be implemented in Go and SHALL be deployable as
 
 ---
 
+### Configuration paths and environment
+
+**REQ-030** (Event-driven)  
+WHEN the operator runs the application, THE PersonalAssistant SHALL resolve the main configuration file path from the environment variable `PA_CONFIG_DIR` when set (directory containing the config file or path to the file); when `PA_CONFIG_DIR` is unset or empty, THE system SHALL use a documented default (e.g. current directory or default path). WHEN resolving paths for data and secrets directories (e.g. `PA_DATA_DIR`, `PA_SECRETS_DIR`), THE PersonalAssistant SHALL interpret relative paths relative to a defined base (e.g. current working directory), SHALL leave absolute paths unchanged, and SHALL treat unset or empty environment as a documented default (e.g. ".").
+
+---
+
 ### Nodes and SSH
 
 **REQ-003** (Event-driven)  
@@ -285,12 +292,13 @@ WHEN the application loads configuration, THE PersonalAssistant SHALL validate t
 | REQ-027  | NFR  | Built-in redaction patterns in code; not overridable by configuration |
 | REQ-028  | NFR  | Additional redaction patterns from config; ids must not clash with built-in |
 | REQ-029  | NFR  | Config load validates redaction; refuse start on reserved id or invalid regex |
+| REQ-030  | NFR  | Config path from PA_CONFIG_DIR; PA_DATA_DIR/PA_SECRETS_DIR resolution (relative/absolute/unset) |
 
 ---
 
 ## Requirement–User Story traceability
 
-User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US-19).
+User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US-20).
 
 | REQ       | User Story | Summary |
 |-----------|---------------------|--------|
@@ -316,6 +324,7 @@ User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US
 | REQ-027   | US-16               | Built-in redaction patterns (non-overridable) |
 | REQ-028   | US-16               | Additional redaction patterns from config |
 | REQ-029   | US-16               | Redaction config validation at load |
+| REQ-030   | US-20               | Config and data/secrets paths from environment |
 | REQ-018   | US-06               | Memory is assistant’s single store; not partitioned by interlocutor |
 | REQ-019   | US-06               | Memory structure and hierarchical summarization (day/month/year); optional approval |
 | REQ-020   | US-06               | Summary sources: LLM logs, tool results, scheduler events |
@@ -345,3 +354,4 @@ User stories are defined in [08-user-stories.md](08-user-stories.md) (US-01–US
 | US-17      | REQ-021      |
 | US-18      | REQ-022      |
 | US-19      | REQ-024      |
+| US-20      | REQ-030      |

@@ -11,7 +11,7 @@
 
 ### Scope
 
-- **Coverage:** All 32 acceptance criteria ([AC-001](10-acceptance-criteria.md#ac-001-us-01)–[AC-032](10-acceptance-criteria.md#ac-032-us-18)) across 18 user stories are in scope. AC are specified in Gherkin (Given/When/Then) in [10-acceptance-criteria.md](10-acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-16, AC-028–AC-030) are detailed in §5.
+- **Coverage:** All acceptance criteria ([AC-001](10-acceptance-criteria.md#ac-001-us-01)–[AC-042](10-acceptance-criteria.md#ac-042-us-20)) across the user stories (US-01–US-20) are in scope. AC are specified in Gherkin (Given/When/Then) in [10-acceptance-criteria.md](10-acceptance-criteria.md). Mapping to test levels is in §3; secret-leakage tests (US-16, AC-028–AC-030) are detailed in §5.
 - **In scope for this strategy:** Unit, Integration, E2E, and Manual testing sufficient to demonstrate each AC. Node availability verification (US-18, AC-032) is covered by the strategy in §3. Memory behaviour (single store, calendar layout, summarization inputs) is covered by AC-011, AC-012; any additional summarization tests will be added as per implementation plan and reflected in §3.
 
 ### Strategy
@@ -77,6 +77,7 @@
 | AC-030 | US-16 | Unit, Integration | Captured logs must not contain fake secret values (see §5). |
 | AC-031 | US-17 | Unit, Integration | Unit: with PA_LOG_LEVEL=debug, handler logs full request/response; with INFO, only metadata. Integration: run with env, assert log output content. |
 | AC-032 | US-18 | Manual | Run binary with `-verify-nodes` against real configured nodes; confirm output and exit code. Scenario: [06-manual-test-plan.md](06-manual-test-plan.md). |
+| AC-042 | US-20 | Unit | Config path from PA_CONFIG_DIR (set/unset/empty); PA_DATA_DIR/PA_SECRETS_DIR resolution (relative/absolute/unset). |
 
 ---
 

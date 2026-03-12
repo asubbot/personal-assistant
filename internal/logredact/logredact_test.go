@@ -4,6 +4,7 @@ import (
 	"testing"
 )
 
+// Covers AC-038 (US-16): built-in redaction patterns applied to output.
 func TestRedact_builtInPatterns(t *testing.T) {
 	tests := []struct {
 		name string
@@ -28,6 +29,7 @@ func TestRedact_builtInPatterns(t *testing.T) {
 	}
 }
 
+// Covers AC-040 (US-16): additional patterns applied when configured.
 func TestRedact_additionalPatterns(t *testing.T) {
 	additional := []Pattern{
 		{ID: "custom", Regex: `\bsecret-\d+\b`, Replacement: "[CUSTOM]"},
@@ -40,6 +42,7 @@ func TestRedact_additionalPatterns(t *testing.T) {
 	}
 }
 
+// Covers AC-040 (US-16): built-in and additional patterns both applied; no duplicate built-in id.
 func TestRedact_builtInAndAdditional(t *testing.T) {
 	additional := []Pattern{
 		{ID: "custom", Regex: `\bMYKEY-\w+\b`, Replacement: "[MYKEY]"},
@@ -52,6 +55,7 @@ func TestRedact_builtInAndAdditional(t *testing.T) {
 	}
 }
 
+// Covers AC-041 (US-16): additional pattern id equals built-in → refuse start, clear error.
 func TestValidateConfig_reservedID(t *testing.T) {
 	builtIn := BuiltInIDs()
 	additional := []Pattern{{ID: BuiltInIDOpenAIKey, Regex: `x`, Replacement: ""}}
@@ -64,6 +68,7 @@ func TestValidateConfig_reservedID(t *testing.T) {
 	}
 }
 
+// Covers AC-041 (US-16): invalid regex in additional pattern → refuse start, clear error.
 func TestValidateConfig_invalidRegex(t *testing.T) {
 	additional := []Pattern{{ID: "foo", Regex: `[invalid`, Replacement: ""}}
 	err := ValidateConfig(BuiltInIDs(), additional)
@@ -75,6 +80,7 @@ func TestValidateConfig_invalidRegex(t *testing.T) {
 	}
 }
 
+// Covers AC-039, AC-040 (US-16): valid additional_patterns config accepted; patterns applied.
 func TestValidateConfig_valid(t *testing.T) {
 	additional := []Pattern{
 		{ID: "custom", Regex: `\d+`, Replacement: "#"},
@@ -85,6 +91,7 @@ func TestValidateConfig_valid(t *testing.T) {
 	}
 }
 
+// Covers AC-039 (US-16): no log_redaction or empty additional_patterns → only built-in used, start succeeds.
 func TestValidateConfig_emptyAdditional(t *testing.T) {
 	err := ValidateConfig(BuiltInIDs(), nil)
 	if err != nil {
@@ -96,6 +103,7 @@ func TestValidateConfig_emptyAdditional(t *testing.T) {
 	}
 }
 
+// Supporting AC-038 (US-16): NewRedactor applies patterns to written output.
 func TestNewRedactor(t *testing.T) {
 	redactor := NewRedactor([]Pattern{{ID: "x", Regex: `sk-[\w]+`, Replacement: "[X]"}})
 	got := redactor("key sk-abc123")
@@ -104,6 +112,7 @@ func TestNewRedactor(t *testing.T) {
 	}
 }
 
+// Covers AC-038 (US-16): built-in pattern identifiers defined in code.
 func TestBuiltInIDs(t *testing.T) {
 	ids := BuiltInIDs()
 	if len(ids) < 4 {

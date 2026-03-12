@@ -3,10 +3,10 @@
 **Purpose:** Canonical list of user stories (As a… I want… So that…), traceable to requirements and acceptance criteria.  
 **Pipeline:** [PIPELINE.SPEC.md](PIPELINE.SPEC.md)  
 **Previous:** [07-epic-list.md](07-epic-list.md)  
-**Next:** [10-10-acceptance-criteria.md](10-10-acceptance-criteria.md)  
+**Next:** [10-acceptance-criteria.md](10-acceptance-criteria.md)  
 **Related:** [01-02-requirements.md](01-02-requirements.md), [10-acceptance-criteria.md](10-acceptance-criteria.md)
 
-This document is the project’s canonical list of user stories. IDs: **US-01** … **US-19**.
+This document is the project’s canonical list of user stories. IDs: **US-01** … **US-20**.
 
 | ID | Title |
 |----|--------|
@@ -29,6 +29,7 @@ This document is the project’s canonical list of user stories. IDs: **US-01** 
 | [US-17](#us-17--debug-llm-logging) | Debug-level LLM conversation logging |
 | [US-18](#us-18--verify-node-availability) | Verify node availability via CLI parameter |
 | [US-19](#us-19--startup-validation) | Startup validation — refuse to start on invalid config |
+| [US-20](#us-20--configuration-paths-environment) | Configuration paths — override via environment (PA_CONFIG_DIR, PA_DATA_DIR, PA_SECRETS_DIR) |
 
 ---
 
@@ -200,3 +201,12 @@ As an operator, I want the system to validate all configuration (nodes, Telegram
 
 **Requirements:** [REQ-024](01-02-requirements.md#nodes-and-ssh).  
 **Acceptance criteria:** [AC-033](10-acceptance-criteria.md#ac-033-us-19).
+
+---
+
+## US-20 — Configuration paths (environment)
+
+As an operator, I want to override the config file location and data/secrets directories via environment variables (`PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`), so that I can deploy in different environments without changing config file paths in code.
+
+**Requirements:** [REQ-030](01-02-requirements.md#configuration-paths-and-environment).  
+**Acceptance criteria:** [AC-042](10-acceptance-criteria.md#ac-042-us-20).

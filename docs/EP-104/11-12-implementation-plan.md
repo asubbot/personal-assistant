@@ -302,7 +302,7 @@ _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM loggi
   - _User Stories:_ [US-02](08-user-stories.md#us-02--docker-deploy)
   - _Acceptance Criteria:_ [AC-003](10-acceptance-criteria.md#ac-003-us-02)
 
-- [ ] 10. Checkpoint — Ensure all tests pass, ask the user if questions arise.
+- [x] 10. Checkpoint — Ensure all tests pass, ask the user if questions arise.
   - _Requirements:_ — _User Stories:_ — _Acceptance Criteria:_ (all from §9)
 
 ---
@@ -354,16 +354,16 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 {
   "version": 1,
   "telegram": {
-    "token_path": "/run/secrets/telegram_bot_token",
-    "users_path": "/etc/pa/telegram_users.json",
+    "token_path": "telegram_bot_token.txt",
+    "users_path": "telegram_users.json",
     "notify_chat_id": 0,
-    "max_message_length": 4096
+    "max_message_length": 200
   },
   "llm_providers": [
     {
       "type": "openai",
       "endpoint": "https://api.openai.com/v1",
-      "api_key_path": "/run/secrets/openai_api_key",
+      "api_key_path": "openai_api_key.txt",
       "model": "gpt-4o-mini"
     },
     {
@@ -373,43 +373,42 @@ _Reference material._ Application config is a single JSON file at `config.json` 
     }
   ],
   "paths": {
-    "memory_dir": "/data/memory",
-    "log_path": "/data/pa.log",
-    "vector_index_path": "/data/pa_vectors.sqlite",
-    "llm_log_dir": "/data/llm_logs",
-    "scheduled_tasks_path": "/etc/pa/scheduled_tasks.json"
+    "memory_dir": "memory",
+    "log_path": "pa.log",
+    "vector_index_path": "pa_vectors.sqlite",
+    "llm_log_dir": "llm_logs",
+    "scheduled_tasks_path": "scheduled_tasks.json"
   },
   "embedding": {
     "type": "openai",
     "endpoint": "https://api.openai.com/v1",
-    "api_key_path": "/run/secrets/openai_api_key",
+    "api_key_path": "openai_api_key.txt",
     "model": "text-embedding-3-small",
     "dimensions": 1536
   },
   "nodes": {
     "nas": {
-      "host": "192.168.1.10",
-      "dedicated_user": "pa",
+      "host": "192.168.1.99",
+      "dedicated_user": "openclaw-runner",
       "auth": {
-        "private_key_path": "/run/secrets/pa_nas_ed25519"
+        "private_key_path": "/path/to/ssh/private_key"
       },
-      "command_allowlist_path": "/etc/pa/allowlist.txt"
-    },
-    "server": {
-      "host": "server.local",
-      "dedicated_user": "pa",
-      "auth": { "private_key_path": "/run/secrets/pa_server_ed25519" },
-      "command_allowlist_path": "/etc/pa/allowlist.txt"
+      "command_allowlist_path": "nas_allowlist.txt"
     }
+  },
+  "log_redaction": {
+    "additional_patterns": [
+      { "id": "custom_secret", "regex": "\\bsecret-[0-9]+\\b", "replacement": "[REDACTED]" }
+    ]
   }
 }
 ```
 
 - **version**: integer; config schema version for backward compatibility. The loader rejects unsupported versions and can migrate or validate per-version rules.
 - **paths.vector_index_path**: path to the vector index file. Use `./data/pa_vectors.sqlite` (or `/data/pa_vectors.sqlite` in production) for the default SQLite+sqlite-vec implementation.
-- **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin).
+- **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin). Format: see [Telegram users file](#telegram-users-file) below.
 - **telegram.notify_chat_id**: optional; Telegram chat ID (e.g. user or group) to which the scheduler sends messages for tasks with `action` `"notify"`. When non-zero, that chat is used. When zero or omitted and `users_path` lists at least one user, the first allowed user’s ID is used as the destination ([REQ-023](01-02-requirements.md#scheduler-and-tools)). When no destination is available, the notify action does not send and is handled per implementation (e.g. log).
-- **telegram.max_message_length**: optional; max message length in runes. If > 0, longer messages are rejected with a clear message (no LLM call). 0 or omitted = no limit. Format: see [Telegram users file](#telegram-users-file) below. If missing or empty, behaviour is defined at implementation time (e.g. allow none or allow all).
+- **telegram.max_message_length**: optional; max message length in runes. If > 0, longer messages are rejected with a clear message (no LLM call). 0 or omitted = no limit. If missing or empty, behaviour is defined at implementation time (e.g. no limit).
 - **command_allowlist_path** (per node): path to a file with the list of allowed command patterns. The same path can be used by multiple nodes to share one allowlist. File format: one pattern per line (leading/trailing whitespace ignored; empty lines and lines starting with `#` ignored). Matching rules (prefix/glob/regex) are defined in task 2.1. Example file `/etc/pa/allowlist.txt`:
 
 ```text
@@ -423,6 +422,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 - **llm_providers**: ordered list; the first available provider is used for a request; on failure (e.g. timeout, 5xx) the core may try the next. At least one provider required.
 - **embedding** (required): dedicated provider for vector memory (embeddings). The assistant requires vector memory for good UX. Fields: `type` (e.g. `openai`, `openai-compatible`, `ollama`), `endpoint`, `api_key_path` (required for openai/openai-compatible), `model`, `dimensions` (positive integer; must match the model’s output size).
 - **scheduled_tasks_path**: path to a separate JSON file that defines scheduled tasks (see below). Optional; if missing or empty, no scheduled tasks run.
+- **log_redaction** (optional): additional redaction patterns applied to LLM and application log output ([REQ-026](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-028](01-02-requirements.md#secret-protection-prompt-injection--exfiltration)). Object with `additional_patterns`: array of `{ "id", "regex", "replacement" }`. Built-in patterns are always applied and cannot be overridden ([REQ-027](01-02-requirements.md#secret-protection-prompt-injection--exfiltration)). Pattern `id` must not equal any built-in identifier; `regex` must compile. Invalid config refuses start with clear error ([REQ-029](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), AC-041).
 
 **Telegram users file** (e.g. `/etc/pa/telegram_users.json`): JSON array of user entries with Telegram user id, role, and optional display name. Example:
 

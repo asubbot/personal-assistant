@@ -301,8 +301,7 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	}
 }
 
-// TestHandleMessage_memoryReadError_stillIncludesVectorContext — Validates: GAP-H1 (REQ-006, REQ-007)
-// When memoryStore.ReadDay returns error, gatherContext should still include vector search results if available.
+// Supporting AC-036 (US-08): when memory read fails, handler still returns reply and includes vector context; system does not crash.
 func TestHandleMessage_memoryReadError_stillIncludesVectorContext(t *testing.T) {
 	// Create memory store root with today's path as a directory so ReadDay fails (os.ReadFile on dir returns error).
 	rootDir := t.TempDir()
@@ -358,8 +357,7 @@ func TestHandleMessage_memoryReadError_stillIncludesVectorContext(t *testing.T) 
 	}
 }
 
-// TestHandleMessage_indexTurnError_stillReturnsReply — Validates: GAP-H2 (REQ-007)
-// When indexTurn fails (embedder or vectorStore error), handler still returns reply; error is logged.
+// Supporting AC-036, AC-037 (US-08, US-07): when indexTurn fails (embedder error), handler still returns reply; system does not crash.
 func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 	embedErr := errors.New("embed failed")
 	cap := &captureHandler{level: slog.LevelError}

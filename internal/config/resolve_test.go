@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// No AC: path resolution (PA_DATA_DIR, PA_SECRETS_DIR) — relative paths joined with config dir and env bases.
+// Covers AC-042 (US-20): PA_DATA_DIR/PA_SECRETS_DIR relative paths resolved relative to base.
 func TestResolvePaths_relativePaths_joinedWithBases(t *testing.T) {
 	configPath := filepath.Join("/etc", "pa", "config.json")
 	cfg := &Config{
@@ -79,7 +79,7 @@ func TestResolvePaths_relativePaths_joinedWithBases(t *testing.T) {
 	}
 }
 
-// No AC: path resolution — absolute paths are left unchanged.
+// Covers AC-042 (US-20): absolute paths for PA_DATA_DIR/PA_SECRETS_DIR are used unchanged.
 func TestResolvePaths_absolutePaths_unchanged(t *testing.T) {
 	cfg := &Config{
 		Telegram:     Telegram{TokenPath: "/abs/secrets/token", UsersPath: "/abs/users.json"},
@@ -116,7 +116,7 @@ func TestResolvePaths_absolutePaths_unchanged(t *testing.T) {
 	}
 }
 
-// No AC: path resolution — empty paths remain empty.
+// Covers AC-042 (US-20): empty path values remain unchanged.
 func TestResolvePaths_emptyPath_unchanged(t *testing.T) {
 	cfg := &Config{
 		Telegram:  Telegram{TokenPath: "/t", UsersPath: ""},
@@ -133,7 +133,7 @@ func TestResolvePaths_emptyPath_unchanged(t *testing.T) {
 	}
 }
 
-// No AC: path resolution — when PA_DATA_DIR/PA_SECRETS_DIR unset, base is ".".
+// Covers AC-042 (US-20): when PA_DATA_DIR/PA_SECRETS_DIR unset, default base "." is used.
 func TestResolvePaths_envUnset_usesDot(t *testing.T) {
 	_ = os.Unsetenv("PA_DATA_DIR")
 	_ = os.Unsetenv("PA_SECRETS_DIR")

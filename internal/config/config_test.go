@@ -75,6 +75,10 @@ func TestLoad_TelegramMaxMessageLength(t *testing.T) {
 
 // Supporting AC-005 (US-03): valid config with users_path loads.
 func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
+	// users_path "testdata/good_users.json" is resolved with PA_SECRETS_DIR; use "." so path is testdata/good_users.json.
+	prev := os.Getenv("PA_SECRETS_DIR")
+	_ = os.Setenv("PA_SECRETS_DIR", ".")
+	t.Cleanup(func() { _ = os.Setenv("PA_SECRETS_DIR", prev) })
 	path := filepath.Join("testdata", "valid_with_good_users.json")
 	cfg, err := Load(path)
 	if err != nil {
@@ -156,6 +160,7 @@ func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 }
 
 // TestLoad_LogRedactionReservedID_ReturnsError — REQ-029: reserved additional pattern id refuses start.
+// Covers AC-041 (US-16): log_redaction reserved pattern identifier or invalid regex → refuse start, clear error.
 func TestLoad_LogRedactionReservedID_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "log_redaction_reserved_id.json"))
 	if err == nil {
@@ -167,6 +172,7 @@ func TestLoad_LogRedactionReservedID_ReturnsError(t *testing.T) {
 }
 
 // TestLoad_LogRedactionInvalidRegex_ReturnsError — REQ-029: invalid regex in additional pattern refuses start.
+// Covers AC-041 (US-16): log_redaction invalid regex → refuse start, clear error.
 func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "log_redaction_invalid_regex.json"))
 	if err == nil {

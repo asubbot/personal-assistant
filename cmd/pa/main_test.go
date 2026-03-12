@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// No AC: config path derived from PA_CONFIG_DIR (implementation detail).
+// Covers AC-042 (US-20): config path resolved from PA_CONFIG_DIR when set.
 func TestConfigFilePath_PAConfigDirSet(t *testing.T) {
 	dir := "/etc/pa"
 	_ = os.Setenv("PA_CONFIG_DIR", dir)
@@ -20,7 +20,7 @@ func TestConfigFilePath_PAConfigDirSet(t *testing.T) {
 	}
 }
 
-// No AC: config path derived from PA_CONFIG_DIR (implementation detail).
+// Covers AC-042 (US-20): when PA_CONFIG_DIR unset or empty, documented default is used.
 func TestConfigFilePath_PAConfigDirUnsetOrEmpty(t *testing.T) {
 	_ = os.Unsetenv("PA_CONFIG_DIR")
 	t.Cleanup(func() { _ = os.Unsetenv("PA_CONFIG_DIR") })
