@@ -3,16 +3,11 @@ package core
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
-	"os"
 	"pa/internal/llm"
-	"pa/internal/memory"
 	"pa/internal/vector"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // captureHandler records log records for assertion (AC-031, REQ-021).
@@ -300,62 +295,6 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	}
 	if len(provider.lastMessages) != 0 {
 		t.Error("provider should not be called when over limit (runes)")
-	}
-}
-
-// Supporting AC-036 (US-08): when memory read fails, handler still returns reply and includes vector context; system does not crash.
-func TestHandleMessage_memoryReadError_stillIncludesVectorContext(t *testing.T) {
-	// Create memory store root with today's full.md path as a directory so ReadDay fails (os.ReadFile on dir returns error).
-	rootDir := t.TempDir()
-	now := time.Now().UTC()
-	y, m, d := now.Year(), int(now.Month()), now.Day()
-	dayPath := filepath.Join(rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), fmt.Sprintf("%02d", d), "full.md")
-	if err := os.MkdirAll(filepath.Dir(dayPath), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	if err := os.Mkdir(dayPath, 0o755); err != nil {
-		t.Fatalf("mkdir day path as dir: %v", err)
-	}
-
-	memStore, err := memory.NewStore(rootDir)
-	if err != nil {
-		t.Fatalf("NewStore: %v", err)
-	}
-	// Verify ReadDay fails (path is a directory, not a file).
-	_, err = memStore.ReadDay(context.Background(), now)
-	if err == nil {
-		t.Fatal("ReadDay must fail when path is a directory")
-	}
-
-	vecStore := &mockVectorStore{
-		searchResults: []vector.SearchResult{{Text: "User said: my favorite color is blue"}},
-	}
-	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
-	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
-	logger := slog.Default()
-
-	h := &conversationHandler{
-		provider:    provider,
-		memoryStore: memStore,
-		vectorStore: vecStore,
-		embedder:    emb,
-		logger:      logger,
-	}
-
-	reply, err := h.HandleMessage(context.Background(), 1, "what is my favorite color?")
-	if err != nil {
-		t.Fatalf("HandleMessage: %v", err)
-	}
-	if reply != "ok" {
-		t.Errorf("reply = %q, want %q", reply, "ok")
-	}
-
-	sys := provider.lastMessages[0].Content
-	if !strings.Contains(sys, "Relevant past context:") {
-		t.Errorf("system message must contain vector context; got:\n%s", sys)
-	}
-	if strings.Contains(sys, "Relevant memory (today)") {
-		t.Errorf("system message must NOT contain memory content when ReadDay fails; got:\n%s", sys)
 	}
 }
 

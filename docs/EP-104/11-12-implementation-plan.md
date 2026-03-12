@@ -278,7 +278,7 @@ _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM loggi
   - _User Stories:_ [US-06](08-user-stories.md#us-06--memory-store)
   - _Acceptance Criteria:_ [AC-011](10-acceptance-criteria.md#ac-011-us-06), [AC-012](10-acceptance-criteria.md#ac-012-us-06)
 
-- [ ] 8.1b Month/year summarization (deferred)
+- [x] 8.1b Month/year summarization (deferred)
   - End-of-month and end-of-year summaries from day/month summaries; path convention in place
   - _Requirements:_ [REQ-019](01-02-requirements.md#memory-and-indexing), [REQ-020](01-02-requirements.md#memory-and-indexing)
   - _User Stories:_ [US-06](08-user-stories.md#us-06--memory-store)
@@ -295,7 +295,7 @@ _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM loggi
 
 ---
 
-## 9. Docker and deploy (DS220+)
+## 9. Docker and deploy
 
 - [x] 9.1 Add Dockerfile and docker-compose
   - Multi-stage build; final image linux/amd64 (Alpine or distroless); volumes for config, memory, logs

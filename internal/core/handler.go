@@ -9,7 +9,6 @@ import (
 	"pa/internal/embedding"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
-	"pa/internal/memory"
 	"pa/internal/vector"
 	"strings"
 	"time"
@@ -31,11 +30,11 @@ func genRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-// conversationHandler implements MessageHandler: memory read, vector search, LLM call, optional index (REQ-006, REQ-007, REQ-018).
+// conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-006, REQ-007, REQ-018).
+// Context is built only from vector store (turns and summaries); no full.md day file.
 type conversationHandler struct {
 	provider         llm.Provider
-	memoryStore      *memory.Store // optional; single store, not per-interlocutor
-	vectorStore      vector.Store  // optional; for semantic search and indexing
+	vectorStore      vector.Store // optional; for semantic search and indexing
 	embedder         embedding.Embedder
 	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-004, REQ-005, REQ-013)
 	logger           *slog.Logger
@@ -46,7 +45,7 @@ type conversationHandler struct {
 }
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.
-// Reads relevant memory (today's store), runs semantic search, injects context into the LLM call, then indexes the turn (REQ-006, REQ-007, REQ-018).
+// Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-006, REQ-007, REQ-018).
 func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text string) (string, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -97,19 +96,9 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	return result.Content, nil
 }
 
-// gatherContext returns a string to inject into the system message: today's memory + semantic search results (REQ-006, REQ-007).
+// gatherContext returns a string to inject into the system message: semantic search results from vector store (REQ-006, REQ-007).
 func (h *conversationHandler) gatherContext(ctx context.Context, userText string) string {
 	var parts []string
-	now := time.Now().UTC()
-
-	if h.memoryStore != nil {
-		dayContent, err := h.memoryStore.ReadDay(ctx, now)
-		if err != nil {
-			h.logger.Error("read memory day", "error", err)
-		} else if strings.TrimSpace(dayContent) != "" {
-			parts = append(parts, "Relevant memory (today):\n"+dayContent)
-		}
-	}
 
 	if h.vectorStore != nil && h.embedder != nil {
 		queryEmbedding, err := h.embedder.Embed(ctx, userText)

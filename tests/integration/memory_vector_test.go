@@ -4,13 +4,10 @@ package integration_test
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"os"
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/llm"
-	"pa/internal/memory"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"strings"
@@ -39,64 +36,6 @@ func (m *mockEmbedder) Embed(ctx context.Context, text string) ([]float32, error
 }
 
 const vectorTestDimensions = 4
-
-// Covers AC-011, AC-012 (US-06) integration: memory store injects today's content into context.
-// core.Run with memory store reads from configured path and injects "Relevant memory (today):" into the LLM system message.
-func TestMemoryStore_injectsTodayMemory(t *testing.T) {
-	dir := t.TempDir()
-	now := time.Now().UTC()
-	y, m, d := now.Year(), int(now.Month()), now.Day()
-	calPath := filepath.Join(dir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), fmt.Sprintf("%02d", d), "full.md")
-	if err := os.MkdirAll(filepath.Dir(calPath), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	const dayContent = "Pre-written day note for integration test."
-	if err := os.WriteFile(calPath, []byte(dayContent), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-
-	store, err := memory.NewStore(dir)
-	if err != nil {
-		t.Fatalf("NewStore: %v", err)
-	}
-
-	provider := &mockLLMWithMessages{content: "ok"}
-	adapter := &fakeAdapter{userID: 1, text: "hello", done: make(chan result, 1)}
-	cfg := &config.Config{}
-	logger := slog.Default()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	done := make(chan struct{})
-	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, provider, store, nil, nil, nil)
-		close(done)
-	}()
-
-	select {
-	case res := <-adapter.done:
-		if res.err != nil {
-			t.Fatalf("handler error: %v", res.err)
-		}
-	case <-time.After(integrationTimeout):
-		t.Fatalf("no reply within %v", integrationTimeout)
-	}
-
-	cancel()
-	<-done
-
-	if len(provider.LastMessages) < 1 || provider.LastMessages[0].Role != "system" {
-		t.Fatalf("expected system message, got %d messages", len(provider.LastMessages))
-	}
-	sys := provider.LastMessages[0].Content
-	if !strings.Contains(sys, "Relevant memory (today):") {
-		t.Errorf("system message missing Relevant memory (today):\n%s", sys)
-	}
-	if !strings.Contains(sys, dayContent) {
-		t.Errorf("system message missing day content %q:\n%s", dayContent, sys)
-	}
-}
 
 // Covers AC-013, AC-014 (US-07) integration: vector store injects past context into LLM call.
 // after one turn is indexed, a second message gets "Relevant past context:" from vector search in the system message.
