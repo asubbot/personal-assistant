@@ -24,21 +24,20 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    cron \
     gosu \
     libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -s /bin/false pa
 
-# Entrypoint: run as root so we can chown the data volume; then exec app as user pa.
-# Volume /data is often root-owned at first start; pa needs write access for memory_dir, logs, etc.
-RUN printf '%s\n' \
-    '#!/bin/sh' \
-    'set -e' \
-    'chown -R pa:pa /data 2>/dev/null || true' \
-    'exec gosu pa /pa "$@"' \
-    > /entrypoint.sh && chmod +x /entrypoint.sh
+# Entrypoint: chown /data, write cron.d for summarization from env, start cron, exec app as user pa.
+# Summarization auto-run is via in-container cron (day 0:15, month 1st 0:30, year Jan 1 0:45).
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 COPY --from=builder /pa /pa
+COPY scripts/summarize.sh /usr/local/bin/summarize.sh
+RUN chmod +x /usr/local/bin/summarize.sh
 # Config directory; config file is config.json inside it. Override via PA_CONFIG_DIR.
 ENV PA_CONFIG_DIR=/etc/pa
 ENTRYPOINT ["/entrypoint.sh"]

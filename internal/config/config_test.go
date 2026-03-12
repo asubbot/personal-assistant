@@ -7,9 +7,7 @@ import (
 	"testing"
 )
 
-// TestLoad_ValidConfig_EmptyScheduledTasksPath — Validates: GAP-C1 (config format)
-// Config with empty or omitted scheduled_tasks_path should load successfully.
-// scheduled_tasks_path is NOT in validatePaths required list, so empty is valid.
+// Supporting AC-005 (US-03): valid config with empty or omitted scheduled_tasks_path loads.
 func TestLoad_ValidConfig_EmptyScheduledTasksPath(t *testing.T) {
 	path := filepath.Join("testdata", "valid_no_users.json")
 	cfg, err := Load(path)
@@ -184,7 +182,7 @@ func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
 	}
 }
 
-// TestLoad_InvalidPATimezone_ReturnsError — invalid IANA timezone in pa_timezone refuses start.
+// Supporting AC-033 (US-19): invalid IANA timezone in pa_timezone refuses start.
 func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "invalid_pa_timezone.json"))
 	if err == nil {
@@ -195,7 +193,7 @@ func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
 	}
 }
 
-// TestLoad_ValidPATimezone_loads — valid pa_timezone (e.g. Europe/Moscow, UTC) loads successfully.
+// Supporting AC-033 (US-19): valid pa_timezone (e.g. Europe/Moscow, UTC) loads successfully.
 func TestLoad_ValidPATimezone_loads(t *testing.T) {
 	cfg, err := Load(filepath.Join("testdata", "valid_pa_timezone.json"))
 	if err != nil {

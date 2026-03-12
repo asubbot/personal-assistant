@@ -9,8 +9,7 @@ import (
 
 const testDimensions = 4
 
-// TestNew_dimensionsInvalid
-// Validates: AC-013 (REQ-007 — vector store interface and implementation)
+// Covers AC-013 (US-07): New rejects invalid dimensions (vector store interface).
 func TestNew_dimensionsInvalid(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	_, err := New(path, 0)
@@ -23,8 +22,7 @@ func TestNew_dimensionsInvalid(t *testing.T) {
 	}
 }
 
-// TestStore_Add_Search_topK
-// Validates: AC-013, AC-014 (REQ-007 — index maintained, semantic search returns top-k)
+// Covers AC-013, AC-014 (US-07): Add and Search return top-k by similarity (index maintained).
 func TestStore_Add_Search_topK(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -67,7 +65,7 @@ func TestStore_Add_Search_topK(t *testing.T) {
 	}
 }
 
-// TestStore_Delete_removesById — Delete removes the row with the given id; no-op if id does not exist.
+// Supporting AC-013 (US-07): Delete removes by id; no-op if id does not exist.
 func TestStore_Delete_removesById(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -98,8 +96,7 @@ func TestStore_Delete_removesById(t *testing.T) {
 	}
 }
 
-// TestStore_Add_wrongDimensions
-// Validates: AC-013 (REQ-007 — validated input)
+// Covers AC-013 (US-07): Add rejects wrong embedding dimensions.
 func TestStore_Add_wrongDimensions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -116,8 +113,7 @@ func TestStore_Add_wrongDimensions(t *testing.T) {
 	}
 }
 
-// TestStore_Search_persisted
-// Validates: AC-013 (REQ-007 — index persisted to configured path)
+// Covers AC-013 (US-07): index persisted to configured path; Search after reopen returns data.
 func TestStore_Search_persisted(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "pa_vectors.sqlite")

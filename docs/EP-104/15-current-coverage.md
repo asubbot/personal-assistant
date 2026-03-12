@@ -37,6 +37,9 @@ Table rules: rows are ordered by **AC number ascending**. AC that have no tests 
 | [AC-024](10-acceptance-criteria.md#ac-024-us-13) | — | ✓ | — | — | `tests/integration/scheduler_config_test.go` (load different task file) |
 | [AC-025](10-acceptance-criteria.md#ac-025-us-14) | — | — | — | ✓ | [06-manual-test-plan.md](06-manual-test-plan.md) (architecture review) |
 | [AC-027](10-acceptance-criteria.md#ac-027-us-15) | — | — | — | ✓ | [06-manual-test-plan.md](06-manual-test-plan.md) (docs: tracked paths) |
+| [AC-028](10-acceptance-criteria.md#ac-028-us-16) | — | ✓ | — | — | `tests/integration/secret_leakage_test.go` (LLM context does not contain config fake secret). |
+| [AC-029](10-acceptance-criteria.md#ac-029-us-16) | — | ✓ | — | — | `tests/integration/secret_leakage_test.go` (prompt-injection: reply and logs do not contain fake secret). |
+| [AC-030](10-acceptance-criteria.md#ac-030-us-16) | — | ✓ | — | — | `tests/integration/secret_leakage_test.go` (captured log output does not contain fake secret). Supporting: `internal/llmlog/llmlog_test.go` (TestLog_redactsSecretInWrittenFile). |
 | [AC-031](10-acceptance-criteria.md#ac-031-us-17) | ✓ | — | — | — | `internal/core/handler_test.go` (DEBUG vs INFO logging) |
 | [AC-032](10-acceptance-criteria.md#ac-032-us-18) | — | — | — | ✓ | Manual only; scenario in [06-manual-test-plan.md](06-manual-test-plan.md). |
 | [AC-033](10-acceptance-criteria.md#ac-033-us-19) | ✓ | — | — | — | Unit: `internal/config/config_test.go`, `internal/telegram/adapter_test.go` (token/users construction errors), `internal/llm/provider_test.go`, `internal/embedding/provider_test.go` (unsupported type, missing key) |
@@ -49,4 +52,4 @@ Table rules: rows are ordered by **AC number ascending**. AC that have no tests 
 | [AC-040](10-acceptance-criteria.md#ac-040-us-16) | ✓ | — | — | — | `internal/logredact/logredact_test.go` (Redact_additionalPatterns, Redact_builtInAndAdditional, ValidateConfig_valid: additional patterns applied, no duplicate built-in id). |
 | [AC-041](10-acceptance-criteria.md#ac-041-us-16) | ✓ | — | — | — | Unit: `internal/config/config_test.go` (TestLoad_LogRedactionReservedID_ReturnsError, TestLoad_LogRedactionInvalidRegex_ReturnsError: refuse start, clear error). Unit: `internal/logredact/logredact_test.go` (ValidateConfig_reservedID, ValidateConfig_invalidRegex). |
 | [AC-042](10-acceptance-criteria.md#ac-042-us-20) | ✓ | — | — | — | Unit: `cmd/pa/main_test.go` (config path from PA_CONFIG_DIR: set / unset or empty). `internal/config/resolve_test.go` (PA_DATA_DIR, PA_SECRETS_DIR: relative joined with base, absolute unchanged, empty unchanged, unset uses "."). |
-| **[AC-026](10-acceptance-criteria.md#ac-026-us-15), [AC-028](10-acceptance-criteria.md#ac-028-us-16)–[AC-030](10-acceptance-criteria.md#ac-030-us-16)** | — | — | — | — | **No tests yet; feature or task not implemented (see [11-12-implementation-plan.md](11-12-implementation-plan.md)).** |
+| **[AC-026](10-acceptance-criteria.md#ac-026-us-15)** | — | — | — | — | **No tests yet; feature or task not implemented (see [11-12-implementation-plan.md](11-12-implementation-plan.md)).** |

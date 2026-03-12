@@ -71,6 +71,9 @@ Build and run in a container. The same `config/` directory is used; secrets are 
 | `PA_DATA_DIR`     | `/data`            | Data directory (volume `pa_data`). Base for `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. |
 | `PA_SECRETS_DIR`  | `/run/secrets`     | Secrets directory (Docker secrets). Base for `token_path`, `users_path`, API keys, node private keys. |
 | `PA_LOG_LEVEL`    | `info`             | Log level. |
+| `TZ`              | (optional)         | Timezone for summarization cron (see below). Set to config's `pa_timezone` for correct \"yesterday\" / \"last month\" / \"last year\"; default UTC. |
+
+**Summarization (cron):** The container runs cron in the background. Cron runs summarization on a schedule: **day** at 00:15, **month** on the 1st at 00:30, **year** on 1 January at 00:45. Set **TZ** in the container environment to match config's **pa_timezone** (e.g. `TZ=Europe/Moscow`) so that date ranges are correct; if unset, UTC is used. On transient failure (e.g. LLM timeout) the summarization script retries up to 2–3 times with a 1–2 minute pause before exiting.
 
 Use a config with **bare secret filenames** (e.g. `token_path`: `"telegram_bot_token.txt"`, `users_path`: `"telegram_users.json"`, `api_key_path`: `"openai_api_key.txt"`) so that with `PA_SECRETS_DIR=.secrets` locally and `PA_SECRETS_DIR=/run/secrets` in Docker the same config works: secrets resolve to `.secrets/<name>` locally and `/run/secrets/<name>` in the container.
 
@@ -100,11 +103,6 @@ docker compose down
 ## Development
 
 ```bash
-make fmt    # Format code
-make test   # Run all tests (unit + integration)
-make test-integration  # Run only integration tests
-make vet    # go vet
-make lint   # golangci-lint (install separately)
 make check  # fmt + vet + lint + test (coverage includes all tests)
 ```
 

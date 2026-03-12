@@ -40,7 +40,7 @@ func (m *mockEmbedder) Embed(ctx context.Context, text string) ([]float32, error
 
 const vectorTestDimensions = 4
 
-// TestMemoryStore_injectsTodayMemory (integration) validates AC-011, AC-012:
+// Covers AC-011, AC-012 (US-06) integration: memory store injects today's content into context.
 // core.Run with memory store reads from configured path and injects "Relevant memory (today):" into the LLM system message.
 func TestMemoryStore_injectsTodayMemory(t *testing.T) {
 	dir := t.TempDir()
@@ -98,7 +98,7 @@ func TestMemoryStore_injectsTodayMemory(t *testing.T) {
 	}
 }
 
-// TestVectorStore_injectsPastContext (integration) validates AC-013, AC-014:
+// Covers AC-013, AC-014 (US-07) integration: vector store injects past context into LLM call.
 // after one turn is indexed, a second message gets "Relevant past context:" from vector search in the system message.
 func TestVectorStore_injectsPastContext(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "pa_vectors.sqlite")

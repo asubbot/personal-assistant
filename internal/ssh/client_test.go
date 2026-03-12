@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// TestNewClient_unknownNode_returnsError validates AC-006, AC-009: client uses only config; unknown node fails.
+// Covers AC-006, AC-009 (US-03, US-05): NewClient with unknown node returns error (client uses only config).
 func TestNewClient_unknownNode_returnsError(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{

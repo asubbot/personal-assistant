@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestChecker_Allow_allowlistedCommands returns allowed (AC-007).
+// Covers AC-007 (US-04): Allow returns allowed for allowlisted commands.
 func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 	_, checker := mustNewChecker(t)
 
@@ -28,7 +28,7 @@ func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 	}
 }
 
-// TestChecker_Allow_deniedWhenNotInAllowlist returns denied (AC-008).
+// Covers AC-008 (US-04): Allow returns denied when command not in allowlist.
 func TestChecker_Allow_deniedWhenNotInAllowlist(t *testing.T) {
 	_, checker := mustNewChecker(t)
 

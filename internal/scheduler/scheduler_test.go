@@ -28,7 +28,7 @@ func TestNew_validTasks(t *testing.T) {
 	<-ctx.Done()
 }
 
-// TestNew_invalidSchedule_returnsError verifies AC-020: invalid schedule is rejected when building the scheduler.
+// Covers AC-020 (US-11): New rejects invalid schedule when building the scheduler.
 // robfig/cron AddFunc returns error for invalid cron strings; New propagates it.
 func TestNew_invalidSchedule_returnsError(t *testing.T) {
 	reg := tools.NewRegistry()

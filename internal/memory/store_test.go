@@ -8,8 +8,7 @@ import (
 	"time"
 )
 
-// TestNewStore_emptyRootDir
-// Validates: AC-011, AC-012 (REQ-006, REQ-018, REQ-019 — memory in designated dir, single store, calendar structure)
+// Covers AC-011, AC-012 (US-06): NewStore rejects empty rootDir (memory in designated dir, single store, calendar structure).
 func TestNewStore_emptyRootDir(t *testing.T) {
 	_, err := NewStore("")
 	if err == nil {
@@ -20,8 +19,7 @@ func TestNewStore_emptyRootDir(t *testing.T) {
 	}
 }
 
-// TestWriteDay_createsCalendarPath
-// Validates: AC-011 (REQ-006, REQ-019 — files created in calendar structure year/month/day)
+// Covers AC-011 (US-06): WriteDay creates files in calendar structure year/month/day.
 func TestWriteDay_createsCalendarPath(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -43,8 +41,7 @@ func TestWriteDay_createsCalendarPath(t *testing.T) {
 	}
 }
 
-// TestWriteDay_ReadDay_roundtrip
-// Validates: AC-011, AC-012 (REQ-006 — read/write markdown in designated structure)
+// Covers AC-011, AC-012 (US-06): WriteDay/ReadDay roundtrip in designated structure.
 func TestWriteDay_ReadDay_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -69,8 +66,7 @@ func TestWriteDay_ReadDay_roundtrip(t *testing.T) {
 	}
 }
 
-// TestReadDay_missingFile_returnsEmpty
-// Validates: AC-012 (REQ-006 — read from structure; missing file returns empty)
+// Supporting AC-012 (US-06): ReadDay returns empty when file is missing.
 func TestReadDay_missingFile_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -90,8 +86,7 @@ func TestReadDay_missingFile_returnsEmpty(t *testing.T) {
 	}
 }
 
-// TestStore_singleStore_noPerUserPaths
-// Validates: AC-011, AC-012 (REQ-018 — single store, not subdivided by interlocutor; paths are date-only)
+// Covers AC-011, AC-012 (US-06): single store, paths are date-only (no per-user subdivision).
 func TestStore_singleStore_noPerUserPaths(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -118,7 +113,7 @@ func TestStore_singleStore_noPerUserPaths(t *testing.T) {
 	}
 }
 
-// TestWriteDaySummary_ReadDaySummary_roundtrip — day summary path layout and overwrite.
+// Covers AC-011, AC-012 (US-06): day summary path layout and WriteDaySummary/ReadDaySummary roundtrip.
 func TestWriteDaySummary_ReadDaySummary_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -153,7 +148,7 @@ func TestWriteDaySummary_ReadDaySummary_roundtrip(t *testing.T) {
 	}
 }
 
-// TestReadDaySummary_missingFile_returnsEmpty — missing summary file returns empty string.
+// Supporting AC-012 (US-06): ReadDaySummary returns empty when summary file is missing.
 func TestReadDaySummary_missingFile_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
