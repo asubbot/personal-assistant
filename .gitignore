@@ -2,7 +2,7 @@
 *.out
 coverage.html
 data/
-pa
+./pa
 
 # Environment and secrets
 .env
