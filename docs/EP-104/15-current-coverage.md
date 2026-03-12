@@ -8,6 +8,8 @@
 
 This table reflects **tests that exist in the codebase** at the time of the last update. The [test strategy](06-test-strategy.md) defines the *target* coverage per AC; this document shows which AC already have at least one corresponding test. **Update this file when adding or removing tests.**
 
+**Total tests:** unit 157, integration 11, E2E 0, manual 4 (scenarios in [06-manual-test-plan.md](06-manual-test-plan.md)).
+
 Table rules: rows are ordered by **AC number ascending**. AC that have no tests yet are listed in the **last row** and that row is **bold**.
 
 | AC | Unit | Integration | E2E | Manual | Notes |
@@ -21,8 +23,8 @@ Table rules: rows are ordered by **AC number ascending**. AC that have no tests 
 | [AC-008](10-acceptance-criteria.md#ac-008-us-04) | ✓ | ✓ | — | — | Unit: `internal/allowlist/allowlist_test.go`; integration: `tests/integration/ssh_node_test.go` (allowlist blocks disallowed) |
 | [AC-009](10-acceptance-criteria.md#ac-009-us-05) | ✓ | ✓ | — | — | Unit: `internal/ssh/ssh_test.go`, `internal/ssh/client_test.go`; integration: `tests/integration/ssh_node_test.go` |
 | [AC-010](10-acceptance-criteria.md#ac-010-us-05) | ✓ | ✓ | — | — | Unit: `internal/ssh/ssh_test.go` (multi-node user); integration: `tests/integration/ssh_node_test.go` |
-| [AC-011](10-acceptance-criteria.md#ac-011-us-06) | ✓ | ✓ | — | — | Unit: `internal/memory/store_test.go` (day/month/year summary paths); `internal/summarize/summarize_test.go` (Day, Month, Year write to memory); `cmd/pa/main_test.go` (summarize CLI day/month/year exit 0). Integration: `tests/integration/memory_vector_test.go` (injects today memory). |
-| [AC-012](10-acceptance-criteria.md#ac-012-us-06) | ✓ | ✓ | — | — | Unit: `internal/memory/store_test.go` (ReadDaySummary, ReadMonthSummary, ReadYearSummary); `internal/summarize/summarize_test.go` (Day, Month, Year read/write); `cmd/pa/main_test.go` (summarize CLI). Integration: `tests/integration/memory_vector_test.go` (injects today memory). |
+| [AC-011](10-acceptance-criteria.md#ac-011-us-06) | ✓ | ✓ | — | — | Unit: `internal/memory/store_test.go` (day/month/year summary paths); `internal/summarize/summarize_test.go` (Day, Month, Year write to memory); `cmd/pa/main_test.go` (summarize CLI day/month/year exit 0). Integration: `tests/integration/memory_vector_test.go` (vector store injects past context). |
+| [AC-012](10-acceptance-criteria.md#ac-012-us-06) | ✓ | ✓ | — | — | Unit: `internal/memory/store_test.go` (ReadDaySummary, ReadMonthSummary, ReadYearSummary); `internal/summarize/summarize_test.go` (Day, Month, Year read/write); `cmd/pa/main_test.go` (summarize CLI). Integration: `tests/integration/memory_vector_test.go` (vector store injects past context). |
 | [AC-013](10-acceptance-criteria.md#ac-013-us-07) | ✓ | ✓ | — | ✓ | Unit: `internal/vector/sqlite/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects past context); manual: [06-manual-test-plan.md](06-manual-test-plan.md) |
 | [AC-014](10-acceptance-criteria.md#ac-014-us-07) | ✓ | ✓ | — | ✓ | Unit: `internal/vector/sqlite/store_test.go`; integration: `tests/integration/memory_vector_test.go` (injects past context); manual: [06-manual-test-plan.md](06-manual-test-plan.md) |
 | [AC-015](10-acceptance-criteria.md#ac-015-us-08) | ✓ | — | — | — | `internal/llm/provider_test.go` |
