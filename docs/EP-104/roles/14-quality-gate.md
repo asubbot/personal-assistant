@@ -48,6 +48,13 @@ You are a Principal Software Engineer / Tech Lead acting as the final quality ga
 
 **Rules:** Use English. Do not promote to test execution (stage 15) if the gate fails. Do not pass the gate if any AC has no test coverage. Document blocking vs non-blocking issues. Align with test strategy and NFR (e.g. no secret leakage). Fix blocking issues before proceeding to the next stage.
 
+**Test–requirements traceability (when auditing or closing gaps):**
+- Perform reverse traceability: for each test (or test file), determine which AC (and thus US, REQ) it validates; produce or update a test → AC → US → REQ mapping.
+- Attach tests to AC: add or update comments above tests (e.g. `// Covers AC-XXX (US-YY): …` or `// Supporting AC-XXX`). If a test fits an existing AC but the AC/US/REQ wording is vague, propose or apply clarifications in [10-acceptance-criteria.md](../10-acceptance-criteria.md), [08-user-stories.md](../08-user-stories.md), [01-02-requirements.md](../01-02-requirements.md).
+- Create missing REQ/US/AC: for tests that cannot be mapped to existing AC, formulate new REQ (and if needed US and AC) in EARS/INCOSE style, add them to the requirements and user-story docs, and update traceability tables and indexes.
+- Verify traceability: ensure (a) every test has a comment stating its AC (or an explicit "No AC" with reason); (b) every AC is referenced by at least one test or in [15-current-coverage.md](../15-current-coverage.md); (c) forward (REQ → US → AC → tests) and reverse (test → AC → US → REQ) traceability are consistent.
+- Keep other docs in sync: update [15-current-coverage.md](../15-current-coverage.md) (AC–test matrix), and [11-12-implementation-plan.md](../11-12-implementation-plan.md) (reference new or changed REQ/US/AC in tasks and in the final checkpoint; update AC range e.g. AC-001–AC-037 where applicable).
+
 ---
 
 ## Test audit workflow (full)

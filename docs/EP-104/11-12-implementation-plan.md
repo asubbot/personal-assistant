@@ -29,8 +29,8 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - Define config struct (version; telegram: token_path, users_path, notify_chat_id; nodes: host, dedicated_user, auth, command_allowlist_path; llm_providers: ordered list; paths: memory_dir, log_path, vector_index_path, scheduled_tasks_path). Validate version for backward compatibility; load and validate users file (user_id, role, optional name).
   - Load JSON from path; validate required fields and node/LLM/path consistency. Config file format: [Config file (JSON)](#config-file-json).
   - On validation failure: log clear error and exit non-zero (do not start serving)
-  - _Requirements: [REQ-003](01-02-requirements.md#nodes-and-ssh), [REQ-004](01-02-requirements.md#nodes-and-ssh)_
-  - _Validates:_ [AC-005](10-acceptance-criteria.md#ac-005-us-03)
+  - _Requirements: [REQ-003](01-02-requirements.md#nodes-and-ssh), [REQ-004](01-02-requirements.md#nodes-and-ssh), [REQ-024](01-02-requirements.md#nodes-and-ssh)_
+  - _Validates:_ [AC-005](10-acceptance-criteria.md#ac-005-us-03), [AC-033](10-acceptance-criteria.md#ac-033-us-19) (config file and referenced files)
 
 - [x] 1.2 Write unit tests for config validation
   - Invalid host or missing authentication → validator returns error
@@ -69,14 +69,16 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 - [x] 3.1 Implement LLM provider interface and one implementation
   - Interface: e.g. `Complete(ctx, messages, opts) (response, usage, err)`
   - One implementation: OpenAI-compatible HTTP or Ollama; provider and params from config
-  - _Requirements: [REQ-008](01-02-requirements.md#llm-and-logging)_
-  - _Validates:_ [AC-015](10-acceptance-criteria.md#ac-015-us-08), [AC-016](10-acceptance-criteria.md#ac-016-us-08)
+  - Unsupported type or missing API key file → clear error at load ([REQ-024](01-02-requirements.md#nodes-and-ssh)); provider errors (4xx, empty, network) handled without crash ([REQ-025](01-02-requirements.md#llm-and-logging))
+  - _Requirements: [REQ-008](01-02-requirements.md#llm-and-logging), [REQ-024](01-02-requirements.md#nodes-and-ssh), [REQ-025](01-02-requirements.md#llm-and-logging)_
+  - _Validates:_ [AC-015](10-acceptance-criteria.md#ac-015-us-08), [AC-016](10-acceptance-criteria.md#ac-016-us-08), [AC-033](10-acceptance-criteria.md#ac-033-us-19) (provider load), [AC-036](10-acceptance-criteria.md#ac-036-us-08)
 
 - [x] 3.2 Implement Telegram adapter (polling)
   - Use go-telegram/bot; config: bot token, path to users file (user_id + role: user|admin)
   - Map incoming text messages to core input; send text replies from core output
+  - On invalid token_path or users file: refuse to start or report clear error ([REQ-024](01-02-requirements.md#nodes-and-ssh), [US-19](08-user-stories.md#us-19--startup-validation))
   - _Requirements: [REQ-001](01-02-requirements.md#interface-and-deployment)_
-  - _Validates:_ [AC-001](10-acceptance-criteria.md#ac-001-us-01)
+  - _Validates:_ [AC-001](10-acceptance-criteria.md#ac-001-us-01), [AC-033](10-acceptance-criteria.md#ac-033-us-19) (adapter construction)
 
 - [x] 3.3 Implement minimal core orchestration
   - Single entry: receive user message → call LLM provider → return reply (no memory/vector/tools yet)
@@ -113,8 +115,9 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 - [x] 4.2 Implement pluggable vector store interface and default implementation
   - Interface: add documents (with embeddings), search by query vector (top-k or threshold)
   - **Default: SQLite + sqlite-vec.** Single `.sqlite` file at configured path (e.g. `paths.vector_index_path` → `/data/pa_vectors.sqlite`). ACID persistence, vector + optional FTS in one DB; best fit for decades-long retention ([system-design](04-system-design.md#vector-store-choice-pluggable-req-007memory-and-indexing), [research §4.2](03-technical-discovery.md#summary-and-recommendation-for-decades-long-retention)). Requires CGO (sqlite-vec is a C extension); use build tag or separate build if pure-Go binary is needed. Alternative (no CGO): vecgo or chromem-go — see research §4.1.
-  - _Requirements: [REQ-007](01-02-requirements.md#memory-and-indexing)_
-  - _Validates:_ [AC-013](10-acceptance-criteria.md#ac-013-us-07), [AC-014](10-acceptance-criteria.md#ac-014-us-07)
+  - Embedding provider: invalid config or API errors handled without crash ([REQ-024](01-02-requirements.md#nodes-and-ssh), [REQ-025](01-02-requirements.md#llm-and-logging)).
+  - _Requirements: [REQ-007](01-02-requirements.md#memory-and-indexing), [REQ-024](01-02-requirements.md#nodes-and-ssh), [REQ-025](01-02-requirements.md#llm-and-logging)_
+  - _Validates:_ [AC-013](10-acceptance-criteria.md#ac-013-us-07), [AC-014](10-acceptance-criteria.md#ac-014-us-07), [AC-033](10-acceptance-criteria.md#ac-033-us-19) (embedding load), [AC-037](10-acceptance-criteria.md#ac-037-us-07)
 
 - [x] 4.3 Wire memory and vector into core
   - On conversation: read relevant memory from the single store, optionally update memory; index content; semantic search and inject context into LLM call (full memory accessible regardless of current interlocutor)
@@ -165,8 +168,9 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 - [x] 6.2 Implement scheduler (cron)
   - Use robfig/cron/v3; load tasks from file at paths.scheduled_tasks_path (JSON array; schedule cron or @every); execution invokes registered tool or sends Telegram notification within security model
+  - Missing file, invalid JSON, duplicate or empty task name → empty list or clear error ([AC-034](10-acceptance-criteria.md#ac-034-us-11))
   - _Requirements: [REQ-009](01-02-requirements.md#scheduler-and-tools)_
-  - _Validates:_ [AC-020](10-acceptance-criteria.md#ac-020-us-11), [AC-021](10-acceptance-criteria.md#ac-021-us-11)
+  - _Validates:_ [AC-020](10-acceptance-criteria.md#ac-020-us-11), [AC-021](10-acceptance-criteria.md#ac-021-us-11), [AC-034](10-acceptance-criteria.md#ac-034-us-11)
 
 - [x] 6.3 Wire tools and scheduler into core
   - Core invokes tools via single contract (validate input, call Run); scheduler runs tasks that call tools or notify
@@ -178,9 +182,9 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Validates:_ [AC-024](10-acceptance-criteria.md#ac-024-us-13)
 
 - [x] 6.5 Write unit and integration tests for tools and scheduler
-  - Tool: valid input → result; invalid input → validation error, tool not run
+  - Tool: valid input → result; invalid input → validation error, tool not run; nil runner or runner error → error to caller ([AC-035](10-acceptance-criteria.md#ac-035-us-12))
   - Scheduler: task at schedule runs; task that would violate security model does not run
-  - _Validates:_ [AC-020](10-acceptance-criteria.md#ac-020-us-11), [AC-021](10-acceptance-criteria.md#ac-021-us-11), [AC-022](10-acceptance-criteria.md#ac-022-us-12), [AC-023](10-acceptance-criteria.md#ac-023-us-12)
+  - _Validates:_ [AC-020](10-acceptance-criteria.md#ac-020-us-11), [AC-021](10-acceptance-criteria.md#ac-021-us-11), [AC-022](10-acceptance-criteria.md#ac-022-us-12), [AC-023](10-acceptance-criteria.md#ac-023-us-12), [AC-035](10-acceptance-criteria.md#ac-035-us-12)
 
 - [x] 7. Checkpoint — Ensure all tests pass, ask the user if questions arise.
 
@@ -275,7 +279,7 @@ _Do this when most functionality is in place._
 ## 12. Final checkpoint
 
 - [ ] 12.1 Final checkpoint — Ensure all acceptance criteria are met by reviewing the code and running unit and integration tests, ask the user if questions arise.
-  - **Validates:** [AC-001–AC-032](10-acceptance-criteria.md) (see [06-test-strategy.md](06-test-strategy.md)). Include secret leakage protection tests ([REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration); [06-test-strategy.md §5](06-test-strategy.md#5-secret-leakage-protection-prompt-injection--exfiltration)).
+  - **Validates:** [AC-001–AC-037](10-acceptance-criteria.md) (see [06-test-strategy.md](06-test-strategy.md)). Include secret leakage protection tests ([REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration); [06-test-strategy.md §5](06-test-strategy.md#5-secret-leakage-protection-prompt-injection--exfiltration)).
 
 ---
 
