@@ -11,8 +11,8 @@ Go application: Telegram bot, core orchestration, long-term memory (markdown), v
 | Variable         | Default      | Description |
 |------------------|--------------|-------------|
 | `PA_CONFIG_DIR`  | `./config`   | Directory containing the main config file; the file name is always `config.json`. This directory is the base for config-related paths (users, allowlist, scheduled_tasks). |
-| `PA_DATA_DIR`    | `.`          | Base directory for data paths: `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. Relative path values in config are joined with this base. |
-| `PA_SECRETS_DIR` | `.`          | Base directory for secret file paths: `token_path`, `api_key_path`, `private_key_path`. Relative path values in config are joined with this base. |
+| `PA_DATA_DIR`    | `.`          | Base directory for data paths: `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. Relative path values in config are joined with this base. For local run with data in `./data/`, set `PA_DATA_DIR=./data` in `.env`. |
+| `PA_SECRETS_DIR` | `.`          | Base directory for secret file paths: `token_path`, `users_path`, `api_key_path`, `private_key_path`. Relative path values in config are joined with this base. For local run with secrets in `.secrets/`, set `PA_SECRETS_DIR=.secrets` in `.env`. |
 | `PA_LOG_LEVEL`   | `info`       | Log level: `info` or `debug` (case-insensitive). At `debug`, the core logs full LLM request and response (including memory/vector context) in the handler; at `info`, only metadata (message count, response length, token usage). |
 
 Defined in `.env` (see Setup). With [direnv](https://direnv.net/), `.envrc` loads `.env` into the shell.
@@ -24,7 +24,7 @@ Defined in `.env` (see Setup). With [direnv](https://direnv.net/), `.envrc` load
 ```bash
 go mod tidy
 cp .env.example .env
-# Edit .env: set PA_CONFIG_DIR and PA_LOG_LEVEL if needed
+# Edit .env: set PA_CONFIG_DIR, PA_SECRETS_DIR (e.g. .secrets for local), PA_LOG_LEVEL if needed
 ```
 
 With [direnv](https://direnv.net/): `direnv allow` so `.env` is loaded in the shell.
@@ -37,14 +37,14 @@ With [direnv](https://direnv.net/): `direnv allow` so `.env` is loaded in the sh
 # Build
 go build -o pa ./cmd/pa
 
-# Run (set env explicitly; defaults: PA_CONFIG_DIR=./config, PA_DATA_DIR=., PA_SECRETS_DIR=.)
-PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. go run ./cmd/pa
+# Run (set env explicitly; data in ./data/, secrets in .secrets/)
+PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets go run ./cmd/pa
 
 # Or rely on .env / direnv, then:
 go run ./cmd/pa
 
 # Debug LLM conversation (full request/response in logs)
-PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. PA_LOG_LEVEL=debug go run ./cmd/pa
+PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets PA_LOG_LEVEL=debug go run ./cmd/pa
 ```
 
 ### Verify node access
@@ -52,9 +52,9 @@ PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. PA_LOG_LEVEL=debug go run 
 To check that SSH access to all configured nodes works (without starting the bot):
 
 ```bash
-PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. go run ./cmd/pa -verify-nodes
+PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets go run ./cmd/pa -verify-nodes
 # Optional: use another allowlisted command (e.g. "echo ok")
-PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. go run ./cmd/pa -verify-nodes -verify-nodes-command "echo ok"
+PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets go run ./cmd/pa -verify-nodes -verify-nodes-command "echo ok"
 ```
 
 The command loads config and allowlist, connects to each node over SSH, runs one allowlisted command per node (default: `uptime`), and reports success or failure. Exit code 0 only when all nodes succeed. Ensure each node's allowlist file exists at the path set in config (`nodes.<id>.command_allowlist_path`) and contains the probe command (e.g. `uptime`).
@@ -72,18 +72,18 @@ Build and run in a container. The same `config/` directory is used; secrets are 
 | `PA_SECRETS_DIR`  | `/run/secrets`     | Secrets directory (Docker secrets). Base for `token_path`, `users_path`, API keys, node private keys. |
 | `PA_LOG_LEVEL`    | `info`             | Log level. |
 
-Use a config with **relative** path values (e.g. `token_path`: `"telegram_bot_token"`, `users_path`: `"telegram_users.json"`, `memory_dir`: `"memory"`) so they resolve correctly. Copy `config/config.docker.example.json` to `config/config.json` and edit as needed; the Telegram users file is provided via `.secrets/telegram_users.json` (mounted as a secret).
+Use a config with **bare secret filenames** (e.g. `token_path`: `"telegram_bot_token.txt"`, `users_path`: `"telegram_users.json"`, `api_key_path`: `"openai_api_key.txt"`) so that with `PA_SECRETS_DIR=.secrets` locally and `PA_SECRETS_DIR=/run/secrets` in Docker the same config works: secrets resolve to `.secrets/<name>` locally and `/run/secrets/<name>` in the container.
 
 **Setup:**
 
-1. **Config** — Ensure `config/config.json` exists. For Docker, use relative paths (see `config/config.docker.example.json`).
-2. **Secrets** — Create `.secrets/` and add one file per secret (no trailing newline for tokens):
+1. **Config** — Ensure `config/config.json` exists with relative paths; secret paths are bare filenames (see `config/config.docker.example.json`).
+2. **Secrets** — Create `.secrets/` and add one file per secret (no trailing newline for tokens). Same files are used for local run and for Docker (Compose mounts them into the container):
 
-   | File in `.secrets/`   | Content          | Config field(s)        |
-   |----------------------|------------------|------------------------|
-   | `telegram_bot_token` | Bot token        | `telegram.token_path`  |
-   | `telegram_users.json`| JSON list of users | `telegram.users_path` |
-   | `openai_api_key`     | OpenAI API key   | `llm_providers[].api_key_path`, `embedding.api_key_path` |
+   | File in `.secrets/`     | Content          | Config field(s)        |
+   |-------------------------|------------------|------------------------|
+   | `telegram_bot_token.txt`| Bot token        | `telegram.token_path`  |
+   | `telegram_users.json`   | JSON list of users | `telegram.users_path` |
+   | `openai_api_key.txt`    | OpenAI API key   | `llm_providers[].api_key_path`, `embedding.api_key_path` |
 
    For nodes with SSH keys, add files (e.g. `pa_nas_ed25519`) and mount them in `docker-compose.yml` with the same target name as in config.
 

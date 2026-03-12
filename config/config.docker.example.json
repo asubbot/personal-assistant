@@ -1,7 +1,7 @@
 {
   "version": 1,
   "telegram": {
-    "token_path": "telegram_bot_token",
+    "token_path": "telegram_bot_token.txt",
     "users_path": "telegram_users.json",
     "notify_chat_id": 0,
     "max_message_length": 4096
@@ -10,7 +10,7 @@
     {
       "type": "openai",
       "endpoint": "https://api.openai.com/v1",
-      "api_key_path": "openai_api_key",
+      "api_key_path": "openai_api_key.txt",
       "model": "gpt-4o-mini"
     }
   ],
@@ -24,7 +24,7 @@
   "embedding": {
     "type": "openai",
     "endpoint": "https://api.openai.com/v1",
-    "api_key_path": "openai_api_key",
+    "api_key_path": "openai_api_key.txt",
     "model": "text-embedding-3-small",
     "dimensions": 1536
   },
