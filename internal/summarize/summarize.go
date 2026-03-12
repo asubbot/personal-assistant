@@ -61,13 +61,35 @@ func ParseSummarizeScope(value string) (Scope, error) {
 }
 
 const (
-	summarizeSystemPrompt = "You are summarizing a day's conversation with an assistant. Produce a concise summary in a few sentences or bullet points. Write in the same language as the conversation. Output only the summary, no preamble."
-	summarizeDayIDPrefix  = "summary:day:"
+	summarizeSystemPrompt      = "You are summarizing a day's conversation with an assistant. Produce a concise summary in a few sentences or bullet points. Write in the same language as the conversation. Output only the summary, no preamble."
+	summarizeMonthSystemPrompt = "You are summarizing a month's daily summaries into a single monthly overview. Produce a concise summary in a few sentences or bullet points. Use the same language as the content. Output only the summary, no preamble."
+	summarizeYearSystemPrompt  = "You are summarizing a year's monthly summaries into a single yearly overview. Produce a concise summary in a few sentences or bullet points. Use the same language as the content. Output only the summary, no preamble."
+	summarizeDayIDPrefix       = "summary:day:"
+	summarizeMonthIDPrefix     = "summary:month:"
+	summarizeYearIDPrefix      = "summary:year:"
 )
 
 // DayConfig holds dependencies for running day summarization.
 type DayConfig struct {
 	LLMLogDir   string
+	LLMProvider llm.Provider
+	MemoryStore *memory.Store
+	Embedder    embedding.Embedder
+	VectorStore vector.Store
+	Logger      *slog.Logger
+}
+
+// MonthConfig holds dependencies for running month summarization (reads day summaries from memory).
+type MonthConfig struct {
+	LLMProvider llm.Provider
+	MemoryStore *memory.Store
+	Embedder    embedding.Embedder
+	VectorStore vector.Store
+	Logger      *slog.Logger
+}
+
+// YearConfig holds dependencies for running year summarization (reads month summaries from memory).
+type YearConfig struct {
 	LLMProvider llm.Provider
 	MemoryStore *memory.Store
 	Embedder    embedding.Embedder
@@ -124,6 +146,146 @@ func Day(ctx context.Context, day time.Time, cfg DayConfig) error {
 	}
 
 	cfg.Logger.Info("summarize day: done", "day", day.UTC().Format("2006-01-02"), "entries", len(entries))
+	return nil
+}
+
+// Month runs summarization for the given month (UTC): reads day summaries from memory,
+// calls LLM to produce a monthly overview, writes to memory (YYYY/MM/summary.md) and adds to the vector store.
+// If no day summaries exist for the month, no write is performed and nil is returned.
+func Month(ctx context.Context, year int, month int, cfg MonthConfig) error {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.Default()
+	}
+
+	sections, err := gatherDaySummariesForMonth(ctx, cfg.MemoryStore, year, month)
+	if err != nil {
+		return err
+	}
+	if len(sections) == 0 {
+		cfg.Logger.Info("summarize month: no day summaries, skipping", "year", year, "month", month)
+		return nil
+	}
+
+	combined := strings.Join(sections, "\n\n")
+	summaryText, err := completeRollupSummary(ctx, cfg.LLMProvider, summarizeMonthSystemPrompt, "Summarize the following month's daily summaries:\n\n"+combined)
+	if err != nil {
+		return fmt.Errorf("summarize month: %w", err)
+	}
+
+	if err := cfg.MemoryStore.WriteMonthSummary(ctx, year, month, summaryText); err != nil {
+		return fmt.Errorf("summarize month: write memory: %w", err)
+	}
+
+	id := summarizeMonthIDPrefix + fmt.Sprintf("%04d-%02d", year, month)
+	if err := indexSummary(ctx, cfg.VectorStore, cfg.Embedder, id, summaryText); err != nil {
+		return fmt.Errorf("summarize month: %w", err)
+	}
+
+	cfg.Logger.Info("summarize month: done", "year", year, "month", month, "day_summaries", len(sections))
+	return nil
+}
+
+// Year runs summarization for the given year: reads month summaries from memory,
+// calls LLM to produce a yearly overview, writes to memory (YYYY/summary.md) and adds to the vector store.
+// If no month summaries exist for the year, no write is performed and nil is returned.
+func Year(ctx context.Context, year int, cfg YearConfig) error {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.Default()
+	}
+
+	sections, err := gatherMonthSummariesForYear(ctx, cfg.MemoryStore, year)
+	if err != nil {
+		return err
+	}
+	if len(sections) == 0 {
+		cfg.Logger.Info("summarize year: no month summaries, skipping", "year", year)
+		return nil
+	}
+
+	combined := strings.Join(sections, "\n\n")
+	summaryText, err := completeRollupSummary(ctx, cfg.LLMProvider, summarizeYearSystemPrompt, "Summarize the following year's monthly summaries:\n\n"+combined)
+	if err != nil {
+		return fmt.Errorf("summarize year: %w", err)
+	}
+
+	if err := cfg.MemoryStore.WriteYearSummary(ctx, year, summaryText); err != nil {
+		return fmt.Errorf("summarize year: write memory: %w", err)
+	}
+
+	id := summarizeYearIDPrefix + fmt.Sprintf("%04d", year)
+	if err := indexSummary(ctx, cfg.VectorStore, cfg.Embedder, id, summaryText); err != nil {
+		return fmt.Errorf("summarize year: %w", err)
+	}
+
+	cfg.Logger.Info("summarize year: done", "year", year, "month_summaries", len(sections))
+	return nil
+}
+
+// gatherDaySummariesForMonth reads day summaries for the given month and returns section blocks (## YYYY-MM-DD\ncontent). Missing days are skipped.
+func gatherDaySummariesForMonth(ctx context.Context, store *memory.Store, year int, month int) ([]string, error) {
+	first := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	lastDay := first.AddDate(0, 1, -1).Day()
+	var sections []string
+	for d := 1; d <= lastDay; d++ {
+		day := time.Date(year, time.Month(month), d, 0, 0, 0, 0, time.UTC)
+		content, err := store.ReadDaySummary(ctx, day)
+		if err != nil {
+			return nil, fmt.Errorf("read day summary %s: %w", day.Format("2006-01-02"), err)
+		}
+		if content == "" {
+			continue
+		}
+		sections = append(sections, "## "+day.Format("2006-01-02")+"\n"+content)
+	}
+	return sections, nil
+}
+
+// gatherMonthSummariesForYear reads month summaries for the given year and returns section blocks (## YYYY-MM\ncontent). Missing months are skipped.
+func gatherMonthSummariesForYear(ctx context.Context, store *memory.Store, year int) ([]string, error) {
+	var sections []string
+	for m := 1; m <= 12; m++ {
+		content, err := store.ReadMonthSummary(ctx, year, m)
+		if err != nil {
+			return nil, fmt.Errorf("read month summary %04d-%02d: %w", year, m, err)
+		}
+		if content == "" {
+			continue
+		}
+		sections = append(sections, "## "+fmt.Sprintf("%04d-%02d", year, m)+"\n"+content)
+	}
+	return sections, nil
+}
+
+// completeRollupSummary calls the LLM with the given system prompt and user content, returns trimmed summary or error.
+func completeRollupSummary(ctx context.Context, provider llm.Provider, systemPrompt, userContent string) (string, error) {
+	messages := []llm.Message{
+		{Role: "system", Content: systemPrompt},
+		{Role: "user", Content: userContent},
+	}
+	result, err := provider.Complete(ctx, messages, nil)
+	if err != nil {
+		return "", fmt.Errorf("llm: %w", err)
+	}
+	summary := strings.TrimSpace(result.Content)
+	if summary == "" {
+		return "", fmt.Errorf("llm returned empty summary")
+	}
+	return summary, nil
+}
+
+// indexSummary deletes any existing vector for id, embeds text and adds to the store. No-op if store or embedder is nil.
+func indexSummary(ctx context.Context, store vector.Store, embedder embedding.Embedder, id, text string) error {
+	if store == nil || embedder == nil {
+		return nil
+	}
+	_ = store.Delete(ctx, id)
+	emb, err := embedder.Embed(ctx, text)
+	if err != nil {
+		return fmt.Errorf("embed: %w", err)
+	}
+	if err := store.Add(ctx, id, emb, text); err != nil {
+		return fmt.Errorf("vector add: %w", err)
+	}
 	return nil
 }
 

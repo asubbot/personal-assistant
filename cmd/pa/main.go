@@ -153,9 +153,10 @@ func runSummarize(cfg *config.Config, value string, logger *slog.Logger) {
 	switch scope.Kind {
 	case "day":
 		runSummarizeDay(cfg, scope.Day, logger)
-	case "month", "year":
-		logger.Error("summarize: not implemented", "scope", scope.Kind, "value", value)
-		os.Exit(1)
+	case "month":
+		runSummarizeMonth(cfg, scope.Year, scope.Month, logger)
+	case "year":
+		runSummarizeYear(cfg, scope.Year, logger)
 	default:
 		logger.Error("summarize: unknown scope", "scope", scope.Kind)
 		os.Exit(1)
@@ -205,6 +206,116 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) {
 	ctx := context.Background()
 	err = summarize.Day(ctx, day, summarize.DayConfig{
 		LLMLogDir:   cfg.Paths.LLMLogDir,
+		LLMProvider: llmProvider,
+		MemoryStore: memoryStore,
+		Embedder:    embedder,
+		VectorStore: vectorStore,
+		Logger:      logger,
+	})
+	if err != nil {
+		logger.Error("summarize", "error", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
+// runSummarizeMonth runs month summarization for the given year/month (UTC), then exits.
+func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Logger) {
+	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
+		logger.Error("summarize: mkdir memory", "error", err)
+		os.Exit(1)
+	}
+	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
+	if err != nil {
+		logger.Error("summarize: memory store", "error", err)
+		os.Exit(1)
+	}
+
+	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
+	if err != nil {
+		logger.Error("summarize: llm provider", "error", err)
+		os.Exit(1)
+	}
+
+	embedder, err := embedding.NewEmbedder(cfg.Embedding)
+	if err != nil {
+		logger.Error("summarize: embedder", "error", err)
+		os.Exit(1)
+	}
+
+	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
+	if err := os.MkdirAll(vecDir, 0o755); err != nil {
+		logger.Error("summarize: mkdir vector", "error", err)
+		os.Exit(1)
+	}
+	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
+	if err != nil {
+		logger.Error("summarize: vector store", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if closeErr := vectorStore.Close(); closeErr != nil {
+			logger.Error("summarize: close vector store", "error", closeErr)
+		}
+	}()
+
+	ctx := context.Background()
+	err = summarize.Month(ctx, year, month, summarize.MonthConfig{
+		LLMProvider: llmProvider,
+		MemoryStore: memoryStore,
+		Embedder:    embedder,
+		VectorStore: vectorStore,
+		Logger:      logger,
+	})
+	if err != nil {
+		logger.Error("summarize", "error", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
+// runSummarizeYear runs year summarization for the given year, then exits.
+func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) {
+	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
+		logger.Error("summarize: mkdir memory", "error", err)
+		os.Exit(1)
+	}
+	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
+	if err != nil {
+		logger.Error("summarize: memory store", "error", err)
+		os.Exit(1)
+	}
+
+	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
+	if err != nil {
+		logger.Error("summarize: llm provider", "error", err)
+		os.Exit(1)
+	}
+
+	embedder, err := embedding.NewEmbedder(cfg.Embedding)
+	if err != nil {
+		logger.Error("summarize: embedder", "error", err)
+		os.Exit(1)
+	}
+
+	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
+	if err := os.MkdirAll(vecDir, 0o755); err != nil {
+		logger.Error("summarize: mkdir vector", "error", err)
+		os.Exit(1)
+	}
+	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
+	if err != nil {
+		logger.Error("summarize: vector store", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if closeErr := vectorStore.Close(); closeErr != nil {
+			logger.Error("summarize: close vector store", "error", closeErr)
+		}
+	}()
+
+	ctx := context.Background()
+	err = summarize.Year(ctx, year, summarize.YearConfig{
 		LLMProvider: llmProvider,
 		MemoryStore: memoryStore,
 		Embedder:    embedder,

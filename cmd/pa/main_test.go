@@ -33,11 +33,10 @@ func TestConfigFilePath_PAConfigDirUnsetOrEmpty(t *testing.T) {
 	}
 }
 
-// TestSummarizeCLI_exitZero — -summarize=YYYY-MM-DD runs without starting the bot and exits 0 when successful (e.g. no entries to summarize).
-func TestSummarizeCLI_exitZero(t *testing.T) {
-	dir := t.TempDir()
+// runSummarizeCLI runs `go run ./cmd/pa -summarize=<value>` with minimal config in dir; expects exit 0 (e.g. skip when no data).
+func runSummarizeCLI(t *testing.T, dir, summarizeValue string) {
+	t.Helper()
 	cfgPath := filepath.Join(dir, config.ConfigFileName)
-	// Minimal config: relative paths; PA_DATA_DIR=dir so they resolve to dir. No LLM log file → summarize skips, exit 0.
 	cfg := `{
   "version": 1,
   "telegram": { "token_path": "t", "users_path": "" },
@@ -57,7 +56,6 @@ func TestSummarizeCLI_exitZero(t *testing.T) {
 	}
 	cfgDir := filepath.Dir(cfgPath)
 
-	// Run from module root so "go run ./cmd/pa" finds the package.
 	wd, _ := os.Getwd()
 	moduleRoot := wd
 	for {
@@ -70,15 +68,30 @@ func TestSummarizeCLI_exitZero(t *testing.T) {
 		}
 		moduleRoot = parent
 	}
-	cmd := exec.Command("go", "run", "./cmd/pa", "-summarize=2026-03-12")
+	cmd := exec.Command("go", "run", "./cmd/pa", "-summarize="+summarizeValue)
 	cmd.Dir = moduleRoot
 	cmd.Env = append(os.Environ(), "PA_CONFIG_DIR="+cfgDir, "PA_DATA_DIR="+dir)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Logf("output: %s", out)
-		t.Fatalf("run -summarize-day: %v", err)
+		t.Fatalf("run -summarize=%s: %v", summarizeValue, err)
 	}
 	if len(out) > 0 {
 		t.Logf("output: %s", out)
 	}
+}
+
+// Covers AC-011, AC-012 (US-06): day summarization CLI -summarize=YYYY-MM-DD runs without starting the bot and exits 0 when successful (e.g. no entries to summarize).
+func TestSummarizeCLI_day_exitZero(t *testing.T) {
+	runSummarizeCLI(t, t.TempDir(), "2026-03-12")
+}
+
+// Supporting AC-011, AC-012 (US-06): month summarization CLI -summarize=YYYY-MM exits 0 when no day summaries (skip).
+func TestSummarizeCLI_month_exitZero(t *testing.T) {
+	runSummarizeCLI(t, t.TempDir(), "2026-03")
+}
+
+// Supporting AC-011, AC-012 (US-06): year summarization CLI -summarize=YYYY exits 0 when no month summaries (skip).
+func TestSummarizeCLI_year_exitZero(t *testing.T) {
+	runSummarizeCLI(t, t.TempDir(), "2026")
 }

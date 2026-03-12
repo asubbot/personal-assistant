@@ -173,15 +173,106 @@ func TestReadDaySummary_missingFile_returnsEmpty(t *testing.T) {
 	}
 }
 
-// TestPathMonthSummary_PathYearSummary — path helpers for future month/year summaries.
-func TestPathMonthSummary_PathYearSummary(t *testing.T) {
-	root := filepath.Join("data", "memory")
-	wantMonth := filepath.Join(root, "2026", "03", "summary.md")
-	if got := PathMonthSummary(root, 2026, 3); got != wantMonth {
-		t.Errorf("PathMonthSummary = %q, want %q", got, wantMonth)
+// Covers AC-011, AC-012 (US-06): month summary written and read from calendar path rootDir/YYYY/MM/summary.md.
+func TestWriteMonthSummary_ReadMonthSummary_roundtrip(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
 	}
-	wantYear := filepath.Join(root, "2026", "summary.md")
-	if got := PathYearSummary(root, 2026); got != wantYear {
-		t.Errorf("PathYearSummary = %q, want %q", got, wantYear)
+
+	content := "Month summary: key themes and tasks."
+	if err := store.WriteMonthSummary(ctx, 2026, 3, content); err != nil {
+		t.Fatalf("WriteMonthSummary: %v", err)
+	}
+
+	got, err := store.ReadMonthSummary(ctx, 2026, 3)
+	if err != nil {
+		t.Fatalf("ReadMonthSummary: %v", err)
+	}
+	if got != content {
+		t.Errorf("ReadMonthSummary: got %q, want %q", got, content)
+	}
+
+	content2 := "Updated month summary."
+	if err := store.WriteMonthSummary(ctx, 2026, 3, content2); err != nil {
+		t.Fatalf("WriteMonthSummary overwrite: %v", err)
+	}
+	got, _ = store.ReadMonthSummary(ctx, 2026, 3)
+	if got != content2 {
+		t.Errorf("ReadMonthSummary after overwrite: got %q, want %q", got, content2)
+	}
+}
+
+// Supporting AC-012 (US-06): ReadMonthSummary returns empty when file does not exist.
+func TestReadMonthSummary_missing_returnsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	got, err := store.ReadMonthSummary(ctx, 2025, 7)
+	if err != nil {
+		t.Fatalf("ReadMonthSummary: %v", err)
+	}
+	if got != "" {
+		t.Errorf("ReadMonthSummary (missing): got %q, want empty", got)
+	}
+}
+
+// Covers AC-011, AC-012 (US-06): year summary written and read from calendar path rootDir/YYYY/summary.md.
+func TestWriteYearSummary_ReadYearSummary_roundtrip(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	content := "Year summary: main achievements and themes."
+	if err := store.WriteYearSummary(ctx, 2026, content); err != nil {
+		t.Fatalf("WriteYearSummary: %v", err)
+	}
+
+	got, err := store.ReadYearSummary(ctx, 2026)
+	if err != nil {
+		t.Fatalf("ReadYearSummary: %v", err)
+	}
+	if got != content {
+		t.Errorf("ReadYearSummary: got %q, want %q", got, content)
+	}
+
+	content2 := "Updated year summary."
+	if err := store.WriteYearSummary(ctx, 2026, content2); err != nil {
+		t.Fatalf("WriteYearSummary overwrite: %v", err)
+	}
+	got, _ = store.ReadYearSummary(ctx, 2026)
+	if got != content2 {
+		t.Errorf("ReadYearSummary after overwrite: got %q, want %q", got, content2)
+	}
+}
+
+// Supporting AC-012 (US-06): ReadYearSummary returns empty when file does not exist.
+func TestReadYearSummary_missing_returnsEmpty(t *testing.T) {
+	dir := t.TempDir()
+	ctx := context.Background()
+
+	store, err := NewStore(dir)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+
+	got, err := store.ReadYearSummary(ctx, 2024)
+	if err != nil {
+		t.Fatalf("ReadYearSummary: %v", err)
+	}
+	if got != "" {
+		t.Errorf("ReadYearSummary (missing): got %q, want empty", got)
 	}
 }

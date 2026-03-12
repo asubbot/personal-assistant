@@ -91,12 +91,64 @@ func (s *Store) ReadDaySummary(ctx context.Context, day time.Time) (string, erro
 	return string(data), nil
 }
 
-// PathMonthSummary returns the path for the month summary: rootDir/YYYY/MM/summary.md (for future use).
-func PathMonthSummary(rootDir string, year int, month int) string {
-	return filepath.Join(rootDir, fmt.Sprintf("%04d", year), fmt.Sprintf("%02d", month), "summary.md")
+// pathForMonthSummary returns the path for the month summary: rootDir/YYYY/MM/summary.md.
+func (s *Store) pathForMonthSummary(year int, month int) string {
+	return filepath.Join(s.rootDir, fmt.Sprintf("%04d", year), fmt.Sprintf("%02d", month), "summary.md")
 }
 
-// PathYearSummary returns the path for the year summary: rootDir/YYYY/summary.md (for future use).
-func PathYearSummary(rootDir string, year int) string {
-	return filepath.Join(rootDir, fmt.Sprintf("%04d", year), "summary.md")
+// pathForYearSummary returns the path for the year summary: rootDir/YYYY/summary.md.
+func (s *Store) pathForYearSummary(year int) string {
+	return filepath.Join(s.rootDir, fmt.Sprintf("%04d", year), "summary.md")
+}
+
+// WriteMonthSummary writes the month summary to rootDir/YYYY/MM/summary.md. Creates parent directories as needed.
+func (s *Store) WriteMonthSummary(ctx context.Context, year int, month int, content string) error {
+	path := s.pathForMonthSummary(year, month)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("memory: mkdir %s: %w", dir, err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("memory: write %s: %w", path, err)
+	}
+	return nil
+}
+
+// ReadMonthSummary reads the month summary. Returns empty string and nil error if the file does not exist.
+func (s *Store) ReadMonthSummary(ctx context.Context, year int, month int) (string, error) {
+	path := s.pathForMonthSummary(year, month)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("memory: read %s: %w", path, err)
+	}
+	return string(data), nil
+}
+
+// WriteYearSummary writes the year summary to rootDir/YYYY/summary.md. Creates parent directories as needed.
+func (s *Store) WriteYearSummary(ctx context.Context, year int, content string) error {
+	path := s.pathForYearSummary(year)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("memory: mkdir %s: %w", dir, err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("memory: write %s: %w", path, err)
+	}
+	return nil
+}
+
+// ReadYearSummary reads the year summary. Returns empty string and nil error if the file does not exist.
+func (s *Store) ReadYearSummary(ctx context.Context, year int) (string, error) {
+	path := s.pathForYearSummary(year)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("memory: read %s: %w", path, err)
+	}
+	return string(data), nil
 }
