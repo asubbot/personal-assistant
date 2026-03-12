@@ -9,30 +9,55 @@ import (
 	"pa/internal/llmlog"
 	"pa/internal/memory"
 	"pa/internal/vector"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// ParseDayDate returns the day to summarize (midnight UTC). If dateFlag is non-empty, parses YYYY-MM-DD; otherwise returns yesterday in paTimezone (or UTC if empty).
-func ParseDayDate(dateFlag, paTimezone string) (time.Time, error) {
-	if strings.TrimSpace(dateFlag) != "" {
-		t, err := time.Parse("2006-01-02", strings.TrimSpace(dateFlag))
-		if err != nil {
-			return time.Time{}, err
-		}
-		return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC), nil
+// Scope is the summarization scope: day (YYYY-MM-DD), month (YYYY-MM), or year (YYYY).
+type Scope struct {
+	Kind  string    // "day", "month", "year"
+	Day   time.Time // set when Kind == "day"
+	Year  int       // set for month and year
+	Month int       // 1-12 when Kind == "month", 0 for year
+}
+
+var (
+	reYear  = regexp.MustCompile(`^\d{4}$`)
+	reMonth = regexp.MustCompile(`^(\d{4})-(\d{2})$`)
+	reDay   = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
+)
+
+// ParseSummarizeScope parses -summarize value: YYYY (year), YYYY-MM (month), or YYYY-MM-DD (day). No default; value is required.
+func ParseSummarizeScope(value string) (Scope, error) {
+	s := strings.TrimSpace(value)
+	if s == "" {
+		return Scope{}, fmt.Errorf("summarize: value required (YYYY, YYYY-MM, or YYYY-MM-DD)")
 	}
-	loc := time.UTC
-	if strings.TrimSpace(paTimezone) != "" {
-		var err error
-		loc, err = time.LoadLocation(paTimezone)
-		if err != nil {
-			return time.Time{}, err
-		}
+	if reYear.MatchString(s) {
+		y, _ := strconv.Atoi(s)
+		return Scope{Kind: "year", Year: y}, nil
 	}
-	now := time.Now().In(loc)
-	yesterday := now.AddDate(0, 0, -1)
-	return time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, time.UTC), nil
+	if m := reMonth.FindStringSubmatch(s); m != nil {
+		y, _ := strconv.Atoi(m[1])
+		mo, _ := strconv.Atoi(m[2])
+		if mo < 1 || mo > 12 {
+			return Scope{}, fmt.Errorf("summarize: invalid month in %q", s)
+		}
+		return Scope{Kind: "month", Year: y, Month: mo}, nil
+	}
+	if m := reDay.FindStringSubmatch(s); m != nil {
+		y, _ := strconv.Atoi(m[1])
+		mo, _ := strconv.Atoi(m[2])
+		d, _ := strconv.Atoi(m[3])
+		t := time.Date(y, time.Month(mo), d, 0, 0, 0, 0, time.UTC)
+		if t.Year() != y || t.Month() != time.Month(mo) || t.Day() != d {
+			return Scope{}, fmt.Errorf("summarize: invalid date %q", s)
+		}
+		return Scope{Kind: "day", Day: t}, nil
+	}
+	return Scope{}, fmt.Errorf("summarize: invalid format %q (use YYYY, YYYY-MM, or YYYY-MM-DD)", s)
 }
 
 const (

@@ -151,37 +151,57 @@ func TestDay_withEntries_callsLLMAndWrites(t *testing.T) {
 	}
 }
 
-// TestParseDayDate_explicitDate — -date=YYYY-MM-DD is parsed as that day UTC.
-func TestParseDayDate_explicitDate(t *testing.T) {
-	day, err := ParseDayDate("2026-03-12", "")
+// TestParseSummarizeScope_day — YYYY-MM-DD parses as day scope.
+func TestParseSummarizeScope_day(t *testing.T) {
+	scope, err := ParseSummarizeScope("2026-03-12")
 	if err != nil {
-		t.Fatalf("ParseDayDate: %v", err)
+		t.Fatalf("ParseSummarizeScope: %v", err)
 	}
-	if day.Year() != 2026 || day.Month() != 3 || day.Day() != 12 {
-		t.Errorf("day = %v", day)
+	if scope.Kind != "day" {
+		t.Fatalf("Kind = %q, want day", scope.Kind)
 	}
-	if day.Location() != time.UTC {
-		t.Errorf("day location = %v", day.Location())
+	if scope.Day.Year() != 2026 || scope.Day.Month() != 3 || scope.Day.Day() != 12 {
+		t.Errorf("Day = %v", scope.Day)
+	}
+	if scope.Day.Location() != time.UTC {
+		t.Errorf("Day location = %v", scope.Day.Location())
 	}
 }
 
-// TestParseDayDate_emptyDate_usesYesterday — empty date with pa_timezone returns yesterday in that zone.
-func TestParseDayDate_emptyDate_usesYesterday(t *testing.T) {
-	day, err := ParseDayDate("", "UTC")
+// TestParseSummarizeScope_month — YYYY-MM parses as month scope.
+func TestParseSummarizeScope_month(t *testing.T) {
+	scope, err := ParseSummarizeScope("2026-03")
 	if err != nil {
-		t.Fatalf("ParseDayDate: %v", err)
+		t.Fatalf("ParseSummarizeScope: %v", err)
 	}
-	now := time.Now().UTC()
-	yesterday := now.AddDate(0, 0, -1)
-	if day.Year() != yesterday.Year() || day.Month() != yesterday.Month() || day.Day() != yesterday.Day() {
-		t.Errorf("day = %v, want yesterday %v", day, yesterday)
+	if scope.Kind != "month" || scope.Year != 2026 || scope.Month != 3 {
+		t.Errorf("scope = %+v", scope)
 	}
 }
 
-// TestParseDayDate_invalidDate_returnsError — invalid -date returns error.
-func TestParseDayDate_invalidDate_returnsError(t *testing.T) {
-	_, err := ParseDayDate("not-a-date", "")
+// TestParseSummarizeScope_year — YYYY parses as year scope.
+func TestParseSummarizeScope_year(t *testing.T) {
+	scope, err := ParseSummarizeScope("2026")
+	if err != nil {
+		t.Fatalf("ParseSummarizeScope: %v", err)
+	}
+	if scope.Kind != "year" || scope.Year != 2026 {
+		t.Errorf("scope = %+v", scope)
+	}
+}
+
+// TestParseSummarizeScope_empty_returnsError — empty value returns error.
+func TestParseSummarizeScope_empty_returnsError(t *testing.T) {
+	_, err := ParseSummarizeScope("")
 	if err == nil {
-		t.Fatal("ParseDayDate(invalid): expected error")
+		t.Fatal("ParseSummarizeScope(empty): expected error")
+	}
+}
+
+// TestParseSummarizeScope_invalid_returnsError — invalid format returns error.
+func TestParseSummarizeScope_invalid_returnsError(t *testing.T) {
+	_, err := ParseSummarizeScope("not-a-date")
+	if err == nil {
+		t.Fatal("ParseSummarizeScope(invalid): expected error")
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 // configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./config") joined with config.ConfigFileName.
@@ -48,8 +49,7 @@ func logLevelFromEnv() slog.Level {
 func main() {
 	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
-	summarizeDay := flag.Bool("summarize-day", false, "Run day summarization for the given date and exit (do not start the bot)")
-	summarizeDayDate := flag.String("date", "", "Date for -summarize-day in YYYY-MM-DD (default: yesterday in pa_timezone or UTC)")
+	summarizeFlag := flag.String("summarize", "", "Run summarization and exit: YYYY-MM-DD (day), YYYY-MM (month), YYYY (year). No default.")
 	flag.Parse()
 
 	configFilePath := configFilePath()
@@ -68,8 +68,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *summarizeDay {
-		runSummarizeDay(cfg, *summarizeDayDate, logger)
+	if *summarizeFlag != "" {
+		runSummarize(cfg, *summarizeFlag, logger)
 		return
 	}
 
@@ -143,49 +143,62 @@ func startSchedulerIfConfigured(cfg *config.Config, adapter core.Adapter, toolRe
 	}
 }
 
-// runSummarizeDay runs day summarization for the given date (or yesterday in pa_timezone), then exits.
-func runSummarizeDay(cfg *config.Config, dateFlag string, logger *slog.Logger) {
-	day, err := summarize.ParseDayDate(dateFlag, cfg.PATimezone)
+// runSummarize parses -summarize value (YYYY, YYYY-MM, or YYYY-MM-DD), runs the matching summarization, then exits.
+func runSummarize(cfg *config.Config, value string, logger *slog.Logger) {
+	scope, err := summarize.ParseSummarizeScope(value)
 	if err != nil {
-		logger.Error("summarize-day: invalid date", "error", err, "date", dateFlag)
+		logger.Error("summarize", "error", err)
 		os.Exit(1)
 	}
+	switch scope.Kind {
+	case "day":
+		runSummarizeDay(cfg, scope.Day, logger)
+	case "month", "year":
+		logger.Error("summarize: not implemented", "scope", scope.Kind, "value", value)
+		os.Exit(1)
+	default:
+		logger.Error("summarize: unknown scope", "scope", scope.Kind)
+		os.Exit(1)
+	}
+}
 
+// runSummarizeDay runs day summarization for the given date (UTC), then exits.
+func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) {
 	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
-		logger.Error("summarize-day: mkdir memory", "error", err)
+		logger.Error("summarize: mkdir memory", "error", err)
 		os.Exit(1)
 	}
 	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
 	if err != nil {
-		logger.Error("summarize-day: memory store", "error", err)
+		logger.Error("summarize: memory store", "error", err)
 		os.Exit(1)
 	}
 
 	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
 	if err != nil {
-		logger.Error("summarize-day: llm provider", "error", err)
+		logger.Error("summarize: llm provider", "error", err)
 		os.Exit(1)
 	}
 
 	embedder, err := embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
-		logger.Error("summarize-day: embedder", "error", err)
+		logger.Error("summarize: embedder", "error", err)
 		os.Exit(1)
 	}
 
 	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
-		logger.Error("summarize-day: mkdir vector", "error", err)
+		logger.Error("summarize: mkdir vector", "error", err)
 		os.Exit(1)
 	}
 	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
 	if err != nil {
-		logger.Error("summarize-day: vector store", "error", err)
+		logger.Error("summarize: vector store", "error", err)
 		os.Exit(1)
 	}
 	defer func() {
 		if closeErr := vectorStore.Close(); closeErr != nil {
-			logger.Error("summarize-day: close vector store", "error", closeErr)
+			logger.Error("summarize: close vector store", "error", closeErr)
 		}
 	}()
 
@@ -199,7 +212,7 @@ func runSummarizeDay(cfg *config.Config, dateFlag string, logger *slog.Logger) {
 		Logger:      logger,
 	})
 	if err != nil {
-		logger.Error("summarize-day", "error", err)
+		logger.Error("summarize", "error", err)
 		os.Exit(1)
 	}
 	os.Exit(0)

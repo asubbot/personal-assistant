@@ -33,8 +33,8 @@ func TestConfigFilePath_PAConfigDirUnsetOrEmpty(t *testing.T) {
 	}
 }
 
-// TestSummarizeDayCLI_exitZero — -summarize-day with -date runs without starting the bot and exits 0 when successful (e.g. no entries to summarize).
-func TestSummarizeDayCLI_exitZero(t *testing.T) {
+// TestSummarizeCLI_exitZero — -summarize=YYYY-MM-DD runs without starting the bot and exits 0 when successful (e.g. no entries to summarize).
+func TestSummarizeCLI_exitZero(t *testing.T) {
 	dir := t.TempDir()
 	cfgPath := filepath.Join(dir, config.ConfigFileName)
 	// Minimal config: relative paths; PA_DATA_DIR=dir so they resolve to dir. No LLM log file → summarize skips, exit 0.
@@ -70,7 +70,7 @@ func TestSummarizeDayCLI_exitZero(t *testing.T) {
 		}
 		moduleRoot = parent
 	}
-	cmd := exec.Command("go", "run", "./cmd/pa", "-summarize-day", "-date=2026-03-12")
+	cmd := exec.Command("go", "run", "./cmd/pa", "-summarize=2026-03-12")
 	cmd.Dir = moduleRoot
 	cmd.Env = append(os.Environ(), "PA_CONFIG_DIR="+cfgDir, "PA_DATA_DIR="+dir)
 	out, err := cmd.CombinedOutput()
