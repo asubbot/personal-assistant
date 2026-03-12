@@ -29,11 +29,11 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
 
 - [x] 1.1 Implement config load and validation
   - Define config struct (version; telegram: token_path, users_path, notify_chat_id; nodes: host, dedicated_user, auth, command_allowlist_path; llm_providers: ordered list; paths: memory_dir, log_path, vector_index_path, scheduled_tasks_path). Validate version for backward compatibility; load and validate users file (user_id, role, optional name).
-  - Load JSON from path; validate required fields and node/LLM/path consistency. Config file format: [Config file (JSON)](#config-file-json).
+  - Load JSON from path; validate required fields and node/LLM/path consistency. Config file format: [Config file (JSON)](#config-file-json). Resolve paths from environment ([REQ-030](01-02-requirements.md#configuration-paths-and-environment)): config file from `PA_CONFIG_DIR` (directory; default `./config`); data paths (memory_dir, log_path, vector_index_path, llm_log_dir) from `PA_DATA_DIR` (relative → relative to base, absolute unchanged, unset/empty → default e.g. "."); secrets paths from `PA_SECRETS_DIR` when applicable.
   - On validation failure: log clear error and exit non-zero (do not start serving)
-  - _Requirements:_ [REQ-003](01-02-requirements.md#nodes-and-ssh), [REQ-004](01-02-requirements.md#nodes-and-ssh), [REQ-024](01-02-requirements.md#nodes-and-ssh)
-  - _User Stories:_ [US-03](08-user-stories.md#us-03--node-config), [US-19](08-user-stories.md#us-19--startup-validation)
-  - _Acceptance Criteria:_ [AC-005](10-acceptance-criteria.md#ac-005-us-03), [AC-033](10-acceptance-criteria.md#ac-033-us-19) (config file and referenced files)
+  - _Requirements:_ [REQ-003](01-02-requirements.md#nodes-and-ssh), [REQ-004](01-02-requirements.md#nodes-and-ssh), [REQ-024](01-02-requirements.md#nodes-and-ssh), [REQ-030](01-02-requirements.md#configuration-paths-and-environment)
+  - _User Stories:_ [US-03](08-user-stories.md#us-03--node-config), [US-19](08-user-stories.md#us-19--startup-validation), [US-20](08-user-stories.md#us-20--configuration-paths-environment)
+  - _Acceptance Criteria:_ [AC-005](10-acceptance-criteria.md#ac-005-us-03), [AC-033](10-acceptance-criteria.md#ac-033-us-19) (config file and referenced files), [AC-042](10-acceptance-criteria.md#ac-042-us-20) (path resolution from env)
 
 - [x] 1.2 Write unit tests for config validation
   - Invalid host or missing authentication → validator returns error
@@ -202,9 +202,9 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - _Acceptance Criteria:_ [AC-022](10-acceptance-criteria.md#ac-022-us-12), [AC-023](10-acceptance-criteria.md#ac-023-us-12)
 
 - [x] 6.2 Implement scheduler (cron)
-  - Use robfig/cron/v3; load tasks from file at paths.scheduled_tasks_path (JSON array; schedule cron or @every); execution invokes registered tool or sends Telegram notification within security model
+  - Use robfig/cron/v3; load tasks from file at paths.scheduled_tasks_path (JSON array; schedule cron or @every); execution invokes registered tool or sends Telegram notification within security model. Notify action: destination from `telegram.notify_chat_id` or first allowed user ([REQ-023](01-02-requirements.md#scheduler-and-tools)).
   - Missing file, invalid JSON, duplicate or empty task name → empty list or clear error ([AC-034](10-acceptance-criteria.md#ac-034-us-11))
-  - _Requirements:_ [REQ-009](01-02-requirements.md#scheduler-and-tools)
+  - _Requirements:_ [REQ-009](01-02-requirements.md#scheduler-and-tools), [REQ-023](01-02-requirements.md#scheduler-and-tools)
   - _User Stories:_ [US-11](08-user-stories.md#us-11--scheduled-tasks)
   - _Acceptance Criteria:_ [AC-020](10-acceptance-criteria.md#ac-020-us-11), [AC-021](10-acceptance-criteria.md#ac-021-us-11), [AC-034](10-acceptance-criteria.md#ac-034-us-11)
 
@@ -349,8 +349,8 @@ _Do this when most functionality is in place._
 
 - [ ] 12.1 Final checkpoint — Ensure all acceptance criteria are met by reviewing the code and running unit and integration tests, ask the user if questions arise.
   - _Requirements:_ (all REQ from epic)
-  - _User Stories:_ (all US-01–US-19 from epic)
-  - _Acceptance Criteria:_ [AC-001–AC-037](10-acceptance-criteria.md), [AC-038–AC-041](10-acceptance-criteria.md) (see [06-test-strategy.md](06-test-strategy.md)). Include secret leakage protection tests ([REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), REQ-026–REQ-029; [06-test-strategy.md §5](06-test-strategy.md#5-secret-leakage-protection-prompt-injection--exfiltration)).
+  - _User Stories:_ (all US-01–US-20 from epic)
+  - _Acceptance Criteria:_ [AC-001–AC-037](10-acceptance-criteria.md), [AC-038–AC-042](10-acceptance-criteria.md) (see [06-test-strategy.md](06-test-strategy.md)). Include secret leakage protection tests ([REQ-017](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), REQ-026–REQ-029; [06-test-strategy.md §5](06-test-strategy.md#5-secret-leakage-protection-prompt-injection--exfiltration)).
 
 ---
 
