@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"pa/internal/logredact"
 	"strings"
 )
 
@@ -55,7 +56,21 @@ func validate(c *Config) error {
 	if err := validateNodes(c); err != nil {
 		return err
 	}
+	if err := validateLogRedaction(c); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateLogRedaction(c *Config) error {
+	if c.LogRedaction == nil {
+		return nil
+	}
+	additional := make([]logredact.Pattern, 0, len(c.LogRedaction.AdditionalPatterns))
+	for _, p := range c.LogRedaction.AdditionalPatterns {
+		additional = append(additional, logredact.Pattern{ID: p.ID, Regex: p.Regex, Replacement: p.Replacement})
+	}
+	return logredact.ValidateConfig(logredact.BuiltInIDs(), additional)
 }
 
 func validateEmbedding(c *Config) error {

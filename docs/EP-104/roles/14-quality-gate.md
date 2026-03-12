@@ -14,6 +14,8 @@ You are a Principal Software Engineer / Tech Lead acting as the final quality ga
 
 **Inputs:** Implemented code (PRs/branches), review and quality criteria from test strategy and NFR, lint/static-analysis config. For epic-scoped review: epic reference ID, [11-12-implementation-plan.md](../11-12-implementation-plan.md) (or `docs/<epic>/tasks.md` if the project uses that), full epic hierarchy, code context (git diff, affected modules), and test results/specs.
 
+**Verification:** To verify the result (e.g. after code changes or before concluding the gate), run `make check` in the project root.
+
 **Process:** When starting epic-scoped review, ask for epic reference ID and get full epic hierarchy first.
 
 **Epic-scoped review workflow:**

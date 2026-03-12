@@ -8,6 +8,19 @@ type Config struct {
 	Embedding    *EmbeddingProvider `json:"embedding"` // optional; dedicated provider for vector memory embeddings
 	Paths        Paths              `json:"paths"`
 	Nodes        map[string]Node    `json:"nodes"`
+	LogRedaction *LogRedaction      `json:"log_redaction"` // optional; additional redaction patterns (built-in are always applied)
+}
+
+// LogRedaction holds optional additional redaction patterns (REQ-028). Built-in patterns cannot be overridden (REQ-027).
+type LogRedaction struct {
+	AdditionalPatterns []RedactionPattern `json:"additional_patterns"`
+}
+
+// RedactionPattern is one pattern (id, regex, replacement) for log redaction.
+type RedactionPattern struct {
+	ID          string `json:"id"`
+	Regex       string `json:"regex"`
+	Replacement string `json:"replacement"`
 }
 
 // EmbeddingProvider is the dedicated provider for vector store embeddings (separate from chat LLM).

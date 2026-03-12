@@ -2,10 +2,13 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"pa/internal/embedding"
 	"pa/internal/llm"
+	"pa/internal/llmlog"
 	"pa/internal/memory"
 	"pa/internal/vector"
 	"strings"
@@ -19,6 +22,15 @@ const (
 	logTruncateMaxLen = 2000 // max chars per message/response when logging at DEBUG (REQ-021)
 )
 
+// genRequestID returns a short unique id for LLM log entries (16 hex chars from 8 random bytes).
+func genRequestID() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%016x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
+}
+
 // conversationHandler implements MessageHandler: memory read, vector search, LLM call, optional index (REQ-006, REQ-007, REQ-018).
 type conversationHandler struct {
 	provider         llm.Provider
@@ -28,6 +40,9 @@ type conversationHandler struct {
 	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-004, REQ-005, REQ-013)
 	logger           *slog.Logger
 	maxMessageLength int
+	llmLog           llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
+	model            string              // configured model name for LLM log entries
+	logRedactor      func(string) string // optional; redacts content in DEBUG app logs (REQ-026)
 }
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.
@@ -50,10 +65,23 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMRequest(ctx, messages)
 	}
+	requestID := genRequestID()
+	start := time.Now()
 	result, err := h.provider.Complete(ctx, messages, nil)
+	duration := time.Since(start)
 	if err != nil {
 		h.logger.Error("llm complete", "error", err)
 		return "", err
+	}
+	if h.llmLog != nil {
+		h.llmLog.Log(&llmlog.Entry{
+			RequestID:       requestID,
+			Messages:        messages,
+			Model:           h.model,
+			ResponseContent: result.Content,
+			Usage:           result.Usage,
+			DurationMs:      duration.Milliseconds(),
+		})
 	}
 	h.logLLMMetadata(ctx, len(messages), result)
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
@@ -111,12 +139,15 @@ func (h *conversationHandler) gatherContext(ctx context.Context, userText string
 	return "\n\nUse the following context if relevant to the user's message.\n\n" + s
 }
 
-// logLLMRequest logs the full request at DEBUG (REQ-021). Content may be truncated.
+// logLLMRequest logs the full request at DEBUG (REQ-021). Content may be truncated and redacted (REQ-026).
 func (h *conversationHandler) logLLMRequest(ctx context.Context, messages []llm.Message) {
 	for i, m := range messages {
 		content := m.Content
 		if len(content) > logTruncateMaxLen {
 			content = content[:logTruncateMaxLen] + "...[truncated]"
+		}
+		if h.logRedactor != nil {
+			content = h.logRedactor(content)
 		}
 		h.logger.DebugContext(ctx, "llm request", "index", i, "role", m.Role, "content_len", len(m.Content), "content", content)
 	}
@@ -127,11 +158,14 @@ func (h *conversationHandler) logLLMMetadata(ctx context.Context, messageCount i
 	h.logger.InfoContext(ctx, "llm call", "message_count", messageCount, "response_len", len(result.Content), "prompt_tokens", result.Usage.PromptTokens, "completion_tokens", result.Usage.CompletionTokens, "total_tokens", result.Usage.TotalTokens)
 }
 
-// logLLMResponse logs the full response at DEBUG (REQ-021). Content may be truncated.
+// logLLMResponse logs the full response at DEBUG (REQ-021). Content may be truncated and redacted (REQ-026).
 func (h *conversationHandler) logLLMResponse(ctx context.Context, result *llm.CompletionResult) {
 	content := result.Content
 	if len(content) > logTruncateMaxLen {
 		content = content[:logTruncateMaxLen] + "...[truncated]"
+	}
+	if h.logRedactor != nil {
+		content = h.logRedactor(content)
 	}
 	h.logger.DebugContext(ctx, "llm response", "content", content, "content_len", len(result.Content), "usage", result.Usage)
 }

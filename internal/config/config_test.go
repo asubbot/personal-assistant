@@ -155,6 +155,28 @@ func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	}
 }
 
+// TestLoad_LogRedactionReservedID_ReturnsError — REQ-029: reserved additional pattern id refuses start.
+func TestLoad_LogRedactionReservedID_ReturnsError(t *testing.T) {
+	_, err := Load(filepath.Join("testdata", "log_redaction_reserved_id.json"))
+	if err == nil {
+		t.Fatal("Load(log_redaction reserved id): expected error")
+	}
+	if !strings.Contains(err.Error(), "log_redaction") || !strings.Contains(err.Error(), "reserved") {
+		t.Errorf("Load: error = %v (expect log_redaction reserved message)", err)
+	}
+}
+
+// TestLoad_LogRedactionInvalidRegex_ReturnsError — REQ-029: invalid regex in additional pattern refuses start.
+func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
+	_, err := Load(filepath.Join("testdata", "log_redaction_invalid_regex.json"))
+	if err == nil {
+		t.Fatal("Load(log_redaction invalid regex): expected error")
+	}
+	if !strings.Contains(err.Error(), "log_redaction") || !strings.Contains(err.Error(), "invalid regex") {
+		t.Errorf("Load: error = %v (expect log_redaction invalid regex message)", err)
+	}
+}
+
 // Covers AC-005 (US-03): users_path points to nonexistent file returns clear error.
 func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	// Config with users_path pointing to a file that does not exist (path is CWD-relative)

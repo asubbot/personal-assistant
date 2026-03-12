@@ -7,6 +7,8 @@ import (
 	"pa/internal/config"
 	"pa/internal/embedding"
 	"pa/internal/llm"
+	"pa/internal/llmlog"
+	"pa/internal/logredact"
 	"pa/internal/memory"
 	"pa/internal/vector"
 )
@@ -25,6 +27,19 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 	if cfg != nil && cfg.Telegram.MaxMessageLength > 0 {
 		maxLen = cfg.Telegram.MaxMessageLength
 	}
+	redactor := buildRedactor(cfg)
+	var llmLog llmlog.Writer
+	var model string
+	if cfg != nil && cfg.Paths.LLMLogDir != "" {
+		var err error
+		llmLog, err = llmlog.NewWriter(cfg.Paths.LLMLogDir, logger, llmlog.Redactor(redactor))
+		if err != nil {
+			return fmt.Errorf("core: llm log writer: %w", err)
+		}
+		if len(cfg.LLMProviders) > 0 {
+			model = cfg.LLMProviders[0].Model
+		}
+	}
 	handler := &conversationHandler{
 		provider:         llmProvider,
 		memoryStore:      memoryStore,
@@ -33,6 +48,20 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 		nodeRunner:       nodeRunner,
 		logger:           logger,
 		maxMessageLength: maxLen,
+		llmLog:           llmLog,
+		model:            model,
+		logRedactor:      redactor,
 	}
 	return adapter.Run(ctx, handler)
+}
+
+// buildRedactor returns a redactor from built-in patterns plus config additional_patterns (REQ-027, REQ-028).
+func buildRedactor(cfg *config.Config) func(string) string {
+	var additional []logredact.Pattern
+	if cfg != nil && cfg.LogRedaction != nil {
+		for _, p := range cfg.LogRedaction.AdditionalPatterns {
+			additional = append(additional, logredact.Pattern{ID: p.ID, Regex: p.Regex, Replacement: p.Replacement})
+		}
+	}
+	return logredact.NewRedactor(additional)
 }
