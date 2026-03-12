@@ -8,7 +8,7 @@
 
 This table reflects **tests that exist in the codebase** at the time of the last update. The [test strategy](06-test-strategy.md) defines the *target* coverage per AC; this document shows which AC already have at least one corresponding test. **Update this file when adding or removing tests.**
 
-**Total tests:** unit 157, integration 11, E2E 0, manual 4 (scenarios in [06-manual-test-plan.md](06-manual-test-plan.md)).
+**Total tests:** unit **157**, integration **11**, E2E **0**, manual **4**.
 
 Table rules: rows are ordered by **AC number ascending**. AC that have no tests yet are listed in the **last row** and that row is **bold**.
 
