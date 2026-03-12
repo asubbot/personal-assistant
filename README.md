@@ -37,11 +37,14 @@ With [direnv](https://direnv.net/): `direnv allow` so `.env` is loaded in the sh
 # Build
 go build -o pa ./cmd/pa
 
-# Run (uses PA_CONFIG_DIR from env or default ./config)
+# Run (set env explicitly; defaults: PA_CONFIG_DIR=./config, PA_DATA_DIR=., PA_SECRETS_DIR=.)
+PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. go run ./cmd/pa
+
+# Or rely on .env / direnv, then:
 go run ./cmd/pa
 
 # Debug LLM conversation (full request/response in logs)
-PA_LOG_LEVEL=debug go run ./cmd/pa
+PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. PA_LOG_LEVEL=debug go run ./cmd/pa
 ```
 
 ### Verify node access
@@ -49,18 +52,27 @@ PA_LOG_LEVEL=debug go run ./cmd/pa
 To check that SSH access to all configured nodes works (without starting the bot):
 
 ```bash
-go run ./cmd/pa -verify-nodes
+PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. go run ./cmd/pa -verify-nodes
 # Optional: use another allowlisted command (e.g. "echo ok")
-go run ./cmd/pa -verify-nodes -verify-nodes-command "echo ok"
+PA_CONFIG_DIR=./config PA_DATA_DIR=. PA_SECRETS_DIR=. go run ./cmd/pa -verify-nodes -verify-nodes-command "echo ok"
 ```
 
 The command loads config and allowlist, connects to each node over SSH, runs one allowlisted command per node (default: `uptime`), and reports success or failure. Exit code 0 only when all nodes succeed. Ensure each node's allowlist file exists at the path set in config (`nodes.<id>.command_allowlist_path`) and contains the probe command (e.g. `uptime`).
 
 ### Docker deploy
 
-Build and run in a container (target: Synology DS220+, linux/amd64). The same `config/` directory is used; secrets are file-based (explicit, traceable).
+Build and run in a container. The same `config/` directory is used; secrets are file-based (explicit, traceable).
 
-**Path resolution:** In the container, set `PA_CONFIG_DIR=/etc/pa`, `PA_DATA_DIR=/data`, `PA_SECRETS_DIR=/run/secrets`. Use a config with **relative** path values (e.g. `token_path`: `"telegram_bot_token"`, `users_path`: `"telegram_users.json"`, `memory_dir`: `"memory"`) so they resolve correctly. Copy `config/config.docker.example.json` to `config/config.json` and edit as needed; the Telegram users file is provided via `.secrets/telegram_users.json` (mounted as a secret).
+**Environment in container** (set in `docker-compose.yml`):
+
+| Variable          | Value in container | Purpose |
+|-------------------|--------------------|---------|
+| `PA_CONFIG_DIR`   | `/etc/pa`          | Config directory (volume `./config`). Base for `command_allowlist_path`, `scheduled_tasks_path`. |
+| `PA_DATA_DIR`     | `/data`            | Data directory (volume `pa_data`). Base for `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. |
+| `PA_SECRETS_DIR`  | `/run/secrets`     | Secrets directory (Docker secrets). Base for `token_path`, `users_path`, API keys, node private keys. |
+| `PA_LOG_LEVEL`    | `info`             | Log level. |
+
+Use a config with **relative** path values (e.g. `token_path`: `"telegram_bot_token"`, `users_path`: `"telegram_users.json"`, `memory_dir`: `"memory"`) so they resolve correctly. Copy `config/config.docker.example.json` to `config/config.json` and edit as needed; the Telegram users file is provided via `.secrets/telegram_users.json` (mounted as a secret).
 
 **Setup:**
 

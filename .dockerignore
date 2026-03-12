@@ -1,0 +1,20 @@
+# Environment and secrets (do not send to build context)
+.env
+.envrc
+.secrets/
+
+# Git and IDE
+.git/
+.gitignore
+.vscode/
+
+# Go build artifacts and local data
+*.out
+coverage.html
+coverage.out
+data/
+pa
+
+# OS
+.DS_Store
+Thumbs.db

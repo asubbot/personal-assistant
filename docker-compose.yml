@@ -1,17 +1,30 @@
 # PersonalAssistant — Docker Compose for DS220+ (linux/amd64).
 # Uses config/ and .secrets/; set PA_DATA_DIR and PA_SECRETS_DIR so relative paths in config resolve. See README § Docker deploy.
+
+secrets:
+  telegram_bot_token:
+    file: ./.secrets/telegram_bot_token.txt
+  telegram_users:
+    file: ./.secrets/telegram_users.json
+  openai_api_key:
+    file: ./.secrets/openai_api_key.txt
+
+volumes:
+  pa_data:
+
 services:
   pa:
     build: .
     platform: linux/amd64
     restart: unless-stopped
+    # Mount at paths matching config (PA_SECRETS_DIR=/run/secrets): ./.secrets/*.txt and ./.secrets/telegram_users.json
     secrets:
       - source: telegram_bot_token
-        target: /run/secrets/telegram_bot_token
+        target: /run/secrets/.secrets/telegram_bot_token.txt
       - source: telegram_users
-        target: /run/secrets/telegram_users.json
+        target: /run/secrets/.secrets/telegram_users.json
       - source: openai_api_key
-        target: /run/secrets/openai_api_key
+        target: /run/secrets/.secrets/openai_api_key.txt
     volumes:
       - ./config:/etc/pa:ro
       - pa_data:/data
@@ -20,14 +33,3 @@ services:
       - PA_DATA_DIR=/data
       - PA_SECRETS_DIR=/run/secrets
       - PA_LOG_LEVEL=info
-
-secrets:
-  telegram_bot_token:
-    file: ./.secrets/telegram_bot_token
-  telegram_users:
-    file: ./.secrets/telegram_users.json
-  openai_api_key:
-    file: ./.secrets/openai_api_key
-
-volumes:
-  pa_data:
