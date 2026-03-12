@@ -55,6 +55,10 @@ go run ./cmd/pa -config ./config/config.json -verify-nodes -verify-nodes-command
 
 The command loads config and allowlist, connects to each node over SSH, runs one allowlisted command per node (default: `uptime`), and reports success or failure. Exit code 0 only when all nodes succeed. Ensure each node's allowlist file exists at the path set in config (`nodes.<id>.command_allowlist_path`) and contains the probe command (e.g. `uptime`).
 
+### Docker deploy (DS220+)
+
+Build and run in a container with file-based secrets. See **[deploy/README.md](deploy/README.md)** for setup (config, secrets), `docker compose up`, and verification.
+
 ---
 
 ## Development

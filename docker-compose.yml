@@ -1,0 +1,27 @@
+# PersonalAssistant — Docker Compose for DS220+ (linux/amd64).
+# Secrets: file-based (explicit, traceable). See deploy/README.md.
+services:
+  pa:
+    build: .
+    platform: linux/amd64
+    restart: unless-stopped
+    secrets:
+      - source: telegram_bot_token
+        target: /run/secrets/telegram_bot_token
+      - source: openai_api_key
+        target: /run/secrets/openai_api_key
+    volumes:
+      - ./deploy/config:/etc/pa:ro
+      - pa_data:/data
+    environment:
+      - PA_CONFIG_PATH=/etc/pa/config.json
+      - PA_LOG_LEVEL=info
+
+secrets:
+  telegram_bot_token:
+    file: ./deploy/secrets/telegram_bot_token
+  openai_api_key:
+    file: ./deploy/secrets/openai_api_key
+
+volumes:
+  pa_data:

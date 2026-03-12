@@ -7,6 +7,8 @@ data/
 # Environment and secrets
 .env
 .secrets/
+deploy/config/
+deploy/secrets/
 .vscode/
 
 # OS
