@@ -20,6 +20,7 @@ func TestResolvePaths_relativePaths_joinedWithBases(t *testing.T) {
 			VectorIndexPath:    "pa_vectors.sqlite",
 			LLMLogDir:          "llm_logs",
 			ScheduledTasksPath: "scheduled_tasks.json",
+			SSHKnownHostsPath:  "known_hosts",
 		},
 		LLMProviders: []LLMProvider{
 			{Type: "openai", Endpoint: "https://api.openai.com", APIKeyPath: "openai_key", Model: "gpt-4"},
@@ -44,38 +45,28 @@ func TestResolvePaths_relativePaths_joinedWithBases(t *testing.T) {
 	ResolvePaths(cfg, configPath)
 
 	configDir := "/etc/pa"
-	if got := cfg.Telegram.TokenPath; got != filepath.Join("/run/secrets", "telegram_bot_token") {
-		t.Errorf("TokenPath = %q", got)
+	checks := []struct {
+		got  string
+		want string
+		name string
+	}{
+		{cfg.Telegram.TokenPath, filepath.Join("/run/secrets", "telegram_bot_token"), "TokenPath"},
+		{cfg.Telegram.UsersPath, filepath.Join("/run/secrets", "telegram_users.json"), "UsersPath"},
+		{cfg.Paths.MemoryDir, filepath.Join("/data", "memory"), "MemoryDir"},
+		{cfg.Paths.LogPath, filepath.Join("/data", "pa.log"), "LogPath"},
+		{cfg.Paths.VectorIndexPath, filepath.Join("/data", "pa_vectors.sqlite"), "VectorIndexPath"},
+		{cfg.Paths.LLMLogDir, filepath.Join("/data", "llm_logs"), "LLMLogDir"},
+		{cfg.Paths.ScheduledTasksPath, filepath.Join(configDir, "scheduled_tasks.json"), "ScheduledTasksPath"},
+		{cfg.Paths.SSHKnownHostsPath, filepath.Join(configDir, "known_hosts"), "SSHKnownHostsPath"},
+		{cfg.LLMProviders[0].APIKeyPath, filepath.Join("/run/secrets", "openai_key"), "LLM APIKeyPath"},
+		{cfg.Embedding.APIKeyPath, filepath.Join("/run/secrets", "openai_key"), "Embedding APIKeyPath"},
+		{cfg.Nodes["n1"].Auth.PrivateKeyPath, filepath.Join("/run/secrets", "node_key"), "PrivateKeyPath"},
+		{cfg.Nodes["n1"].CommandAllowlistPath, filepath.Join(configDir, "allowlist.txt"), "CommandAllowlistPath"},
 	}
-	if got := cfg.Telegram.UsersPath; got != filepath.Join("/run/secrets", "telegram_users.json") {
-		t.Errorf("UsersPath = %q", got)
-	}
-	if got := cfg.Paths.MemoryDir; got != filepath.Join("/data", "memory") {
-		t.Errorf("MemoryDir = %q", got)
-	}
-	if got := cfg.Paths.LogPath; got != filepath.Join("/data", "pa.log") {
-		t.Errorf("LogPath = %q", got)
-	}
-	if got := cfg.Paths.VectorIndexPath; got != filepath.Join("/data", "pa_vectors.sqlite") {
-		t.Errorf("VectorIndexPath = %q", got)
-	}
-	if got := cfg.Paths.LLMLogDir; got != filepath.Join("/data", "llm_logs") {
-		t.Errorf("LLMLogDir = %q", got)
-	}
-	if got := cfg.Paths.ScheduledTasksPath; got != filepath.Join(configDir, "scheduled_tasks.json") {
-		t.Errorf("ScheduledTasksPath = %q", got)
-	}
-	if got := cfg.LLMProviders[0].APIKeyPath; got != filepath.Join("/run/secrets", "openai_key") {
-		t.Errorf("LLM APIKeyPath = %q", got)
-	}
-	if got := cfg.Embedding.APIKeyPath; got != filepath.Join("/run/secrets", "openai_key") {
-		t.Errorf("Embedding APIKeyPath = %q", got)
-	}
-	if got := cfg.Nodes["n1"].Auth.PrivateKeyPath; got != filepath.Join("/run/secrets", "node_key") {
-		t.Errorf("PrivateKeyPath = %q", got)
-	}
-	if got := cfg.Nodes["n1"].CommandAllowlistPath; got != filepath.Join(configDir, "allowlist.txt") {
-		t.Errorf("CommandAllowlistPath = %q", got)
+	for _, c := range checks {
+		if c.got != c.want {
+			t.Errorf("%s = %q, want %q", c.name, c.got, c.want)
+		}
 	}
 }
 
@@ -120,7 +111,7 @@ func TestResolvePaths_absolutePaths_unchanged(t *testing.T) {
 func TestResolvePaths_emptyPath_unchanged(t *testing.T) {
 	cfg := &Config{
 		Telegram:  Telegram{TokenPath: "/t", UsersPath: ""},
-		Paths:     Paths{MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: ""},
+		Paths:     Paths{MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "", SSHKnownHostsPath: ""},
 		Embedding: &EmbeddingProvider{Type: "ollama", Endpoint: "x", Model: "m", Dimensions: 1},
 		Nodes:     map[string]Node{},
 	}
@@ -130,6 +121,9 @@ func TestResolvePaths_emptyPath_unchanged(t *testing.T) {
 	}
 	if cfg.Paths.ScheduledTasksPath != "" {
 		t.Errorf("ScheduledTasksPath = %q, want empty", cfg.Paths.ScheduledTasksPath)
+	}
+	if cfg.Paths.SSHKnownHostsPath != "" {
+		t.Errorf("SSHKnownHostsPath = %q, want empty", cfg.Paths.SSHKnownHostsPath)
 	}
 }
 

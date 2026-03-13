@@ -15,12 +15,25 @@ linters:
     - bodyclose
     - sloglint
     - nolintlint
+    - gosec
+    - contextcheck
+    - noctx
   settings:
     gocyclo:
       min-complexity: 12
     nolintlint:
       require-explanation: true
       require-specific: true
+    gosec:
+      excludes:
+        - G301   # dir permissions 0755 acceptable for app-created dirs
+        - G302   # file permissions 0644 acceptable for logs/summaries
+        - G306   # WriteFile 0644 acceptable
+        - G304   # path from variable: paths from validated config, not user input
+        - G101   # constant IDs (e.g. redaction) and test fixtures, not secrets
+        - G703   # path traversal: dir/path from config
+        - G704   # SSRF: HTTP URLs from config (operator-controlled)
+        - G204   # exec in test (fixed "go run" args)
   exclusions:
     generated: lax
 issues:

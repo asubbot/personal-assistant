@@ -388,7 +388,8 @@ _Reference material._ Application config is a single JSON file at `config.json` 
     "vector_index_path": "pa_vectors.sqlite",
     "llm_log_dir": "llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "scheduled_tasks.json"
+    "scheduled_tasks_path": "scheduled_tasks.json",
+    "ssh_known_hosts_path": "known_hosts"
   },
   "embedding": {
     "type": "openai",
@@ -435,6 +436,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 - **llm_providers**: ordered list; the first available provider is used for a request; on failure (e.g. timeout, 5xx) the core may try the next. At least one provider required.
 - **embedding** (required): dedicated provider for vector memory (embeddings). The assistant requires vector memory for good UX. Fields: `type` (e.g. `openai`, `openai-compatible`, `ollama`), `endpoint`, `api_key_path` (required for openai/openai-compatible), `model`, `dimensions` (positive integer; must match the model’s output size).
 - **scheduled_tasks_path**: path to a separate JSON file that defines scheduled tasks (see below). Optional; if missing or empty, no scheduled tasks run.
+- **paths.ssh_known_hosts_path**: path to an OpenSSH-format `known_hosts` file used to verify SSH host keys when connecting to nodes. **Required when `nodes` is non-empty**; if nodes are configured and this path is missing or empty, the application refuses to start. The file must exist at load time. Resolved relative to the config directory (same as `scheduled_tasks_path`). Populate the file with the host keys of all nodes, e.g. `ssh-keyscan -H <host> >> known_hosts` for each node host. This enables host key verification and addresses gosec G106 (InsecureIgnoreHostKey).
 - **log_redaction** (optional): additional redaction patterns applied to LLM and application log output ([REQ-026](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-028](01-02-requirements.md#secret-protection-prompt-injection--exfiltration)). Object with `additional_patterns`: array of `{ "id", "regex", "replacement" }`. Built-in patterns are always applied and cannot be overridden ([REQ-027](01-02-requirements.md#secret-protection-prompt-injection--exfiltration)). Pattern `id` must not equal any built-in identifier; `regex` must compile. Invalid config refuses start with clear error ([REQ-029](01-02-requirements.md#secret-protection-prompt-injection--exfiltration), AC-041).
 
 **Telegram users file** (e.g. `/etc/pa/telegram_users.json`): JSON array of user entries with Telegram user id, role, and optional display name. Example:

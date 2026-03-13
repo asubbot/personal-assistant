@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 const defaultSSHPort = "22"
@@ -34,6 +35,14 @@ func NewClient(ctx context.Context, cfg *config.Config, nodeID string) (*Client,
 	if node.Auth.PrivateKeyPath == "" {
 		return nil, fmt.Errorf("ssh: node %q has no auth.private_key_path", nodeID)
 	}
+	if cfg.Paths.SSHKnownHostsPath == "" {
+		return nil, fmt.Errorf("ssh: ssh_known_hosts_path is required when using nodes")
+	}
+
+	hostKeyCallback, err := knownhosts.New(cfg.Paths.SSHKnownHostsPath)
+	if err != nil {
+		return nil, fmt.Errorf("ssh: known_hosts %s: %w", cfg.Paths.SSHKnownHostsPath, err)
+	}
 
 	keyPath := node.Auth.PrivateKeyPath
 	keyBytes, err := os.ReadFile(keyPath)
@@ -45,10 +54,10 @@ func NewClient(ctx context.Context, cfg *config.Config, nodeID string) (*Client,
 		return nil, fmt.Errorf("ssh: parse private key: %w", err)
 	}
 
-	config := &ssh.ClientConfig{
+	sshConfig := &ssh.ClientConfig{
 		User:            node.DedicatedUser,
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         10 * time.Second,
 	}
 
@@ -58,7 +67,7 @@ func NewClient(ctx context.Context, cfg *config.Config, nodeID string) (*Client,
 	if err != nil {
 		return nil, fmt.Errorf("ssh: dial %s: %w", addr, err)
 	}
-	sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	sshConn, chans, reqs, err := ssh.NewClientConn(conn, addr, sshConfig)
 	if err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("ssh: handshake %s: %w", addr, err)

@@ -20,7 +20,8 @@
       "vector_index_path": "pa_vectors.sqlite",
       "llm_log_dir": "llm_logs",
       "llm_log_retention_days": 7,
-      "scheduled_tasks_path": "scheduled_tasks.json"
+      "scheduled_tasks_path": "scheduled_tasks.json",
+      "ssh_known_hosts_path": "known_hosts"
     },
     "embedding": {
       "type": "openai",
@@ -38,6 +39,11 @@
         },
         "command_allowlist_path": "nas_allowlist.txt"
       }
+    },
+    "log_redaction": {
+      "additional_patterns": [
+        { "id": "custom_secret", "regex": "\\bsecret-[0-9]+\\b", "replacement": "[REDACTED]" }
+      ]
     },
     "pa_timezone": "Europe/Lisbon"
   }

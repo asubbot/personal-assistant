@@ -108,6 +108,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing embedding", "missing_embedding.json", "embedding is required"},
 		{"invalid pa_timezone", "invalid_pa_timezone.json", "invalid pa_timezone"},
 		{"llm_log_retention_days < 1", "llm_log_retention_zero.json", "llm_log_retention_days must be >= 1"},
+		{"nodes without ssh_known_hosts_path", "nodes_missing_ssh_known_hosts_path.json", "paths.ssh_known_hosts_path is required when nodes are configured"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -236,5 +237,45 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "nonexistent") && !strings.Contains(err.Error(), "no such file") && !strings.Contains(err.Error(), "read") {
 		t.Errorf("Load(users file missing): error = %v", err)
+	}
+}
+
+// Covers SSH known_hosts: when nodes are configured, ssh_known_hosts_path must point to an existing file.
+func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
+	cfgDir := t.TempDir()
+	configPath := filepath.Join(cfgDir, "config.json")
+	knownHostsRel := "nonexistent_known_hosts"
+	content := `{
+  "version": 1,
+  "telegram": { "token_path": "/t", "users_path": "" },
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
+  "paths": {
+    "memory_dir": "` + cfgDir + `",
+    "log_path": "` + cfgDir + `/pa.log",
+    "vector_index_path": "` + cfgDir + `/pa_vectors.sqlite",
+    "llm_log_dir": "` + cfgDir + `",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "ssh_known_hosts_path": "` + knownHostsRel + `"
+  },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
+  "nodes": {
+    "n1": {
+      "host": "host.example.com",
+      "dedicated_user": "pa",
+      "auth": { "private_key_path": "/key" },
+      "command_allowlist_path": "/allowlist.txt"
+    }
+  }
+}`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	_, err := Load(configPath)
+	if err == nil {
+		t.Fatal("Load(nodes with nonexistent ssh_known_hosts_path): expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "ssh_known_hosts_path") && !strings.Contains(err.Error(), "no such file") {
+		t.Errorf("Load: error = %v (expect ssh_known_hosts_path or no such file)", err)
 	}
 }

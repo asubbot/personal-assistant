@@ -30,6 +30,12 @@ func Load(path string) (*Config, error) {
 
 	ResolvePaths(&raw, path)
 
+	if len(raw.Nodes) > 0 {
+		if _, err := os.Stat(raw.Paths.SSHKnownHostsPath); err != nil {
+			return nil, fmt.Errorf("paths.ssh_known_hosts_path %s: %w", raw.Paths.SSHKnownHostsPath, err)
+		}
+	}
+
 	// Validate users file if set (path is now resolved).
 	if raw.Telegram.UsersPath != "" {
 		if _, err := LoadTelegramUsers(raw.Telegram.UsersPath); err != nil {
@@ -160,6 +166,9 @@ func validatePaths(c *Config) error {
 	}
 	if c.Paths.LLMLogRetentionDays < 1 {
 		return errors.New("config: paths.llm_log_retention_days must be >= 1")
+	}
+	if len(c.Nodes) > 0 && strings.TrimSpace(c.Paths.SSHKnownHostsPath) == "" {
+		return errors.New("config: paths.ssh_known_hosts_path is required when nodes are configured")
 	}
 	return nil
 }

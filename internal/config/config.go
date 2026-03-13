@@ -60,6 +60,7 @@ type Paths struct {
 	LLMLogDir           string `json:"llm_log_dir"`
 	LLMLogRetentionDays int    `json:"llm_log_retention_days"` // Required. Delete llm-YYYY-MM-DD.jsonl older than N days (UTC). Must be >= 1; validated at load (fail fast).
 	ScheduledTasksPath  string `json:"scheduled_tasks_path"`
+	SSHKnownHostsPath   string `json:"ssh_known_hosts_path"` // Required when nodes are configured. OpenSSH known_hosts file for host key verification.
 }
 
 // Node holds SSH node configuration.

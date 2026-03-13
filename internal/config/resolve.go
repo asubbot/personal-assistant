@@ -25,6 +25,7 @@ func ResolvePaths(cfg *Config, configFilePath string) {
 	cfg.Paths.VectorIndexPath = resolve(dataDir, cfg.Paths.VectorIndexPath)
 	cfg.Paths.LLMLogDir = resolve(dataDir, cfg.Paths.LLMLogDir)
 	cfg.Paths.ScheduledTasksPath = resolve(configDir, cfg.Paths.ScheduledTasksPath)
+	cfg.Paths.SSHKnownHostsPath = resolve(configDir, cfg.Paths.SSHKnownHostsPath)
 
 	for i := range cfg.LLMProviders {
 		cfg.LLMProviders[i].APIKeyPath = resolve(secretsDir, cfg.LLMProviders[i].APIKeyPath)
