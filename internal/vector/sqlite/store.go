@@ -55,7 +55,7 @@ func (s *Store) createTable() error {
 		)`,
 		tableName, s.dimensions,
 	)
-	_, err := s.db.Exec(query)
+	_, err := s.db.ExecContext(context.Background(), query)
 	if err != nil {
 		return fmt.Errorf("vector/sqlite: create table: %w", err)
 	}
