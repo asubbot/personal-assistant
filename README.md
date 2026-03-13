@@ -1,6 +1,6 @@
 # PersonalAssistant
 
-Go application: Telegram bot, core orchestration, long-term memory (markdown), vector index, LLM providers, scheduler, tools, SSH access to nodes. Target: Synology DS220+ (Docker). See [docs/EP-104/REQUIREMENTS.md](docs/EP-104/REQUIREMENTS.md) and [docs/EP-104/](docs/EP-104/) for design and implementation plan.
+Go application: Telegram bot, core orchestration, long-term memory (markdown), vector index, LLM providers, scheduler, tools, SSH access to nodes. Target: Synology DS220+ (Docker). Requirements, design, and implementation plan: [ai-sdlc-artefacts/epics/ep-104/](ai-sdlc-artefacts/epics/ep-104/) (e.g. [01-02-requirements.md](ai-sdlc-artefacts/epics/ep-104/01-02-requirements.md), [11-12-implementation-plan.md](ai-sdlc-artefacts/epics/ep-104/11-12-implementation-plan.md)). Process: [ai-sdlc/](ai-sdlc/). Legacy reference: [docs/EP-104/](docs/EP-104/).
 
 **Requirements:** Go 1.26+ (CGO for vector store: SQLite + sqlite-vec). Config is a JSON file at `config/config.json` (config directory overridable via `PA_CONFIG_DIR`). Secrets (tokens, API keys, SSH keys) are stored in files; config references them by path.
 
@@ -112,7 +112,7 @@ Integration tests live in `tests/integration/` (build tag `integration`). They a
 
 ## Config
 
-See [docs/EP-104/implementation-plan.md](docs/EP-104/implementation-plan.md) — section **Config file (JSON)** at the end of the file. Main config is JSON; paths to secrets (tokens, API keys, SSH keys) are set in config, not in env. Related files: Telegram users (JSON), command allowlist (text), scheduled tasks (JSON). Log level for application output is controlled by `PA_LOG_LEVEL` (see Environment variables above). Optional `telegram.notify_chat_id` is used as the default chat for the scheduler’s `notify` action when set.
+See [ai-sdlc-artefacts/epics/ep-104/11-12-implementation-plan.md](ai-sdlc-artefacts/epics/ep-104/11-12-implementation-plan.md) — section **Config file (JSON)** at the end of the file. Main config is JSON; paths to secrets (tokens, API keys, SSH keys) are set in config, not in env. Related files: Telegram users (JSON), command allowlist (text), scheduled tasks (JSON). Log level for application output is controlled by `PA_LOG_LEVEL` (see Environment variables above). Optional `telegram.notify_chat_id` is used as the default chat for the scheduler’s `notify` action when set.
 
 **Paths in config:** Path values in the config file are either **absolute** (used as-is) or **relative** (joined with a base). Three bases are used: (1) config directory (`PA_CONFIG_DIR`) for `command_allowlist_path`, `scheduled_tasks_path`; (2) `PA_DATA_DIR` for `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`; (3) `PA_SECRETS_DIR` for `token_path`, `users_path`, `api_key_path`, `private_key_path`. Default for `PA_DATA_DIR` and `PA_SECRETS_DIR` is `.` (current working directory), so relative paths behave as before when these env vars are unset. **paths.llm_log_retention_days** (required): number of days to keep LLM log files; files older than this are removed when summarization runs. Must be >= 1 (application refuses to start otherwise). Recommended: **7**.
 
