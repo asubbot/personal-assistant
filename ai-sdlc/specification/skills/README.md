@@ -1,6 +1,8 @@
 # specification/skills — Agent instructions
 
-Agent instructions for the SDLC pipeline. One skill file per pipeline stage (01–18). All paths in skills use **ai-sdlc-artefacts/epics/<epic-id>/** (e.g. ep-104).
+Agent instructions for the SDLC pipeline. One skill file per pipeline stage. Paths in skills use **ai-sdlc-artefacts/** (root for scope.md, strategy.md) and **ai-sdlc-artefacts/epics/<epic-id>/** or **ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>/** for epic- and story-level artefacts.
+
+**Common behaviour:** The agent works in cooperation with the user. When several valid choices exist (output format, path, scope, or interpretation of the request), present them (e.g. A / B) and ask the user which they prefer. Do not proceed until the user has chosen. See [pipeline.spec.md](../pipeline.spec.md) (Human-in-the-loop).
 
 ---
 
@@ -8,24 +10,17 @@ Agent instructions for the SDLC pipeline. One skill file per pipeline stage (01�
 
 | Stage | Name | Skill file |
 |-------|------|------------|
-| 1 | Product requirements | [01-product-requirements.skill.md](01-product-requirements.skill.md) |
-| 2 | Non-functional requirements | [02-nfr.skill.md](02-nfr.skill.md) |
-| 3 | Technical discovery | [03-technical-discovery.skill.md](03-technical-discovery.skill.md) |
-| 4 | System Design | [04-system-design.skill.md](04-system-design.skill.md) |
-| 5 | Delivery strategy | [05-delivery-strategy.skill.md](05-delivery-strategy.skill.md) |
-| 6 | Test strategy | [06-test-strategy.skill.md](06-test-strategy.skill.md) |
-| 7 | Epics | [07-epics.skill.md](07-epics.skill.md) |
-| 8 | User stories | [08-user-stories.skill.md](08-user-stories.skill.md) |
-| 9 | Requirements refinement | [09-requirements-refinement.skill.md](09-requirements-refinement.skill.md) |
-| 10 | Acceptance criteria | [10-acceptance-criteria.skill.md](10-acceptance-criteria.skill.md) |
-| 11 | Tasks decomposition | [11-tasks-decomposition.skill.md](11-tasks-decomposition.skill.md) |
-| 12 | Implementation plan | [12-implementation-plan.skill.md](12-implementation-plan.skill.md) |
-| 13 | Implementation | [13-implementation.skill.md](13-implementation.skill.md) |
-| 14 | Quality gate | [14-quality-gate.skill.md](14-quality-gate.skill.md) |
-| 15 | Test execution | [15-test-execution.skill.md](15-test-execution.skill.md) |
-| 16 | Deployment | [16-deployment.skill.md](16-deployment.skill.md) |
-| 17 | Acceptance verification | [17-acceptance-verification.skill.md](17-acceptance-verification.skill.md) |
-| 18 | Closure / Retrospective | [18-closure.skill.md](18-closure.skill.md) |
+| 1 | Scope analysis | [01-scope-analysis.skill.md](01-scope-analysis.skill.md) |
+| 2 | Strategy analysis | [02-strategy-analysis.skill.md](02-strategy-analysis.skill.md) |
+| 3 | Epic planning | [03-epic-planning.skill.md](03-epic-planning.skill.md) |
+| 4 | Requirements | [04-requirements.skill.md](04-requirements.skill.md) |
+| 5 | System design | [05-system-design.skill.md](05-system-design.skill.md) |
+| 6 | User story planning | [06-user-story-planning.skill.md](06-user-story-planning.skill.md) |
+| 7 | Acceptance criteria planning | [07-acceptance-criteria-planning.skill.md](07-acceptance-criteria-planning.skill.md) |
+| 8 | Implementation planning | [08-implementation-planning.skill.md](08-implementation-planning.skill.md) |
+| 9 | Task execution | [09-task-execution.skill.md](09-task-execution.skill.md) |
+| 10 | Audit | [10-audit.skill.md](10-audit.skill.md) |
+| 11 | Keep consistency | [11-keep-consistency.skill.md](11-keep-consistency.skill.md) |
 
 ---
 
@@ -35,11 +30,12 @@ When a user request matches an intent below, use the corresponding skill so that
 
 | Intent / trigger | Skill |
 |------------------|--------|
-| Run code review / quality gate for epic | [14-quality-gate.skill.md](14-quality-gate.skill.md) |
-| Audit test coverage / find gaps | [15-test-execution.skill.md](15-test-execution.skill.md) (coverage audit) or [14-quality-gate.skill.md](14-quality-gate.skill.md) (test audit workflow) |
-| Plan or refine scope | [01-product-requirements.skill.md](01-product-requirements.skill.md), [07-epics.skill.md](07-epics.skill.md) |
-| Write or update user stories | [08-user-stories.skill.md](08-user-stories.skill.md) |
-| Write or update acceptance criteria | [10-acceptance-criteria.skill.md](10-acceptance-criteria.skill.md) |
-| Execute implementation plan (code tasks) | [13-implementation.skill.md](13-implementation.skill.md) |
+| Plan or refine scope | [01-scope-analysis.skill.md](01-scope-analysis.skill.md), [03-epic-planning.skill.md](03-epic-planning.skill.md) |
+| Define delivery or test strategy | [02-strategy-analysis.skill.md](02-strategy-analysis.skill.md) |
+| Write or update user stories (story scope) | [06-user-story-planning.skill.md](06-user-story-planning.skill.md) |
+| Write or update acceptance criteria | [07-acceptance-criteria-planning.skill.md](07-acceptance-criteria-planning.skill.md) |
+| Execute implementation plan (code tasks) | [09-task-execution.skill.md](09-task-execution.skill.md) |
+| Audit / quality gate / status report | [10-audit.skill.md](10-audit.skill.md) |
+| Keep artefacts consistent after audit | [11-keep-consistency.skill.md](11-keep-consistency.skill.md) |
 
 Pipeline spec: [../pipeline.spec.md](../pipeline.spec.md).
