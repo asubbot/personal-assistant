@@ -2,7 +2,7 @@
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "" },
   "llm_providers": [{ "type": "openai", "endpoint": "https://api.openai.com", "api_key_path": "", "model": "gpt-4" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
   "nodes": {}
 }

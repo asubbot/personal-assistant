@@ -261,3 +261,76 @@ func TestReadEntriesForDay_twoEntries_parsed(t *testing.T) {
 		t.Errorf("entries: got %q, %q", entries[0].ResponseContent, entries[1].ResponseContent)
 	}
 }
+
+// PruneRetention: retentionDays <= 0 does not delete any files.
+func TestPruneRetention_zeroOrNegative_doesNotDelete(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "llm-2020-01-01.jsonl")
+	if err := os.WriteFile(path, []byte("{}"), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	now := time.Date(2026, 3, 18, 12, 0, 0, 0, time.UTC)
+	if err := PruneRetentionWithNow(dir, 0, nil, now); err != nil {
+		t.Fatalf("PruneRetention(0): %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("file was removed: %v", err)
+	}
+	if err := PruneRetentionWithNow(dir, -1, nil, now); err != nil {
+		t.Fatalf("PruneRetention(-1): %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("file was removed: %v", err)
+	}
+}
+
+// PruneRetention: with retention 7 and "today" 2026-03-18, files older than 7 days are deleted, recent kept.
+func TestPruneRetention_removesOldKeepsRecent(t *testing.T) {
+	dir := t.TempDir()
+	old1 := filepath.Join(dir, "llm-2020-01-01.jsonl")
+	old2 := filepath.Join(dir, "llm-2026-03-10.jsonl")
+	recent := filepath.Join(dir, "llm-2026-03-12.jsonl")
+	for _, p := range []string{old1, old2, recent} {
+		if err := os.WriteFile(p, []byte("{}"), 0o644); err != nil {
+			t.Fatalf("setup %s: %v", p, err)
+		}
+	}
+	now := time.Date(2026, 3, 18, 12, 0, 0, 0, time.UTC)
+	if err := PruneRetentionWithNow(dir, 7, nil, now); err != nil {
+		t.Fatalf("PruneRetention: %v", err)
+	}
+	for _, p := range []string{old1, old2} {
+		if _, err := os.Stat(p); err == nil {
+			t.Errorf("expected %s to be removed", p)
+		}
+	}
+	if _, err := os.Stat(recent); err != nil {
+		t.Errorf("expected %s to remain: %v", recent, err)
+	}
+}
+
+// PruneRetention: files not matching llm-YYYY-MM-DD.jsonl are not deleted.
+func TestPruneRetention_ignoresNonMatchingNames(t *testing.T) {
+	dir := t.TempDir()
+	keep := filepath.Join(dir, "llm-2026-03-12.jsonl.bak")
+	if err := os.WriteFile(keep, []byte("{}"), 0o644); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	now := time.Date(2026, 3, 18, 12, 0, 0, 0, time.UTC)
+	if err := PruneRetentionWithNow(dir, 7, nil, now); err != nil {
+		t.Fatalf("PruneRetention: %v", err)
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Errorf("non-matching file was removed: %v", err)
+	}
+}
+
+// PruneRetention: returns error when directory does not exist (ReadDir fails).
+func TestPruneRetention_nonexistentDir_returnsError(t *testing.T) {
+	dir := t.TempDir()
+	nonexistent := filepath.Join(dir, "nonexistent_subdir")
+	err := PruneRetention(nonexistent, 7, nil)
+	if err == nil {
+		t.Fatal("PruneRetention(nonexistent dir): expected error, got nil")
+	}
+}

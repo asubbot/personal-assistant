@@ -12,6 +12,7 @@ import (
 	"pa/internal/core"
 	"pa/internal/embedding"
 	"pa/internal/llm"
+	"pa/internal/llmlog"
 	"pa/internal/memory"
 	"pa/internal/noderunner"
 	"pa/internal/scheduler"
@@ -149,6 +150,9 @@ func runSummarize(cfg *config.Config, value string, logger *slog.Logger) {
 	if err != nil {
 		logger.Error("summarize", "error", err)
 		os.Exit(1)
+	}
+	if err := llmlog.PruneRetention(cfg.Paths.LLMLogDir, cfg.Paths.LLMLogRetentionDays, logger); err != nil {
+		logger.Error("prune llm logs", "error", err)
 	}
 	switch scope.Kind {
 	case "day":

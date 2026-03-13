@@ -12,6 +12,7 @@
     "log_path": "/data/pa.log",
     "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
+    "llm_log_retention_days": 7,
     "scheduled_tasks_path": ""
   },
   "embedding": {

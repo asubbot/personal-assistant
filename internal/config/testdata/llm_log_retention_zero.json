@@ -12,7 +12,7 @@
     "log_path": "/data/pa.log",
     "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
-    "llm_log_retention_days": 7,
+    "llm_log_retention_days": 0,
     "scheduled_tasks_path": ""
   },
   "embedding": {
@@ -21,6 +21,5 @@
     "model": "nomic-embed-text",
     "dimensions": 768
   },
-  "nodes": {},
-  "pa_timezone": "Europe/Moscow"
+  "nodes": {}
 }

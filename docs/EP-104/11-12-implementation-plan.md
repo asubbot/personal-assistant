@@ -317,7 +317,7 @@ _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM loggi
 
 ## 10. Architecture boundaries and versioned state (optional for MVP)
 
-- [ ] 10.1 Document and enforce clear module boundaries
+- [x] 10.1 Document and enforce clear module boundaries
   - Ensure ingestion adapters (Telegram), core, memory, vector, LLM, scheduler, tools are in separate packages; no circular deps
   - _Requirements:_ [REQ-012](01-02-requirements.md#extensibility-and-architecture)
   - _User Stories:_ [US-14](08-user-stories.md#us-14--architecture-boundaries)
@@ -387,6 +387,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
     "log_path": "pa.log",
     "vector_index_path": "pa_vectors.sqlite",
     "llm_log_dir": "llm_logs",
+    "llm_log_retention_days": 7,
     "scheduled_tasks_path": "scheduled_tasks.json"
   },
   "embedding": {
@@ -416,6 +417,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 
 - **version**: integer; config schema version for backward compatibility. The loader rejects unsupported versions and can migrate or validate per-version rules.
 - **pa_timezone** (optional): IANA timezone name (e.g. `Europe/Moscow`, `UTC`) for the assistant’s day boundaries (e.g. in summarization). Summarization CLI requires an explicit scope: `pa -summarize=YYYY-MM-DD` (day), `pa -summarize=YYYY-MM` (month), `pa -summarize=YYYY` (year). If empty or omitted, UTC is used. Invalid value refuses start with clear error (e.g. “invalid pa_timezone: unknown timezone …”).
+- **paths.llm_log_retention_days** (required): integer; number of days to keep LLM log files `llm-YYYY-MM-DD.jsonl` in `paths.llm_log_dir`. Files older than this many days (UTC) are deleted when summarization runs (`-summarize`). Must be >= 1; if &lt; 1 the application refuses to start (fail fast). **Recommended value: 7** (one week).
 - **paths.vector_index_path**: path to the vector index file. Use `./data/pa_vectors.sqlite` (or `/data/pa_vectors.sqlite` in production) for the default SQLite+sqlite-vec implementation.
 - **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin). Format: see [Telegram users file](#telegram-users-file) below.
 - **telegram.notify_chat_id**: optional; Telegram chat ID (e.g. user or group) to which the scheduler sends messages for tasks with `action` `"notify"`. When non-zero, that chat is used. When zero or omitted and `users_path` lists at least one user, the first allowed user’s ID is used as the destination ([REQ-023](01-02-requirements.md#scheduler-and-tools)). When no destination is available, the notify action does not send and is handled per implementation (e.g. log).

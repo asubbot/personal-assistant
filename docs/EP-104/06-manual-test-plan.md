@@ -98,3 +98,15 @@ If no vector results are found for the query, the system message may contain onl
 
 - [ ] **Redaction in log file:** Send a message that contains a string matching a built-in redaction pattern (e.g. a fake API key like `sk-abc123def456ghi789jkl012`). Open the same JSONL file and confirm the raw string does **not** appear in `messages` or `response_content`; the replacement (e.g. `[REDACTED]`) appears instead.
 - [ ] **Config validation (AC-041):** Add to config `log_redaction.additional_patterns` an entry with `"id": "api_key_openai"` (reserved). Restart the app; confirm it refuses to start with a clear error (e.g. "reserved pattern id"). Remove that entry and add a pattern with invalid `"regex": "[["`. Restart; confirm it refuses to start with an error about invalid regex.
+
+---
+
+## LLM log retention (prune on summarize)
+
+**Goal:** Confirm that `paths.llm_log_retention_days` is validated at load (fail fast) and that running `-summarize` removes LLM log files older than the configured retention (UTC).
+
+- [ ] **Precondition:** Config has `paths.llm_log_retention_days` set to **7** (recommended) and `paths.llm_log_dir` pointing to a writable directory.
+- [ ] **Step 1 (fail fast):** Set `llm_log_retention_days` to **0** (or remove the field). Run the binary (e.g. `go run ./cmd/pa` or `./pa -summarize=2026-03-01`). Confirm the application exits with a non-zero exit code and the error message mentions `llm_log_retention_days must be >= 1`. Restore a valid value (e.g. 7).
+- [ ] **Step 2 (prune on summarize):** In `llm_log_dir`, create or ensure there are at least two daily log files: one with a date older than the retention (e.g. `llm-2020-01-01.jsonl`) and one recent (e.g. today’s `llm-YYYY-MM-DD.jsonl` in UTC). Run summarization (e.g. `./pa -summarize=2026-03-01` or any scope). Confirm the old file is **deleted** and the recent file **remains**. Optionally check logs for a line like `"llm log pruned"` for the removed file.
+
+**Expected:** Invalid retention (0 or missing) prevents start. When retention is valid, each `-summarize` run prunes only files older than the configured number of days (UTC); recent files are kept.

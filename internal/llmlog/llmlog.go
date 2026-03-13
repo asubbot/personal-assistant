@@ -171,3 +171,67 @@ func ReadEntriesForDay(dir string, day time.Time) ([]Entry, error) {
 	}
 	return entries, nil
 }
+
+const (
+	llmLogFilenamePrefix = "llm-"
+	llmLogFilenameSuffix = ".jsonl"
+	llmLogFilenameLen    = 20 // "llm-YYYY-MM-DD.jsonl"
+)
+
+// parseLLMLogFilename returns the date from a filename "llm-YYYY-MM-DD.jsonl", or (zero, false) if not matching.
+func parseLLMLogFilename(name string) (time.Time, bool) {
+	if len(name) != llmLogFilenameLen || !strings.HasPrefix(name, llmLogFilenamePrefix) || !strings.HasSuffix(name, llmLogFilenameSuffix) {
+		return time.Time{}, false
+	}
+	date, err := time.Parse("2006-01-02", name[4:14])
+	if err != nil {
+		return time.Time{}, false
+	}
+	return date, true
+}
+
+// PruneRetention deletes llm-YYYY-MM-DD.jsonl files in dir older than retentionDays (UTC).
+// If retentionDays <= 0, no files are removed and nil is returned.
+// Only regular files with names exactly "llm-YYYY-MM-DD.jsonl" are considered; parsing errors are skipped.
+// Returns the first error from ReadDir or Remove.
+func PruneRetention(dir string, retentionDays int, logger *slog.Logger) error {
+	return pruneRetentionWithNow(dir, retentionDays, logger, time.Time{})
+}
+
+// PruneRetentionWithNow is for tests: nowUTC is the "current" time in UTC; if zero, time.Now().UTC() is used.
+func PruneRetentionWithNow(dir string, retentionDays int, logger *slog.Logger, nowUTC time.Time) error {
+	return pruneRetentionWithNow(dir, retentionDays, logger, nowUTC)
+}
+
+func pruneRetentionWithNow(dir string, retentionDays int, logger *slog.Logger, nowUTC time.Time) error {
+	if retentionDays <= 0 {
+		return nil
+	}
+	if nowUTC.IsZero() {
+		nowUTC = time.Now().UTC()
+	}
+	cutoff := nowUTC.Truncate(24*time.Hour).AddDate(0, 0, -retentionDays)
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		fileDate, ok := parseLLMLogFilename(name)
+		if !ok || !fileDate.Before(cutoff) {
+			continue
+		}
+		path := filepath.Join(dir, name)
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+		if logger != nil {
+			logger.Info("llm log pruned", "file", name)
+		}
+	}
+	return nil
+}

@@ -158,6 +158,9 @@ func validatePaths(c *Config) error {
 	if strings.TrimSpace(c.Paths.LLMLogDir) == "" {
 		return errors.New("config: paths.llm_log_dir is required")
 	}
+	if c.Paths.LLMLogRetentionDays < 1 {
+		return errors.New("config: paths.llm_log_retention_days must be >= 1")
+	}
 	return nil
 }
 

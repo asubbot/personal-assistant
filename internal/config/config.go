@@ -54,11 +54,12 @@ type LLMProvider struct {
 
 // Paths holds paths for memory, logs, vector index, and scheduled tasks.
 type Paths struct {
-	MemoryDir          string `json:"memory_dir"`
-	LogPath            string `json:"log_path"`
-	VectorIndexPath    string `json:"vector_index_path"`
-	LLMLogDir          string `json:"llm_log_dir"`
-	ScheduledTasksPath string `json:"scheduled_tasks_path"`
+	MemoryDir           string `json:"memory_dir"`
+	LogPath             string `json:"log_path"`
+	VectorIndexPath     string `json:"vector_index_path"`
+	LLMLogDir           string `json:"llm_log_dir"`
+	LLMLogRetentionDays int    `json:"llm_log_retention_days"` // Required. Delete llm-YYYY-MM-DD.jsonl older than N days (UTC). Must be >= 1; validated at load (fail fast).
+	ScheduledTasksPath  string `json:"scheduled_tasks_path"`
 }
 
 // Node holds SSH node configuration.

@@ -107,6 +107,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing command_allowlist_path", "missing_command_allowlist.json", "nodes.n1.command_allowlist_path is required"},
 		{"missing embedding", "missing_embedding.json", "embedding is required"},
 		{"invalid pa_timezone", "invalid_pa_timezone.json", "invalid pa_timezone"},
+		{"llm_log_retention_days < 1", "llm_log_retention_zero.json", "llm_log_retention_days must be >= 1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -222,7 +223,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
   "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "scheduled_tasks_path": "" },
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
   "nodes": {}
 }`
