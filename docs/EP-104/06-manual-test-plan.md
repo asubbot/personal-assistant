@@ -50,6 +50,8 @@ If no vector results are found for the query, the system message may contain onl
 
 **Expected:** Module boundaries are clear; no unjustified coupling that would require full redesign to replace or extend one part.
 
+**Automated support:** Run `make check-boundaries` (or `./scripts/check-module-boundaries.sh`) to verify no circular dependencies and no forbidden edges (adapter only → config and core; core not → concrete impls). See [04-system-design.md §2.1](04-system-design.md#21-module-boundaries-req-012-ac-025) and [11-12-implementation-plan.md §10.1](11-12-implementation-plan.md#101-document-and-enforce-clear-module-boundaries).
+
 ---
 
 ## [AC-027](10-acceptance-criteria.md#ac-027-us-15) ([US-15](08-user-stories.md#us-15--version-control-git)) — Versioned state: tracked paths documented

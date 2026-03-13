@@ -35,6 +35,68 @@ Single-binary Go application (Option B from [research §5 Proposed design](03-te
 
 C4: see [01-02-requirements.md — C4 Diagrams](01-02-requirements.md#c4-diagrams). No extra containers for MVP ([REQ-012](01-02-requirements.md#extensibility-and-architecture)).
 
+### 2.1 Module boundaries ([REQ-012](01-02-requirements.md#extensibility-and-architecture), [AC-025](10-acceptance-criteria.md#ac-025-us-14))
+
+Module boundaries ensure that ingestion adapters, core, memory store, vector index, LLM abstraction, scheduler, and tools are clearly separated so that replacing or extending one part does not require a full redesign.
+
+**Layers and packages:**
+
+| Layer | Packages | Allowed internal dependencies |
+|-------|----------|------------------------------|
+| **Ingestion adapter** | `internal/telegram` | `config`, `core` only |
+| **Core** | `internal/core` | `config`, `embedding`, `llm`, `llmlog`, `logredact`, `memory`, `vector` (interfaces only; no concrete impls) |
+| **Storage** | `internal/memory`, `internal/vector`, `internal/vector/sqlite` | `vector` (interface); `vector/sqlite` imports only `internal/vector` |
+| **LLM** | `internal/llm`, `internal/llm/openai` | `config`; core uses `llm` interface |
+| **Embedding** | `internal/embedding` | `config`; core uses embedder interface |
+| **Scheduler and tools** | `internal/scheduler`, `internal/tools` | `scheduler` → `tools`; core uses both |
+| **Node access** | `internal/ssh`, `internal/allowlist`, `internal/noderunner` | `allowlist`, `noderunner` → `config`, `allowlist`, `ssh`; `ssh` → `config` |
+| **Infra** | `internal/config`, `internal/llmlog`, `internal/logredact`, `internal/summarize` | `config` → `logredact`; `llmlog` → `llm` (types); `summarize` → `embedding`, `llm`, `llmlog`, `memory`, `vector` |
+
+**Wiring:** `cmd/pa` is the only place that imports concrete implementations (e.g. `vector/sqlite`); core depends on interfaces.
+
+**Rules:**
+
+- **Adapters** (e.g. Telegram) must not import `memory`, `vector`, `llm`, `embedding`, `scheduler`, `tools`, `ssh`; only `config` and `core`.
+- **Core** must not import concrete implementations of vector/llm/embedding (e.g. `vector/sqlite`, `llm/openai`); only interface packages. Wiring is in `cmd/pa`.
+- **No package** may introduce a circular dependency.
+
+**Dependency direction (allowed flow):**
+
+```mermaid
+flowchart LR
+  subgraph adapter [Adapter]
+    telegram[telegram]
+  end
+  subgraph entry [Entry]
+    cmd[cmd/pa]
+  end
+  subgraph core [Core]
+    core_pkg[core]
+  end
+  subgraph abstractions [Abstractions]
+    vector[vector]
+    llm[llm]
+    memory[memory]
+    embedding[embedding]
+  end
+  subgraph impl [Implementations]
+    vector_sqlite[vector/sqlite]
+    memory_pkg[memory]
+  end
+  cmd --> core_pkg
+  cmd --> telegram
+  telegram --> core_pkg
+  telegram --> config[config]
+  core_pkg --> vector
+  core_pkg --> llm
+  core_pkg --> memory
+  core_pkg --> embedding
+  core_pkg --> config
+  vector_sqlite --> vector
+```
+
+Verification: run `./scripts/check-module-boundaries.sh` (or `make check-boundaries`). See [implementation plan §10.1](11-12-implementation-plan.md#101-document-and-enforce-clear-module-boundaries).
+
 ---
 
 ## 3. Components and interfaces

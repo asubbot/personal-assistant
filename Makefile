@@ -1,4 +1,4 @@
-.PHONY: help fmt test test-integration vet lint coverage coverage-html check
+.PHONY: help fmt test test-integration vet lint coverage coverage-html check check-boundaries
 
 help:
 	@echo "Available commands:"
@@ -9,7 +9,8 @@ help:
 	@echo "  make lint   - Run golangci-lint (if installed)"
 	@echo "  make coverage     - Print coverage summary (all tests)"
 	@echo "  make coverage-html - Build HTML coverage report"
-	@echo "  make check  - Run fmt + vet + lint + test (all tests, one coverage)"
+	@echo "  make check-boundaries - Verify module boundaries (no cycles, forbidden edges)"
+	@echo "  make check  - Run fmt + vet + lint + check-boundaries + test (all tests, one coverage)"
 
 fmt:
 	go fmt ./...
@@ -42,4 +43,7 @@ coverage-html:
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
-check: fmt vet lint coverage
+check-boundaries:
+	@./scripts/check-module-boundaries.sh
+
+check: fmt vet lint coverage check-boundaries

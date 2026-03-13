@@ -322,6 +322,8 @@ _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM loggi
   - _Requirements:_ [REQ-012](01-02-requirements.md#extensibility-and-architecture)
   - _User Stories:_ [US-14](08-user-stories.md#us-14--architecture-boundaries)
   - _Acceptance Criteria:_ [AC-025](10-acceptance-criteria.md#ac-025-us-14)
+  - **Execution:** Module boundaries are documented in [04-system-design.md §2.1](04-system-design.md#21-module-boundaries-req-012-ac-025); enforcement via `scripts/check-module-boundaries.sh` (no cycles, adapter/telegram only → config and core, core not → concrete impls).
+  - **Verification:** Run `./scripts/check-module-boundaries.sh` or `make check-boundaries`; AC-025 is also verified by the manual scenario in [06-manual-test-plan.md](06-manual-test-plan.md) (Steps 1–6). Script must pass (no cycles, no forbidden edges).
 
 - [ ] 10.2 Versioned state (git-backed config/memory) — scope TBD
   - If in scope: use git repo in deployment/data dir to track config, memory, or other paths; document tracked paths or mark TBD
