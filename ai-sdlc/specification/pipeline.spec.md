@@ -2,11 +2,15 @@
 
 **Purpose:** This document specifies the agentic SDLC process: 11 stages from scope analysis through strategy, epic planning, requirements, system design, user story planning, acceptance criteria, implementation planning, task execution, audit, and keep consistency. It is the single source of truth for how epics are elaborated with agent-driven workflows. Each stage maps to a **skill file** under [specification/skills/](skills/); agent instructions live only in skills (no separate roles or prompts).
 
-**Artefact paths:** Project-level artefacts (scope.md, strategy.md) live in the **ai-sdlc-artefacts/** root. Epic-level and story-level outputs live under **ai-sdlc-artefacts/epics/<epic-id>/** (e.g. `ai-sdlc-artefacts/epics/ep-104/`). Paths in this spec and in skills use that convention; no references to `docs/EP-104` or other legacy paths in links.
+**Artefact paths:** Project-level artefacts (scope.md, strategy.md) live in the **ai-sdlc-artefacts/** root. Epic-level outputs live under **ai-sdlc-artefacts/epics/<epic-id>/** (e.g. `ai-sdlc-artefacts/epics/EP-104/`). 
+Story-level outputs live under **ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>** (e.g. `ai-sdlc-artefacts/epics/EP-104/stories/US-01/`).
+Paths in this spec and in skills use that convention; no references to outside of that folders in links.
 
 **Artefact levels:** Project-level (scope.md, strategy.md) in `ai-sdlc-artefacts/`. Epic-level artefacts (ep-scope, ep-requirements, ep-system-design) live in `epics/<epic-id>/`. Story-level artefacts (st-scope, st-acceptance-criteria, st-implementation-plan, st-audit-report) live in `epics/<epic-id>/stories/<story-id>/`.
 
-**Human-in-the-loop:** Pipeline execution is cooperative. When a stage has multiple valid outcomes (e.g. artefact naming, document structure, file placement), the agent must list options and ask the user to choose before proceeding. See also skills [README](skills/README.md) (Common behaviour).
+**Human-in-the-loop:** Pipeline execution is cooperative. When a stage has multiple valid outcomes (e.g. artefact naming, document structure, file placement), the agent MUST list options and ask the user to choose before proceeding. See also skills [README](skills/README.md) (Common behaviour).
+
+**Legacy** The folder `epics/<epic-id>/stories/<story-id>/legacy` contains the legacy docuemnts DON'T change them, use as a reference only.
 
 ---
 
@@ -32,7 +36,7 @@ flowchart TB
 
 ## 2. Stage descriptions: skill mapping and I/O
 
-Each stage lists its **skill file** (under `specification/skills/`), purpose, main inputs, and output artefact path. Project-level outputs are under `ai-sdlc-artefacts/`; epic-level under `ai-sdlc-artefacts/epics/<epic-id>/`; story-level under `ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>/`.
+Each stage lists its **skill file** (under `specification/skills/`), purpose, main inputs, and output artefact path. Project-level outputs are under `ai-sdlc-artefacts/`; epic-level under `ai-sdlc-artefacts/epics/<epic-id>/`; story-level under `ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>/`. Required sections and structure of each artefact are defined in the corresponding skill file (e.g. "Output structure" or "Document sections"), not in separate template files.
 
 | Stage | Skill | Purpose (short) | Main inputs | Outputs (artefact path) |
 |-------|-------|-----------------|-------------|--------------------------|
@@ -66,7 +70,6 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 | Epic scope | ep-scope.md |
 | Epic requirements | ep-requirements.md |
 | Epic system design | ep-system-design.md |
-| (Existing; not removed in this step) | 01-02-requirements.md, 03-technical-discovery.md, 04-system-design.md, 05-delivery-strategy.md, 06-test-strategy.md, 06-manual-test-plan.md, 07-epic-list.md, 08-user-stories.md, 10-acceptance-criteria.md, 11-12-implementation-plan.md, 15-current-coverage.md, research/ |
 
 **Story-level** (under `ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>/`):
 
@@ -83,7 +86,7 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 - **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-system-design.md → st-scope.md → st-acceptance-criteria.md → st-implementation-plan.md → task execution (repo) → st-audit-report.md → keep consistency (updated artefacts).
 
-If an upstream artefact changes, downstream stages and artefacts must be reviewed and updated so traceability is preserved.
+If an upstream artefact changes, downstream stages and artefacts must be reviewed and updated so traceability is preserved. The upstream artefacts are more importante for aligment process, if you have options what level change for reaching consistency - ask user. 
 
 ---
 
