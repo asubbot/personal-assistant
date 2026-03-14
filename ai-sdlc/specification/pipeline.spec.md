@@ -85,7 +85,9 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 ## 4. Traceability
 
-- **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-acceptance-criteria.md → ep-system-design.md → st-scope.md + st-acceptance-criteria.md → st-implementation-plan.md → task execution (repo) → st-audit-report.md → keep consistency (updated artefacts).
+- **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-acceptance-criteria.md → ep-system-design.md → st-scope.md → st-acceptance-criteria.md → st-implementation-plan.md → task execution (repo) → st-audit-report.md → keep consistency (updated artefacts).
+
+When building st-acceptance-criteria, the agent's context also includes ep-acceptance-criteria (story-level AC are derived from or assigned from epic-level AC).
 
 **References:** Links in artefacts may point only to paths under `ai-sdlc-artefacts/`. Every linked document must exist (no broken links). Skills must enforce this rule.
 
@@ -113,11 +115,8 @@ flowchart LR
     st_impl[st-implementation-plan]
     st_audit[st-audit-report]
   end
-  scope --> strategy --> ep_scope --> ep_req --> ep_ac --> ep_design --> st_scope
-  ep_ac --> st_ac
-  st_scope --> st_impl
-  st_ac --> st_impl
-  ep_design --> st_impl
-  st_impl --> repo[Repo]
+  scope --> strategy --> ep_scope --> ep_req --> ep_ac --> ep_design --> st_scope --> st_ac --> st_impl --> repo[Repo]
   repo --> st_audit --> consistency[Keep consistency]
 ```
+
+**Context for AI:** Each step's context is everything upstream in the chain. When building st-acceptance-criteria, the agent's context also includes ep-acceptance-criteria.
