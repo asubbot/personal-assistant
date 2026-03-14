@@ -15,7 +15,7 @@ Follow these principles for all scope analysis work:
 1. **Never write until approved** — Do not create or overwrite scope.md until the user explicitly approves the draft (e.g. "lgtm", "save", "approve").
 2. **Existing file is baseline** — If scope.md already exists, treat it as the current baseline; propose changes as edits and overwrite only after user approval.
 3. **Options when in doubt** — When multiple valid choices exist (e.g. scope granularity, depth of glossary, requirements table), present options (e.g. A/B) and ask the user to choose before proceeding.
-4. **Preserve traceability** — Downstream stages (strategy, ep-scope) will reference this document; keep scope items precise and unambiguous. Do not mention identifiers of later-stage artefacts (EP-xx, US-xx, AC-xx). Write in English.
+4. **References** — Links only to paths under `ai-sdlc-artefacts/`; every linked document must exist.
 
 ---
 
@@ -54,6 +54,6 @@ Verify all before considering the stage complete:
 
 - [ ] scope.md exists at ai-sdlc-artefacts/scope.md
 - [ ] Document contains the required sections above (or user-agreed subset)
-- [ ] Document does not reference downstream pipeline artefacts (strategy, ep-scope, etc.); references only bottom-up ([pipeline.spec.md](../pipeline.spec.md) §4).
+- [ ] Every link in the document points to an existing path under `ai-sdlc-artefacts/` (no broken links).
 - [ ] Document does not mention downstream identifiers (EP-xx, US-xx, AC-xx).
 - [ ] User has explicitly approved the content

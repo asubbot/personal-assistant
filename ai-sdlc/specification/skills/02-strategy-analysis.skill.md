@@ -15,7 +15,9 @@ Follow these principles for all strategy analysis work:
 1. **Never write until approved** — Do not create or overwrite strategy.md until the user explicitly approves the draft (e.g. "lgtm", "save", "approve").
 2. **Existing file is baseline** — If strategy.md already exists, treat it as the current baseline; propose changes as edits and overwrite only after user approval.
 3. **Options when in doubt** — When multiple valid choices exist (e.g. increment names, test levels, depth of strategy), present options (e.g. A/B) and ask the user to choose before proceeding.
-4. **Traceability to scope** — Strategy must align with scope.md. Upstream artefacts (scope) have priority over downstream (strategy). If there is a conflict, adapt strategy to scope; do not modify scope from stage 2. Do not mention or link to downstream artefacts; that includes identifiers EP-xx, US-xx, REQ-xx, AC-xx. Downstream (ep-scope, ep-requirements) will reference this document.
+4. **Traceability to scope** — Strategy must align with scope.md. Upstream artefacts (scope) have priority over downstream (strategy). If there is a conflict, 
+adapt strategy to scope; do not modify scope from stage 2.
+4. **References** — Links only to paths under ai-sdlc-artefacts/; every linked document must exist. Strategy must align with scope; if conflict, adapt strategy to scope; do not modify scope from stage 2. Do not mention EP-xx, US-xx, REQ-xx, AC-xx in the body. Write in English.
 5. **Practical and short** — Use English. Get to the point. For simple projects, keep the strategy lightweight.
 
 ---
@@ -45,7 +47,7 @@ Follow this order:
 
 Use these section headings (or user-agreed equivalents).
 
-- **Introduction** — One short paragraph: what this document is (delivery + test strategy), alignment with scope. Reference only [scope.md](scope.md); no downstream links.
+- **Introduction** — One short paragraph: what this document is (delivery + test strategy), alignment with scope. Reference [scope.md](scope.md) and other existing artefacts under `ai-sdlc-artefacts/` only when the linked document exists.
 - **1. Delivery strategy** — Increments (e.g. Prototype, PoC, MVP, Ver 1), scope and stack per increment, iteration/dependency order, success criteria. Use subsections (1.1, 1.2, …) if helpful.
 - **2. Test strategy** — Test levels and definitions (unit, integration, E2E, manual); pyramid approach; how AC should be covered; etc. Use subsections (2.1, 2.2, …) if helpful.
 
@@ -57,6 +59,6 @@ Verify all before considering the stage complete:
 
 - [ ] strategy.md exists at ai-sdlc-artefacts/strategy.md
 - [ ] Document contains the required sections above (or user-agreed subset)
-- [ ] Document references only upstream pipeline artefacts (scope.md); no links to ep-scope, ep-requirements, or later stages ([pipeline.spec.md](../pipeline.spec.md) §4).
+- [ ] Every link in the document points to an existing path under ai-sdlc-artefacts/ (no broken links).
 - [ ] Document does not mention downstream identifiers (EP-xx, US-xx, REQ-xx, AC-xx).
 - [ ] User has explicitly approved the content
