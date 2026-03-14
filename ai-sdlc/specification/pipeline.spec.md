@@ -86,6 +86,8 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 - **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-system-design.md → st-scope.md → st-acceptance-criteria.md → st-implementation-plan.md → task execution (repo) → st-audit-report.md → keep consistency (updated artefacts).
 
+**References between pipeline artefacts go only bottom-up:** A document may reference artefacts from earlier (upstream) stages only; it must not reference or link to artefacts from later (downstream) stages. Skills must enforce this rule so that scope is the root and each artefact points only upstream.
+
 If an upstream artefact changes, downstream stages and artefacts must be reviewed and updated so traceability is preserved. The upstream artefacts are more importante for aligment process, if you have options what level change for reaching consistency - ask user. 
 
 ---
