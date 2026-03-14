@@ -1,7 +1,7 @@
-# Stage 7: Acceptance criteria planning
+# Stage 5: Acceptance criteria
 
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md)  
-**Output:** ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>/st-acceptance-criteria.md
+**Output:** ai-sdlc-artefacts/epics/<epic-id>/ep-acceptance-criteria.md (epic-level); story-level st-acceptance-criteria.md per story.
 
 ---
 
