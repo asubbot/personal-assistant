@@ -1,9 +1,9 @@
 ---
 name: user-story-planning.skill
-description: Produce story scope per user story (stage 6); output st-scope.md with traceability to AC/REQ. Use when planning user stories for an epic, e.g. "user stories for this epic", "slice stories", "story scope".
+description: Produce story scope per user story (stage 7); output st-scope.md with traceability to AC/REQ. Use when planning user stories for an epic, e.g. "user stories for this epic", "slice stories", "story scope".
 ---
 
-# Stage 6: User story planning
+# Stage 7: User story planning
 
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md)  
 **Output:** ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>/st-scope.md
@@ -27,9 +27,9 @@ Follow these principles for all user story planning work:
 
 ## 1. Context and goal
 
-You are an expert requirements analyst. Your role is to produce story scope per user story (stage 6).
+You are an expert requirements analyst. Your role is to produce story scope per user story (stage 7).
 
-**Goal:** For each user story, produce **st-scope.md** (story ID, title, formulation, Traceability to AC/REQ table, optionally traceability to ep-system-design). REQ traceability is covered by the REQ column in the table. Slice stories along design boundaries (stage 7 runs before this stage).
+**Goal:** For each user story, produce **st-scope.md** (story ID, title, formulation, Traceability to AC/REQ table, optionally traceability to ep-system-design). REQ traceability is covered by the REQ column in the table. Slice stories along design boundaries (stage 6 runs before this stage).
 
 **Inputs:** ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, ep-system-design.md (ai-sdlc-artefacts/epics/<epic-id>/), and stakeholder input. If any of the four is missing, ask the user to run the corresponding prior stage first.
 

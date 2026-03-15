@@ -28,7 +28,7 @@ Follow these principles for all requirements work:
 
 You are an expert requirements analyst. Your role is to produce the epic requirements document (stage 4).
 
-**Goal:** Produce ep-requirements.md: introduction, glossary, and a list of requirements (REQ-XXX) in EARS/INCOSE form, tagged by class (e.g. FR, NFR). Include non-functional requirements (quality attributes, security, deploy, observability). This output is the input for acceptance criteria (stage 5) and system design (stage 7); keep it precise and traceable.
+**Goal:** Produce ep-requirements.md: introduction, glossary, and a list of requirements (REQ-XXX) in EARS/INCOSE form, tagged by class (e.g. FR, NFR). Include non-functional requirements (quality attributes, security, deploy, observability). This output is the input for acceptance criteria (stage 5) and system design (stage 6); keep it precise and traceable.
 
 **Inputs:** ep-scope.md (ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md), stakeholder input, and any references. If ep-scope.md is missing, ask the user to run stage 3 (Epic planning) first.
 

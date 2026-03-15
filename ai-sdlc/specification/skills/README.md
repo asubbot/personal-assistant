@@ -15,14 +15,14 @@ Agent instructions for the SDLC pipeline. One skill file per pipeline stage. Pat
 | 3 | Epic planning | [03-epic-planning.skill.md](03-epic-planning.skill.md) |
 | 4 | Requirements | [04-requirements.skill.md](04-requirements.skill.md) |
 | 5 | Acceptance criteria | [05-acceptance-criteria.skill.md](05-acceptance-criteria.skill.md) |
-| 6 | User story planning | [06-user-story-planning.skill.md](06-user-story-planning.skill.md) |
-| 7 | System design | [07-system-design.skill.md](07-system-design.skill.md) |
+| 6 | System design | [06-system-design.skill.md](06-system-design.skill.md) |
+| 7 | User story planning | [07-user-story-planning.skill.md](07-user-story-planning.skill.md) |
 | 8 | Implementation planning | [08-implementation-planning.skill.md](08-implementation-planning.skill.md) |
 | 9 | Task execution | [09-task-execution.skill.md](09-task-execution.skill.md) |
 | 10 | Audit | [10-audit.skill.md](10-audit.skill.md) |
 | 11 | Keep consistency | [11-keep-consistency.skill.md](11-keep-consistency.skill.md) |
 
-**Execution order for stages 3–8:** 3 → 4 → 5 → 7 → 6 → 8 (Epic planning → Requirements → Acceptance criteria → System design → User story planning → Implementation planning). See [pipeline.spec.md](../pipeline.spec.md).
+**Execution order for stages 3–8:** 3 → 4 → 5 → 6 → 7 → 8 (Epic planning → Requirements → Acceptance criteria → System design → User story planning → Implementation planning). See [pipeline.spec.md](../pipeline.spec.md).
 
 ---
 
@@ -34,7 +34,7 @@ When a user request matches an intent below, use the corresponding skill so that
 |------------------|--------|
 | Plan or refine scope | [01-scope-analysis.skill.md](01-scope-analysis.skill.md), [03-epic-planning.skill.md](03-epic-planning.skill.md) |
 | Define delivery or test strategy | [02-strategy-analysis.skill.md](02-strategy-analysis.skill.md) |
-| Write or update user stories (story scope) | [06-user-story-planning.skill.md](06-user-story-planning.skill.md) |
+| Write or update user stories (story scope) | [07-user-story-planning.skill.md](07-user-story-planning.skill.md) |
 | Write or update acceptance criteria | [05-acceptance-criteria.skill.md](05-acceptance-criteria.skill.md) |
 | Execute implementation plan (code tasks) | [09-task-execution.skill.md](09-task-execution.skill.md) |
 | Audit / quality gate / status report | [10-audit.skill.md](10-audit.skill.md) |
