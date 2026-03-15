@@ -55,8 +55,12 @@ Use these section headings (or user-agreed equivalents).
 
 - **Introduction** — Summary of the epic.
 - **Glossary** — System names and technical terms used in the requirements.
+- **C4 C1 (System Context)** — C4 Level 1 diagram in **C4-PlantUML**: source in `diagrams/c4-context.puml`, PNG in `diagrams/c4-context.png`. In ep-requirements: centered image, then "Source:" with link to .puml and regeneration command (`plantuml -tpng diagrams/c4-context.puml` from epic directory).
+- **Flow** — Subsection after C4 C1: high-level interaction flow at context level (User ↔ messaging ↔ System; System → external systems). Use a Mermaid flowchart (e.g. `flowchart LR`).
 - **Requirements (REQ-XXX)** — List in EARS form with tags (e.g. FR, NFR).
 - **NFR section** — Security, performance, deploy, observability.
+
+**Diagrams:** Create a `diagrams/` folder next to ep-requirements.md for the epic; store `c4-context.puml` there and export PNG to `diagrams/c4-context.png` so the relative path in the document works.
 
 **Glossary rule:** Every system name and technical term used in the requirements MUST appear in the Glossary. When introducing a new term in a requirement, add its definition to the Glossary.
 
@@ -86,9 +90,8 @@ This document contains the product requirements for <epic> in EARS form, aligned
 
 - [Introduction](#introduction)
 - [Glossary](#glossary)
-- [C4 Diagrams](#c4-diagrams)
-  - [C1 — System Context](#c1--system-context)
-  - [C2 — Containers](#c2--containers)
+- [C4 C1 — System Context](#c4-c1--system-context)
+- [Flow](#flow)
 - [EARS patterns used](#ears-patterns-used)
 - [Requirement index](#requirement-index)
 - [Requirements](#requirements)
@@ -120,17 +123,25 @@ This document contains the product requirements for <epic> in EARS form, aligned
 
 ---
 
-## C4 Diagrams
+## C4 C1 — System Context
 
-Below: C4 in Mermaid (renders in supported viewers). Export to PNG in `docs/` if needed.
+<p align="center"><img src="diagrams/c4-context.png" alt="C4 C1 — System Context" /></p>
 
-### C1 — System Context
+**Source:** [c4-context.puml](diagrams/c4-context.puml) (C4-PlantUML). To regenerate PNG: `plantuml -tpng diagrams/c4-context.puml` from this directory.
 
-(Mermaid C4Context diagram here)
+### Flow
 
-### C2 — Containers
+High-level interaction flow at system context level: <one sentence, e.g. user messages via Telegram, system uses LLM and nodes as needed, replies via Telegram>.
 
-(Mermaid C4Container diagram here)
+```mermaid
+flowchart LR
+    User[User] -->|Uses| Telegram[Telegram]
+    Telegram -->|Bot API| PA[<System>]
+    PA -->|Bot API| Telegram
+    Telegram --> User
+    PA -->|SSH| Nodes[Nodes]
+    PA -->|LLM calls| LLM[LLM API / Model]
+```
 
 ---
 
@@ -186,8 +197,8 @@ WHEN \<trigger\>, THE \<system\> SHALL \<response\>.
 Verify all before considering the stage complete:
 
 - [ ] ep-requirements.md exists at ai-sdlc-artefacts/epics/<epic-id>/ep-requirements.md
-- [ ] Document contains **Introduction** (epic summary; optional "scope in brief" or similar), **Glossary** (table: Term | Definition), and **Requirements** (REQ-XXX in EARS form with pattern tag, e.g. Ubiquitous/Event-driven; may be grouped by theme)
-- [ ] Optional sections if agreed: metadata (Author/Date/Version or Purpose/Process/Related), C4 diagrams (C1/C2), "EARS patterns used" reference, Requirement index (Id | Type | Summary), NFR subsection or grouping, Requirement–User Story traceability (when stories exist)
+- [ ] Document contains **Introduction** (epic summary; optional "scope in brief" or similar), **Glossary** (table: Term | Definition), **C4 C1** (source in `diagrams/c4-context.puml`, PNG in `diagrams/c4-context.png` embedded centered; Source line with regeneration command)
+- [ ] Document contains "EARS patterns used" reference, Requirement index (Id | Type | Summary), NFR subsection or grouping
 - [ ] Every link in the document points to an existing path under `ai-sdlc-artefacts/` (no broken links)
 - [ ] Every term used in requirements appears in the Glossary
 - [ ] Requirements follow EARS and the quality rules above

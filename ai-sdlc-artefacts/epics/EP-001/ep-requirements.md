@@ -1,18 +1,16 @@
 # PersonalAssistant MVP — Requirements (EARS / INCOSE)
+
 **Total: 30 requirements (18 FR , 12 NFR)**
 
 This document contains the product requirements for the PersonalAssistant MVP in EARS (Easy Approach to Requirements Syntax) form, aligned with INCOSE semantic quality rules 
 (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, no solution-free where applicable).
 
-
-
 **Contents**
 
 - [Introduction](#introduction)
 - [Glossary](#glossary)
-- [C4 Diagrams](#c4-diagrams)
-  - [C1 — System Context](#c1--system-context)
-  - [C2 — Containers](#c2--containers)
+- [C4 C1 — System Context](#c4-c1--system-context)
+- [Flow](#flow)
 - [EARS patterns used](#ears-patterns-used)
 - [Requirement index](#requirement-index)
 - [Requirements](#requirements)
@@ -30,7 +28,7 @@ This document contains the product requirements for the PersonalAssistant MVP in
 
 ## Introduction
 
-PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems like [OpenClaw](https://github.com/openclaw/openclaw), with a focus on **reliability and security**. The target platform is Synology DS220+ (Docker). The user interacts via a Telegram bot; a Go core in a container manages nodes over SSH under a validated security model, stores long-term memory as markdown files, indexes it for vector search, supports swappable LLM backends (including self-hosted), and offers a task scheduler and extensible tools. Deployment and adding new nodes or tools are kept simple; the architecture is designed to evolve without radical redesign.
+This document is derived from [ep-scope.md](ep-scope.md). PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems like [OpenClaw](https://github.com/openclaw/openclaw), with a focus on **reliability and security**. The target platform is Synology DS220+ (Docker). The user interacts via a Telegram bot; a Go core in a container manages nodes over SSH under a validated security model, stores long-term memory as markdown files, indexes it for vector search, supports swappable LLM backends (including self-hosted), and offers a task scheduler and extensible tools. Deployment and adding new nodes or tools are kept simple; the architecture is designed to evolve without radical redesign.
 
 **MVP scope in brief:**
 
@@ -54,83 +52,51 @@ PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems 
 
 Terms used in the requirements.
 
-| Term | Definition |
-|------|------------|
-| **PersonalAssistant (System)** | The set of components: core (Go), Telegram adapter, memory store, vector index, scheduler, LLM providers, and tools. Deployed in Docker, target platform Synology DS220+. |
-| **Core** | The main Go service: orchestration of conversations, LLM calls, tool execution, access to memory and scheduler, and SSH-based node management. |
-| **Node** | A remote host (e.g. NAS, server) that the core connects to over SSH to run actions; has a defined capability set and credentials in configuration. |
-| **Security model** | Explicit definition of which nodes are allowed, which commands/tools are permitted on each node, and how inputs and outputs are validated; validated at load and on configuration change. |
-| **Long-term memory** | The assistant’s memory: a single store of facts and context held as markdown files in a defined directory structure; read/write by the core and indexer. It is not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with. Structure is calendar-based (year/month/day) with hierarchical summarization (day → month → year). |
-| **Memory summarization** | Process by which the assistant produces summary markdown files: at end of day from that day’s activity, at end of month from that month’s day summaries, at end of year from that year’s month summaries. Inputs include LLM logs, tool execution results, and scheduler execution events for the period. |
-| **Vector store** | Index of embeddings from long-term memory (and optionally conversations) for semantic search; provider (e.g. in-memory, file, DB) is pluggable. |
-| **LLM provider** | Abstraction for calling a language model (OpenAI-compatible API, Ollama, self-hosted); configuration specifies endpoint and parameters without vendor lock-in in code. |
-| **Tool** | Extensible module: name, description, validated input schema, and implementation; registered with the core and invoked via a single contract. |
-| **Scheduler** | Component that runs tasks on a schedule (cron-like or intervals); tasks are defined in configuration or API and run in the core context (tools, memory, optional Telegram notification). |
-| **User** | A person interacting with PersonalAssistant via the Telegram bot; identified by Telegram user ID. |
-| **Deployment** | The process of running the stack (core and any separate services) via Docker Compose on DS220+; adding a new node or tool does not require rebuilding the core image when designed via config/plugins. |
-| **Dedicated PA user** | A dedicated user account on each node used only for PersonalAssistant access. All SSH connections to that node use this identity; no other user identity is used for that node. |
-| **Logging subsystem** | Component that records LLM interaction events: requests (input messages, call parameters, request ID) and responses (model output, token counts, metadata, duration) for analysis, debugging, and audit. |
-| **Versioned state** | Configuration, memory files, and other designated artifacts under version control in a git repository within the deployment or data directory; exact set of tracked paths is defined following research. |
+
+| Term                           | Definition                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PersonalAssistant (System)** | The set of components: core (Go), Telegram adapter, memory store, vector index, scheduler, LLM providers, and tools. Deployed in Docker, target platform Synology DS220+.                                                                                                                                                                                                                       |
+| **Core**                       | The main Go service: orchestration of conversations, LLM calls, tool execution, access to memory and scheduler, and SSH-based node management.                                                                                                                                                                                                                                                  |
+| **Node**                       | A remote host (e.g. NAS, server) that the core connects to over SSH to run actions; has a defined capability set and credentials in configuration.                                                                                                                                                                                                                                              |
+| **Security model**             | Explicit definition of which nodes are allowed, which commands/tools are permitted on each node, and how inputs and outputs are validated; validated at load and on configuration change.                                                                                                                                                                                                       |
+| **Long-term memory**           | The assistant’s memory: a single store of facts and context held as markdown files in a defined directory structure; read/write by the core and indexer. It is not subdivided by interlocutor; the assistant has access to the full store regardless of who it is currently conversing with. Structure is calendar-based (year/month/day) with hierarchical summarization (day → month → year). |
+| **Memory summarization**       | Process by which the assistant produces summary markdown files: at end of day from that day’s activity, at end of month from that month’s day summaries, at end of year from that year’s month summaries. Inputs include LLM logs, tool execution results, and scheduler execution events for the period.                                                                                       |
+| **Vector store**               | Index of embeddings from long-term memory (and optionally conversations) for semantic search; provider (e.g. in-memory, file, DB) is pluggable.                                                                                                                                                                                                                                                 |
+| **LLM provider**               | Abstraction for calling a language model (OpenAI-compatible API, Ollama, self-hosted); configuration specifies endpoint and parameters without vendor lock-in in code.                                                                                                                                                                                                                          |
+| **Tool**                       | Extensible module: name, description, validated input schema, and implementation; registered with the core and invoked via a single contract.                                                                                                                                                                                                                                                   |
+| **Scheduler**                  | Component that runs tasks on a schedule (cron-like or intervals); tasks are defined in configuration or API and run in the core context (tools, memory, optional Telegram notification).                                                                                                                                                                                                        |
+| **Telegram**                   | External messaging platform and Bot API used as the user-facing interface; User and PersonalAssistant both interact with it.                                                                                                                                                                                                                                                                    |
+| **User**                       | A person interacting with PersonalAssistant via the Telegram bot; identified by Telegram user ID.                                                                                                                                                                                                                                                                                               |
+| **Operator**                   | The person who deploys, configures, and runs the PersonalAssistant (config file, environment variables, node/tool setup).                                                                                                                                                                                                                                                                        |
+| **Deployment**                 | The process of running the stack (core and any separate services) via Docker Compose on DS220+; adding a new node or tool does not require rebuilding the core image when designed via config/plugins.                                                                                                                                                                                          |
+| **Dedicated PA user**          | A dedicated user account on each node used only for PersonalAssistant access. All SSH connections to that node use this identity; no other user identity is used for that node.                                                                                                                                                                                                                 |
+| **Logging subsystem**          | Component that records LLM interaction events: requests (input messages, call parameters, request ID) and responses (model output, token counts, metadata, duration) for analysis, debugging, and audit.                                                                                                                                                                                        |
+| **Versioned state**            | Configuration, memory files, and other designated artifacts under version control in a git repository within the deployment or data directory; exact set of tracked paths is defined following research.                                                                                                                                                                                        |
+
 
 ---
 
-## C4 Diagrams
+## C4 C1 — System Context
 
-### C1 — System Context
+<p align="center"><img src="diagrams/c4-context.png" alt="C4 C1 — System Context" /></p>
 
-```mermaid
-C4Context
-    title PersonalAssistant System Context
+**Source:** [c4-context.puml](diagrams/c4-context.puml) (C4-PlantUML). To regenerate PNG: `plantuml -tpng diagrams/c4-context.puml` from this directory.
 
-    Person(user, "User", "User of the assistant")
-    System(pa, "PersonalAssistant", "Personal assistant")
-    System_Ext(nodes, "Nodes", "Remote hosts")
-    System_Ext(llm_ext, "LLM API / Model", "OpenAI, Ollama, self-hosted")
+### Flow
 
-    Rel(user, pa, "Uses via Telegram")
-    Rel(pa, nodes, "Manages via SSH")
-    Rel(pa, llm_ext, "Calls for completion")
-```
-
-### C2 — Containers
+High-level interaction flow at system context level: user messages via Telegram, PersonalAssistant uses LLM and Nodes as needed, replies via Telegram.
 
 ```mermaid
-C4Container
-    title PersonalAssistant Containers
-
-    Person_Ext(user, "User")
-    Container_Boundary(pa, "PersonalAssistant") {
-        Container(tg, "Telegram Bot", "Go", "Message adapter")
-        Container(core, "Go Core", "Go", "Orchestration, LLM, tools")
-        ContainerDb(cfg, "Config", "JSON", "Nodes, LLM, paths")
-        ContainerDb(mem, "MD Store", "Files", "Long-term memory")
-        ContainerDb(vec, "Vector Index", "Embeddings", "Semantic search")
-        Container(llm, "LLM Provider", "Go", "Model calls")
-        Container(log, "LLM Logging", "Go", "Request/response audit")
-        ContainerDb(vstate, "Versioned state", "Git", "Config, memory history")
-        Container(sched, "Scheduler", "Go", "Scheduled tasks")
-        Container(tools, "Tools", "Go", "Extensible tools")
-        Container(ssh, "SSH Client", "Go", "Node connections")
-    }
-    System_Ext(nodes, "Nodes", "Remote hosts")
-    System_Ext(llm_ext, "LLM API", "OpenAI, Ollama, etc.")
-
-    Rel(user, tg, "Messages")
-    Rel(tg, core, "Forward messages")
-    Rel(core, tg, "Send replies")
-    Rel(core, cfg, "Load at startup")
-    Rel(core, mem, "Read/write")
-    Rel(core, vec, "Search")
-    Rel(core, llm, "Call model")
-    Rel(llm, llm_ext, "HTTP/gRPC")
-    Rel(core, log, "Write logs")
-    Rel(core, vstate, "Commit/read versioned paths")
-    Rel(core, sched, "Run tasks")
-    Rel(sched, tools, "Invoke when scheduled")
-    Rel(core, tools, "Invoke")
-    Rel(core, ssh, "Commands")
-    Rel(ssh, nodes, "SSH")
+flowchart LR
+    User[User] -->|Uses| Telegram[Telegram]
+    Telegram -->|Bot API| PA[PersonalAssistant]
+    PA -->|Bot API| Telegram
+    Telegram --> User
+    PA -->|SSH| Nodes[Nodes]
+    PA -->|LLM calls| LLM[LLM API / Model]
 ```
+
+
 
 ---
 
@@ -139,8 +105,9 @@ C4Container
 - **Ubiquitous:** THE \<system\> SHALL \<response\>
 - **Event-driven:** WHEN \<trigger\>, THE \<system\> SHALL \<response\>
 - **State-driven:** WHILE \<condition\>, THE \<system\> SHALL \<response\>
+- **Unwanted event:** IF \<condition\>, THEN THE \<system\> SHALL \<response\>
 - **Optional feature:** WHERE \<option\>, THE \<system\> SHALL \<response\>
-- **Complex:** [WHERE] [WHILE] [WHEN/IF] THE \<system\> SHALL \<response\>
+- **Complex:** Clauses in order WHERE → WHILE → WHEN/IF → THE → SHALL
 
 In the following, *System* = PersonalAssistant (or the relevant component as stated).
 
@@ -148,38 +115,40 @@ In the following, *System* = PersonalAssistant (or the relevant component as sta
 
 ## Requirement index
 
-| Id       | Type | Section | Summary |
-|----------|------|---------|--------|
-| REQ-001  | FR   | Interface and deployment | Telegram bot interface for messages and replies |
-| REQ-002  | NFR  | Interface and deployment | Go core, Docker, target DS220+ |
-| REQ-003  | NFR  | Nodes and SSH | Validate node config at startup; fail or report error if invalid |
-| REQ-004  | FR   | Nodes and SSH | Communicate with nodes only over SSH per validated config |
-| REQ-005  | NFR  | Nodes and SSH | Security model: per-node allow list for commands/tools |
-| REQ-006  | FR   | Memory and indexing | Long-term memory in designated directory as markdown files |
-| REQ-007  | FR   | Memory and indexing | Vector index and semantic search over memory |
-| REQ-008  | FR   | LLM and logging | Pluggable LLM providers via configuration |
-| REQ-009  | FR   | Scheduler and tools | Scheduler runs tasks at scheduled time/interval within security model |
-| REQ-010  | FR   | Scheduler and tools | Extensible tools: name, description, validated schema, single contract |
-| REQ-011  | FR   | Extensibility and architecture | New nodes/tools loadable via config without core image rebuild |
-| REQ-012  | NFR  | Extensibility and architecture | Clear separation: adapters, core, memory, vector, LLM, scheduler, tools |
-| REQ-013  | NFR  | Nodes and SSH | One dedicated SSH user per node; no other identity for that node |
-| REQ-014  | NFR  | LLM and logging | Logging subsystem records LLM requests and responses |
-| REQ-015  | NFR  | LLM and logging | Configurable log destination and parseable log format |
-| REQ-016  | NFR  | Version control and audit | Git repository for version history of config, memory, and designated artifacts (scope TBD) |
-| REQ-017  | NFR  | Secret protection | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests |
-| REQ-018  | FR   | Memory and indexing | Memory is assistant's single store; not partitioned by interlocutor; full access regardless of current conversation partner |
-| REQ-019  | FR   | Memory and indexing | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
-| REQ-020  | FR   | Memory and indexing | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources) |
-| REQ-021  | NFR  | LLM and logging | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only |
-| REQ-022  | FR   | Nodes and SSH | CLI parameter to verify node availability: connect and run one allowlisted command per node; report and exit without serving |
-| REQ-023  | FR   | Scheduler and tools | Scheduler "notify" action: destination chat from telegram.notify_chat_id or first allowed user |
-| REQ-024  | NFR  | Nodes and SSH | Startup validation: refuse to start or clear error for invalid/incomplete config (file, Telegram, users, LLM, embedding) |
-| REQ-025  | NFR  | LLM and logging | LLM/embedding provider errors handled without crash (4xx, empty, network, context canceled) |
-| REQ-026  | NFR  | Secret protection | Redaction applied to LLM log and application log output before writing |
-| REQ-027  | NFR  | Secret protection | Built-in redaction patterns in code; not overridable by configuration |
-| REQ-028  | NFR  | Secret protection | Additional redaction patterns from config; ids must not clash with built-in |
-| REQ-029  | NFR  | Secret protection | Config load validates redaction; refuse start on reserved id or invalid regex |
-| REQ-030  | NFR  | Configuration paths and environment | Config path from PA_CONFIG_DIR; PA_DATA_DIR/PA_SECRETS_DIR resolution (relative/absolute/unset) |
+
+| Id      | Type | Section                             | Summary                                                                                                                      |
+| ------- | ---- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| REQ-001 | FR   | Interface and deployment            | Telegram bot interface for messages and replies                                                                              |
+| REQ-002 | NFR  | Interface and deployment            | Go core, Docker, target DS220+                                                                                               |
+| REQ-003 | NFR  | Nodes and SSH                       | Validate node config at startup; fail or report error if invalid                                                             |
+| REQ-004 | FR   | Nodes and SSH                       | Communicate with nodes only over SSH per validated config                                                                    |
+| REQ-005 | NFR  | Nodes and SSH                       | Security model: per-node allow list for commands/tools                                                                       |
+| REQ-006 | FR   | Memory and indexing                 | Long-term memory in designated directory as markdown files                                                                   |
+| REQ-007 | FR   | Memory and indexing                 | Vector index and semantic search over memory                                                                                 |
+| REQ-008 | FR   | LLM and logging                     | Pluggable LLM providers via configuration                                                                                    |
+| REQ-009 | FR   | Scheduler and tools                 | Scheduler runs tasks at scheduled time/interval within security model                                                        |
+| REQ-010 | FR   | Scheduler and tools                 | Extensible tools: name, description, validated schema, single contract                                                       |
+| REQ-011 | FR   | Extensibility and architecture      | New nodes/tools loadable via config without core image rebuild                                                               |
+| REQ-012 | NFR  | Extensibility and architecture      | Clear separation: adapters, core, memory, vector, LLM, scheduler, tools                                                      |
+| REQ-013 | NFR  | Nodes and SSH                       | One dedicated SSH user per node; no other identity for that node                                                             |
+| REQ-014 | NFR  | LLM and logging                     | Logging subsystem records LLM requests and responses                                                                         |
+| REQ-015 | NFR  | LLM and logging                     | Configurable log destination and parseable log format                                                                        |
+| REQ-016 | NFR  | Version control and audit           | Git repository for version history of config, memory, and designated artifacts (scope TBD)                                   |
+| REQ-017 | NFR  | Secret protection                   | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests                                 |
+| REQ-018 | FR   | Memory and indexing                 | Memory is assistant's single store; not partitioned by interlocutor; full access regardless of current conversation partner  |
+| REQ-019 | FR   | Memory and indexing                 | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
+| REQ-020 | FR   | Memory and indexing                 | Day summary inputs: LLM logs, tool execution results, scheduler events (and optionally other sources)                        |
+| REQ-021 | NFR  | LLM and logging                     | Log level via PA_LOG_LEVEL; default INFO; at DEBUG full LLM request/response in core; at INFO metadata only                  |
+| REQ-022 | FR   | Nodes and SSH                       | CLI parameter to verify node availability: connect and run one allowlisted command per node; report and exit without serving |
+| REQ-023 | FR   | Scheduler and tools                 | Scheduler "notify" action: destination chat from telegram.notify_chat_id or first allowed user                               |
+| REQ-024 | NFR  | Nodes and SSH                       | Startup validation: refuse to start or clear error for invalid/incomplete config (file, Telegram, users, LLM, embedding)     |
+| REQ-025 | NFR  | LLM and logging                     | LLM/embedding provider errors handled without crash (4xx, empty, network, context canceled)                                  |
+| REQ-026 | NFR  | Secret protection                   | Redaction applied to LLM log and application log output before writing                                                       |
+| REQ-027 | NFR  | Secret protection                   | Built-in redaction patterns in code; not overridable by configuration                                                        |
+| REQ-028 | NFR  | Secret protection                   | Additional redaction patterns from config; ids must not clash with built-in                                                  |
+| REQ-029 | NFR  | Secret protection                   | Config load validates redaction; refuse start on reserved id or invalid regex                                                |
+| REQ-030 | NFR  | Configuration paths and environment | Config path from PA_CONFIG_DIR; PA_DATA_DIR/PA_SECRETS_DIR resolution (relative/absolute/unset)                              |
+
 
 ---
 
@@ -326,5 +295,3 @@ WHEN the operator supplies a valid `log_redaction.additional_patterns` configura
 
 **REQ-029** (Event-driven)  
 WHEN the application loads configuration, THE PersonalAssistant SHALL validate the redaction configuration: if an additional pattern identifier equals a built-in identifier, or if a pattern regular expression fails to compile, THE PersonalAssistant SHALL refuse to start and SHALL report a clear error message stating the cause (e.g. reserved identifier or invalid regex).
-
-
