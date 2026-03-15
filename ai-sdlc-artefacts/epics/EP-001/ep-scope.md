@@ -28,7 +28,6 @@ Terms are defined in the project [scope.md](../../scope.md) glossary (Core, Node
 - Extensible tools with a single contract (name, description, params, run).
 - Simple deployment and simple addition of nodes and tools.
 - Logging subsystem for LLM requests and responses (analysis and audit).
-- Version control (internal git) for configuration, memory files, and other designated artifacts.
 
 ## Success criteria
 
@@ -37,7 +36,12 @@ Terms are defined in the project [scope.md](../../scope.md) glossary (Core, Node
 - **E2E:** At least one scenario passes: start core (locally or in Docker) with minimal config → send one message to Telegram (or via mock) → receive one reply from the assistant.
 - **Platform:** Binary or Docker image runs on target platform (DS220+ or x86_64 equivalent).
 
+## Out of scope / deferred for MVP
+
+- `REQ-016` (git-backed versioned state) is deferred to post-MVP. Rationale: operational complexity (safe restart/rollback flow), security hardening needs for self-modifying behavior, and extra reliability test scope.
+
 ## Traceability
 
-- **Scope:** This epic covers the full "In scope" set from scope.md: Telegram bot, Go core in Docker, SSH nodes and security model, long-term memory, vector index, multiple LLMs, scheduler, tools, deployment simplicity, evolution-friendly architecture, dedicated PA user per node, logging subsystem, internal git for config and memory.
+- **Scope:** This epic covers the full "In scope" set from scope.md: Telegram bot, Go core in Docker, SSH nodes and security model, long-term memory, vector index, multiple LLMs, scheduler, tools, deployment simplicity, evolution-friendly architecture, dedicated PA user per node, and logging subsystem.
+- **Deferred:** `REQ-016` is tracked as post-MVP work and intentionally excluded from EP-001 implementation and MVP validation.
 - **Strategy:** This epic maps to the MVP (0.01) increment in strategy.md: delivery of the working assistant with the capabilities listed above and test strategy as defined in strategy §2.

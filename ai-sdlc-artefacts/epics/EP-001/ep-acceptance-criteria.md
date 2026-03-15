@@ -47,8 +47,8 @@ This document defines epic-level acceptance criteria for **EP-001 PersonalAssist
 | [AC-023](#ac-023) | [REQ-010](ep-requirements.md#scheduler-and-tools) | Invalid or out-of-schema tool input → validate and reject, tool not run |
 | [AC-024](#ac-024) | [REQ-011](ep-requirements.md#extensibility-and-architecture) | New node/tool via config → load after restart/hot-reload without rebuild |
 | [AC-025](#ac-025) | [REQ-012](ep-requirements.md#extensibility-and-architecture) | Module boundaries: adapters, core, memory, vector, LLM, scheduler, tools separated |
-| [AC-026](#ac-026) | [REQ-016](ep-requirements.md#version-control-and-audit) | Git-backed versioned state → config/memory/artifacts recorded in repo |
-| [AC-027](#ac-027) | [REQ-016](ep-requirements.md#version-control-and-audit) | Versioned state → tracked paths documented or TBD |
+| [AC-026](#ac-026) | [REQ-016](ep-requirements.md#version-control-and-audit) | **Deferred (post-MVP):** PA-owned changes in tracked paths are committed per change |
+| [AC-027](#ac-027) | [REQ-016](ep-requirements.md#version-control-and-audit) | **Deferred (post-MVP):** docs include tracked paths, periodicity, feature flag, scope, failure notification |
 | [AC-028](#ac-028) | [REQ-017](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | Context build with fake secret → context does not contain it |
 | [AC-029](#ac-029) | [REQ-017](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | Prompt-injection message with fake secret → reply and logs do not contain it |
 | [AC-030](#ac-030) | [REQ-017](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | Flow using secrets → log stream does not contain fake secret values |
@@ -64,6 +64,7 @@ This document defines epic-level acceptance criteria for **EP-001 PersonalAssist
 | [AC-040](#ac-040) | [REQ-028](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | Additional patterns in config → applied with built-in; ids not equal built-in |
 | [AC-041](#ac-041) | [REQ-029](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | Reserved id or invalid regex in redaction config → refuse start, clear error |
 | [AC-042](#ac-042) | [REQ-030](ep-requirements.md#configuration-paths-and-environment) | PA_CONFIG_DIR / PA_DATA_DIR / PA_SECRETS_DIR resolution (relative, absolute, unset) |
+| [AC-043](#ac-043) | [REQ-031](ep-requirements.md#llm-and-logging) | Multiple LLM providers in config → on connection/network failure, core tries next in order; when all fail, error returned |
 
 ---
 
@@ -227,13 +228,17 @@ Given the codebase, When an architect or developer reviews the module boundaries
 
 <a id="ac-026"></a>**AC-026** ([REQ-016](ep-requirements.md#version-control-and-audit))
 
-Given the deployment or data directory, When the system is configured to use the git-backed versioned state, Then changes to configuration, memory files, or other designated artifacts are recorded in the repository (commits or equivalent).
+**MVP status:** Deferred (out of EP-001 validation scope).
+
+Given the system is configured to use git-backed versioned state in the PA working directory, When PA itself changes a file under configured tracked paths, Then the change is recorded in the repository as a commit (or equivalent), with per-change granularity.
 
 ---
 
 <a id="ac-027"></a>**AC-027** ([REQ-016](ep-requirements.md#version-control-and-audit))
 
-Given the versioned state feature is implemented or in design, When the operator or developer consults the documentation, Then the exact set of tracked paths is documented or explicitly marked TBD until research is done.
+**MVP status:** Deferred (out of EP-001 validation scope).
+
+Given the versioned state feature is implemented or in design, When the operator or developer consults the documentation, Then the exact tracked paths, commit periodicity setting, feature-flag behavior, and "self-changes only" scope are documented (including operator notification behavior on commit failure).
 
 ---
 
@@ -330,3 +335,9 @@ Given configuration defines an additional pattern whose regular expression is in
 Given the application is started with `PA_CONFIG_DIR` set to a directory or path, When the application loads configuration, Then the config file path is resolved from that value (e.g. directory + default filename or path as-is). Given `PA_CONFIG_DIR` is unset or empty, When the application loads configuration, Then the application uses the documented default (e.g. current directory or built-in default).
 
 Given the application resolves `PA_DATA_DIR` or `PA_SECRETS_DIR`, When the value is a relative path, Then it is resolved relative to the defined base (e.g. working directory). Given the value is absolute, Then it is used unchanged. Given the environment variable is unset or empty, Then the application uses a documented default (e.g. ".").
+
+---
+
+<a id="ac-043"></a>**AC-043** ([REQ-031](ep-requirements.md#llm-and-logging))
+
+Given configuration defines two or more LLM providers in `llm_providers` (in order), When the core makes an LLM request and the first provider fails due to connection or network error (e.g. unreachable, timeout, 5xx), Then the core attempts the next provider in order until one returns a successful response or all have been tried. Given all configured providers fail with connection or network errors, When the core has tried each in order, Then the core returns an error to the caller and does not crash.

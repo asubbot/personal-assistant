@@ -39,7 +39,6 @@ PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems 
 - Architecture that allows future evolution without fundamental change.
 - Dedicated user account on each node for PersonalAssistant only.
 - Logging subsystem for LLM requests and responses (for analysis and audit).
-- Version control via an internal git repository for configuration, memory files, and other designated artifacts.
 
 ---
 
@@ -47,6 +46,7 @@ PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems 
 
 - Performance, load, or stress testing (covered in test strategy as out of scope for this epic).
 - Cross-platform test matrix; E2E targets x86_64 / DS220+.
+- Git-backed versioned state (REQ-016): deferred to post-MVP due to operational complexity (safe restart/rollback orchestration), additional security policy hardening for self-modifying behavior, and dedicated reliability test requirements.
 
 ---
 

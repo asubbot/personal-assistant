@@ -151,7 +151,7 @@ Wiring principle: the entrypoint (`cmd/...`) composes concrete implementations; 
 ## Data models
 
 - **Configuration model:** Nodes, SSH/auth settings, allowlist references, provider list, memory/log/data path settings, scheduler task source, Telegram settings and notification destination ([REQ-003](ep-requirements.md#nodes-and-ssh), [REQ-023](ep-requirements.md#scheduler-and-tools), [REQ-030](ep-requirements.md#configuration-paths-and-environment)).
-- **Versioned state:** Git repository for config, memory, and designated artifacts; tracked paths defined per research ([REQ-016](ep-requirements.md#version-control-and-audit)).
+- **Versioned state:** Deferred post-MVP design item. Git-backed tracking for PA-initiated changes is documented for future implementation but is intentionally excluded from EP-001 build/validation scope ([REQ-016](ep-requirements.md#version-control-and-audit)).
 - **Memory model:** Markdown files in year/month/day layout; day/month/year summary chain with inputs from logs, tool results, and scheduler events ([REQ-019](ep-requirements.md#memory-and-indexing), [REQ-020](ep-requirements.md#memory-and-indexing)).
 - **LLM log model:** Request/response records with identifiers, payload metadata, and usage/duration in parseable format ([REQ-014](ep-requirements.md#llm-and-logging), [REQ-015](ep-requirements.md#llm-and-logging)).
 - **Tool invocation model:** Tool metadata and validated parameters before runtime execution ([REQ-010](ep-requirements.md#scheduler-and-tools)).

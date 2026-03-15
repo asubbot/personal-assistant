@@ -1,6 +1,6 @@
 # PersonalAssistant MVP — Requirements (EARS / INCOSE)
 
-**Total: 30 requirements (18 FR , 12 NFR)**
+**Total: 31 requirements (19 FR , 12 NFR)**
 
 This document contains the product requirements for the PersonalAssistant MVP in EARS (Easy Approach to Requirements Syntax) form, aligned with INCOSE semantic quality rules 
 (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, no solution-free where applicable).
@@ -44,7 +44,6 @@ This document is derived from [ep-scope.md](ep-scope.md). PersonalAssistant is a
 - Architecture that allows future evolution without fundamental change.
 - Dedicated user account on each node for PersonalAssistant only.
 - Logging subsystem for LLM requests and responses (for analysis and audit).
-- Version control via an internal git repository for configuration, memory files, and other designated artifacts (exact scope TBD by research).
 
 ---
 
@@ -71,7 +70,7 @@ Terms used in the requirements.
 | **Deployment**                 | The process of running the stack (core and any separate services) via Docker Compose on DS220+; adding a new node or tool does not require rebuilding the core image when designed via config/plugins.                                                                                                                                                                                          |
 | **Dedicated PA user**          | A dedicated user account on each node used only for PersonalAssistant access. All SSH connections to that node use this identity; no other user identity is used for that node.                                                                                                                                                                                                                 |
 | **Logging subsystem**          | Component that records LLM interaction events: requests (input messages, call parameters, request ID) and responses (model output, token counts, metadata, duration) for analysis, debugging, and audit.                                                                                                                                                                                        |
-| **Versioned state**            | Configuration, memory files, and other designated artifacts under version control in a git repository within the deployment or data directory; exact set of tracked paths is defined following research.                                                                                                                                                                                        |
+| **Versioned state**            | Deferred post-MVP capability for git-backed tracking of PA-owned changes to designated artifacts. It is intentionally excluded from MVP implementation due to operational and security complexity.                                                                                                                                                                                                |
 
 
 ---
@@ -133,7 +132,7 @@ In the following, *System* = PersonalAssistant (or the relevant component as sta
 | REQ-013 | NFR  | Nodes and SSH                       | One dedicated SSH user per node; no other identity for that node                                                             |
 | REQ-014 | NFR  | LLM and logging                     | Logging subsystem records LLM requests and responses                                                                         |
 | REQ-015 | NFR  | LLM and logging                     | Configurable log destination and parseable log format                                                                        |
-| REQ-016 | NFR  | Version control and audit           | Git repository for version history of config, memory, and designated artifacts (scope TBD)                                   |
+| REQ-016 | NFR  | Version control and audit           | Deferred post-MVP (git-backed state for PA-owned changes; not implemented in MVP)                                           |
 | REQ-017 | NFR  | Secret protection                   | No secrets in LLM context, user-facing response, or logs; verified by prompt-injection tests                                 |
 | REQ-018 | FR   | Memory and indexing                 | Memory is assistant's single store; not partitioned by interlocutor; full access regardless of current conversation partner  |
 | REQ-019 | FR   | Memory and indexing                 | Memory structure: calendar year/month/day; hierarchical summarization (day → month → year); optional approval before persist |
@@ -148,6 +147,7 @@ In the following, *System* = PersonalAssistant (or the relevant component as sta
 | REQ-028 | NFR  | Secret protection                   | Additional redaction patterns from config; ids must not clash with built-in                                                  |
 | REQ-029 | NFR  | Secret protection                   | Config load validates redaction; refuse start on reserved id or invalid regex                                                |
 | REQ-030 | NFR  | Configuration paths and environment | Config path from PA_CONFIG_DIR; PA_DATA_DIR/PA_SECRETS_DIR resolution (relative/absolute/unset)                              |
+| REQ-031 | FR   | LLM and logging                     | On connection/network failure of current LLM provider, try next in llm_providers order; if all fail, return error to caller  |
 
 
 ---
@@ -222,10 +222,13 @@ THE PersonalAssistant SHALL maintain a vector index of content from the long-ter
 
 ### LLM and logging
 
-*REQ-008, REQ-025, REQ-014, REQ-015, REQ-021*
+*REQ-008, REQ-031, REQ-025, REQ-014, REQ-015, REQ-021*
 
 **REQ-008** (Ubiquitous)  
 THE PersonalAssistant SHALL support pluggable LLM providers (e.g. OpenAI-compatible API, Ollama, self-hosted); the active provider and its parameters SHALL be selected via configuration without code changes.
+
+**REQ-031** (Event-driven)  
+WHEN a request to the current LLM provider fails due to connection or network error (e.g. unreachable host, timeout, or provider returns 5xx), THE PersonalAssistant SHALL attempt the next provider in the `llm_providers` configuration order until one succeeds or all have been tried. WHEN all configured providers have been tried and none succeeded, THE PersonalAssistant SHALL return an error to the caller (e.g. to the user or to the invoking component) and SHALL NOT crash.
 
 **REQ-025** (State-driven)  
 WHEN an LLM or embedding provider call fails (e.g. 4xx/5xx, empty response, network error, context canceled), THE PersonalAssistant SHALL handle the error (e.g. propagate to caller or return a safe response) and SHALL NOT crash.
@@ -268,12 +271,14 @@ THE PersonalAssistant architecture SHALL separate clearly: ingestion adapters (e
 
 ---
 
-### Version control and audit
+### Version control and audit (Deferred — out of MVP scope)
 
 *REQ-016*
 
 **REQ-016** (Ubiquitous)  
-THE PersonalAssistant SHALL use a git repository (within the deployment or data directory) to track version history of configuration, memory files, and other designated artifacts; the exact scope of tracked paths (e.g. config, memory directory, other state) SHALL be defined and documented following further research.
+THE PersonalAssistant SHALL support a configurable git-backed versioned state in the PA working directory (inside container, on persistent volume) to track version history of designated artifacts changed by PA itself (e.g. non-secret config, scripts, memory files). The feature SHALL be controlled by configuration (enable/disable, tracked paths, commit periodicity). Automatic tracking of external/manual file edits is out of scope. On commit failure, the system SHALL keep running and notify the operator.  
+**MVP status:** Deferred (out of EP-001 implementation scope).  
+**Rationale:** Requires additional safe restart/rollback orchestration, security policy hardening for self-modifying flows, and dedicated reliability tests.
 
 ---
 
