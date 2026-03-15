@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -21,9 +22,33 @@ import (
 	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
+
+// newLLMProvider builds a fallback chain from cfg.LLMProviders (order = priority). Labels are Type/Model per provider for logging.
+func newLLMProvider(cfg *config.Config, logger *slog.Logger) (llm.Provider, error) {
+	if len(cfg.LLMProviders) == 0 {
+		return nil, fmt.Errorf("no llm providers configured")
+	}
+	var providers []llm.Provider
+	var labels []string
+	for i := range cfg.LLMProviders {
+		p, err := llm.NewProvider(&cfg.LLMProviders[i])
+		if err != nil {
+			return nil, err
+		}
+		providers = append(providers, p)
+		typ := strings.TrimSpace(strings.ToLower(cfg.LLMProviders[i].Type))
+		model := strings.TrimSpace(cfg.LLMProviders[i].Model)
+		if model == "" {
+			model = "default"
+		}
+		labels = append(labels, typ+"/"+model)
+	}
+	return llm.NewFallbackProvider(providers, labels, logger), nil
+}
 
 // configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./config") joined with config.ConfigFileName.
 func configFilePath() string {
@@ -65,19 +90,32 @@ func main() {
 	logger.Info("config loaded", "path", configFilePath)
 
 	if *verifyNodes {
-		runVerifyNodes(cfg, configFilePath, *verifyNodesCommand, logger)
+		if err := runVerifyNodes(cfg, *verifyNodesCommand, logger); err != nil {
+			logger.Error("verify-nodes", "error", err)
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}
 
 	if *summarizeFlag != "" {
-		runSummarize(cfg, *summarizeFlag, logger)
+		if err := runSummarize(cfg, *summarizeFlag, logger); err != nil {
+			logger.Error("summarize", "error", err)
+			os.Exit(1)
+		}
 		return
 	}
 
-	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, configFilePath, logger)
-	if err != nil {
-		logger.Error("setup", "error", err)
+	if err := runServer(cfg, configFilePath, logger); err != nil && !errors.Is(err, context.Canceled) {
+		logger.Error("run", "error", err)
 		os.Exit(1)
+	}
+}
+
+// runServer sets up adapter, stores, LLM, scheduler and runs the core until context is canceled.
+func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error {
+	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, configPath, logger)
+	if err != nil {
+		return err
 	}
 	defer func() {
 		if vectorStore != nil {
@@ -87,12 +125,15 @@ func main() {
 		}
 	}()
 
-	// Only the first LLM provider is used; fallback to next on failure is TBD for a future increment.
-	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
+	llmProvider, err := newLLMProvider(cfg, logger)
 	if err != nil {
-		logger.Error("create llm provider", "error", err)
-		os.Exit(1)
+		return err
 	}
+	model := cfg.LLMProviders[0].Model
+	if model == "" {
+		model = "default"
+	}
+	logger.Info("llm model", "model", model)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -104,10 +145,7 @@ func main() {
 	}
 
 	logger.Info("starting", "adapter", "telegram")
-	if err := core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner); err != nil && !errors.Is(err, context.Canceled) {
-		logger.Error("run", "error", err)
-		os.Exit(1)
-	}
+	return core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner)
 }
 
 // startSchedulerIfConfigured loads scheduled tasks and starts the scheduler when paths.scheduled_tasks_path is set. Returns a cleanup function to call on exit, or nil.
@@ -144,62 +182,54 @@ func startSchedulerIfConfigured(cfg *config.Config, adapter core.Adapter, toolRe
 	}
 }
 
-// runSummarize parses -summarize value (YYYY, YYYY-MM, or YYYY-MM-DD), runs the matching summarization, then exits.
-func runSummarize(cfg *config.Config, value string, logger *slog.Logger) {
+// runSummarize parses -summarize value (YYYY, YYYY-MM, or YYYY-MM-DD), runs the matching summarization. Caller exits on error.
+func runSummarize(cfg *config.Config, value string, logger *slog.Logger) error {
 	scope, err := summarize.ParseSummarizeScope(value)
 	if err != nil {
-		logger.Error("summarize", "error", err)
-		os.Exit(1)
+		return err
 	}
 	if err := llmlog.PruneRetention(cfg.Paths.LLMLogDir, cfg.Paths.LLMLogRetentionDays, logger); err != nil {
 		logger.Error("prune llm logs", "error", err)
 	}
 	switch scope.Kind {
 	case "day":
-		runSummarizeDay(cfg, scope.Day, logger)
+		return runSummarizeDay(cfg, scope.Day, logger)
 	case "month":
-		runSummarizeMonth(cfg, scope.Year, scope.Month, logger)
+		return runSummarizeMonth(cfg, scope.Year, scope.Month, logger)
 	case "year":
-		runSummarizeYear(cfg, scope.Year, logger)
+		return runSummarizeYear(cfg, scope.Year, logger)
 	default:
-		logger.Error("summarize: unknown scope", "scope", scope.Kind)
-		os.Exit(1)
+		return fmt.Errorf("summarize: unknown scope %q", scope.Kind)
 	}
 }
 
-// runSummarizeDay runs day summarization for the given date (UTC), then exits.
-func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) {
+// runSummarizeDay runs day summarization for the given date (UTC). Caller exits on error.
+func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) error {
 	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
-		logger.Error("summarize: mkdir memory", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: mkdir memory: %w", err)
 	}
 	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
 	if err != nil {
-		logger.Error("summarize: memory store", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: memory store: %w", err)
 	}
 
-	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
+	llmProvider, err := newLLMProvider(cfg, logger)
 	if err != nil {
-		logger.Error("summarize: llm provider", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
 
 	embedder, err := embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
-		logger.Error("summarize: embedder", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: embedder: %w", err)
 	}
 
 	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
-		logger.Error("summarize: mkdir vector", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
 	if err != nil {
-		logger.Error("summarize: vector store", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: vector store: %w", err)
 	}
 	defer func() {
 		if closeErr := vectorStore.Close(); closeErr != nil {
@@ -208,54 +238,46 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) {
 	}()
 
 	ctx := context.Background()
-	err = summarize.Day(ctx, day, summarize.DayConfig{
+	if err := summarize.Day(ctx, day, summarize.DayConfig{
 		LLMLogDir:   cfg.Paths.LLMLogDir,
 		LLMProvider: llmProvider,
 		MemoryStore: memoryStore,
 		Embedder:    embedder,
 		VectorStore: vectorStore,
 		Logger:      logger,
-	})
-	if err != nil {
-		logger.Error("summarize", "error", err)
-		os.Exit(1)
+	}); err != nil {
+		return fmt.Errorf("summarize: %w", err)
 	}
-	os.Exit(0)
+	return nil
 }
 
-// runSummarizeMonth runs month summarization for the given year/month (UTC), then exits.
-func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Logger) {
+// runSummarizeMonth runs month summarization for the given year/month (UTC). Caller exits on error.
+func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Logger) error {
 	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
-		logger.Error("summarize: mkdir memory", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: mkdir memory: %w", err)
 	}
 	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
 	if err != nil {
-		logger.Error("summarize: memory store", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: memory store: %w", err)
 	}
 
-	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
+	llmProvider, err := newLLMProvider(cfg, logger)
 	if err != nil {
-		logger.Error("summarize: llm provider", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
 
 	embedder, err := embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
-		logger.Error("summarize: embedder", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: embedder: %w", err)
 	}
 
 	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
-		logger.Error("summarize: mkdir vector", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
 	if err != nil {
-		logger.Error("summarize: vector store", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: vector store: %w", err)
 	}
 	defer func() {
 		if closeErr := vectorStore.Close(); closeErr != nil {
@@ -264,53 +286,45 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 	}()
 
 	ctx := context.Background()
-	err = summarize.Month(ctx, year, month, summarize.MonthConfig{
+	if err := summarize.Month(ctx, year, month, summarize.MonthConfig{
 		LLMProvider: llmProvider,
 		MemoryStore: memoryStore,
 		Embedder:    embedder,
 		VectorStore: vectorStore,
 		Logger:      logger,
-	})
-	if err != nil {
-		logger.Error("summarize", "error", err)
-		os.Exit(1)
+	}); err != nil {
+		return fmt.Errorf("summarize: %w", err)
 	}
-	os.Exit(0)
+	return nil
 }
 
-// runSummarizeYear runs year summarization for the given year, then exits.
-func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) {
+// runSummarizeYear runs year summarization for the given year. Caller exits on error.
+func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
-		logger.Error("summarize: mkdir memory", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: mkdir memory: %w", err)
 	}
 	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
 	if err != nil {
-		logger.Error("summarize: memory store", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: memory store: %w", err)
 	}
 
-	llmProvider, err := llm.NewProvider(&cfg.LLMProviders[0])
+	llmProvider, err := newLLMProvider(cfg, logger)
 	if err != nil {
-		logger.Error("summarize: llm provider", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
 
 	embedder, err := embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
-		logger.Error("summarize: embedder", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: embedder: %w", err)
 	}
 
 	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
-		logger.Error("summarize: mkdir vector", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
 	if err != nil {
-		logger.Error("summarize: vector store", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("summarize: vector store: %w", err)
 	}
 	defer func() {
 		if closeErr := vectorStore.Close(); closeErr != nil {
@@ -319,30 +333,27 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) {
 	}()
 
 	ctx := context.Background()
-	err = summarize.Year(ctx, year, summarize.YearConfig{
+	if err := summarize.Year(ctx, year, summarize.YearConfig{
 		LLMProvider: llmProvider,
 		MemoryStore: memoryStore,
 		Embedder:    embedder,
 		VectorStore: vectorStore,
 		Logger:      logger,
-	})
-	if err != nil {
-		logger.Error("summarize", "error", err)
-		os.Exit(1)
+	}); err != nil {
+		return fmt.Errorf("summarize: %w", err)
 	}
-	os.Exit(0)
+	return nil
 }
 
-// runVerifyNodes loads allowlist and NodeRunner, runs one allowlisted command on each configured node, reports success or failure per node, then exits (REQ-022, AC-032).
-func runVerifyNodes(cfg *config.Config, configPath, command string, logger *slog.Logger) {
+// runVerifyNodes loads allowlist and NodeRunner, runs one allowlisted command on each configured node, reports success or failure (REQ-022, AC-032). Returns error on allowlist load failure or any node failure.
+func runVerifyNodes(cfg *config.Config, command string, logger *slog.Logger) error {
 	if len(cfg.Nodes) == 0 {
 		logger.Info("no nodes in config, nothing to verify")
-		return
+		return nil
 	}
 	al, err := allowlist.NewChecker(cfg)
 	if err != nil {
-		logger.Error("allowlist", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("allowlist: %w", err)
 	}
 	runner := noderunner.New(cfg, al, logger)
 	ctx := context.Background()
@@ -350,14 +361,14 @@ func runVerifyNodes(cfg *config.Config, configPath, command string, logger *slog
 		logger.Info("verify node", "node_id", nodeID, "command", command)
 		stdout, err := runner.RunOnNode(ctx, nodeID, command)
 		if err != nil {
-			logger.Error("node failed", "node_id", nodeID, "error", err)
-			os.Exit(1)
+			return fmt.Errorf("node %q: %w", nodeID, err)
 		}
 		logger.Info("node OK", "node_id", nodeID)
 		if len(stdout) > 0 {
 			logger.Info("node output", "node_id", nodeID, "stdout", stdout)
 		}
 	}
+	return nil
 }
 
 // setup creates adapter, memory store, vector store, embedder, and optional node runner from config. Caller must close vectorStore.

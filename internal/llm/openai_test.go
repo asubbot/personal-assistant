@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"pa/internal/config"
@@ -73,6 +74,10 @@ func TestOpenAICompatible_Complete_success(t *testing.T) {
 	if result.Usage.PromptTokens != 2 || result.Usage.CompletionTokens != 1 || result.Usage.TotalTokens != 3 {
 		t.Errorf("Usage = %+v", result.Usage)
 	}
+	// AC-044: successful response sets CompletionResult.Model from config.
+	if result.Model != "m" {
+		t.Errorf("Model = %q, want m", result.Model)
+	}
 }
 
 // Covers AC-036 (US-08): Complete error path — empty choices returns error; system does not crash.
@@ -120,6 +125,41 @@ func TestOpenAICompatible_Complete_apiError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "401") && !strings.Contains(err.Error(), "Invalid API key") {
 		t.Errorf("Complete: error = %v", err)
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("Complete(401): expected errors.As(APIError), got %T", err)
+	}
+	if apiErr.StatusCode != http.StatusUnauthorized {
+		t.Errorf("APIError.StatusCode = %d, want 401", apiErr.StatusCode)
+	}
+}
+
+// Covers LLM fallback: 5xx returns APIError so isRetryable is reliable.
+func TestOpenAICompatible_Complete_502_returnsAPIError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(`{"error":{"message":"Bad Gateway"}}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m"}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = p.Complete(context.Background(), []Message{{Role: "user", Content: "x"}}, nil)
+	if err == nil {
+		t.Fatal("Complete(502): expected error, got nil")
+	}
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("Complete(502): expected errors.As(APIError), got %T", err)
+	}
+	if apiErr.StatusCode != 502 {
+		t.Errorf("APIError.StatusCode = %d, want 502", apiErr.StatusCode)
 	}
 }
 

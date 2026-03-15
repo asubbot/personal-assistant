@@ -3,8 +3,10 @@ package core
 import (
 	"context"
 	"log/slog"
+	"os"
 	"pa/internal/config"
 	"pa/internal/llm"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -99,3 +101,37 @@ func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 
 // Ensure capturingAdapter implements Adapter.
 var _ Adapter = (*capturingAdapter)(nil)
+
+// Covers AC-028, REQ-017 (unit): config points to file with known fake secret; built LLM context (messages sent to provider) must not contain it.
+func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
+	const fakeSecret = "fake-secret-unit-12345"
+	dir := t.TempDir()
+	secretPath := filepath.Join(dir, "token.txt")
+	if err := os.WriteFile(secretPath, []byte(fakeSecret), 0o600); err != nil {
+		t.Fatalf("write secret file: %v", err)
+	}
+
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: secretPath},
+	}
+	logger := slog.Default()
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
+	adapter := &capturingAdapter{}
+
+	err := Run(context.Background(), cfg, logger, adapter, provider, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if adapter.handler == nil {
+		t.Fatal("adapter.handler was not set")
+	}
+
+	_, _ = adapter.handler.HandleMessage(context.Background(), 1, "hello")
+
+	for i, m := range provider.lastMessages {
+		if strings.Contains(m.Content, fakeSecret) {
+			t.Errorf("message[%d] (role=%q) must not contain config secret; content contains %q", i, m.Role, fakeSecret)
+		}
+	}
+}

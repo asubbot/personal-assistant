@@ -24,8 +24,26 @@ type Usage struct {
 
 // CompletionResult is the result of a single completion call.
 type CompletionResult struct {
-	Content string `json:"content"` // assistant message text
-	Usage   Usage  `json:"usage"`
+	Content string `json:"content"`         // assistant message text
+	Usage   Usage  `json:"usage"`           // token usage
+	Model   string `json:"model,omitempty"` // optional; which provider/model produced the response (for logging, AC-044)
+}
+
+// APIError represents an HTTP API error (e.g. 4xx/5xx). Used so isRetryable can reliably detect 5xx.
+type APIError struct {
+	StatusCode int
+	Err        error
+}
+
+func (e *APIError) Error() string {
+	if e.Err != nil {
+		return e.Err.Error()
+	}
+	return ""
+}
+
+func (e *APIError) Unwrap() error {
+	return e.Err
 }
 
 // Provider is the LLM provider interface: one call completes a conversation turn.

@@ -66,6 +66,7 @@ type Paths struct {
 // Node holds SSH node configuration.
 type Node struct {
 	Host                 string   `json:"host"`
+	Port                 int      `json:"port"` // 0 = default 22
 	DedicatedUser        string   `json:"dedicated_user"`
 	Auth                 NodeAuth `json:"auth"`
 	CommandAllowlistPath string   `json:"command_allowlist_path"`

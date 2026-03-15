@@ -61,7 +61,11 @@ func NewClient(ctx context.Context, cfg *config.Config, nodeID string) (*Client,
 		Timeout:         10 * time.Second,
 	}
 
-	addr := net.JoinHostPort(node.Host, defaultSSHPort)
+	port := defaultSSHPort
+	if node.Port != 0 {
+		port = fmt.Sprintf("%d", node.Port)
+	}
+	addr := net.JoinHostPort(node.Host, port)
 	dialer := &net.Dialer{}
 	conn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {

@@ -56,9 +56,12 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	}
 
 	contextBlock := h.gatherContext(ctx, text)
-
+	systemContent := "You are a helpful assistant. Reply concisely."
+	if contextBlock != "" {
+		systemContent = "You are a helpful assistant. Reply concisely. The following is your memory of past conversations; use it to personalize replies and to remember what the user has told you. Do not say you cannot remember when the information is provided below." + contextBlock
+	}
 	messages := []llm.Message{
-		{Role: "system", Content: "You are a helpful assistant. Reply concisely. You have access to relevant past context and memory below; use it to personalize replies and to remember what the user has told you." + contextBlock},
+		{Role: "system", Content: systemContent},
 		{Role: "user", Content: text},
 	}
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
@@ -73,10 +76,14 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 		return "", err
 	}
 	if h.llmLog != nil {
+		model := h.model
+		if result.Model != "" {
+			model = result.Model
+		}
 		h.llmLog.Log(&llmlog.Entry{
 			RequestID:       requestID,
 			Messages:        messages,
-			Model:           h.model,
+			Model:           model,
 			ResponseContent: result.Content,
 			Usage:           result.Usage,
 			DurationMs:      duration.Milliseconds(),

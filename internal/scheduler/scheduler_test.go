@@ -77,6 +77,48 @@ func TestScheduler_executeTask_invalidParams_skipped(t *testing.T) {
 	}
 }
 
+// Covers AC-020 (US-11): executeTask notify path — notifier receives SendMessage.
+func TestScheduler_executeTask_notify_callsNotifier(t *testing.T) {
+	var sent string
+	notifier := &mockNotifier{send: func(ctx context.Context, text string) error { sent = text; return nil }}
+	cfg := Config{Registry: tools.NewRegistry(), Notifier: notifier, Logger: slog.Default()}
+	s, err := New(nil, cfg)
+	if err != nil {
+		t.Fatalf("New = %v", err)
+	}
+	s.executeTask(context.Background(), Task{Name: "n", Action: "notify", Params: map[string]any{"message": "hello"}})
+	if sent != "hello" {
+		t.Errorf("executeTask(notify) sent = %q, want hello", sent)
+	}
+}
+
+// Covers AC-020 (US-11): executeTask tool path — tool Run is called and result logged.
+func TestScheduler_executeTask_toolRun_success(t *testing.T) {
+	reg := tools.NewRegistry()
+	mt := &mockTool{name: "my_tool"}
+	reg.Register(mt)
+	cfg := Config{Registry: reg, Logger: slog.Default()}
+	s, err := New(nil, cfg)
+	if err != nil {
+		t.Fatalf("New = %v", err)
+	}
+	s.executeTask(context.Background(), Task{Name: "t", Action: "my_tool", Params: map[string]any{}})
+	if mt.runCount != 1 {
+		t.Errorf("executeTask(tool) runCount = %d, want 1", mt.runCount)
+	}
+}
+
+type mockNotifier struct {
+	send func(ctx context.Context, text string) error
+}
+
+func (m *mockNotifier) SendMessage(ctx context.Context, text string) error {
+	if m.send != nil {
+		return m.send(ctx, text)
+	}
+	return nil
+}
+
 type mockTool struct {
 	name     string
 	schema   []tools.ParamSpec

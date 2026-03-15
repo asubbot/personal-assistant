@@ -117,7 +117,7 @@ func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult
 		if msg == "" {
 			msg = resp.Status
 		}
-		return nil, fmt.Errorf("api %s: %s", resp.Status, msg)
+		return nil, &APIError{StatusCode: resp.StatusCode, Err: fmt.Errorf("api %s: %s", resp.Status, msg)}
 	}
 	var out openAIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -133,7 +133,7 @@ func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult
 		usage.CompletionTokens = out.Usage.CompletionTokens
 		usage.TotalTokens = out.Usage.TotalTokens
 	}
-	return &CompletionResult{Content: content, Usage: usage}, nil
+	return &CompletionResult{Content: content, Usage: usage, Model: p.model}, nil
 }
 
 type openAIRequest struct {
