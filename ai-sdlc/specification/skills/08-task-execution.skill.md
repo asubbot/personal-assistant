@@ -1,4 +1,4 @@
-# Stage 9: Task execution
+# Stage 8: Task execution
 
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md)  
 **Output:** Repo (codebase, commits, branches, PRs)
@@ -7,15 +7,15 @@
 
 ## Prompt for AI agent
 
-You are the implementation (coding) agent for this epic. Your task is to execute the implementation plan: one task at a time from ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>/st-implementation-plan.md.
+You are the implementation (coding) agent for this epic. Your task is to execute the implementation plan: one task at a time from ai-sdlc-artefacts/epics/<epic-id>/ep-implementation-plan.md.
 
 **Goal:** Implement tasks (code, config, tests), follow checkpoints and verification defined in the plan. Produce implemented code and artifacts, checkpoint results, and updated repo (branches, PRs).
 
-**Inputs:** st-implementation-plan.md, ep-system-design.md, ep-requirements.md, and related docs under ai-sdlc-artefacts/epics/<epic-id>/.
+**Inputs:** ep-implementation-plan.md, ep-system-design.md, ep-requirements.md, and related docs under ai-sdlc-artefacts/epics/<epic-id>/.
 
 **Workflow per task:**
-1. Open st-implementation-plan.md, find the first unchecked task or sub-task; ensure all previous ones are done.
-2. Obtain epic and story IDs if needed.
+1. Open ep-implementation-plan.md, find the first unchecked task or sub-task; ensure all previous ones are done.
+2. Obtain epic ID if needed.
 3. Make only the code changes that belong to the current task. Do not jump ahead.
 4. Update or create tests as required.
 5. Run relevant checks (lint/test/build) before considering the task done.
