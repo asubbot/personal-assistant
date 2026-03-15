@@ -1,16 +1,10 @@
 # System Design: EP-001 Personal Assistant MVP
 
-**Purpose:** Define architecture, components, interfaces, data models, error handling, and key technical decisions.  
-**Related:** [ep-scope.md](ep-scope.md), [ep-requirements.md](ep-requirements.md), [../../strategy.md](../../strategy.md)  
-**Source baseline:** [EP-104 system design](../EP-104/ep-system-design.md) (adapted for EP-001).
-
----
-
 ## Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
-  - [C4 C2 — Containers](#c4-c2--containers)
+  - [C4 C2 — Containers (PlantUML)](#c4-c2--containers-plantuml)
   - [Request flow](#request-flow)
 - [Components and interfaces](#components-and-interfaces)
 - [Data models](#data-models)
@@ -37,47 +31,14 @@ This document reuses the proven EP-104 architecture baseline and maps it to EP-0
 
 **C4 C1 (System Context):** [ep-requirements.md — C4 C1](ep-requirements.md#c4-c1--system-context). **C4 C2 (Containers):** see below ([REQ-012](ep-requirements.md#extensibility-and-architecture)).
 
-### C4 C2 — Containers
+### C4 C2 — Containers (PlantUML)
 
 System context (who and what external systems) is in [ep-requirements — C4 C1](ep-requirements.md#c4-c1--system-context). This diagram zooms into the containers of PersonalAssistant.
 
-```mermaid
-C4Container
-    title PersonalAssistant Containers
+<p align="center"><img src="diagrams/c4-container.png" alt="C4 C2 — Containers" /></p>
 
-    Person_Ext(user, "User")
-    Container_Boundary(pa, "PersonalAssistant") {
-        Container(tg, "Telegram Bot", "Go", "Message adapter")
-        Container(core, "Go Core", "Go", "Orchestration, LLM, tools")
-        ContainerDb(cfg, "Config", "JSON", "Nodes, LLM, paths")
-        ContainerDb(mem, "MD Store", "Files", "Long-term memory")
-        ContainerDb(vec, "Vector Index", "Embeddings", "Semantic search")
-        Container(llm, "LLM Provider", "Go", "Model calls")
-        Container(log, "LLM Logging", "Go", "Request/response audit")
-        ContainerDb(vstate, "Versioned state", "Git", "Config, memory history")
-        Container(sched, "Scheduler", "Go", "Scheduled tasks")
-        Container(tools, "Tools", "Go", "Extensible tools")
-        Container(ssh, "SSH Client", "Go", "Node connections")
-    }
-    System_Ext(nodes, "Nodes", "Remote hosts")
-    System_Ext(llm_ext, "LLM API", "OpenAI, Ollama, etc.")
+**Source:** [c4-container.puml](diagrams/c4-container.puml) (C4-PlantUML). To regenerate PNG: `plantuml -tpng diagrams/c4-container.puml` from this directory.
 
-    Rel(user, tg, "Messages")
-    Rel(tg, core, "Forward messages")
-    Rel(core, tg, "Send replies")
-    Rel(core, cfg, "Load at startup")
-    Rel(core, mem, "Read/write")
-    Rel(core, vec, "Search")
-    Rel(core, llm, "Call model")
-    Rel(llm, llm_ext, "HTTP/gRPC")
-    Rel(core, log, "Write logs")
-    Rel(core, vstate, "Commit/read versioned paths")
-    Rel(core, sched, "Run tasks")
-    Rel(sched, tools, "Invoke when scheduled")
-    Rel(core, tools, "Invoke")
-    Rel(core, ssh, "Commands")
-    Rel(ssh, nodes, "SSH")
-```
 
 ### Request flow
 
@@ -190,6 +151,7 @@ Wiring principle: the entrypoint (`cmd/...`) composes concrete implementations; 
 ## Data models
 
 - **Configuration model:** Nodes, SSH/auth settings, allowlist references, provider list, memory/log/data path settings, scheduler task source, Telegram settings and notification destination ([REQ-003](ep-requirements.md#nodes-and-ssh), [REQ-023](ep-requirements.md#scheduler-and-tools), [REQ-030](ep-requirements.md#configuration-paths-and-environment)).
+- **Versioned state:** Git repository for config, memory, and designated artifacts; tracked paths defined per research ([REQ-016](ep-requirements.md#version-control-and-audit)).
 - **Memory model:** Markdown files in year/month/day layout; day/month/year summary chain with inputs from logs, tool results, and scheduler events ([REQ-019](ep-requirements.md#memory-and-indexing), [REQ-020](ep-requirements.md#memory-and-indexing)).
 - **LLM log model:** Request/response records with identifiers, payload metadata, and usage/duration in parseable format ([REQ-014](ep-requirements.md#llm-and-logging), [REQ-015](ep-requirements.md#llm-and-logging)).
 - **Tool invocation model:** Tool metadata and validated parameters before runtime execution ([REQ-010](ep-requirements.md#scheduler-and-tools)).

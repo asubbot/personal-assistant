@@ -1,7 +1,0 @@
-# Implementation plan — US-19
-
-**Story:** [st-scope.md](st-scope.md)
-
-Implementation plan for this story: see epic-level [implementation-plan.md](../../implementation-plan.md).
-
-Tasks referencing this story: §1.1, §3.1, §3.2, §4.2.
