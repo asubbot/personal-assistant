@@ -6,7 +6,7 @@
 Story-level outputs live under **ai-sdlc-artefacts/epics/<epic-id>/stories/<story-id>** (e.g. `ai-sdlc-artefacts/epics/EP-104/stories/US-01/`).
 Paths in this spec and in skills use that convention; no references to outside of that folders in links.
 
-**Artefact levels:** Project-level (scope.md, strategy.md) in `ai-sdlc-artefacts/`. Epic-level artefacts (ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design) live in `epics/<epic-id>/`. Story-level artefacts (st-scope, st-acceptance-criteria, st-implementation-plan, st-audit-report) live in `epics/<epic-id>/stories/<story-id>/`. Story-level AC are derived from or assigned from ep-acceptance-criteria.
+**Artefact levels:** Project-level (scope.md, strategy.md) in `ai-sdlc-artefacts/`. Epic-level artefacts (ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design) live in `epics/<epic-id>/`. Story-level artefacts (st-scope, st-implementation-plan, st-audit-report) live in `epics/<epic-id>/stories/<story-id>/`. Story scope (st-scope) includes traceability to epic AC/REQ; no separate st-acceptance-criteria file.
 
 **Human-in-the-loop:** Pipeline execution is cooperative. When a stage has multiple valid outcomes (e.g. artefact naming, document structure, file placement), the agent MUST list options and ask the user to choose before proceeding. See also skills [README](skills/README.md) (Common behaviour).
 
@@ -46,8 +46,8 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 | 4. Requirements | [04-requirements.skill.md](skills/04-requirements.skill.md) | Epic requirements | ep-scope.md | epics/<epic-id>/ep-requirements.md |
 | 5. Acceptance criteria | [05-acceptance-criteria.skill.md](skills/05-acceptance-criteria.skill.md) | Epic-level testable conditions | ep-scope.md, ep-requirements.md | epics/<epic-id>/ep-acceptance-criteria.md |
 | 7. System design | [07-system-design.skill.md](skills/07-system-design.skill.md) | Components, interfaces, decisions | ep-requirements.md, ep-acceptance-criteria.md | epics/<epic-id>/ep-system-design.md |
-| 6. User story planning | [06-user-story-planning.skill.md](skills/06-user-story-planning.skill.md) | Story scope per story | ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, ep-system-design.md | epics/<epic-id>/stories/<story-id>/st-scope.md, st-acceptance-criteria.md |
-| 8. Implementation planning | [08-implementation-planning.skill.md](skills/08-implementation-planning.skill.md) | Tasks, ordering, verification per story | st-scope, st-acceptance-criteria, US + AC | stories/<story-id>/st-implementation-plan.md |
+| 6. User story planning | [06-user-story-planning.skill.md](skills/06-user-story-planning.skill.md) | Story scope per story | ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, ep-system-design.md | epics/<epic-id>/stories/<story-id>/st-scope.md |
+| 8. Implementation planning | [08-implementation-planning.skill.md](skills/08-implementation-planning.skill.md) | Tasks, ordering, verification per story | st-scope (includes AC/REQ traceability) | stories/<story-id>/st-implementation-plan.md |
 | 9. Task execution | [09-task-execution.skill.md](skills/09-task-execution.skill.md) | Execute plan → commits | st-implementation-plan.md | repo (codebase) |
 | 10. Audit | [10-audit.skill.md](skills/10-audit.skill.md) | Status report from current branch | Current branch | stories/<story-id>/st-audit-report.md |
 | 11. Keep consistency | [11-keep-consistency.skill.md](skills/11-keep-consistency.skill.md) | Update artefacts from audit report | st-audit-report | Updated artefacts (no single file) |
@@ -76,8 +76,7 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 | Artefact | Filename |
 |----------|----------|
-| Story scope | st-scope.md |
-| Acceptance criteria (source of truth) | st-acceptance-criteria.md |
+| Story scope (includes AC/REQ traceability) | st-scope.md |
 | Implementation plan (tasks + ordering) | st-implementation-plan.md |
 | Audit report | st-audit-report.md |
 
@@ -85,9 +84,9 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 ## 4. Traceability
 
-- **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-acceptance-criteria.md → ep-system-design.md → st-scope.md → st-acceptance-criteria.md → st-implementation-plan.md → task execution (repo) → st-audit-report.md → keep consistency (updated artefacts).
+- **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-acceptance-criteria.md → ep-system-design.md → st-scope.md → st-implementation-plan.md → task execution (repo) → st-audit-report.md → keep consistency (updated artefacts).
 
-When building st-acceptance-criteria, the agent's context also includes ep-acceptance-criteria (story-level AC are derived from or assigned from epic-level AC).
+Story scope (st-scope) includes traceability to epic AC/REQ; the agent's context for stage 6 includes ep-acceptance-criteria.
 
 **References:** Links in artefacts may point only to paths under `ai-sdlc-artefacts/`. Every linked document must exist (no broken links). Skills must enforce this rule.
 
@@ -111,12 +110,11 @@ flowchart LR
   end
   subgraph story [Story]
     st_scope[st-scope]
-    st_ac[st-acceptance-criteria]
     st_impl[st-implementation-plan]
     st_audit[st-audit-report]
   end
-  scope --> strategy --> ep_scope --> ep_req --> ep_ac --> ep_design --> st_scope --> st_ac --> st_impl --> repo[Repo]
+  scope --> strategy --> ep_scope --> ep_req --> ep_ac --> ep_design --> st_scope --> st_impl --> repo[Repo]
   repo --> st_audit --> consistency[Keep consistency]
 ```
 
-**Context for AI:** Each step's context is everything upstream in the chain. When building st-acceptance-criteria, the agent's context also includes ep-acceptance-criteria.
+**Context for AI:** Each step's context is everything upstream in the chain. When building st-scope, the agent's context includes ep-acceptance-criteria for AC/REQ traceability.
