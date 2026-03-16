@@ -313,11 +313,12 @@ _Depends on [§6 Scheduler and tools](#6-scheduler-and-tools) and [§7 LLM loggi
 
 ## 11. LLM provider fallback (REQ-031)
 
-- [ ] 11.1 Implement LLM provider fallback on connection/network failure
+- [x] 11.1 Implement LLM provider fallback on connection/network failure
   - When the current LLM provider fails with connection or network error (unreachable, timeout, 5xx), try the next provider in `llm_providers` order until one succeeds or all have been tried. When all fail, return error to caller without crashing.
   - Implementation: e.g. fallback provider wrapper in `internal/llm` that holds a list of providers and calls each in order on failure; or retry loop in core that tries next provider. Wire in `cmd/pa/main.go`: build list from `cfg.LLMProviders`, pass single Provider (wrapper or chain) to core.
+  - When fallback is used and a subsequent provider succeeds, the LLM request/response log entry shall record the model or provider that produced the response ([AC-044](ep-acceptance-criteria.md#ac-044)).
   - Requirements: [REQ-031](ep-requirements.md#llm-and-logging)
-  - Acceptance Criteria: [AC-043](ep-acceptance-criteria.md#ac-043)
+  - Acceptance Criteria: [AC-043](ep-acceptance-criteria.md#ac-043), [AC-044](ep-acceptance-criteria.md#ac-044)
   - **Verification:** Unit test: mock providers where first fails with connection error, second succeeds; assert response from second. Optionally integration test: two providers in config, first unreachable, second responds. `make test` passes.
 
 ---
@@ -339,7 +340,7 @@ _Do this when most functionality is in place._
 
 - [ ] 13.1 Final checkpoint — Ensure all in-scope acceptance criteria are met by reviewing the code and running unit and integration tests, ask the user if questions arise.
   - Requirements: (all REQ from epic)
-  - Acceptance Criteria: [AC-001](ep-acceptance-criteria.md#ac-001)–[AC-043](ep-acceptance-criteria.md#ac-043), excluding deferred [AC-026](ep-acceptance-criteria.md#ac-026) and [AC-027](ep-acceptance-criteria.md#ac-027) (see [ep-acceptance-criteria.md](ep-acceptance-criteria.md), [strategy.md](../../strategy.md)). Include secret leakage protection tests ([REQ-017](ep-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-026](ep-requirements.md#secret-protection-prompt-injection--exfiltration)–[REQ-029](ep-requirements.md#secret-protection-prompt-injection--exfiltration)).
+  - Acceptance Criteria: [AC-001](ep-acceptance-criteria.md#ac-001)–[AC-044](ep-acceptance-criteria.md#ac-044), excluding deferred [AC-026](ep-acceptance-criteria.md#ac-026) and [AC-027](ep-acceptance-criteria.md#ac-027) (see [ep-acceptance-criteria.md](ep-acceptance-criteria.md), [strategy.md](../../strategy.md)). Include secret leakage protection tests ([REQ-017](ep-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-026](ep-requirements.md#secret-protection-prompt-injection--exfiltration)–[REQ-029](ep-requirements.md#secret-protection-prompt-injection--exfiltration)).
 
 ---
 

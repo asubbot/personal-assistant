@@ -1,6 +1,6 @@
 # EP-001 Manual test scenarios
 
-**Purpose:** Document manual verification steps for acceptance criteria that are not fully covered by automated tests. See [ep-req-ac-test-coverage.md](ep-req-ac-test-coverage.md) for the full coverage matrix.
+**Purpose:** Document manual verification steps for acceptance criteria that are not fully covered by automated tests. See [ep-audit-report.md](ep-audit-report.md) for the REQ/AC test coverage matrix.
 
 **Reference:** [strategy.md](../../strategy.md) §2.3 (Manual testing), [ep-acceptance-criteria.md](ep-acceptance-criteria.md).
 

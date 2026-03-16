@@ -65,6 +65,7 @@ This document defines epic-level acceptance criteria for **EP-001 PersonalAssist
 | [AC-041](#ac-041) | [REQ-029](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | Reserved id or invalid regex in redaction config → refuse start, clear error |
 | [AC-042](#ac-042) | [REQ-030](ep-requirements.md#configuration-paths-and-environment) | PA_CONFIG_DIR / PA_DATA_DIR / PA_SECRETS_DIR resolution (relative, absolute, unset) |
 | [AC-043](#ac-043) | [REQ-031](ep-requirements.md#llm-and-logging) | Multiple LLM providers in config → on connection/network failure, core tries next in order; when all fail, error returned |
+| [AC-044](#ac-044) | [REQ-031](ep-requirements.md#llm-and-logging), [REQ-014](ep-requirements.md#llm-and-logging) | When fallback is used and a subsequent provider succeeds, LLM log entry records the model/provider that produced the response |
 
 ---
 
@@ -341,3 +342,9 @@ Given the application resolves `PA_DATA_DIR` or `PA_SECRETS_DIR`, When the value
 <a id="ac-043"></a>**AC-043** ([REQ-031](ep-requirements.md#llm-and-logging))
 
 Given configuration defines two or more LLM providers in `llm_providers` (in order), When the core makes an LLM request and the first provider fails due to connection or network error (e.g. unreachable, timeout, 5xx), Then the core attempts the next provider in order until one returns a successful response or all have been tried. Given all configured providers fail with connection or network errors, When the core has tried each in order, Then the core returns an error to the caller and does not crash.
+
+---
+
+<a id="ac-044"></a>**AC-044** ([REQ-031](ep-requirements.md#llm-and-logging), [REQ-014](ep-requirements.md#llm-and-logging))
+
+Given multiple LLM providers are configured and the LLM request/response logging is enabled, When a request is served by a provider after fallback (a previous provider failed with a retryable error), Then the LLM log entry for that request shall record the model or provider identifier that produced the response (e.g. the label or model name of the provider that succeeded), so that operators can see which provider answered.
