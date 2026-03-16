@@ -69,6 +69,62 @@ func TestRunOnNode_allowlistDenies_returnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-010 (US-04): multiple nodes — runner uses correct node ID per call (dedicated user per node from config).
+func TestRunOnNode_twoNodes_eachUsesCorrectNodeID(t *testing.T) {
+	dir := t.TempDir()
+	allowlistPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowlistPath, []byte("uptime\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"node_a": {
+				Host:                 "localhost",
+				DedicatedUser:        "alice",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key_a")},
+				CommandAllowlistPath: allowlistPath,
+			},
+			"node_b": {
+				Host:                 "localhost",
+				DedicatedUser:        "bob",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key_b")},
+				CommandAllowlistPath: allowlistPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	r := New(cfg, al, slog.Default())
+
+	var calls []struct{ nodeID, command string }
+	r.SetExecutor(&mockExecutor{
+		execFunc: func(ctx context.Context, nodeID, command string) ([]byte, []byte, error) {
+			calls = append(calls, struct{ nodeID, command string }{nodeID, command})
+			return []byte("ok"), nil, nil
+		},
+	})
+
+	_, err = r.RunOnNode(context.Background(), "node_a", "uptime")
+	if err != nil {
+		t.Fatalf("RunOnNode(node_a): %v", err)
+	}
+	_, err = r.RunOnNode(context.Background(), "node_b", "uptime")
+	if err != nil {
+		t.Fatalf("RunOnNode(node_b): %v", err)
+	}
+	if len(calls) != 2 {
+		t.Fatalf("executor called %d times, want 2", len(calls))
+	}
+	if calls[0].nodeID != "node_a" || calls[0].command != "uptime" {
+		t.Errorf("first call: nodeID=%q command=%q, want node_a uptime", calls[0].nodeID, calls[0].command)
+	}
+	if calls[1].nodeID != "node_b" || calls[1].command != "uptime" {
+		t.Errorf("second call: nodeID=%q command=%q, want node_b uptime", calls[1].nodeID, calls[1].command)
+	}
+}
+
 // Covers AC-007 (US-04): RunOnNode invokes executor with node ID and command when allowlist allows.
 func TestRunOnNode_allowedCommand_usesExecutorWhenSet(t *testing.T) {
 	dir := t.TempDir()

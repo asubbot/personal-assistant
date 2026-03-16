@@ -58,7 +58,7 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	contextBlock := h.gatherContext(ctx, text)
 	systemContent := "You are a helpful assistant. Reply concisely."
 	if contextBlock != "" {
-		systemContent = "You are a helpful assistant. Reply concisely. The following is your memory of past conversations; use it to personalize replies and to remember what the user has told you. Do not say you cannot remember when the information is provided below." + contextBlock
+		systemContent = "You are a personal assistant. Reply concisely." + contextBlock
 	}
 	messages := []llm.Message{
 		{Role: "system", Content: systemContent},
@@ -70,11 +70,16 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	requestID := genRequestID()
 	start := time.Now()
 	result, err := h.provider.Complete(ctx, messages, nil)
-	duration := time.Since(start)
 	if err != nil {
 		h.logger.Error("llm complete", "error", err)
 		return "", err
 	}
+	h.handleLLMSuccess(ctx, requestID, messages, result, text, time.Since(start))
+	return result.Content, nil
+}
+
+// handleLLMSuccess logs the LLM call, optionally writes to llmLog, and indexes the turn (REQ-018, REQ-007).
+func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID string, messages []llm.Message, result *llm.CompletionResult, userText string, duration time.Duration) {
 	if h.llmLog != nil {
 		model := h.model
 		if result.Model != "" {
@@ -93,14 +98,11 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMResponse(ctx, result)
 	}
-
 	if h.vectorStore != nil && h.embedder != nil {
-		if err := h.indexTurn(ctx, text, result.Content); err != nil {
+		if err := h.indexTurn(ctx, userText, result.Content); err != nil {
 			h.logger.Error("index turn", "error", err)
 		}
 	}
-
-	return result.Content, nil
 }
 
 // gatherContext returns a string to inject into the system message: semantic search results from vector store (REQ-006, REQ-007).

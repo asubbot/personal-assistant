@@ -108,6 +108,12 @@ make check  # fmt + vet + lint + test (coverage includes all tests)
 
 Integration tests live in `tests/integration/` (build tag `integration`). They are included in `make test` and `make check`; coverage is collected from all tests. Use `make test-integration` to run only integration tests.
 
+**Integration test requirements:**
+
+- **Docker** is required: SSH-related tests start temporary containers (ports 2222 and 2224). Ensure Docker is running and that these ports are free (or stop any leftover containers from a previous run; the tests clean them up at start).
+- **Two-user SSH test** (`TestSSHClient_twoNodes_dedicatedUserPerNode`) uses a **Debian** image (`tests/integration/testdata/ssh/Dockerfile.twousers`, base `debian:bookworm-slim`). The single-user SSH test uses Alpine. The two-user image is Debian for reliable key auth and bind mounts on common Docker hosts (e.g. Colima, Rancher Desktop).
+- SSH tests also require `ssh-keygen` and `ssh-keyscan` on `PATH`.
+
 ---
 
 ## Config

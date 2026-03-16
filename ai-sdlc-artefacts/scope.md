@@ -1,8 +1,8 @@
-# Scope — PersonalAssistant MVP
+# Scope — PersonalAssistant
 
 ## Introduction
 
-PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems like OpenClaw, with a focus on **reliability and security**. The target platform is Synology DS220+ (Docker); the user interacts via a Telegram bot. A Go core in a container manages nodes over SSH under a validated security model, stores long-term memory as markdown files, indexes it for vector search, supports swappable LLM backends (including self-hosted), and provides a task scheduler and extensible tools. Deployment and adding nodes or tools are kept simple; the architecture is designed to evolve without radical redesign.
+PersonalAssistant is a personal assistant, inspired by systems like OpenClaw, with a focus on **reliability and security**. The target platform is Synology DS220+ (Docker); the user interacts via a Telegram bot. A Go core in a container manages nodes over SSH under a validated security model, stores long-term memory as markdown files, indexes it for vector search, supports swappable LLM backends (including self-hosted), and provides a task scheduler and extensible tools. Deployment and adding nodes or tools are kept simple; the architecture is designed to evolve without radical redesign.
 
 ---
 
@@ -27,26 +27,11 @@ PersonalAssistant is a minimal MVP of a personal assistant, inspired by systems 
 
 ## In scope
 
-- Telegram bot for conversation.
-- Go core in Docker (target hardware: Synology DS220+).
-- SSH interaction with nodes under a clear, validated security model.
-- Long-term memory in markdown files.
-- Vector indexing for semantic retrieval.
-- No vendor lock-in: support for multiple LLMs, including self-hosted.
-- Scheduler for time- or interval-based tasks.
-- Extensible tools with a single contract.
-- Simple deployment and addition of nodes and tools.
-- Architecture that allows future evolution without fundamental change.
-- Dedicated user account on each node for PersonalAssistant only.
-- Logging subsystem for LLM requests and responses (for analysis and audit).
 
 ---
 
 ## Out of scope / deferred
 
-- Performance, load, or stress testing (covered in test strategy as out of scope for this epic).
-- Cross-platform test matrix; E2E targets x86_64 / DS220+.
-- Git-backed versioned state (REQ-016): deferred to post-MVP due to operational complexity (safe restart/rollback orchestration), additional security policy hardening for self-modifying behavior, and dedicated reliability test requirements.
 
 ---
 

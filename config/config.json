@@ -7,16 +7,16 @@
       "max_message_length": 200
     },
     "llm_providers": [
-        {
+      {
+        "type": "ollama",
+        "endpoint": "http://localhost:11434/v1",
+        "model": "qwen3:8b"
+      },
+      {
             "type": "openai",
             "endpoint": "https://api.openai.com/v1",
             "api_key_path": "openai_api_key.txt",
             "model": "gpt-4o-mini"
-        },
-        {
-          "type": "ollama",
-          "endpoint": "http://localhost:11434/v1",
-          "model": "qwen3:8b"
         },
         {
           "type": "ollama",

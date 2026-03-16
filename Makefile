@@ -3,8 +3,8 @@
 help:
 	@echo "Available commands:"
 	@echo "  make fmt    - Format Go code"
-	@echo "  make test   - Run all tests (unit + integration)"
-	@echo "  make test-integration - Run only integration tests"
+	@echo "  make test   - Run all tests (unit + integration; integration tests require Docker)"
+	@echo "  make test-integration - Run only integration tests (requires Docker; two-user SSH uses Debian image)"
 	@echo "  make vet    - Run go vet"
 	@echo "  make lint   - Run golangci-lint (if installed)"
 	@echo "  make coverage     - Print coverage summary (all tests)"

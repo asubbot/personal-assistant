@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"pa/internal/tools"
 	"testing"
@@ -108,6 +109,27 @@ func TestScheduler_executeTask_toolRun_success(t *testing.T) {
 	}
 }
 
+// Covers AC-021 (US-11): tool returns error (e.g. allowlist denial) → scheduler logs, does not execute violating action.
+func TestScheduler_executeTask_toolRun_error_logged_noPanic(t *testing.T) {
+	reg := tools.NewRegistry()
+	toolErr := errors.New(`noderunner: command not allowed for node "n"`)
+	mt := &mockTool{
+		name:   "run_on_node",
+		schema: []tools.ParamSpec{{Name: "node_id", Required: true, Type: "string"}, {Name: "command", Required: true, Type: "string"}},
+		runErr: toolErr,
+	}
+	reg.Register(mt)
+	cfg := Config{Registry: reg, Logger: slog.Default()}
+	s, err := New(nil, cfg)
+	if err != nil {
+		t.Fatalf("New = %v", err)
+	}
+	s.executeTask(context.Background(), Task{Name: "t", Action: "run_on_node", Params: map[string]any{"node_id": "n", "command": "rm -rf /"}})
+	if mt.runCount != 1 {
+		t.Errorf("executeTask(tool error) runCount = %d, want 1 (tool was called; scheduler did not skip)", mt.runCount)
+	}
+}
+
 type mockNotifier struct {
 	send func(ctx context.Context, text string) error
 }
@@ -123,6 +145,7 @@ type mockTool struct {
 	name     string
 	schema   []tools.ParamSpec
 	runCount int
+	runErr   error // when set, Run returns this error (tool was still invoked)
 }
 
 func (m *mockTool) Name() string        { return m.name }
@@ -136,5 +159,8 @@ func (m *mockTool) ParamsSchema() []tools.ParamSpec {
 
 func (m *mockTool) Run(ctx context.Context, params map[string]any) (string, error) {
 	m.runCount++
+	if m.runErr != nil {
+		return "", m.runErr
+	}
 	return "ok", nil
 }

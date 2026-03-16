@@ -1,0 +1,22 @@
+# SSH server with two users for AC-010 integration test (dedicated user per node).
+# Minimal Debian base for reliable multi-user key auth (e.g. vs Alpine in some Docker hosts).
+# Build: docker build -t pa-ssh-test-twousers -f tests/integration/testdata/ssh/Dockerfile.twousers .
+# Run:   docker run -d -p 2224:22 \
+#          -v /path/to/user_a:/auth/user_a:ro \
+#          -v /path/to/user_b:/auth/user_b:ro \
+#          pa-ssh-test-twousers
+# Entrypoint copies mounted keys into each user's .ssh and chowns (so StrictModes is satisfied), then starts sshd.
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-server && \
+    rm -rf /var/lib/apt/lists/* && \
+    ssh-keygen -A && \
+    mkdir -p /run/sshd /auth/user_a /auth/user_b && \
+    useradd -m -s /bin/bash user_a && useradd -m -s /bin/bash user_b && \
+    mkdir -p /home/user_a/.ssh /home/user_b/.ssh && \
+    chown -R user_a:user_a /home/user_a && chown -R user_b:user_b /home/user_b
+RUN sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's|^#*AuthorizedKeysFile.*|AuthorizedKeysFile .ssh/authorized_keys|' /etc/ssh/sshd_config
+COPY tests/integration/testdata/ssh/entrypoint.twousers.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+EXPOSE 22
+ENTRYPOINT ["/entrypoint.sh"]
