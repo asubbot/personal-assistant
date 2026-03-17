@@ -2,21 +2,23 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 const testDimensions = 4
 
-// Covers AC-01.013 (US-07): New rejects invalid dimensions (vector store interface).
-func TestNew_dimensionsInvalid(t *testing.T) {
+// Covers AC-01.013 (US-07): NewWithTable rejects invalid dimensions (vector store interface).
+func TestNewWithTable_dimensionsInvalid(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
-	_, err := New(path, 0)
+	_, err := NewWithTable(path, 0, TableMemory)
 	if err == nil {
 		t.Fatal("expected error for dimensions 0")
 	}
-	_, err = New(path, -1)
+	_, err = NewWithTable(path, -1, TableMemory)
 	if err == nil {
 		t.Fatal("expected error for negative dimensions")
 	}
@@ -27,9 +29,9 @@ func TestStore_Add_Search_topK(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := New(path, testDimensions)
+	store, err := NewWithTable(path, testDimensions, TableMemory)
 	if err != nil {
-		t.Fatalf("New: %v", err)
+		t.Fatalf("NewWithTable: %v", err)
 	}
 	defer func() { _ = store.Close() }()
 
@@ -70,9 +72,9 @@ func TestStore_Delete_removesById(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := New(path, testDimensions)
+	store, err := NewWithTable(path, testDimensions, TableMemory)
 	if err != nil {
-		t.Fatalf("New: %v", err)
+		t.Fatalf("NewWithTable: %v", err)
 	}
 	defer func() { _ = store.Close() }()
 
@@ -101,9 +103,9 @@ func TestStore_Add_wrongDimensions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := New(path, testDimensions)
+	store, err := NewWithTable(path, testDimensions, TableMemory)
 	if err != nil {
-		t.Fatalf("New: %v", err)
+		t.Fatalf("NewWithTable: %v", err)
 	}
 	defer func() { _ = store.Close() }()
 
@@ -119,9 +121,9 @@ func TestStore_Search_persisted(t *testing.T) {
 	path := filepath.Join(dir, "pa_vectors.sqlite")
 	ctx := context.Background()
 
-	store, err := New(path, testDimensions)
+	store, err := NewWithTable(path, testDimensions, TableMemory)
 	if err != nil {
-		t.Fatalf("New: %v", err)
+		t.Fatalf("NewWithTable: %v", err)
 	}
 	if err := store.Add(ctx, "a", []float32{1, 1, 1, 1}, "content a"); err != nil {
 		t.Fatalf("Add: %v", err)
@@ -135,9 +137,9 @@ func TestStore_Search_persisted(t *testing.T) {
 	}
 
 	// Reopen and search
-	store2, err := New(path, testDimensions)
+	store2, err := NewWithTable(path, testDimensions, TableMemory)
 	if err != nil {
-		t.Fatalf("New (reopen): %v", err)
+		t.Fatalf("NewWithTable (reopen): %v", err)
 	}
 	defer func() { _ = store2.Close() }()
 	results, err := store2.Search(ctx, []float32{1, 1, 1, 1}, 1)
@@ -146,5 +148,121 @@ func TestStore_Search_persisted(t *testing.T) {
 	}
 	if len(results) != 1 || results[0].ID != "a" || results[0].Text != "content a" {
 		t.Errorf("Search after reopen: got %v", results)
+	}
+}
+
+// Covers AC-04.014: same DB file contains both memory table and tool table; search returns top-k tool ids.
+func TestStore_TwoTables_SameDB(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vec.db")
+	ctx := context.Background()
+
+	storeMem, err := NewWithTable(path, testDimensions, TableMemory)
+	if err != nil {
+		t.Fatalf("NewWithTable(memory): %v", err)
+	}
+	defer func() { _ = storeMem.Close() }()
+
+	storeTools, err := NewWithTable(path, testDimensions, TableTools)
+	if err != nil {
+		t.Fatalf("NewWithTable(tools): %v", err)
+	}
+	defer func() { _ = storeTools.Close() }()
+
+	twoTablesSameDB_addAndSearchMemory(t, ctx, storeMem)
+	twoTablesSameDB_addAndSearchTools(t, ctx, storeTools)
+	twoTablesSameDB_assertBothTablesInDB(t, ctx, path)
+}
+
+func twoTablesSameDB_addAndSearchMemory(t *testing.T, ctx context.Context, storeMem *Store) {
+	t.Helper()
+	vecMem := []float32{1, 0, 0, 0}
+	if err := storeMem.Add(ctx, "mem-1", vecMem, "memory text"); err != nil {
+		t.Fatalf("Add to memory: %v", err)
+	}
+	resultsMem, err := storeMem.Search(ctx, vecMem, 2)
+	if err != nil {
+		t.Fatalf("Search memory: %v", err)
+	}
+	if len(resultsMem) != 1 || resultsMem[0].ID != "mem-1" {
+		t.Errorf("Search memory: got %v, want single result mem-1", resultsMem)
+	}
+}
+
+func twoTablesSameDB_addAndSearchTools(t *testing.T, ctx context.Context, storeTools *Store) {
+	t.Helper()
+	vecTool := []float32{0, 1, 0, 0}
+	if err := storeTools.Add(ctx, "tool-1", vecTool, "tool desc"); err != nil {
+		t.Fatalf("Add to tools: %v", err)
+	}
+	if err := storeTools.Add(ctx, "tool-2", []float32{0, 0.9, 0.1, 0}, "another tool"); err != nil {
+		t.Fatalf("Add tool-2: %v", err)
+	}
+	resultsTools, err := storeTools.Search(ctx, vecTool, 2)
+	if err != nil {
+		t.Fatalf("Search tools: %v", err)
+	}
+	if len(resultsTools) != 2 {
+		t.Errorf("Search tools: got %d results, want 2", len(resultsTools))
+	}
+	ids := make(map[string]bool)
+	for _, r := range resultsTools {
+		ids[r.ID] = true
+	}
+	if !ids["tool-1"] || !ids["tool-2"] {
+		t.Errorf("Search tools: got ids %v, want tool-1 and tool-2", ids)
+	}
+}
+
+func twoTablesSameDB_assertBothTablesInDB(t *testing.T, ctx context.Context, path string) {
+	t.Helper()
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatalf("open db for table check: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?, ?)", TableMemory, TableTools)
+	if err != nil {
+		t.Fatalf("query sqlite_master: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		tables = append(tables, name)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+	if len(tables) != 2 {
+		t.Errorf("same DB should have 2 tables, got %v", tables)
+	}
+}
+
+// NewWithTable rejects empty table name and invalid table name.
+func TestNewWithTable_validation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vec.db")
+
+	_, err := NewWithTable(path, testDimensions, "")
+	if err == nil {
+		t.Fatal("NewWithTable(empty table): expected error")
+	}
+	if err != nil && !strings.Contains(err.Error(), "table name is required") {
+		t.Errorf("NewWithTable(empty table): error = %v", err)
+	}
+
+	_, err = NewWithTable(path, testDimensions, "vec-items")
+	if err == nil {
+		t.Fatal("NewWithTable(invalid table name with hyphen): expected error")
+	}
+	if err != nil && !strings.Contains(err.Error(), "alphanumeric") {
+		t.Errorf("NewWithTable(invalid table): error = %v", err)
+	}
+
+	_, err = NewWithTable(path, 0, TableTools)
+	if err == nil {
+		t.Fatal("NewWithTable(dimensions 0): expected error")
 	}
 }

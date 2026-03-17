@@ -42,7 +42,7 @@ const vectorTestDimensions = 4
 func TestVectorStore_injectsPastContext(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "pa_vectors.sqlite")
-	vecStore, err := sqlite.New(path, vectorTestDimensions)
+	vecStore, err := sqlite.NewWithTable(path, vectorTestDimensions, sqlite.TableMemory)
 	if err != nil {
 		t.Fatalf("vector store New: %v", err)
 	}

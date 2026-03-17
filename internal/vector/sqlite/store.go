@@ -12,7 +12,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const tableName = "vec_items"
+// Table names for the vector DB. Same DB file can hold multiple tables (e.g. memory and tool index).
+const (
+	TableMemory = "vec_items"
+	TableTools  = "vec_tools"
+)
 
 var autoOnce sync.Once
 
@@ -24,20 +28,38 @@ func initAuto() {
 type Store struct {
 	db         *sql.DB
 	dimensions int
+	table      string
 }
 
-// New opens or creates a SQLite database at dbPath and returns a vector store.
-// dimensions is the fixed size of embedding vectors (e.g. 384, 1536).
-func New(dbPath string, dimensions int) (*Store, error) {
+// validateTableName returns an error if table is empty or contains invalid characters (only alphanumeric and underscore allowed).
+func validateTableName(table string) error {
+	if table == "" {
+		return fmt.Errorf("vector/sqlite: table name is required")
+	}
+	for _, r := range table {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+			continue
+		}
+		return fmt.Errorf("vector/sqlite: table name must be alphanumeric or underscore, got %q", table)
+	}
+	return nil
+}
+
+// NewWithTable opens or creates a SQLite database at dbPath and returns a vector store for the given table.
+// Use TableMemory for conversation/memory index, TableTools for tool index. Same dbPath allows multiple tables in one DB file.
+func NewWithTable(dbPath string, dimensions int, table string) (*Store, error) {
 	if dimensions <= 0 {
 		return nil, fmt.Errorf("vector/sqlite: dimensions must be positive, got %d", dimensions)
+	}
+	if err := validateTableName(table); err != nil {
+		return nil, err
 	}
 	initAuto()
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("vector/sqlite: open db: %w", err)
 	}
-	s := &Store{db: db, dimensions: dimensions}
+	s := &Store{db: db, dimensions: dimensions, table: table}
 	if err := s.createTable(); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -53,7 +75,7 @@ func (s *Store) createTable() error {
 			+id text,
 			+content text
 		)`,
-		tableName, s.dimensions,
+		s.table, s.dimensions,
 	)
 	_, err := s.db.ExecContext(context.Background(), query)
 	if err != nil {
@@ -72,7 +94,7 @@ func (s *Store) Add(ctx context.Context, id string, embedding []float32, text st
 		return fmt.Errorf("vector/sqlite: serialize: %w", err)
 	}
 	_, err = s.db.ExecContext(ctx,
-		fmt.Sprintf("INSERT INTO %s(embedding, id, content) VALUES (?, ?, ?)", tableName),
+		fmt.Sprintf("INSERT INTO %s(embedding, id, content) VALUES (?, ?, ?)", s.table),
 		blob, id, text,
 	)
 	if err != nil {
@@ -84,7 +106,7 @@ func (s *Store) Add(ctx context.Context, id string, embedding []float32, text st
 // Delete implements vector.Store. Removes the row with the given id. No-op if id does not exist.
 func (s *Store) Delete(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx,
-		fmt.Sprintf("DELETE FROM %s WHERE id = ?", tableName),
+		fmt.Sprintf("DELETE FROM %s WHERE id = ?", s.table),
 		id,
 	)
 	if err != nil {
@@ -105,9 +127,11 @@ func (s *Store) Search(ctx context.Context, queryEmbedding []float32, topK int) 
 	if err != nil {
 		return nil, fmt.Errorf("vector/sqlite: serialize query: %w", err)
 	}
+	// Table name is validated in NewWithTable (alphanumeric + underscore only); not user input.
+	//nolint:gosec // G201: table identifier is validated, not interpolated from user input
 	query := fmt.Sprintf(
 		"SELECT rowid, id, content, distance FROM %s WHERE embedding MATCH ? AND k = ?",
-		tableName,
+		s.table,
 	)
 	rows, err := s.db.QueryContext(ctx, query, blob, topK)
 	if err != nil {

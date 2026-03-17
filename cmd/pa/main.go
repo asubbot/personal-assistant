@@ -227,7 +227,7 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
-	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -275,7 +275,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
-	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -322,7 +322,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
-	vectorStore, err := sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -404,7 +404,7 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	if mkErr := os.MkdirAll(vecDir, 0o755); mkErr != nil {
 		return nil, nil, nil, nil, nil, mkErr
 	}
-	vectorStore, err = sqlite.New(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions)
+	vectorStore, err = sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
