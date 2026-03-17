@@ -53,7 +53,7 @@ func NewOpenAICompatible(cfg *config.LLMProvider) (*OpenAICompatible, error) {
 // Complete implements Provider.
 func (p *OpenAICompatible) Complete(ctx context.Context, messages []Message, opts *CompletionOptions) (*CompletionResult, error) {
 	model, maxTokens := p.effectiveModelAndMaxTokens(opts)
-	body, err := p.buildRequest(model, messages, maxTokens)
+	body, err := p.buildRequest(model, messages, maxTokens, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +76,24 @@ func (p *OpenAICompatible) effectiveModelAndMaxTokens(opts *CompletionOptions) (
 	return model, maxTokens
 }
 
-func (p *OpenAICompatible) buildRequest(model string, messages []Message, maxTokens int) ([]byte, error) {
+func (p *OpenAICompatible) buildRequest(model string, messages []Message, maxTokens int, opts *CompletionOptions) ([]byte, error) {
 	reqBody := openAIRequest{Model: model, Messages: messages}
 	if maxTokens > 0 {
 		reqBody.MaxTokens = &maxTokens
+	}
+	if opts != nil && len(opts.Tools) > 0 {
+		reqBody.Tools = make([]openAITool, len(opts.Tools))
+		for i := range opts.Tools {
+			t := &opts.Tools[i]
+			reqBody.Tools[i] = openAITool{
+				Type: "function",
+				Function: openAIToolFunction{
+					Name:        t.Name,
+					Description: t.Description,
+					Parameters:  json.RawMessage(t.Parameters),
+				},
+			}
+		}
 	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
@@ -126,26 +140,57 @@ func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult
 	if len(out.Choices) == 0 {
 		return nil, fmt.Errorf("api: empty choices")
 	}
-	content := out.Choices[0].Message.Content
+	msg := &out.Choices[0].Message
+	content := msg.Content
 	usage := Usage{}
 	if out.Usage != nil {
 		usage.PromptTokens = out.Usage.PromptTokens
 		usage.CompletionTokens = out.Usage.CompletionTokens
 		usage.TotalTokens = out.Usage.TotalTokens
 	}
-	return &CompletionResult{Content: content, Usage: usage, Model: p.model}, nil
+	result := &CompletionResult{Content: content, Usage: usage, Model: p.model}
+	if len(msg.ToolCalls) > 0 {
+		result.ToolCalls = make([]ToolCall, len(msg.ToolCalls))
+		for i := range msg.ToolCalls {
+			tc := &msg.ToolCalls[i]
+			result.ToolCalls[i] = ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: tc.Function.Arguments}
+		}
+	}
+	return result, nil
+}
+
+type openAITool struct {
+	Type     string             `json:"type"` // "function"
+	Function openAIToolFunction `json:"function"`
+}
+
+type openAIToolFunction struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters,omitempty"`
 }
 
 type openAIRequest struct {
-	Model     string    `json:"model"`
-	Messages  []Message `json:"messages"`
-	MaxTokens *int      `json:"max_tokens,omitempty"`
+	Model     string       `json:"model"`
+	Messages  []Message    `json:"messages"`
+	MaxTokens *int         `json:"max_tokens,omitempty"`
+	Tools     []openAITool `json:"tools,omitempty"`
+}
+
+type openAIToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"` // "function"
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
 }
 
 type openAIResponse struct {
 	Choices []struct {
 		Message struct {
-			Content string `json:"content"`
+			Content   string           `json:"content"`
+			ToolCalls []openAIToolCall `json:"tool_calls,omitempty"`
 		} `json:"message"`
 	} `json:"choices"`
 	Usage *struct {

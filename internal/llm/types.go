@@ -8,11 +8,26 @@ type Message struct {
 	Content string `json:"content"` // text body
 }
 
+// ToolDef is one tool in the completion request (provider-agnostic; core passes these for Tool-calling API).
+type ToolDef struct {
+	Name        string `json:"name"`                 // tool id/name (e.g. from catalog id)
+	Description string `json:"description"`          // short_description for the model
+	Parameters  string `json:"parameters,omitempty"` // JSON schema or object for arguments; empty = no parameters
+}
+
+// ToolCall is one tool call in the completion response (id, name, raw arguments JSON).
+type ToolCall struct {
+	ID        string `json:"id"`        // call id from the API (for matching in multi-turn)
+	Name      string `json:"name"`      // tool name (function name) returned by the model
+	Arguments string `json:"arguments"` // raw JSON string of arguments (core parses and validates against catalog)
+}
+
 // CompletionOptions are optional parameters for a completion call.
 type CompletionOptions struct {
-	Model       string   `json:"model,omitempty"`      // override config model
-	MaxTokens   int      `json:"max_tokens,omitempty"` // max tokens to generate (0 = provider default)
-	Temperature *float64 `json:"temperature,omitempty"`
+	Model       string    `json:"model,omitempty"`      // override config model
+	MaxTokens   int       `json:"max_tokens,omitempty"` // max tokens to generate (0 = provider default)
+	Temperature *float64  `json:"temperature,omitempty"`
+	Tools       []ToolDef `json:"tools,omitempty"` // optional; nil or empty = no tools (REQ-04.012)
 }
 
 // Usage holds token usage returned by the provider.
@@ -24,9 +39,10 @@ type Usage struct {
 
 // CompletionResult is the result of a single completion call.
 type CompletionResult struct {
-	Content string `json:"content"`         // assistant message text
-	Usage   Usage  `json:"usage"`           // token usage
-	Model   string `json:"model,omitempty"` // optional; which provider/model produced the response (for logging, AC-01.044)
+	Content   string     `json:"content"`              // assistant message text
+	Usage     Usage      `json:"usage"`                // token usage
+	Model     string     `json:"model,omitempty"`      // optional; which provider/model produced the response (for logging, AC-01.044)
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"` // optional; tool_calls from the provider (REQ-04.012)
 }
 
 // APIError represents an HTTP API error (e.g. 4xx/5xx). Used so isRetryable can reliably detect 5xx.

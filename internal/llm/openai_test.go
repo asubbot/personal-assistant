@@ -2,7 +2,9 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"pa/internal/config"
@@ -227,5 +229,88 @@ func TestOpenAICompatible_Complete_serverUnreachable(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "request") && !strings.Contains(err.Error(), "connection") && !strings.Contains(err.Error(), "refused") {
 		t.Logf("Complete: error = %v (connection/request failure)", err)
+	}
+}
+
+// Covers AC-04.003 (REQ-04.004, REQ-04.005): request includes tools when opts.Tools is set.
+func TestOpenAICompatible_Complete_requestIncludesTools(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		var req struct {
+			Tools []struct {
+				Type     string `json:"type"`
+				Function struct {
+					Name        string `json:"name"`
+					Description string `json:"description"`
+				} `json:"function"`
+			} `json:"tools"`
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			t.Errorf("decode request: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if len(req.Tools) == 0 {
+			t.Error("request: expected tools in body, got none")
+		}
+		if len(req.Tools) > 0 && (req.Tools[0].Type != "function" || req.Tools[0].Function.Name != "run_on_node") {
+			t.Errorf("request: tools[0] = %+v", req.Tools[0])
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":""},"index":0}],"usage":{"prompt_tokens":1,"completion_tokens":0,"total_tokens":1}}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m"}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+
+	opts := &CompletionOptions{
+		Tools: []ToolDef{
+			{Name: "run_on_node", Description: "Run command on node", Parameters: `{"type":"object"}`},
+		},
+	}
+	_, err = p.Complete(context.Background(), []Message{{Role: "user", Content: "hi"}}, opts)
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+}
+
+// Covers AC-04.003 (REQ-04.004, REQ-04.005): response with tool_calls is parsed into result.ToolCalls.
+func TestOpenAICompatible_Complete_responseToolCallsParsed(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"","tool_calls":[{"id":"call_abc","type":"function","function":{"name":"run_on_node","arguments":"{\"command\":\"uptime\"}"}}]},"index":0}],"usage":{"prompt_tokens":5,"completion_tokens":10,"total_tokens":15}}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m"}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+
+	result, err := p.Complete(context.Background(), []Message{{Role: "user", Content: "hi"}}, nil)
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if result.ToolCalls == nil {
+		t.Fatal("Complete: expected ToolCalls, got nil")
+	}
+	if len(result.ToolCalls) != 1 {
+		t.Fatalf("Complete: len(ToolCalls) = %d, want 1", len(result.ToolCalls))
+	}
+	tc := result.ToolCalls[0]
+	if tc.ID != "call_abc" || tc.Name != "run_on_node" || tc.Arguments != `{"command":"uptime"}` {
+		t.Errorf("Complete: ToolCalls[0] = %+v", tc)
 	}
 }

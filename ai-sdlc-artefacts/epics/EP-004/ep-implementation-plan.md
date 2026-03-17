@@ -10,7 +10,7 @@
 
 ## 1. Tool catalog and config
 
-- [ ] **1.1 Add tool catalog to config and define catalog format**
+- [x] **1.1 Add tool catalog to config and define catalog format**
   - Add tool catalog path (or list of paths) to config; validate at load.
   - Define YAML schema for catalog: per-tool fields `id`, `short_description`, `template` (placeholders), `node_id`, `arguments` (name, type, required, allowed_values, pattern, min, max), optional `triggers`.
   - Parse catalog at startup; fail fast on parse or schema error.
@@ -23,7 +23,7 @@
 
 ## 2. Tool index (same vector DB, dedicated table)
 
-- [ ] **2.1 Add dedicated tool table in vector store**
+- [x] **2.1 Add dedicated tool table in vector store**
   - In the same vector DB file as memory, add a dedicated table (e.g. `vec_tools`) for tool index entries.
   - API: add entries (tool id, embedding); search by query embedding, return top-k tool ids (and optionally scores). No separate DB instance.
   - _Requirements:_ [REQ-04.018](ep-requirements.md#tool-index-and-pre-selection)
@@ -31,7 +31,7 @@
   - **Verification:** Unit or integration test: write tool entries, search by similarity, retrieve correct ids; same DB file contains both memory table and tool table.
   - **Checkpoint:** Before proceeding: vector store has dedicated tool table; search by embedding returns top-k tool ids from same DB as memory.
 
-- [ ] **2.2 Build tool index at startup (20 s or background + fallback)**
+- [x] **2.2 Build tool index at startup (20 s or background + fallback)**
   - For each tool in parsed catalog: build text (id + short_description + optional triggers), obtain embedding (use **batched** embedding API where supported), store in `vec_tools`.
   - Index build MUST complete within 20 seconds from startup, or run in background with a defined fallback (e.g. default tool subset or "index not ready") until ready.
   - _Requirements:_ [REQ-04.018](ep-requirements.md#tool-index-and-pre-selection), [REQ-04.021](ep-requirements.md#tool-index-and-pre-selection)
@@ -43,7 +43,7 @@
 
 ## 3. Tool pre-selection
 
-- [ ] **3.1 Implement tool pre-selection and fallback**
+- [x] **3.1 Implement tool pre-selection and fallback**
   - Input: user message (and optionally conversation context). Embed query, search `vec_tools`, return top-k tool ids.
   - If pre-selection returns no tools or fewer than configured minimum, apply fallback (e.g. default subset or all tools up to a cap) so the request still gets a non-empty, bounded tool list.
   - _Requirements:_ [REQ-04.019](ep-requirements.md#tool-index-and-pre-selection), [REQ-04.020](ep-requirements.md#tool-index-and-pre-selection)
@@ -55,14 +55,14 @@
 
 ## 4. Provider interface and one provider
 
-- [ ] **4.1 Extend LLM provider interface for tools and tool_calls**
+- [x] **4.1 Extend LLM provider interface for tools and tool_calls**
   - Extend provider interface to accept optional tools payload in the request and to return `tool_calls` (id, name, arguments) and related metadata in the response.
   - _Requirements:_ [REQ-04.012](ep-requirements.md#provider-interface)
   - _Acceptance Criteria:_ [AC-04.009](ep-acceptance-criteria.md#ac-04-009)
   - **Verification:** Interface compiles; mock provider implements optional tools and returns tool_calls.
   - **Checkpoint:** Before proceeding: interface is extended; all call sites compile; mock provider can be used in tests.
 
-- [ ] **4.2 Implement tools + tool_calls for at least one provider**
+- [x] **4.2 Implement tools + tool_calls for at least one provider**
   - Implement sending tools in the completion request and parsing `tool_calls` in the response for at least one provider (e.g. OpenAI-compatible or Ollama).
   - _Requirements:_ [REQ-04.004](ep-requirements.md#tool-calling-api), [REQ-04.005](ep-requirements.md#tool-calling-api)
   - _Acceptance Criteria:_ [AC-04.003](ep-acceptance-criteria.md#ac-04-003)
