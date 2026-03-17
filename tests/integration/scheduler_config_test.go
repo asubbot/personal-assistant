@@ -17,8 +17,9 @@ import (
 	"time"
 )
 
-// TestScheduler_loadDifferentTaskFiles verifies AC-024: loading a different task file (e.g. after adding a task and restart) yields the new tasks.
+// TestScheduler_loadDifferentTaskFiles verifies AC-01.024: loading a different task file (e.g. after adding a task and restart) yields the new tasks.
 func TestScheduler_loadDifferentTaskFiles(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	pathA := filepath.Join(dir, "tasks_a.json")
 	pathB := filepath.Join(dir, "tasks_b.json")
@@ -53,7 +54,7 @@ func TestScheduler_loadDifferentTaskFiles(t *testing.T) {
 	}
 }
 
-// countingTool is a tool that counts Run() calls for integration tests (AC-020).
+// countingTool is a tool that counts Run() calls for integration tests (AC-01.020).
 type countingTool struct {
 	name  string
 	count *atomic.Int32
@@ -67,8 +68,9 @@ func (c *countingTool) Run(ctx context.Context, params map[string]any) (string, 
 	return "ok", nil
 }
 
-// TestScheduler_firesAndRunsTool verifies AC-020: when the scheduled time is reached, the scheduler executes the task (invokes the tool).
+// TestScheduler_firesAndRunsTool verifies AC-01.020: when the scheduled time is reached, the scheduler executes the task (invokes the tool).
 func TestScheduler_firesAndRunsTool(t *testing.T) {
+	t.Parallel()
 	var count atomic.Int32
 	ct := &countingTool{name: "count_tool", count: &count}
 	reg := tools.NewRegistry()
@@ -89,9 +91,10 @@ func TestScheduler_firesAndRunsTool(t *testing.T) {
 	}
 }
 
-// TestScheduler_disallowedCommandNotExecuted verifies AC-021: when a scheduled task would run a command
+// TestScheduler_disallowedCommandNotExecuted verifies AC-01.021: when a scheduled task would run a command
 // not on the node's allowlist, the system does not execute the violating action (runner returns error, executor never called).
 func TestScheduler_disallowedCommandNotExecuted(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
 	if err := os.WriteFile(allowlistPath, []byte("uptime\n"), 0o600); err != nil {
@@ -132,7 +135,7 @@ func TestScheduler_disallowedCommandNotExecuted(t *testing.T) {
 	defer func() { <-s.Stop().Done() }()
 	time.Sleep(1200 * time.Millisecond)
 	if n := execCalls.Load(); n != 0 {
-		t.Errorf("AC-021: disallowed command was executed (exec calls=%d), want 0", n)
+		t.Errorf("AC-01.021: disallowed command was executed (exec calls=%d), want 0", n)
 	}
 }
 

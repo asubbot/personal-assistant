@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// Supporting AC-013 (US-07): embedding provider construction — ollama-style config without API key succeeds.
+// Supporting AC-01.013 (US-07): embedding provider construction — ollama-style config without API key succeeds.
 func TestNewOpenAICompatible_validConfig_noAPIKey(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
 		Type:       "ollama",
@@ -28,7 +28,7 @@ func TestNewOpenAICompatible_validConfig_noAPIKey(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): embedding provider — empty model returns error (startup validation).
+// Covers AC-01.033 (US-19): embedding provider — empty model returns error (startup validation).
 func TestNewOpenAICompatible_emptyModel_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
 		Type:       "ollama",
@@ -45,7 +45,7 @@ func TestNewOpenAICompatible_emptyModel_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): embedding provider — missing API key file returns error (startup validation).
+// Covers AC-01.033 (US-19): embedding provider — missing API key file returns error (startup validation).
 func TestNewOpenAICompatible_missingAPIKeyFile_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
 		Type:       "openai",
@@ -63,7 +63,7 @@ func TestNewOpenAICompatible_missingAPIKeyFile_returnsError(t *testing.T) {
 	}
 }
 
-// Supporting AC-013 (US-07): embedding provider — valid API key file yields non-nil provider.
+// Supporting AC-01.013 (US-07): embedding provider — valid API key file yields non-nil provider.
 func TestNewOpenAICompatible_validAPIKeyFile_succeeds(t *testing.T) {
 	dir := t.TempDir()
 	keyPath := filepath.Join(dir, "key.txt")
@@ -86,7 +86,7 @@ func TestNewOpenAICompatible_validAPIKeyFile_succeeds(t *testing.T) {
 	}
 }
 
-// Supporting AC-013 (US-07): Embed success path for vector indexing.
+// Supporting AC-01.013 (US-07): Embed success path for vector indexing.
 func TestOpenAICompatible_Embed_success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/embeddings" {
@@ -119,7 +119,7 @@ func TestOpenAICompatible_Embed_success(t *testing.T) {
 	}
 }
 
-// Covers AC-037 (US-07): Embed error path — empty response data returns error; system does not crash.
+// Covers AC-01.037 (US-07): Embed error path — empty response data returns error; system does not crash.
 func TestOpenAICompatible_Embed_emptyData_returnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -143,7 +143,7 @@ func TestOpenAICompatible_Embed_emptyData_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-037 (US-07): Embed error path — API error (e.g. 401) returns error; system does not crash.
+// Covers AC-01.037 (US-07): Embed error path — API error (e.g. 401) returns error; system does not crash.
 func TestOpenAICompatible_Embed_apiError_returnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -167,7 +167,7 @@ func TestOpenAICompatible_Embed_apiError_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-037 (US-07): Embed error path — invalid JSON returns error; system does not crash.
+// Covers AC-01.037 (US-07): Embed error path — invalid JSON returns error; system does not crash.
 func TestOpenAICompatible_Embed_invalidJSON_returnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -191,7 +191,7 @@ func TestOpenAICompatible_Embed_invalidJSON_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-037 (US-07): Embed error path — canceled context returns error; system does not crash.
+// Covers AC-01.037 (US-07): Embed error path — canceled context returns error; system does not crash.
 func TestOpenAICompatible_Embed_contextCanceled_returnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -217,7 +217,7 @@ func TestOpenAICompatible_Embed_contextCanceled_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-037 (US-07): Embed error path — unreachable server returns error; system does not crash.
+// Covers AC-01.037 (US-07): Embed error path — unreachable server returns error; system does not crash.
 func TestOpenAICompatible_Embed_serverUnreachable_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: "http://127.0.0.1:19999", Model: "m", Dimensions: 768}
 	p, err := NewOpenAICompatible(cfg)

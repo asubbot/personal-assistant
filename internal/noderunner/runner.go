@@ -15,7 +15,7 @@ type Executor interface {
 	Exec(ctx context.Context, nodeID, command string) (stdout, stderr []byte, err error)
 }
 
-// Runner runs commands on nodes only if they are on the allowlist; uses SSH with config credentials only (REQ-004, REQ-005, REQ-013).
+// Runner runs commands on nodes only if they are on the allowlist; uses SSH with config credentials only (REQ-01.004, REQ-01.005, REQ-01.013).
 type Runner struct {
 	cfg       *config.Config
 	allowlist *allowlist.Checker
@@ -33,8 +33,8 @@ func (r *Runner) SetExecutor(e Executor) {
 	r.executor = e
 }
 
-// RunOnNode runs the command on the node only if it is allowlisted (AC-007, AC-008). Uses SSH with the node's dedicated user only (AC-006, AC-009, AC-010).
-// On connection or exec failure logs and returns error; no fallback to other users (REQ-013).
+// RunOnNode runs the command on the node only if it is allowlisted (AC-01.007, AC-01.008). Uses SSH with the node's dedicated user only (AC-01.006, AC-01.009, AC-01.010).
+// On connection or exec failure logs and returns error; no fallback to other users (REQ-01.013).
 func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout string, err error) {
 	cmd := strings.TrimSpace(command)
 	if cmd == "" {

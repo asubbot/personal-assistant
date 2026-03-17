@@ -21,7 +21,7 @@ func (m *mockLLM) Complete(ctx context.Context, messages []llm.Message, opts *ll
 	return &llm.CompletionResult{Content: m.content}, nil
 }
 
-// mockLLMWithCalled records whether Complete was invoked (for AC-002 integration: assert no LLM call on rejection).
+// mockLLMWithCalled records whether Complete was invoked (for AC-01.002 integration: assert no LLM call on rejection).
 type mockLLMWithCalled struct {
 	content string
 	Called  bool
@@ -53,8 +53,9 @@ func (a *fakeAdapter) Run(ctx context.Context, handler core.MessageHandler) erro
 const integrationTimeout = 5 * time.Second
 
 // TestTelegramFlow_OneMessage_ReplyWithinTimeout exercises the path: adapter → core handler → LLM → reply.
-// Mocks: fake adapter (no real Telegram), mock LLM (no real API). Asserts a reply is returned before test timeout (AC-001).
+// Mocks: fake adapter (no real Telegram), mock LLM (no real API). Asserts a reply is returned before test timeout (AC-01.001).
 func TestTelegramFlow_OneMessage_ReplyWithinTimeout(t *testing.T) {
+	t.Parallel()
 	wantReply := "hello from mock"
 	adapter := &fakeAdapter{userID: 1, text: "hi", done: make(chan result, 1)}
 	provider := &mockLLM{content: wantReply}
@@ -86,8 +87,9 @@ func TestTelegramFlow_OneMessage_ReplyWithinTimeout(t *testing.T) {
 	<-done
 }
 
-// TestTelegramFlow_EmptyMessage_RejectionNoLLMCall covers AC-002 (integration): empty message → rejection, no LLM call.
+// TestTelegramFlow_EmptyMessage_RejectionNoLLMCall covers AC-01.002 (integration): empty message → rejection, no LLM call.
 func TestTelegramFlow_EmptyMessage_RejectionNoLLMCall(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMWithCalled{content: "should not be used"}
 	adapter := &fakeAdapter{userID: 1, text: "   ", done: make(chan result, 1)}
 	cfg := &config.Config{}
@@ -121,8 +123,9 @@ func TestTelegramFlow_EmptyMessage_RejectionNoLLMCall(t *testing.T) {
 	<-done
 }
 
-// TestTelegramFlow_OverMaxLength_RejectionNoLLMCall covers AC-002 (integration): message over max length → rejection, no LLM call.
+// TestTelegramFlow_OverMaxLength_RejectionNoLLMCall covers AC-01.002 (integration): message over max length → rejection, no LLM call.
 func TestTelegramFlow_OverMaxLength_RejectionNoLLMCall(t *testing.T) {
+	t.Parallel()
 	provider := &mockLLMWithCalled{content: "should not be used"}
 	adapter := &fakeAdapter{userID: 1, text: "1234567", done: make(chan result, 1)}
 	cfg := &config.Config{}
@@ -157,8 +160,9 @@ func TestTelegramFlow_OverMaxLength_RejectionNoLLMCall(t *testing.T) {
 	<-done
 }
 
-// TestTelegramFlow_DifferentProviderUsedPerRun covers AC-016 (integration): run with provider A then with provider B → each run uses the provider passed to Run.
+// TestTelegramFlow_DifferentProviderUsedPerRun covers AC-01.016 (integration): run with provider A then with provider B → each run uses the provider passed to Run.
 func TestTelegramFlow_DifferentProviderUsedPerRun(t *testing.T) {
+	t.Parallel()
 	logger := slog.Default()
 	cfg := &config.Config{}
 

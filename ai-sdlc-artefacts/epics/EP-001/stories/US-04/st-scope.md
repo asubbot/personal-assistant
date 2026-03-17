@@ -13,5 +13,5 @@ As an operator, I want a documented security model that defines, per node, which
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-007](../../ep-acceptance-criteria.md#ac-007) | [REQ-005](../../ep-requirements.md#nodes-and-ssh) | Node allow list → only allowlisted commands/tools executed |
-| [AC-008](../../ep-acceptance-criteria.md#ac-008) | [REQ-005](../../ep-requirements.md#nodes-and-ssh) | Requested action not on allow list → not executed, denial reported/logged |
+| [AC-01.007](../../ep-acceptance-criteria.md#ac-01-007) | [REQ-01.005](../../ep-requirements.md#nodes-and-ssh) | Node allow list → only allowlisted commands/tools executed |
+| [AC-01.008](../../ep-acceptance-criteria.md#ac-01-008) | [REQ-01.005](../../ep-requirements.md#nodes-and-ssh) | Requested action not on allow list → not executed, denial reported/logged |

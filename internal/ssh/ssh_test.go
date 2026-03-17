@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Covers AC-009 (US-05): DedicatedUser yields the single user from node config.
+// Covers AC-01.009 (US-05): DedicatedUser yields the single user from node config.
 func TestDedicatedUser_singleNode(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{
@@ -27,7 +27,7 @@ func TestDedicatedUser_singleNode(t *testing.T) {
 	}
 }
 
-// Covers AC-010 (US-05): DedicatedUser yields correct user per node (multi-node).
+// Covers AC-01.010 (US-05): DedicatedUser yields correct user per node (multi-node).
 func TestDedicatedUser_multiNode(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{
@@ -62,7 +62,7 @@ func TestDedicatedUser_multiNode(t *testing.T) {
 	}
 }
 
-// Covers AC-009 (US-05): DedicatedUser for unknown node returns error (config-only; no other identity used).
+// Covers AC-01.009 (US-05): DedicatedUser for unknown node returns error (config-only; no other identity used).
 func TestDedicatedUser_unknownNode(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{

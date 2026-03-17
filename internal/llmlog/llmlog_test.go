@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Covers AC-017, AC-018 (US-09, US-10): Log writes parseable JSONL with required fields (request_id, messages, response_content, usage, duration_ms).
+// Covers AC-01.017, AC-01.018 (US-09, US-10): Log writes parseable JSONL with required fields (request_id, messages, response_content, usage, duration_ms).
 func TestLog_writesParseableJSONLWithRequiredFields(t *testing.T) {
 	dir := t.TempDir()
 	w, err := NewWriter(dir, nil, nil)
@@ -75,7 +75,7 @@ func parseJSONLLines(t *testing.T, data []byte) (map[string]interface{}, int) {
 	return parsed, lines
 }
 
-// assertLogEntryFields checks AC-017 required fields in a parsed log entry.
+// assertLogEntryFields checks AC-01.017 required fields in a parsed log entry.
 func assertLogEntryFields(t *testing.T, parsed map[string]interface{}, requestID, responseContent string, durationMs int64) {
 	t.Helper()
 	if got, ok := parsed["request_id"].(string); !ok || got != requestID {
@@ -117,7 +117,7 @@ func splitLines(data []byte) [][]byte {
 	return out
 }
 
-// Covers AC-019 (US-10): NewWriter rejects path that exists and is a file (not a directory).
+// Covers AC-01.019 (US-10): NewWriter rejects path that exists and is a file (not a directory).
 func TestNewWriter_rejectsPathThatIsFile(t *testing.T) {
 	f, err := os.CreateTemp("", "llmlog-test-*.tmp")
 	if err != nil {
@@ -136,7 +136,7 @@ func TestNewWriter_rejectsPathThatIsFile(t *testing.T) {
 	// When path is a file, MkdirAll may fail with PathError before Stat; either way we require an error.
 }
 
-// Covers AC-019 (US-10): NewWriter rejects read-only directory (not writable).
+// Covers AC-01.019 (US-10): NewWriter rejects read-only directory (not writable).
 func TestNewWriter_rejectsReadOnlyDirectory(t *testing.T) {
 	dir := t.TempDir()
 	// Remove write permission for the directory so checkWritable (CreateTemp inside dir) fails.
@@ -151,7 +151,7 @@ func TestNewWriter_rejectsReadOnlyDirectory(t *testing.T) {
 	}
 }
 
-// Supporting AC-030 (US-16): when a redactor is supplied, secret content is redacted in the written log file.
+// Supporting AC-01.030 (US-16): when a redactor is supplied, secret content is redacted in the written log file.
 func TestLog_redactsSecretInWrittenFile(t *testing.T) {
 	dir := t.TempDir()
 	redactor := logredact.NewRedactor(nil)
@@ -186,7 +186,7 @@ func TestLog_redactsSecretInWrittenFile(t *testing.T) {
 	}
 }
 
-// Supporting AC-011 (US-06): ReadEntriesForDay returns nil slice when log file is missing (summarize input).
+// Supporting AC-01.011 (US-06): ReadEntriesForDay returns nil slice when log file is missing (summarize input).
 func TestReadEntriesForDay_missingFile_returnsEmptySlice(t *testing.T) {
 	dir := t.TempDir()
 	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
@@ -199,7 +199,7 @@ func TestReadEntriesForDay_missingFile_returnsEmptySlice(t *testing.T) {
 	}
 }
 
-// Supporting AC-011 (US-06): ReadEntriesForDay parses one JSONL line as one Entry (summarize input).
+// Supporting AC-01.011 (US-06): ReadEntriesForDay parses one JSONL line as one Entry (summarize input).
 func TestReadEntriesForDay_oneEntry_parsed(t *testing.T) {
 	dir := t.TempDir()
 	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
@@ -228,7 +228,7 @@ func TestReadEntriesForDay_oneEntry_parsed(t *testing.T) {
 	}
 }
 
-// Supporting AC-011 (US-06): ReadEntriesForDay parses multiple JSONL lines (summarize input).
+// Supporting AC-01.011 (US-06): ReadEntriesForDay parses multiple JSONL lines (summarize input).
 func TestReadEntriesForDay_twoEntries_parsed(t *testing.T) {
 	dir := t.TempDir()
 	day := time.Date(2026, 3, 15, 0, 0, 0, 0, time.UTC)

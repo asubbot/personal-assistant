@@ -71,6 +71,23 @@ func validate(c *Config) error {
 	if err := validatePATimezone(c); err != nil {
 		return err
 	}
+	if err := validateConversationContext(c); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateConversationContext(c *Config) error {
+	if c.ConversationContext == nil {
+		return nil
+	}
+	cc := c.ConversationContext
+	if cc.InjectedContextMaxChars < 0 {
+		return errors.New("config: conversation_context.injected_context_max_chars must be >= 0")
+	}
+	if cc.VectorSearchTopK < 0 {
+		return errors.New("config: conversation_context.vector_search_top_k must be >= 0")
+	}
 	return nil
 }
 

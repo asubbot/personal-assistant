@@ -14,9 +14,10 @@ import (
 	"testing"
 )
 
-// TestNodeRunner_integration_allowlistBlocksDisallowed (integration) validates AC-007, AC-008:
+// TestNodeRunner_integration_allowlistBlocksDisallowed (integration) validates AC-01.007, AC-01.008:
 // when command is not on the allowlist, RunOnNode returns error and does not execute.
 func TestNodeRunner_integration_allowlistBlocksDisallowed(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
 	if err := os.WriteFile(allowlistPath, []byte("echo *\nsystemctl status *\n"), 0o600); err != nil {
@@ -48,9 +49,10 @@ func TestNodeRunner_integration_allowlistBlocksDisallowed(t *testing.T) {
 	}
 }
 
-// TestNodeRunner_integration_allowedCommand_usesConfigNode (integration) validates AC-006, AC-009:
+// TestNodeRunner_integration_allowedCommand_usesConfigNode (integration) validates AC-01.006, AC-01.009:
 // when command is allowlisted, RunOnNode uses the node from config (mock executor records nodeID/command).
 func TestNodeRunner_integration_allowedCommand_usesConfigNode(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
 	if err := os.WriteFile(allowlistPath, []byte("echo *\n"), 0o600); err != nil {

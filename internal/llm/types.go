@@ -26,7 +26,7 @@ type Usage struct {
 type CompletionResult struct {
 	Content string `json:"content"`         // assistant message text
 	Usage   Usage  `json:"usage"`           // token usage
-	Model   string `json:"model,omitempty"` // optional; which provider/model produced the response (for logging, AC-044)
+	Model   string `json:"model,omitempty"` // optional; which provider/model produced the response (for logging, AC-01.044)
 }
 
 // APIError represents an HTTP API error (e.g. 4xx/5xx). Used so isRetryable can reliably detect 5xx.

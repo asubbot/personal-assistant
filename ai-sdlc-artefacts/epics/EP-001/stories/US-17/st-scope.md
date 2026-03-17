@@ -13,4 +13,4 @@ As a developer or operator, I want to enable debug logging for LLM conversations
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-031](../../ep-acceptance-criteria.md#ac-031) | [REQ-021](../../ep-requirements.md#llm-and-logging) | PA_LOG_LEVEL=debug → full request/response; INFO → metadata only |
+| [AC-01.031](../../ep-acceptance-criteria.md#ac-01-031) | [REQ-01.021](../../ep-requirements.md#llm-and-logging) | PA_LOG_LEVEL=debug → full request/response; INFO → metadata only |

@@ -13,4 +13,4 @@ As an operator, I want the system to validate all configuration (nodes, Telegram
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-033](../../ep-acceptance-criteria.md#ac-033) | [REQ-024](../../ep-requirements.md#nodes-and-ssh), [REQ-003](../../ep-requirements.md#nodes-and-ssh) | Invalid/incomplete config → refuse start or clear error |
+| [AC-01.033](../../ep-acceptance-criteria.md#ac-01-033) | [REQ-01.024](../../ep-requirements.md#nodes-and-ssh), [REQ-01.003](../../ep-requirements.md#nodes-and-ssh) | Invalid/incomplete config → refuse start or clear error |

@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// captureHandler records log records for assertion (AC-031, REQ-021).
+// captureHandler records log records for assertion (AC-01.031, REQ-01.021).
 type captureHandler struct {
 	level   slog.Level
 	records []struct {
@@ -31,7 +31,7 @@ func (c *captureHandler) Handle(_ context.Context, r slog.Record) error {
 func (c *captureHandler) WithAttrs([]slog.Attr) slog.Handler { return c }
 func (c *captureHandler) WithGroup(string) slog.Handler      { return c }
 
-// captureHandlerWithAttrs records level, message and attrs for assertion (AC-038).
+// captureHandlerWithAttrs records level, message and attrs for assertion (AC-01.038).
 type captureHandlerWithAttrs struct {
 	level   slog.Level
 	records []struct {
@@ -89,7 +89,7 @@ func (m *mockEmbedder) Embed(_ context.Context, _ string) ([]float32, error) {
 
 type mockVectorStore struct {
 	addErr        error
-	addChunks     []string // chunks passed to Add for assertion (REQ-007)
+	addChunks     []string // chunks passed to Add for assertion (REQ-01.007)
 	searchResults []vector.SearchResult
 	searchErr     error
 }
@@ -113,7 +113,7 @@ func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vecto
 
 func (m *mockVectorStore) Close() error { return nil }
 
-// Supporting AC-001, REQ-001: handler returns provider content to caller.
+// Supporting AC-01.001, REQ-01.001: handler returns provider content to caller.
 func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello back"}}
@@ -128,7 +128,7 @@ func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	}
 }
 
-// Supporting AC-001, REQ-001: handler propagates provider error to caller.
+// Supporting AC-01.001, REQ-01.001: handler propagates provider error to caller.
 func TestHandleMessage_returnsProviderError(t *testing.T) {
 	wantErr := errors.New("provider failed")
 	logger := slog.Default()
@@ -144,7 +144,7 @@ func TestHandleMessage_returnsProviderError(t *testing.T) {
 	}
 }
 
-// Supporting AC-001, REQ-001: handler passes system and user messages to LLM provider.
+// Supporting AC-01.001, REQ-01.001: handler passes system and user messages to LLM provider.
 func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -168,7 +168,7 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	}
 }
 
-// Covers AC-002, REQ-001: empty or whitespace message rejected with clear message, no LLM call.
+// Covers AC-01.002, REQ-01.001: empty or whitespace message rejected with clear message, no LLM call.
 func TestHandleMessage_emptyReturnsRejectionMessage(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
@@ -188,7 +188,7 @@ func TestHandleMessage_emptyReturnsRejectionMessage(t *testing.T) {
 	}
 }
 
-// Covers AC-002, REQ-001: message over max length rejected, no LLM call.
+// Covers AC-01.002, REQ-01.001: message over max length rejected, no LLM call.
 func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -220,7 +220,7 @@ func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 	}
 }
 
-// Supporting AC-002, REQ-001: when max length is 0, long message is not truncated and goes to provider.
+// Supporting AC-01.002, REQ-01.001: when max length is 0, long message is not truncated and goes to provider.
 func TestHandleMessage_noLimit_longMessageGoesToProvider(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -239,7 +239,7 @@ func TestHandleMessage_noLimit_longMessageGoesToProvider(t *testing.T) {
 	}
 }
 
-// Covers AC-031, REQ-021: at INFO level only metadata is logged.
+// Covers AC-01.031, REQ-01.021: at INFO level only metadata is logged.
 func TestHandleMessage_logsMetadataAtInfo(t *testing.T) {
 	cap := &captureHandler{level: slog.LevelInfo}
 	logger := slog.New(cap)
@@ -266,7 +266,7 @@ func TestHandleMessage_logsMetadataAtInfo(t *testing.T) {
 	}
 }
 
-// Covers AC-031, REQ-021: at DEBUG level full request and response are logged.
+// Covers AC-01.031, REQ-01.021: at DEBUG level full request and response are logged.
 func TestHandleMessage_logsFullRequestResponseAtDebug(t *testing.T) {
 	cap := &captureHandler{level: slog.LevelDebug}
 	logger := slog.New(cap)
@@ -297,7 +297,7 @@ func TestHandleMessage_logsFullRequestResponseAtDebug(t *testing.T) {
 	}
 }
 
-// Covers AC-002, REQ-001: max length enforced by runes.
+// Covers AC-01.002, REQ-01.001: max length enforced by runes.
 func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -331,7 +331,7 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	}
 }
 
-// captureLLMLogWriter records the last Log call for assertion (AC-044).
+// captureLLMLogWriter records the last Log call for assertion (AC-01.044).
 type captureLLMLogWriter struct {
 	lastModel string
 }
@@ -340,7 +340,7 @@ func (c *captureLLMLogWriter) Log(entry *llmlog.Entry) {
 	c.lastModel = entry.Model
 }
 
-// Covers AC-044, REQ-031, REQ-014: LLM log entry records the model/provider that produced the response (e.g. after fallback).
+// Covers AC-01.044, REQ-01.031, REQ-01.014: LLM log entry records the model/provider that produced the response (e.g. after fallback).
 func TestHandleMessage_llmLogEntryRecordsResultModel(t *testing.T) {
 	capLog := &captureLLMLogWriter{}
 	logger := slog.Default()
@@ -361,7 +361,7 @@ func TestHandleMessage_llmLogEntryRecordsResultModel(t *testing.T) {
 	}
 }
 
-// Covers AC-044, REQ-031, REQ-014: when provider does not set result.Model, LLM log uses handler default (h.model).
+// Covers AC-01.044, REQ-01.031, REQ-01.014: when provider does not set result.Model, LLM log uses handler default (h.model).
 func TestHandleMessage_llmLogEntryUsesDefaultModelWhenResultModelEmpty(t *testing.T) {
 	capLog := &captureLLMLogWriter{}
 	logger := slog.Default()
@@ -382,7 +382,7 @@ func TestHandleMessage_llmLogEntryUsesDefaultModelWhenResultModelEmpty(t *testin
 	}
 }
 
-// Covers AC-014, REQ-007: semantic search results are injected into the system message as relevant past context.
+// Covers AC-01.014, REQ-01.007: semantic search results are injected into the system message as relevant past context.
 func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
@@ -410,7 +410,7 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 	}
 }
 
-// Covers AC-013, REQ-007: after successful LLM reply, handler indexes the turn (calls vectorStore.Add with user and assistant text).
+// Covers AC-01.013, REQ-01.007: after successful LLM reply, handler indexes the turn (calls vectorStore.Add with user and assistant text).
 func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "reply text", Usage: llm.Usage{}}}
@@ -436,7 +436,7 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	}
 }
 
-// Covers AC-038, REQ-026, REQ-027: at DEBUG level, logRedactor is applied to request/response content before app log.
+// Covers AC-01.038, REQ-01.026, REQ-01.027: at DEBUG level, logRedactor is applied to request/response content before app log.
 func TestHandleMessage_logRedactorAppliedInDebugLogs(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelDebug}
 	logger := slog.New(cap)
@@ -464,7 +464,7 @@ func TestHandleMessage_logRedactorAppliedInDebugLogs(t *testing.T) {
 	}
 }
 
-// Covers AC-018, REQ-015: when LLM log is not configured (llmLog nil), handler does not attempt to write; no panic.
+// Covers AC-01.018, REQ-01.015: when LLM log is not configured (llmLog nil), handler does not attempt to write; no panic.
 func TestHandleMessage_llmLogNil_succeedsWithoutWrite(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
@@ -479,20 +479,23 @@ func TestHandleMessage_llmLogNil_succeedsWithoutWrite(t *testing.T) {
 	}
 }
 
-// Covers AC-014, REQ-007: gatherContext truncates injected context at contextMaxLen and appends "...".
+// Covers AC-01.014, REQ-01.007: gatherContext includes only whole chunks that fit; when no chunk fits, no context is injected.
 func TestHandleMessage_gatherContextTruncatesAtContextMaxLen(t *testing.T) {
 	logger := slog.Default()
-	longText := strings.Repeat("x", contextMaxLen+500)
+	// Single chunk too long to fit: nothing is injected (fitted 0/1).
+	longText := strings.Repeat("x", defaultContextMaxLen+500)
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
 	vs := &mockVectorStore{
 		searchResults: []vector.SearchResult{{Text: longText}},
 	}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
-		provider:    provider,
-		vectorStore: vs,
-		embedder:    emb,
-		logger:      logger,
+		provider:         provider,
+		vectorStore:      vs,
+		embedder:         emb,
+		logger:           logger,
+		contextMaxLen:    defaultContextMaxLen,
+		vectorSearchTopK: defaultVectorSearchTopK,
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "query")
@@ -500,25 +503,52 @@ func TestHandleMessage_gatherContextTruncatesAtContextMaxLen(t *testing.T) {
 		t.Fatalf("HandleMessage: %v", err)
 	}
 	sysContent := provider.lastMessages[0].Content
-	if !strings.Contains(sysContent, "Relevant past context") {
-		t.Errorf("system message must contain 'Relevant past context'")
+	if strings.Contains(sysContent, "Relevant past context") {
+		t.Errorf("when no chunk fits, system message must not contain 'Relevant past context'; chunk was too long")
 	}
-	if !strings.Contains(sysContent, "...") {
-		t.Errorf("system message must contain truncation suffix '...' when context exceeds contextMaxLen")
+
+	// Two chunks: first fits, second too long — only first is included, with trailing "..."
+	shortChunk := "User: hi\nAssistant: hello"
+	vs2 := &mockVectorStore{
+		searchResults: []vector.SearchResult{
+			{Text: shortChunk},
+			{Text: strings.Repeat("y", defaultContextMaxLen)},
+		},
 	}
-	// Injected block (after "Use the following context...") must be at most contextMaxLen+3
+	h2 := &conversationHandler{
+		provider:         provider,
+		vectorStore:      vs2,
+		embedder:         emb,
+		logger:           logger,
+		contextMaxLen:    defaultContextMaxLen,
+		vectorSearchTopK: defaultVectorSearchTopK,
+	}
+	_, err = h2.HandleMessage(context.Background(), 1, "query")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	sysContent2 := provider.lastMessages[0].Content
+	if !strings.Contains(sysContent2, "Relevant past context") {
+		t.Errorf("system message must contain 'Relevant past context' when at least one chunk fits")
+	}
+	if !strings.Contains(sysContent2, shortChunk) {
+		t.Errorf("system message must contain the first (fitting) chunk")
+	}
+	if !strings.Contains(sysContent2, "...") {
+		t.Errorf("system message must contain '...' when not all chunks fit")
+	}
 	prefix := "Use the following context if relevant to the user's message."
-	idx := strings.Index(sysContent, prefix)
+	idx := strings.Index(sysContent2, prefix)
 	if idx < 0 {
 		t.Fatalf("system message missing expected prefix")
 	}
-	contextBlock := sysContent[idx+len(prefix):]
-	if len(contextBlock) > contextMaxLen+10 {
-		t.Errorf("context block length = %d, want at most contextMaxLen+3 (~%d)", len(contextBlock), contextMaxLen+3)
+	contextBlock := sysContent2[idx+len(prefix):]
+	if len(contextBlock) > defaultContextMaxLen+10 {
+		t.Errorf("context block length = %d, want at most contextMaxLen+10 (~%d)", len(contextBlock), defaultContextMaxLen+10)
 	}
 }
 
-// Supporting AC-036, AC-037, REQ-025: when indexTurn fails (embedder error), handler still returns reply; system does not crash.
+// Supporting AC-01.036, AC-01.037, REQ-01.025: when indexTurn fails (embedder error), handler still returns reply; system does not crash.
 func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 	embedErr := errors.New("embed failed")
 	cap := &captureHandler{level: slog.LevelError}

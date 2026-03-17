@@ -18,7 +18,7 @@ Follow these principles for all system design work:
 2. **Existing file is baseline** — If ep-system-design.md already exists for the epic, treat it as the current baseline; propose changes as edits and overwrite only after user approval.
 3. **Options when in doubt** — When multiple valid choices exist (e.g. structure depth, module boundaries, references to research), present options (e.g. A/B) and ask the user to choose before proceeding.
 4. **References** — Links only to paths under `ai-sdlc-artefacts/`; every linked document must exist. Keep traceability to ep-requirements. Write in English.
-5. **Full REQ traceability** — Every requirement (REQ-XXX) from ep-requirements.md must be mentioned at least once in ep-system-design.md; the document must not omit any REQ.
+5. **Full REQ traceability** — Every requirement (REQ-EE.NNN format) from ep-requirements.md must be mentioned at least once in ep-system-design.md; the document must not omit any REQ.
 6. **Practical and short** — Get to the point. Be practical above all. Be short and specific.
 7. **Legacy** — Do not modify content under `legacy` folders; use as reference only (e.g. technical discovery or research).
 
@@ -65,7 +65,7 @@ Use these section headings (or user-agreed equivalents).
 
 **TOC:** Include a first-level table of contents (links to section anchors).
 
-**Traceability:** In the body, link to ep-requirements.md sections (e.g. [REQ-001](ep-requirements.md#interface-and-deployment)). **Every REQ from ep-requirements.md must be referenced at least once** in the document (full requirement traceability). Every linked path must be under `ai-sdlc-artefacts/` and exist.
+**Traceability:** In the body, link to ep-requirements.md sections (e.g. [REQ-01.001](ep-requirements.md#interface-and-deployment)). **Every REQ from ep-requirements.md must be referenced at least once** in the document (full requirement traceability). Requirement IDs use format REQ-EE.NNN (epic number EE, requirement NNN). Every linked path must be under `ai-sdlc-artefacts/` and exist.
 
 **Quality:** Be specific and testable where possible; avoid vague wording. Keep the document maintainable for stage 7.
 

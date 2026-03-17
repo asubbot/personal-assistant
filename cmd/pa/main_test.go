@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Covers AC-042 (US-20): config path resolved from PA_CONFIG_DIR when set.
+// Covers AC-01.042 (US-20): config path resolved from PA_CONFIG_DIR when set.
 func TestConfigFilePath_PAConfigDirSet(t *testing.T) {
 	dir := "/etc/pa"
 	_ = os.Setenv("PA_CONFIG_DIR", dir)
@@ -25,7 +25,7 @@ func TestConfigFilePath_PAConfigDirSet(t *testing.T) {
 	}
 }
 
-// Covers AC-042 (US-20): when PA_CONFIG_DIR unset or empty, documented default is used.
+// Covers AC-01.042 (US-20): when PA_CONFIG_DIR unset or empty, documented default is used.
 func TestConfigFilePath_PAConfigDirUnsetOrEmpty(t *testing.T) {
 	_ = os.Unsetenv("PA_CONFIG_DIR")
 	t.Cleanup(func() { _ = os.Unsetenv("PA_CONFIG_DIR") })
@@ -101,17 +101,17 @@ func runSummarizeCLI(t *testing.T, dir, summarizeValue string) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): day summarization CLI -summarize=YYYY-MM-DD runs without starting the bot and exits 0 when successful (e.g. no entries to summarize).
+// Covers AC-01.011, AC-01.012 (US-06): day summarization CLI -summarize=YYYY-MM-DD runs without starting the bot and exits 0 when successful (e.g. no entries to summarize).
 func TestSummarizeCLI_day_exitZero(t *testing.T) {
 	runSummarizeCLI(t, t.TempDir(), "2026-03-12")
 }
 
-// Supporting AC-011, AC-012 (US-06): month summarization CLI -summarize=YYYY-MM exits 0 when no day summaries (skip).
+// Supporting AC-01.011, AC-01.012 (US-06): month summarization CLI -summarize=YYYY-MM exits 0 when no day summaries (skip).
 func TestSummarizeCLI_month_exitZero(t *testing.T) {
 	runSummarizeCLI(t, t.TempDir(), "2026-03")
 }
 
-// Supporting AC-011, AC-012 (US-06): year summarization CLI -summarize=YYYY exits 0 when no month summaries (skip).
+// Supporting AC-01.011, AC-01.012 (US-06): year summarization CLI -summarize=YYYY exits 0 when no month summaries (skip).
 func TestSummarizeCLI_year_exitZero(t *testing.T) {
 	runSummarizeCLI(t, t.TempDir(), "2026")
 }
@@ -168,7 +168,7 @@ func TestRunSummarize_InvalidScope_returnsError(t *testing.T) {
 	}
 }
 
-// Covers cmd/pa runSummarizeDay coverage: no LLM log entries skips write and returns nil (AC-011, AC-012).
+// Covers cmd/pa runSummarizeDay coverage: no LLM log entries skips write and returns nil (AC-01.011, AC-01.012).
 func TestRunSummarizeDay_NoEntries_success(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
@@ -192,7 +192,7 @@ func TestRunSummarizeDay_NoEntries_success(t *testing.T) {
 	}
 }
 
-// Covers cmd/pa runSummarizeMonth coverage: no day summaries skips write and returns nil (AC-011, AC-012).
+// Covers cmd/pa runSummarizeMonth coverage: no day summaries skips write and returns nil (AC-01.011, AC-01.012).
 func TestRunSummarizeMonth_NoEntries_success(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
@@ -216,7 +216,7 @@ func TestRunSummarizeMonth_NoEntries_success(t *testing.T) {
 	}
 }
 
-// Covers cmd/pa runSummarizeYear coverage: no month summaries skips write and returns nil (AC-011, AC-012).
+// Covers cmd/pa runSummarizeYear coverage: no month summaries skips write and returns nil (AC-01.011, AC-01.012).
 func TestRunSummarizeYear_NoEntries_success(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
@@ -240,7 +240,7 @@ func TestRunSummarizeYear_NoEntries_success(t *testing.T) {
 	}
 }
 
-// Covers cmd/pa runVerifyNodes coverage: empty nodes returns nil (AC-032).
+// Covers cmd/pa runVerifyNodes coverage: empty nodes returns nil (AC-01.032).
 func TestRunVerifyNodes_EmptyNodes_noError(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
@@ -262,7 +262,7 @@ func TestRunVerifyNodes_EmptyNodes_noError(t *testing.T) {
 	}
 }
 
-// Covers cmd/pa runVerifyNodes coverage: nodes with missing allowlist file returns error (AC-032, allowlist load failure).
+// Covers cmd/pa runVerifyNodes coverage: nodes with missing allowlist file returns error (AC-01.032, allowlist load failure).
 func TestRunVerifyNodes_AllowlistLoadError_returnsError(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()

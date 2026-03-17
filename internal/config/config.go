@@ -5,17 +5,25 @@ const ConfigFileName = "config.json"
 
 // Config holds application configuration loaded from JSON.
 type Config struct {
-	Version      int                `json:"version"`
-	Telegram     Telegram           `json:"telegram"`
-	LLMProviders []LLMProvider      `json:"llm_providers"`
-	Embedding    *EmbeddingProvider `json:"embedding"` // optional; dedicated provider for vector memory embeddings
-	Paths        Paths              `json:"paths"`
-	Nodes        map[string]Node    `json:"nodes"`
-	LogRedaction *LogRedaction      `json:"log_redaction"` // optional; additional redaction patterns (built-in are always applied)
-	PATimezone   string             `json:"pa_timezone"`   // optional; IANA timezone for assistant's day (e.g. Europe/Moscow); used for summarization date; empty = UTC
+	Version             int                        `json:"version"`
+	Telegram            Telegram                   `json:"telegram"`
+	LLMProviders        []LLMProvider              `json:"llm_providers"`
+	Embedding           *EmbeddingProvider         `json:"embedding"` // optional; dedicated provider for vector memory embeddings
+	Paths               Paths                      `json:"paths"`
+	Nodes               map[string]Node            `json:"nodes"`
+	LogRedaction        *LogRedaction              `json:"log_redaction"`        // optional; additional redaction patterns (built-in are always applied)
+	PATimezone          string                     `json:"pa_timezone"`          // optional; IANA timezone for assistant's day (e.g. Europe/Moscow); used for summarization date; empty = UTC
+	ConversationContext *ConversationContextConfig `json:"conversation_context"` // optional; injected context limits; zero = use defaults
 }
 
-// LogRedaction holds optional additional redaction patterns (REQ-028). Built-in patterns cannot be overridden (REQ-027).
+// ConversationContextConfig holds parameters for context injected into the LLM (vector search results).
+// Optional; zero values mean use defaults (4000 chars, top 10).
+type ConversationContextConfig struct {
+	InjectedContextMaxChars int `json:"injected_context_max_chars"` // max chars for vector+memory block injected into LLM; 0 = 4000
+	VectorSearchTopK        int `json:"vector_search_top_k"`        // number of vector search results to inject; 0 = 10
+}
+
+// LogRedaction holds optional additional redaction patterns (REQ-01.028). Built-in patterns cannot be overridden (REQ-01.027).
 type LogRedaction struct {
 	AdditionalPatterns []RedactionPattern `json:"additional_patterns"`
 }

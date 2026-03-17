@@ -13,4 +13,4 @@ As an architect or developer, I want the system to clearly separate adapters, co
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-025](../../ep-acceptance-criteria.md#ac-025) | [REQ-012](../../ep-requirements.md#extensibility-and-architecture) | Module boundaries: adapters, core, memory, vector, LLM, scheduler, tools separated |
+| [AC-01.025](../../ep-acceptance-criteria.md#ac-01-025) | [REQ-01.012](../../ep-requirements.md#extensibility-and-architecture) | Module boundaries: adapters, core, memory, vector, LLM, scheduler, tools separated |

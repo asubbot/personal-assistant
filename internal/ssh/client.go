@@ -15,14 +15,14 @@ import (
 
 const defaultSSHPort = "22"
 
-// Client holds an SSH connection to a single node. Use only the dedicated user for that node (REQ-013).
+// Client holds an SSH connection to a single node. Use only the dedicated user for that node (REQ-01.013).
 // Call Close when done.
 type Client struct {
 	client *ssh.Client
 	nodeID string
 }
 
-// NewClient connects to the node using credentials from config only (AC-006, REQ-004, REQ-013).
+// NewClient connects to the node using credentials from config only (AC-01.006, REQ-01.004, REQ-01.013).
 // Paths in config (e.g. private_key_path) are relative to project root (CWD at startup) when not absolute.
 func NewClient(ctx context.Context, cfg *config.Config, nodeID string) (*Client, error) {
 	node, ok := cfg.Nodes[nodeID]

@@ -10,19 +10,19 @@
       {
         "type": "ollama",
         "endpoint": "http://localhost:11434/v1",
+        "model": "llama3:8b"
+      },
+      {
+        "type": "ollama",
+        "endpoint": "http://localhost:11434/v1",
         "model": "qwen3:8b"
       },
       {
-            "type": "openai",
-            "endpoint": "https://api.openai.com/v1",
-            "api_key_path": "openai_api_key.txt",
-            "model": "gpt-4o-mini"
-        },
-        {
-          "type": "ollama",
-          "endpoint": "http://localhost:11434/v1",
-          "model": "llama3:8b"
-        }
+        "type": "openai",
+        "endpoint": "https://api.openai.com/v1",
+        "api_key_path": "openai_api_key.txt",
+        "model": "gpt-4o-mini"
+      }
       ],
     "paths": {
       "memory_dir": "memory",
@@ -55,5 +55,9 @@
         { "id": "custom_secret", "regex": "\\bsecret-[0-9]+\\b", "replacement": "[REDACTED]" }
       ]
     },
-    "pa_timezone": "Europe/Lisbon"
+    "pa_timezone": "Europe/Lisbon",
+    "conversation_context": {
+      "injected_context_max_chars": 4000,
+      "vector_search_top_k": 10
+    }
   }

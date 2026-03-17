@@ -8,7 +8,7 @@ import (
 
 const replacement = "[REDACTED]"
 
-// Built-in pattern identifiers. Additional config patterns must not use these ids (REQ-028, REQ-029).
+// Built-in pattern identifiers. Additional config patterns must not use these ids (REQ-01.028, REQ-01.029).
 const (
 	BuiltInIDOpenAIKey     = "api_key_openai"
 	BuiltInIDTelegramToken = "telegram_bot_token"
@@ -16,7 +16,7 @@ const (
 	BuiltInIDSecretPath    = "generic_secret_path"
 )
 
-// builtInPatterns are fixed patterns applied in code; config cannot override or disable them (REQ-027).
+// builtInPatterns are fixed patterns applied in code; config cannot override or disable them (REQ-01.027).
 var builtInPatterns = []struct {
 	id    string
 	regex *regexp.Regexp
@@ -27,7 +27,7 @@ var builtInPatterns = []struct {
 	{BuiltInIDSecretPath, regexp.MustCompile(`/[\w/.-]*(?:token|secret|key|credential|password)(?:s)?[\w/.-]*`)},
 }
 
-// BuiltInIDs returns the list of built-in pattern identifiers for validation (REQ-029).
+// BuiltInIDs returns the list of built-in pattern identifiers for validation (REQ-01.029).
 func BuiltInIDs() []string {
 	ids := make([]string, len(builtInPatterns))
 	for i, p := range builtInPatterns {
@@ -43,7 +43,7 @@ type Pattern struct {
 	Replacement string
 }
 
-// Redact applies all built-in patterns and then additional patterns to s and returns the redacted string (REQ-026).
+// Redact applies all built-in patterns and then additional patterns to s and returns the redacted string (REQ-01.026).
 func Redact(s string, additional []Pattern) string {
 	out := s
 	for _, p := range builtInPatterns {
@@ -87,7 +87,7 @@ func compiledAdditional(expr string) *regexp.Regexp {
 	return re
 }
 
-// ValidateConfig checks that no additional pattern id is reserved and all regexes compile (REQ-029).
+// ValidateConfig checks that no additional pattern id is reserved and all regexes compile (REQ-01.029).
 // Returns an error with a clear message such as "log_redaction: reserved pattern id 'api_key_openai'"
 // or "log_redaction: invalid regex in pattern 'foo': ...".
 func ValidateConfig(builtInIDs []string, additional []Pattern) error {

@@ -17,5 +17,5 @@ As an operator, I want the assistant to use a git repository in its working dire
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-026](../../ep-acceptance-criteria.md#ac-026) | [REQ-016](../../ep-requirements.md#version-control-and-audit) | **Deferred (post-MVP)** |
-| [AC-027](../../ep-acceptance-criteria.md#ac-027) | [REQ-016](../../ep-requirements.md#version-control-and-audit) | **Deferred (post-MVP)** |
+| [AC-01.026](../../ep-acceptance-criteria.md#ac-01-026) | [REQ-01.016](../../ep-requirements.md#version-control-and-audit) | **Deferred (post-MVP)** |
+| [AC-01.027](../../ep-acceptance-criteria.md#ac-01-027) | [REQ-01.016](../../ep-requirements.md#version-control-and-audit) | **Deferred (post-MVP)** |

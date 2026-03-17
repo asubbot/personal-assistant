@@ -21,7 +21,7 @@ const (
 	fakeAPIKeySecret   = "fake-api-key-67890"
 )
 
-// capturingLLM implements llm.Provider and records the last messages passed to Complete (AC-028, AC-030).
+// capturingLLM implements llm.Provider and records the last messages passed to Complete (AC-01.028, AC-01.030).
 type capturingLLM struct {
 	reply        string
 	lastMessages []llm.Message
@@ -33,7 +33,7 @@ func (c *capturingLLM) Complete(ctx context.Context, messages []llm.Message, opt
 	return &llm.CompletionResult{Content: c.reply}, nil
 }
 
-// bufferHandler is a slog.Handler that appends each record (message + attrs) to a buffer for assertion (AC-030).
+// bufferHandler is a slog.Handler that appends each record (message + attrs) to a buffer for assertion (AC-01.030).
 type bufferHandler struct {
 	buf *bytes.Buffer
 }
@@ -80,10 +80,11 @@ func assertNoFakeSecret(t *testing.T, content, label string) {
 	}
 }
 
-// TestSecretLeakage_LLMContextAndReplyAndLogsDoNotContainFakeSecret covers AC-028, AC-029, AC-030 (US-16):
+// TestSecretLeakage_LLMContextAndReplyAndLogsDoNotContainFakeSecret covers AC-01.028, AC-01.029, AC-01.030 (US-16):
 // config contains paths to files with known fake secrets; after one message (including prompt-injection style),
 // the LLM context (messages sent to provider), the reply, and the captured log output must not contain those secrets.
 func TestSecretLeakage_LLMContextAndReplyAndLogsDoNotContainFakeSecret(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	tokenPath, apiKeyPath, usersPath := writeFakeSecretFiles(t, dir)
 

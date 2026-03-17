@@ -2,7 +2,7 @@ package vector
 
 import "context"
 
-// Store is the pluggable vector store interface (REQ-007).
+// Store is the pluggable vector store interface (REQ-01.007).
 // Implementations: SQLite+sqlite-vec (default), vecgo, chromem-go.
 type Store interface {
 	// Add inserts a document with the given id, embedding vector, and text.

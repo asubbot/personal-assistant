@@ -11,7 +11,7 @@ type RunOnNodeRunner interface {
 	RunOnNode(ctx context.Context, nodeID, command string) (stdout string, err error)
 }
 
-// RunOnNodeTool runs an allowlisted command on a configured node (REQ-004, REQ-005, REQ-013).
+// RunOnNodeTool runs an allowlisted command on a configured node (REQ-01.004, REQ-01.005, REQ-01.013).
 type RunOnNodeTool struct {
 	runner RunOnNodeRunner
 }

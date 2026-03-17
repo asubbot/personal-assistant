@@ -13,4 +13,4 @@ As an operator, I want to override the config file location and data/secrets dir
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-042](../../ep-acceptance-criteria.md#ac-042) | [REQ-030](../../ep-requirements.md#configuration-paths-and-environment) | PA_CONFIG_DIR / PA_DATA_DIR / PA_SECRETS_DIR resolution (relative, absolute, unset) |
+| [AC-01.042](../../ep-acceptance-criteria.md#ac-01-042) | [REQ-01.030](../../ep-requirements.md#configuration-paths-and-environment) | PA_CONFIG_DIR / PA_DATA_DIR / PA_SECRETS_DIR resolution (relative, absolute, unset) |

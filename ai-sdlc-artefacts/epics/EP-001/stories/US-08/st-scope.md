@@ -13,6 +13,6 @@ As an operator, I want to choose and configure the LLM provider via configuratio
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-015](../../ep-acceptance-criteria.md#ac-015) | [REQ-008](../../ep-requirements.md#llm-and-logging) | LLM provider in config → core uses it without code change |
-| [AC-016](../../ep-acceptance-criteria.md#ac-016) | [REQ-008](../../ep-requirements.md#llm-and-logging) | Provider switch in config + restart → new provider used |
-| [AC-036](../../ep-acceptance-criteria.md#ac-036) | [REQ-025](../../ep-requirements.md#llm-and-logging) | LLM provider error → handled, no crash |
+| [AC-01.015](../../ep-acceptance-criteria.md#ac-01-015) | [REQ-01.008](../../ep-requirements.md#llm-and-logging) | LLM provider in config → core uses it without code change |
+| [AC-01.016](../../ep-acceptance-criteria.md#ac-01-016) | [REQ-01.008](../../ep-requirements.md#llm-and-logging) | Provider switch in config + restart → new provider used |
+| [AC-01.036](../../ep-acceptance-criteria.md#ac-01-036) | [REQ-01.025](../../ep-requirements.md#llm-and-logging) | LLM provider error → handled, no crash |

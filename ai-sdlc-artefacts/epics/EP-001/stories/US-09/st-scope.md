@@ -13,4 +13,4 @@ As an operator or developer, I want a logging subsystem that records each LLM re
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-017](../../ep-acceptance-criteria.md#ac-017) | [REQ-014](../../ep-requirements.md#llm-and-logging) | LLM call → logging records request and response |
+| [AC-01.017](../../ep-acceptance-criteria.md#ac-01-017) | [REQ-01.014](../../ep-requirements.md#llm-and-logging) | LLM call → logging records request and response |

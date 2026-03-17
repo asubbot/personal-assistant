@@ -13,4 +13,4 @@ As an operator, I want to run the PersonalAssistant binary with a dedicated para
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-032](../../ep-acceptance-criteria.md#ac-032) | [REQ-022](../../ep-requirements.md#nodes-and-ssh) | Verify-nodes: connect per node, run allowlisted command, report, exit without serving |
+| [AC-01.032](../../ep-acceptance-criteria.md#ac-01-032) | [REQ-01.022](../../ep-requirements.md#nodes-and-ssh) | Verify-nodes: connect per node, run allowlisted command, report, exit without serving |

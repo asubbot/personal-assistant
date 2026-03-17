@@ -59,7 +59,7 @@ func configFilePath() string {
 	return filepath.Join(dir, config.ConfigFileName)
 }
 
-// logLevelFromEnv returns the slog level from PA_LOG_LEVEL (e.g. "debug", "info"); default is INFO (REQ-021).
+// logLevelFromEnv returns the slog level from PA_LOG_LEVEL (e.g. "debug", "info"); default is INFO (REQ-01.021).
 func logLevelFromEnv() slog.Level {
 	env := os.Getenv("PA_LOG_LEVEL")
 	if env == "" {
@@ -345,7 +345,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 	return nil
 }
 
-// runVerifyNodes loads allowlist and NodeRunner, runs one allowlisted command on each configured node, reports success or failure (REQ-022, AC-032). Returns error on allowlist load failure or any node failure.
+// runVerifyNodes loads allowlist and NodeRunner, runs one allowlisted command on each configured node, reports success or failure (REQ-01.022, AC-01.032). Returns error on allowlist load failure or any node failure.
 func runVerifyNodes(cfg *config.Config, command string, logger *slog.Logger) error {
 	if len(cfg.Nodes) == 0 {
 		logger.Info("no nodes in config, nothing to verify")

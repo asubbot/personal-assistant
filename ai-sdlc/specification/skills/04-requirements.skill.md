@@ -19,7 +19,7 @@ Follow these principles for all requirements work:
 3. **Options when in doubt** — When multiple valid choices exist (e.g. REQ granularity, tags, NFR depth), present options (e.g. A/B) and ask the user to choose before proceeding.
 4. **References** — Links only to paths under `ai-sdlc-artefacts/`; every linked document must exist. Keep traceability to ep-scope. Write in English.
 5. **Explain corrections** — When changing a requirement to satisfy EARS or quality rules, briefly explain to the user what was corrected and why.
-6. **Stable IDs only** — Use stable human-readable requirement IDs (e.g. REQ-001); do not use internal UUIDs.
+6. **Stable IDs only** — Use requirement IDs in the form **REQ-EE.NNN** where EE is the two-digit epic number (e.g. 01 for EP-001, 02 for EP-002) and NNN is the three-digit requirement number within that epic (e.g. REQ-01.001, REQ-02.013). This avoids ID collisions across epics. Do not use internal UUIDs.
 7. **Practical and short** — Get to the point. Be practical above all. Be short and specific.
 
 ---
@@ -28,7 +28,7 @@ Follow these principles for all requirements work:
 
 You are an expert requirements analyst. Your role is to produce the epic requirements document (stage 4).
 
-**Goal:** Produce ep-requirements.md: introduction, glossary, and a list of requirements (REQ-XXX) in EARS/INCOSE form, tagged by class (e.g. FR, NFR). Include non-functional requirements (quality attributes, security, deploy, observability). This output is the input for acceptance criteria (stage 5) and system design (stage 6); keep it precise and traceable.
+**Goal:** Produce ep-requirements.md: introduction, glossary, and a list of requirements (REQ-EE.NNN) in EARS/INCOSE form, tagged by class (e.g. FR, NFR). Include non-functional requirements (quality attributes, security, deploy, observability). This output is the input for acceptance criteria (stage 5) and system design (stage 6); keep it precise and traceable.
 
 **Inputs:** ep-scope.md (ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md), stakeholder input, and any references. If ep-scope.md is missing, ask the user to run stage 3 (Epic planning) first.
 
@@ -57,7 +57,7 @@ Use these section headings (or user-agreed equivalents).
 - **Glossary** — System names and technical terms used in the requirements.
 - **C4 C1 (System Context)** — C4 Level 1 diagram in **C4-PlantUML**: source in `diagrams/c4-context.puml`, PNG in `diagrams/c4-context.png`. In ep-requirements: centered image, then "Source:" with link to .puml and regeneration command (`plantuml -tpng diagrams/c4-context.puml` from epic directory).
 - **Flow** — Subsection after C4 C1: high-level interaction flow at context level (User ↔ messaging ↔ System; System → external systems). Use a Mermaid flowchart (e.g. `flowchart LR`).
-- **Requirements (REQ-XXX)** — List in EARS form with tags (e.g. FR, NFR).
+- **Requirements (REQ-EE.NNN)** — List in EARS form with tags (e.g. FR, NFR).
 - **NFR section** — Security, performance, deploy, observability.
 
 **Diagrams:** Create a `diagrams/` folder next to ep-requirements.md for the epic; store `c4-context.puml` there and export PNG to `diagrams/c4-context.png` so the relative path in the document works.
@@ -162,9 +162,9 @@ In the following, *System* = <main system name> (or the relevant component as st
 
 | Id       | Type | Section | Summary |
 |----------|------|---------|--------|
-| REQ-001  | FR/NFR | <Section name> | <One-line summary> |
-| REQ-002  | … | … | … |
-| …
+| REQ-EE.001  | FR/NFR | <Section name> | <One-line summary> |
+| REQ-EE.002  | … | … | … |
+| … (use REQ-EE.NNN: EE = epic number, NNN = requirement number)
 
 ---
 
@@ -172,21 +172,21 @@ In the following, *System* = <main system name> (or the relevant component as st
 
 ### <Theme 1, e.g. Interface and deployment>
 
-*REQ-001, REQ-002*
+*REQ-EE.001, REQ-EE.002*
 
-**REQ-001** (Ubiquitous)  
+**REQ-EE.001** (Ubiquitous)  
 THE \<system\> SHALL \<response\>.
 
-**REQ-002** (Event-driven)  
+**REQ-EE.002** (Event-driven)  
 WHEN \<trigger\>, THE \<system\> SHALL \<response\>.
 
 ---
 
 ### <Theme 2>
 
-*REQ-003, …*
+*REQ-EE.003, …*
 
-**REQ-003** (…)  
+**REQ-EE.003** (…)  
 …
 ```
 

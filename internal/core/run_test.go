@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// Covers AC-003 (US-02): core.Run with nil adapter returns error and does not start serving.
+// Covers AC-01.003 (US-02): core.Run with nil adapter returns error and does not start serving.
 func TestRun_nilAdapter_returnsError(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
@@ -26,7 +26,7 @@ func TestRun_nilAdapter_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-003 (US-02): core.Run with nil provider returns error and does not start serving.
+// Covers AC-01.003 (US-02): core.Run with nil provider returns error and does not start serving.
 func TestRun_nilProvider_returnsError(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
@@ -51,7 +51,7 @@ func (a *capturingAdapter) Run(ctx context.Context, handler MessageHandler) erro
 	return nil
 }
 
-// Covers AC-003 (US-02): core.Run calls adapter.Run with non-nil handler (valid wiring).
+// Covers AC-01.003 (US-02): core.Run calls adapter.Run with non-nil handler (valid wiring).
 func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
@@ -75,7 +75,7 @@ func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	}
 }
 
-// Covers AC-003 (US-02): core.Run with nil config does not panic; handler gets zero max length (no limit).
+// Covers AC-01.003 (US-02): core.Run with nil config does not panic; handler gets zero max length (no limit).
 func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -102,7 +102,7 @@ func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 // Ensure capturingAdapter implements Adapter.
 var _ Adapter = (*capturingAdapter)(nil)
 
-// Covers AC-028, REQ-017 (unit): config points to file with known fake secret; built LLM context (messages sent to provider) must not contain it.
+// Covers AC-01.028, REQ-01.017 (unit): config points to file with known fake secret; built LLM context (messages sent to provider) must not contain it.
 func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 	const fakeSecret = "fake-secret-unit-12345"
 	dir := t.TempDir()

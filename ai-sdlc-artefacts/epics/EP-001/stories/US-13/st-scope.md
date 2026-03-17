@@ -13,4 +13,4 @@ As an operator, I want to add new nodes and register new tools through configura
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-024](../../ep-acceptance-criteria.md#ac-024) | [REQ-011](../../ep-requirements.md#extensibility-and-architecture) | New node/tool via config → load after restart/hot-reload without rebuild |
+| [AC-01.024](../../ep-acceptance-criteria.md#ac-01-024) | [REQ-01.011](../../ep-requirements.md#extensibility-and-architecture) | New node/tool via config → load after restart/hot-reload without rebuild |

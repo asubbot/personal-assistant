@@ -37,9 +37,10 @@ func (m *mockEmbedder) Embed(ctx context.Context, text string) ([]float32, error
 
 const vectorTestDimensions = 4
 
-// Covers AC-013, AC-014 (US-07) integration: vector store injects past context into LLM call.
+// Covers AC-01.013, AC-01.014 (US-07) integration: vector store injects past context into LLM call.
 // after one turn is indexed, a second message gets "Relevant past context:" from vector search in the system message.
 func TestVectorStore_injectsPastContext(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "pa_vectors.sqlite")
 	vecStore, err := sqlite.New(path, vectorTestDimensions)
 	if err != nil {

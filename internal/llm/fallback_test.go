@@ -87,7 +87,7 @@ func TestFallbackProvider_singleProvider(t *testing.T) {
 	}
 }
 
-// slogCapture captures log level, message and attrs for assertion (REQ-031: fallback log).
+// slogCapture captures log level, message and attrs for assertion (REQ-01.031: fallback log).
 type slogCapture struct {
 	buf strings.Builder
 }
@@ -106,7 +106,7 @@ func (s *slogCapture) Handle(_ context.Context, r slog.Record) error {
 func (s *slogCapture) WithAttrs([]slog.Attr) slog.Handler { return s }
 func (s *slogCapture) WithGroup(string) slog.Handler      { return s }
 
-// Covers AC-043, REQ-031: when fallback tries the next provider, app log records the switch with message and labels (failed_provider, next_provider).
+// Covers AC-01.043, REQ-01.031: when fallback tries the next provider, app log records the switch with message and labels (failed_provider, next_provider).
 func TestFallbackProvider_logsProviderSwitchWithLabels(t *testing.T) {
 	capture := &slogCapture{}
 	logger := slog.New(capture)
@@ -135,7 +135,7 @@ func TestFallbackProvider_logsProviderSwitchWithLabels(t *testing.T) {
 	}
 }
 
-// Covers AC-043, REQ-031: when fallback tries next provider and labels are nil, app log still records the switch message (without failed_provider/next_provider).
+// Covers AC-01.043, REQ-01.031: when fallback tries next provider and labels are nil, app log still records the switch message (without failed_provider/next_provider).
 func TestFallbackProvider_logsProviderSwitchWithoutLabels(t *testing.T) {
 	capture := &slogCapture{}
 	logger := slog.New(capture)

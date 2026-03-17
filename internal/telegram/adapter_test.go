@@ -15,7 +15,7 @@ import (
 
 // --- NewAdapter: token_path ---
 
-// Covers AC-033 (US-19): adapter construction — missing token_path returns error (startup validation).
+// Covers AC-01.033 (US-19): adapter construction — missing token_path returns error (startup validation).
 func TestNewAdapter_missingTokenPath(t *testing.T) {
 	cfg := &config.Config{Telegram: config.Telegram{TokenPath: ""}}
 	_, err := NewAdapter(cfg, "/etc/pa/config.json")
@@ -27,7 +27,7 @@ func TestNewAdapter_missingTokenPath(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): adapter construction — whitespace-only token_path returns error.
+// Covers AC-01.033 (US-19): adapter construction — whitespace-only token_path returns error.
 func TestNewAdapter_tokenPathWhitespaceOnly(t *testing.T) {
 	cfg := &config.Config{Telegram: config.Telegram{TokenPath: "  \t  "}}
 	_, err := NewAdapter(cfg, "/etc/pa/config.json")
@@ -39,7 +39,7 @@ func TestNewAdapter_tokenPathWhitespaceOnly(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): adapter construction — token file not found returns error.
+// Covers AC-01.033 (US-19): adapter construction — token file not found returns error.
 func TestNewAdapter_tokenFileNotFound(t *testing.T) {
 	cfg := &config.Config{Telegram: config.Telegram{TokenPath: "/nonexistent/token.txt"}}
 	_, err := NewAdapter(cfg, "/etc/pa/config.json")
@@ -51,7 +51,7 @@ func TestNewAdapter_tokenFileNotFound(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): adapter construction — empty token file returns error.
+// Covers AC-01.033 (US-19): adapter construction — empty token file returns error.
 func TestNewAdapter_tokenFileEmpty(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -68,7 +68,7 @@ func TestNewAdapter_tokenFileEmpty(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): adapter construction — whitespace-only token returns error.
+// Covers AC-01.033 (US-19): adapter construction — whitespace-only token returns error.
 func TestNewAdapter_tokenFileWhitespaceOnly(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -87,7 +87,7 @@ func TestNewAdapter_tokenFileWhitespaceOnly(t *testing.T) {
 
 // --- NewAdapter: no users_path (allow-none) ---
 
-// Covers AC-033 (US-19): adapter construction — valid token without users_path succeeds (optional users).
+// Covers AC-01.033 (US-19): adapter construction — valid token without users_path succeeds (optional users).
 func TestNewAdapter_validTokenNoUsersPath(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -107,7 +107,7 @@ func TestNewAdapter_validTokenNoUsersPath(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): adapter construction — empty users_path yields no allowed users.
+// Covers AC-01.033 (US-19): adapter construction — empty users_path yields no allowed users.
 func TestNewAdapter_validTokenEmptyUsersPath(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -126,7 +126,7 @@ func TestNewAdapter_validTokenEmptyUsersPath(t *testing.T) {
 
 // --- NewAdapter: valid users_path ---
 
-// Covers AC-033 (US-19): adapter construction — valid token and users file loads allowed user IDs.
+// Covers AC-01.033 (US-19): adapter construction — valid token and users file loads allowed user IDs.
 func TestNewAdapter_validTokenAndUsersFile(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -154,7 +154,7 @@ func TestNewAdapter_validTokenAndUsersFile(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): adapter construction — users_path relative to config dir is resolved.
+// Covers AC-01.033 (US-19): adapter construction — users_path relative to config dir is resolved.
 func TestNewAdapter_usersPathRelativeToConfigDir(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -178,7 +178,7 @@ func TestNewAdapter_usersPathRelativeToConfigDir(t *testing.T) {
 
 // --- NewAdapter: invalid users_path ---
 
-// Covers AC-033 (US-19): adapter construction — users file not found returns error.
+// Covers AC-01.033 (US-19): adapter construction — users file not found returns error.
 func TestNewAdapter_usersFileNotFound(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -195,7 +195,7 @@ func TestNewAdapter_usersFileNotFound(t *testing.T) {
 	}
 }
 
-// Covers AC-033 (US-19): adapter construction — invalid users JSON returns error.
+// Covers AC-01.033 (US-19): adapter construction — invalid users JSON returns error.
 func TestNewAdapter_usersFileInvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -216,9 +216,9 @@ func TestNewAdapter_usersFileInvalidJSON(t *testing.T) {
 	}
 }
 
-// --- NewAdapter: notify_chat_id (REQ-023) ---
+// --- NewAdapter: notify_chat_id (REQ-01.023) ---
 
-// Covers AC-020 (US-11): notify_chat_id from config (scheduler sends to configured chat).
+// Covers AC-01.020 (US-11): notify_chat_id from config (scheduler sends to configured chat).
 func TestNewAdapter_notifyChatID_fromConfig(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -235,7 +235,7 @@ func TestNewAdapter_notifyChatID_fromConfig(t *testing.T) {
 	}
 }
 
-// Covers AC-020 (US-11): notify_chat_id fallback to first allowed user when not set in config.
+// Covers AC-01.020 (US-11): notify_chat_id fallback to first allowed user when not set in config.
 func TestNewAdapter_notifyChatID_fallbackToFirstUser(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -257,7 +257,7 @@ func TestNewAdapter_notifyChatID_fallbackToFirstUser(t *testing.T) {
 	}
 }
 
-// Covers AC-020 (US-11): notify_chat_id is 0 when no users and not set in config.
+// Covers AC-01.020 (US-11): notify_chat_id is 0 when no users and not set in config.
 func TestNewAdapter_notifyChatID_zeroWhenNoUsersAndNotSet(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -274,7 +274,7 @@ func TestNewAdapter_notifyChatID_zeroWhenNoUsersAndNotSet(t *testing.T) {
 	}
 }
 
-// Covers AC-020 (US-11): config notify_chat_id overrides first-user fallback.
+// Covers AC-01.020 (US-11): config notify_chat_id overrides first-user fallback.
 func TestNewAdapter_notifyChatID_configOverridesUsers(t *testing.T) {
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "token.txt")
@@ -298,7 +298,7 @@ func TestNewAdapter_notifyChatID_configOverridesUsers(t *testing.T) {
 
 // --- SendMessage (scheduler Notifier) ---
 
-// Covers AC-020 (US-11): SendMessage when bot is nil returns error (scheduler Notifier contract).
+// Covers AC-01.020 (US-11): SendMessage when bot is nil returns error (scheduler Notifier contract).
 func TestSendMessage_botNil_returnsError(t *testing.T) {
 	ad := &Adapter{notifyChatID: 123}
 	err := ad.SendMessage(context.Background(), "test")
@@ -310,7 +310,7 @@ func TestSendMessage_botNil_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-020, REQ-023 (US-11): SendMessage when notify_chat_id is 0 returns error (no destination).
+// Covers AC-01.020, REQ-01.023 (US-11): SendMessage when notify_chat_id is 0 returns error (no destination).
 func TestSendMessage_notifyChatIDZero_returnsError(t *testing.T) {
 	ad := &Adapter{notifyChatID: 0}
 	err := ad.SendMessage(context.Background(), "test")
@@ -324,7 +324,7 @@ func TestSendMessage_notifyChatIDZero_returnsError(t *testing.T) {
 
 // --- Run ---
 
-// Covers AC-003 (US-02): adapter.Run with nil handler returns error and does not start serving.
+// Covers AC-01.003 (US-02): adapter.Run with nil handler returns error and does not start serving.
 func TestRun_nilHandler(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{}, token: "dummy"}
 	err := ad.Run(context.Background(), nil)
@@ -365,7 +365,7 @@ func (m *mockHandler) HandleMessage(_ context.Context, userID int64, text string
 	return m.reply, m.errReply
 }
 
-// Supporting AC-001 (US-01): handleUpdate with nil Message does not call handler or send.
+// Supporting AC-01.001 (US-01): handleUpdate with nil Message does not call handler or send.
 func TestHandleUpdate_nilMessage(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -379,7 +379,7 @@ func TestHandleUpdate_nilMessage(t *testing.T) {
 	}
 }
 
-// Supporting AC-001 (US-01): handleUpdate with nil From does not call handler or send.
+// Supporting AC-01.001 (US-01): handleUpdate with nil From does not call handler or send.
 func TestHandleUpdate_nilFrom(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -395,7 +395,7 @@ func TestHandleUpdate_nilFrom(t *testing.T) {
 	}
 }
 
-// Covers AC-002 (US-01): empty or whitespace message → handler returns rejection message, adapter sends it.
+// Covers AC-01.002 (US-01): empty or whitespace message → handler returns rejection message, adapter sends it.
 func TestHandleUpdate_emptyText_sendsRejectionMessage(t *testing.T) {
 	// Empty or whitespace-only text is passed to the handler; handler returns rejection message, adapter sends it.
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
@@ -426,7 +426,7 @@ func TestHandleUpdate_emptyText_sendsRejectionMessage(t *testing.T) {
 	}
 }
 
-// Supporting AC-001 (US-01): disallowed user gets "not allowed" message, handler not called.
+// Supporting AC-01.001 (US-01): disallowed user gets "not allowed" message, handler not called.
 func TestHandleUpdate_disallowedUser(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -443,7 +443,7 @@ func TestHandleUpdate_disallowedUser(t *testing.T) {
 	}
 }
 
-// Covers AC-001 (US-01): allowed user message → handler called → reply sent to user.
+// Covers AC-01.001 (US-01): allowed user message → handler called → reply sent to user.
 func TestHandleUpdate_allowedUser_callsHandlerAndSendsReply(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -462,7 +462,7 @@ func TestHandleUpdate_allowedUser_callsHandlerAndSendsReply(t *testing.T) {
 	}
 }
 
-// Supporting AC-001 (US-01): handler error results in generic error message to user.
+// Supporting AC-01.001 (US-01): handler error results in generic error message to user.
 func TestHandleUpdate_allowedUser_handlerErrorSendsGenericMessage(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -478,7 +478,7 @@ func TestHandleUpdate_allowedUser_handlerErrorSendsGenericMessage(t *testing.T) 
 	}
 }
 
-// Supporting AC-001 (US-01): empty reply from handler sends no message.
+// Supporting AC-01.001 (US-01): empty reply from handler sends no message.
 func TestHandleUpdate_allowedUser_emptyReplySendsNothing(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}

@@ -11,7 +11,7 @@ import (
 
 const actionNotify = "notify"
 
-// Task is one scheduled task from the JSON file (REQ-009).
+// Task is one scheduled task from the JSON file (REQ-01.009).
 // Name must be unique across all tasks in the file.
 type Task struct {
 	Name     string         `json:"name"`     // unique task identifier (required)
@@ -38,7 +38,7 @@ type cronInterface interface {
 	Stop() context.Context
 }
 
-// Scheduler runs tasks at schedule by invoking tools or notifier (AC-020, AC-021).
+// Scheduler runs tasks at schedule by invoking tools or notifier (AC-01.020, AC-01.021).
 type Scheduler struct {
 	cfg  Config
 	cron cronInterface
@@ -88,7 +88,7 @@ func New(tasks []Task, cfg Config) (*Scheduler, error) {
 	return s, nil
 }
 
-// executeTask runs one task: resolve action to tool or notify, validate params, run (AC-021).
+// executeTask runs one task: resolve action to tool or notify, validate params, run (AC-01.021).
 func (s *Scheduler) executeTask(ctx context.Context, task Task) {
 	if task.Action == "" {
 		s.cfg.Logger.Warn("scheduler: task has empty action", "task", task.Name, "schedule", task.Schedule)

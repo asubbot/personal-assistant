@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Covers AC-007 (US-04): Allow returns allowed for allowlisted commands.
+// Covers AC-01.007 (US-04): Allow returns allowed for allowlisted commands.
 func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 	_, checker := mustNewChecker(t)
 
@@ -28,7 +28,7 @@ func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 	}
 }
 
-// Covers AC-008 (US-04): Allow returns denied when command not in allowlist.
+// Covers AC-01.008 (US-04): Allow returns denied when command not in allowlist.
 func TestChecker_Allow_deniedWhenNotInAllowlist(t *testing.T) {
 	_, checker := mustNewChecker(t)
 
@@ -50,7 +50,7 @@ func TestChecker_Allow_deniedWhenNotInAllowlist(t *testing.T) {
 	}
 }
 
-// Supporting AC-007, AC-008 (US-04): Allow(unknown node) returns false.
+// Supporting AC-01.007, AC-01.008 (US-04): Allow(unknown node) returns false.
 func TestChecker_Allow_unknownNode(t *testing.T) {
 	_, checker := mustNewChecker(t)
 	if checker.Allow("nonexistent", "any") {
@@ -58,7 +58,7 @@ func TestChecker_Allow_unknownNode(t *testing.T) {
 	}
 }
 
-// Supporting AC-007 (US-04): NewChecker shares allowlist by path when multiple nodes use same file.
+// Supporting AC-01.007 (US-04): NewChecker shares allowlist by path when multiple nodes use same file.
 func TestNewChecker_sameFileSharedByNodes(t *testing.T) {
 	cfg := &config.Config{
 		Version:  1,

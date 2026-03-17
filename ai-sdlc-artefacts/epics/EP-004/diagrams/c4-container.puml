@@ -1,0 +1,54 @@
+@startuml C4 Container - PersonalAssistant (EP-004)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam ArrowColor #707070
+skinparam ComponentBorderColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-004 Structured tools and Tool-calling API
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(nodes, "Nodes", "Remote hosts")
+System_Ext(llm_ext, "LLM API", "OpenAI, Ollama, etc.")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Telegram Bot", "Go", "Message adapter")
+    Container(core, "Go Core", "Go", "Orchestration, tool list build, validation, template substitution, tool-result loop")
+    ContainerDb(cfg, "Config", "JSON", "Nodes, LLM, paths")
+    ContainerDb(toolcat, "Tool Catalog", "YAML", "Invocable tools: id, template, node_id, argument rules")
+    ContainerDb(mem, "MD Store", "Files", "Long-term memory")
+    ContainerDb(vec, "Vector Index", "Embeddings", "Semantic search")
+    Container(llm, "LLM Provider", "Go", "Model calls, tools payload, tool_calls in response")
+    Container(log, "LLM Logging", "Go", "Request/response audit")
+    Container(sched, "Scheduler", "Go", "Scheduled tasks (unchanged contract)")
+    Container(tools, "Tools", "Go", "run_on_node, allowlist, template execution")
+    Container(ssh, "SSH Client", "Go", "Node connections")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "Forward messages")
+Rel(core, tg, "Send replies / errors")
+Rel(core, cfg, "Load at startup")
+Rel(core, toolcat, "Load at startup; build tool list; validate and substitute")
+Rel(core, mem, "Read/write")
+Rel(core, vec, "Search")
+Rel(core, llm, "Call model with tools; receive tool_calls")
+Rel(llm, llm_ext, "HTTP/gRPC")
+Rel(core, log, "Write logs")
+Rel(core, sched, "Run tasks")
+Rel(sched, tools, "Invoke when scheduled")
+Rel(core, tools, "Execute tool: substitute template, run_on_node")
+Rel(core, ssh, "Commands")
+Rel(ssh, nodes, "SSH")
+
+@enduml

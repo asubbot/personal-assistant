@@ -53,7 +53,7 @@ func (m *mockVectorStore) Search(ctx context.Context, queryEmbedding []float32, 
 
 func (m *mockVectorStore) Close() error { return nil }
 
-// Covers AC-011, AC-012 (US-06): day summarization with no log entries skips write; no memory or vector update.
+// Covers AC-01.011, AC-01.012 (US-06): day summarization with no log entries skips write; no memory or vector update.
 func TestDay_noEntries_skips(t *testing.T) {
 	dir := t.TempDir()
 	llmLogDir := filepath.Join(dir, "llm_logs")
@@ -85,7 +85,7 @@ func TestDay_noEntries_skips(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): day summarization with log entries writes summary to memory and vector store (calendar path, expected id).
+// Covers AC-01.011, AC-01.012 (US-06): day summarization with log entries writes summary to memory and vector store (calendar path, expected id).
 func TestDay_withEntries_callsLLMAndWrites(t *testing.T) {
 	dir := t.TempDir()
 	llmLogDir := filepath.Join(dir, "llm_logs")
@@ -151,7 +151,7 @@ func TestDay_withEntries_callsLLMAndWrites(t *testing.T) {
 	}
 }
 
-// Supporting AC-011, AC-012 (US-06): CLI scope parsing — YYYY-MM-DD parses as day scope.
+// Supporting AC-01.011, AC-01.012 (US-06): CLI scope parsing — YYYY-MM-DD parses as day scope.
 func TestParseSummarizeScope_day(t *testing.T) {
 	scope, err := ParseSummarizeScope("2026-03-12")
 	if err != nil {
@@ -168,7 +168,7 @@ func TestParseSummarizeScope_day(t *testing.T) {
 	}
 }
 
-// Supporting AC-011, AC-012 (US-06): CLI scope parsing — YYYY-MM parses as month scope.
+// Supporting AC-01.011, AC-01.012 (US-06): CLI scope parsing — YYYY-MM parses as month scope.
 func TestParseSummarizeScope_month(t *testing.T) {
 	scope, err := ParseSummarizeScope("2026-03")
 	if err != nil {
@@ -179,7 +179,7 @@ func TestParseSummarizeScope_month(t *testing.T) {
 	}
 }
 
-// Supporting AC-011, AC-012 (US-06): CLI scope parsing — YYYY parses as year scope.
+// Supporting AC-01.011, AC-01.012 (US-06): CLI scope parsing — YYYY parses as year scope.
 func TestParseSummarizeScope_year(t *testing.T) {
 	scope, err := ParseSummarizeScope("2026")
 	if err != nil {
@@ -190,7 +190,7 @@ func TestParseSummarizeScope_year(t *testing.T) {
 	}
 }
 
-// Supporting AC-011, AC-012 (US-06): CLI scope parsing — empty value returns error.
+// Supporting AC-01.011, AC-01.012 (US-06): CLI scope parsing — empty value returns error.
 func TestParseSummarizeScope_empty_returnsError(t *testing.T) {
 	_, err := ParseSummarizeScope("")
 	if err == nil {
@@ -198,7 +198,7 @@ func TestParseSummarizeScope_empty_returnsError(t *testing.T) {
 	}
 }
 
-// Supporting AC-011, AC-012 (US-06): CLI scope parsing — invalid format returns error.
+// Supporting AC-01.011, AC-01.012 (US-06): CLI scope parsing — invalid format returns error.
 func TestParseSummarizeScope_invalid_returnsError(t *testing.T) {
 	_, err := ParseSummarizeScope("not-a-date")
 	if err == nil {
@@ -206,7 +206,7 @@ func TestParseSummarizeScope_invalid_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): month summarization with no day summaries skips write.
+// Covers AC-01.011, AC-01.012 (US-06): month summarization with no day summaries skips write.
 func TestMonth_noDaySummaries_skips(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
@@ -232,7 +232,7 @@ func TestMonth_noDaySummaries_skips(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): month summarization writes month summary to memory (YYYY/MM/summary.md) and vector store.
+// Covers AC-01.011, AC-01.012 (US-06): month summarization writes month summary to memory (YYYY/MM/summary.md) and vector store.
 func TestMonth_withDaySummaries_callsLLMAndWrites(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
@@ -287,7 +287,7 @@ func TestMonth_withDaySummaries_callsLLMAndWrites(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): year summarization with no month summaries skips write.
+// Covers AC-01.011, AC-01.012 (US-06): year summarization with no month summaries skips write.
 func TestYear_noMonthSummaries_skips(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
@@ -313,7 +313,7 @@ func TestYear_noMonthSummaries_skips(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): year summarization writes year summary to memory (YYYY/summary.md) and vector store.
+// Covers AC-01.011, AC-01.012 (US-06): year summarization writes year summary to memory (YYYY/summary.md) and vector store.
 func TestYear_withMonthSummaries_callsLLMAndWrites(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")

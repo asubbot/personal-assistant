@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// Supporting AC-005 (US-03): valid config with empty or omitted scheduled_tasks_path loads.
+// Supporting AC-01.005 (US-03): valid config with empty or omitted scheduled_tasks_path loads.
 func TestLoad_ValidConfig_EmptyScheduledTasksPath(t *testing.T) {
 	path := filepath.Join("testdata", "valid_no_users.json")
 	cfg, err := Load(path)
@@ -22,7 +22,7 @@ func TestLoad_ValidConfig_EmptyScheduledTasksPath(t *testing.T) {
 	}
 }
 
-// TestLoad_ValidConfig_NoError — Supporting test for AC-005 (US-03): valid config loads without error.
+// TestLoad_ValidConfig_NoError — Supporting test for AC-01.005 (US-03): valid config loads without error.
 func TestLoad_ValidConfig_NoError(t *testing.T) {
 	path := filepath.Join("testdata", "valid_no_users.json")
 	cfg, err := Load(path)
@@ -49,7 +49,7 @@ func TestLoad_ValidConfig_NoError(t *testing.T) {
 	}
 }
 
-// TestLoad_TelegramMaxMessageLength — Supporting test for AC-002 (US-01): max_message_length from config (0 when omitted, value when set).
+// TestLoad_TelegramMaxMessageLength — Supporting test for AC-01.002 (US-01): max_message_length from config (0 when omitted, value when set).
 func TestLoad_TelegramMaxMessageLength(t *testing.T) {
 	// Without field: 0
 	pathNoField := filepath.Join("testdata", "valid_no_users.json")
@@ -71,7 +71,7 @@ func TestLoad_TelegramMaxMessageLength(t *testing.T) {
 	}
 }
 
-// Supporting AC-005 (US-03): valid config with users_path loads.
+// Supporting AC-01.005 (US-03): valid config with users_path loads.
 func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 	// users_path "testdata/good_users.json" is resolved with PA_SECRETS_DIR; use "." so path is testdata/good_users.json.
 	prev := os.Getenv("PA_SECRETS_DIR")
@@ -87,7 +87,7 @@ func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 	}
 }
 
-// TestLoad_InvalidOrMissingFields covers AC-005: config validator with invalid/missing fields (test-strategy.md §3).
+// TestLoad_InvalidOrMissingFields covers AC-01.005: config validator with invalid/missing fields (test-strategy.md §3).
 func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -124,7 +124,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-005 (US-03): config file missing returns clear error (refuse to start or report error).
+// Covers AC-01.005 (US-03): config file missing returns clear error (refuse to start or report error).
 func TestLoad_MissingFile_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "nonexistent.json"))
 	if err == nil {
@@ -135,7 +135,7 @@ func TestLoad_MissingFile_ReturnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-005 (US-03): config invalid JSON returns clear error.
+// Covers AC-01.005 (US-03): config invalid JSON returns clear error.
 func TestLoad_InvalidJSON_ReturnsError(t *testing.T) {
 	path := filepath.Join("testdata", "not_valid_json.json")
 	_, err := Load(path)
@@ -147,7 +147,7 @@ func TestLoad_InvalidJSON_ReturnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-005 (US-03): referenced users file with invalid role returns clear error.
+// Covers AC-01.005 (US-03): referenced users file with invalid role returns clear error.
 func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	// Config points to invalid_users.json (role "superuser" not allowed)
 	path := filepath.Join("testdata", "valid_with_users.json")
@@ -160,8 +160,8 @@ func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	}
 }
 
-// TestLoad_LogRedactionReservedID_ReturnsError — REQ-029: reserved additional pattern id refuses start.
-// Covers AC-041 (US-16): log_redaction reserved pattern identifier or invalid regex → refuse start, clear error.
+// TestLoad_LogRedactionReservedID_ReturnsError — REQ-01.029: reserved additional pattern id refuses start.
+// Covers AC-01.041 (US-16): log_redaction reserved pattern identifier or invalid regex → refuse start, clear error.
 func TestLoad_LogRedactionReservedID_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "log_redaction_reserved_id.json"))
 	if err == nil {
@@ -172,8 +172,8 @@ func TestLoad_LogRedactionReservedID_ReturnsError(t *testing.T) {
 	}
 }
 
-// TestLoad_LogRedactionInvalidRegex_ReturnsError — REQ-029: invalid regex in additional pattern refuses start.
-// Covers AC-041 (US-16): log_redaction invalid regex → refuse start, clear error.
+// TestLoad_LogRedactionInvalidRegex_ReturnsError — REQ-01.029: invalid regex in additional pattern refuses start.
+// Covers AC-01.041 (US-16): log_redaction invalid regex → refuse start, clear error.
 func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "log_redaction_invalid_regex.json"))
 	if err == nil {
@@ -184,7 +184,7 @@ func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
 	}
 }
 
-// Supporting AC-033 (US-19): invalid IANA timezone in pa_timezone refuses start.
+// Supporting AC-01.033 (US-19): invalid IANA timezone in pa_timezone refuses start.
 func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "invalid_pa_timezone.json"))
 	if err == nil {
@@ -195,7 +195,7 @@ func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
 	}
 }
 
-// Supporting AC-033 (US-19): valid pa_timezone (e.g. Europe/Moscow, UTC) loads successfully.
+// Supporting AC-01.033 (US-19): valid pa_timezone (e.g. Europe/Moscow, UTC) loads successfully.
 func TestLoad_ValidPATimezone_loads(t *testing.T) {
 	cfg, err := Load(filepath.Join("testdata", "valid_pa_timezone.json"))
 	if err != nil {
@@ -214,7 +214,7 @@ func TestLoad_ValidPATimezone_loads(t *testing.T) {
 	}
 }
 
-// Covers AC-005 (US-03): users_path points to nonexistent file returns clear error.
+// Covers AC-01.005 (US-03): users_path points to nonexistent file returns clear error.
 func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	// Config with users_path pointing to a file that does not exist (path is CWD-relative)
 	cfgDir := t.TempDir()

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Covers AC-020 (US-11): scheduler with valid task list builds and Start/Stop run.
+// Covers AC-01.020 (US-11): scheduler with valid task list builds and Start/Stop run.
 func TestNew_validTasks(t *testing.T) {
 	reg := tools.NewRegistry()
 	reg.Register(&mockTool{name: "run_on_node"})
@@ -29,7 +29,7 @@ func TestNew_validTasks(t *testing.T) {
 	<-ctx.Done()
 }
 
-// Covers AC-020 (US-11): New rejects invalid schedule when building the scheduler.
+// Covers AC-01.020 (US-11): New rejects invalid schedule when building the scheduler.
 // robfig/cron AddFunc returns error for invalid cron strings; New propagates it.
 func TestNew_invalidSchedule_returnsError(t *testing.T) {
 	reg := tools.NewRegistry()
@@ -43,7 +43,7 @@ func TestNew_invalidSchedule_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-021 (US-11): scheduler does not execute unknown action (skipped).
+// Covers AC-01.021 (US-11): scheduler does not execute unknown action (skipped).
 func TestScheduler_executeTask_unknownAction_skipped(t *testing.T) {
 	reg := tools.NewRegistry()
 	mt := &mockTool{name: "only_tool"}
@@ -59,7 +59,7 @@ func TestScheduler_executeTask_unknownAction_skipped(t *testing.T) {
 	}
 }
 
-// Covers AC-021 (US-11): scheduler does not execute when params fail validation (skipped).
+// Covers AC-01.021 (US-11): scheduler does not execute when params fail validation (skipped).
 func TestScheduler_executeTask_invalidParams_skipped(t *testing.T) {
 	reg := tools.NewRegistry()
 	mt := &mockTool{name: "run_on_node", schema: []tools.ParamSpec{
@@ -78,7 +78,7 @@ func TestScheduler_executeTask_invalidParams_skipped(t *testing.T) {
 	}
 }
 
-// Covers AC-020 (US-11): executeTask notify path — notifier receives SendMessage.
+// Covers AC-01.020 (US-11): executeTask notify path — notifier receives SendMessage.
 func TestScheduler_executeTask_notify_callsNotifier(t *testing.T) {
 	var sent string
 	notifier := &mockNotifier{send: func(ctx context.Context, text string) error { sent = text; return nil }}
@@ -93,7 +93,7 @@ func TestScheduler_executeTask_notify_callsNotifier(t *testing.T) {
 	}
 }
 
-// Covers AC-020 (US-11): executeTask tool path — tool Run is called and result logged.
+// Covers AC-01.020 (US-11): executeTask tool path — tool Run is called and result logged.
 func TestScheduler_executeTask_toolRun_success(t *testing.T) {
 	reg := tools.NewRegistry()
 	mt := &mockTool{name: "my_tool"}
@@ -109,7 +109,7 @@ func TestScheduler_executeTask_toolRun_success(t *testing.T) {
 	}
 }
 
-// Covers AC-021 (US-11): tool returns error (e.g. allowlist denial) → scheduler logs, does not execute violating action.
+// Covers AC-01.021 (US-11): tool returns error (e.g. allowlist denial) → scheduler logs, does not execute violating action.
 func TestScheduler_executeTask_toolRun_error_logged_noPanic(t *testing.T) {
 	reg := tools.NewRegistry()
 	toolErr := errors.New(`noderunner: command not allowed for node "n"`)

@@ -33,7 +33,7 @@ type Writer interface {
 	Log(entry *Entry)
 }
 
-// Redactor is a function that redacts secret values from a string before writing to the log (REQ-026).
+// Redactor is a function that redacts secret values from a string before writing to the log (REQ-01.026).
 type Redactor func(string) string
 
 // fileWriter appends entries to a daily file in the given directory.
@@ -112,7 +112,7 @@ func (w *fileWriter) Log(entry *Entry) {
 	}
 }
 
-// redactEntry returns a copy of the entry with string fields redacted so logs never contain secrets (REQ-026).
+// redactEntry returns a copy of the entry with string fields redacted so logs never contain secrets (REQ-01.026).
 func (w *fileWriter) redactEntry(entry *Entry) *Entry {
 	if w.redactor == nil {
 		return entry

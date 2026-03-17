@@ -1,0 +1,235 @@
+# EP-004 Structured tools and Tool-calling API — Requirements (EARS / INCOSE)
+
+This document contains the product requirements for EP-004 (Structured tools and Tool-calling API) in EARS form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, solution-free where applicable).
+
+**Total: 21 requirements (16 FR, 5 NFR)**
+
+**Contents**
+
+- [Introduction](#introduction)
+- [Glossary](#glossary)
+- [C4 C1 — System Context](#c4-c1--system-context)
+- [Flow](#flow)
+- [EARS patterns used](#ears-patterns-used)
+- [Requirement index](#requirement-index)
+- [Requirements](#requirements)
+  - [Tool catalog and source of truth](#tool-catalog-and-source-of-truth)
+  - [Tool-calling API](#tool-calling-api)
+  - [Validation and execution](#validation-and-execution)
+  - [Errors to chat](#errors-to-chat)
+  - [Provider interface](#provider-interface)
+  - [Sonos support](#sonos-support)
+  - [Tool index and pre-selection](#tool-index-and-pre-selection)
+  - [NFR — Security, testability, observability, consistency](#nfr--security-testability-observability-consistency)
+
+---
+
+## Introduction
+
+This document is derived from [ep-scope.md](ep-scope.md). EP-004 builds on EP-001 (PersonalAssistant MVP). It introduces a single source of truth for invocable tools, exposes tools to the LLM via the provider's Tool-calling API, validates tool-call arguments, executes via the existing run_on_node path (template substitution and allowlist), and surfaces validation and execution errors to the user in chat. Sonos control (e.g. volume, play) is supported as tools defined in the same catalog and invoked via the same mechanism.
+
+**Epic scope in brief:**
+
+- Single source of truth for tools (e.g. YAML): id, template, node_id, argument rules; optional triggers per tool; parsed at startup.
+- Tool index built at startup from the catalog (id, short_description, triggers) and stored in the **same vector database as memory, in a dedicated table** (e.g. vec_tools); used for pre-selection per request. Target scale up to **1000 tools**. Index load **within 20 seconds** (batched embedding API and/or background build with fallback until ready).
+- Each LLM request receives a pre-selected subset of tools (from the tool index, e.g. top-k by semantic similarity to the user message) in the provider's Tool-calling format; fallback when selection is empty or too small.
+- Core handles tool_calls in the response: validate, substitute template, execute via run_on_node; results and errors returned as tool results and, when appropriate, shown in chat.
+- Provider interface extended for tools payload and tool_calls; at least one provider (e.g. OpenAI-compatible or Ollama) supported.
+- Sonos tools definable in the catalog and executable on a configured node; no separate Sonos API in the core.
+- Scheduler contract unchanged; no dynamic tool loading; no MCP or third-party tool servers.
+
+---
+
+## Glossary
+
+| Term | Definition |
+|------|------------|
+| **PersonalAssistant (System)** | The set of components: core (Go), Telegram adapter, memory store, vector index, scheduler, LLM providers, and tools. From [scope.md](../../scope.md). |
+| **Core** | The main Go service: orchestration of conversations, LLM calls, tool execution, and SSH-based node management. From [scope.md](../../scope.md). |
+| **Node** | A remote host that the core connects to over SSH; has a defined capability set and credentials in configuration. From [scope.md](../../scope.md). |
+| **Tool (invocable)** | A single invokable capability presented to the LLM: stable id, short_description, bound to a node (or global), and schema (expected_json) for arguments. The LLM returns a tool call with id and arguments; PersonalAssistant validates and executes. From [ep-scope.md](ep-scope.md). |
+| **Single source of truth (tools)** | One configuration (e.g. YAML) per node or shared base plus per-node overrides, parsed at startup. Defines for each tool: id, template, node_id, and argument rules (allowed_values, pattern, type, min/max). Used to build the tool list for the LLM and to validate and run the command. From [ep-scope.md](ep-scope.md). |
+| **Tool-calling API** | The provider-native mechanism to pass a list of tools in the request and receive structured tool_calls in the response (id and arguments as JSON). PersonalAssistant uses this so the model does not embed JSON in free text. From [ep-scope.md](ep-scope.md). |
+| **short_description** | One or two sentences per tool included in every LLM request so the model can choose which tool to call. From [ep-scope.md](ep-scope.md). |
+| **expected_json** | The shape of arguments for a tool. Sent to the LLM as a schema or example; full validation is done in PersonalAssistant from the source of truth. From [ep-scope.md](ep-scope.md). |
+| **Template (command)** | A string with placeholders (e.g. `systemctl status {{service}}`) from the source of truth. After validating arguments, PersonalAssistant substitutes placeholders and runs the resulting command via run_on_node. From [ep-scope.md](ep-scope.md). |
+| **run_on_node** | Existing EP-001 capability: execution on a node via SSH under the allowlist and security model; invoked after template substitution. |
+| **Sonos (node / tool)** | A node or device that exposes Sonos control (e.g. volume, play) via allowlisted commands (e.g. sonos-cli). Sonos tools are defined in the same source of truth and invoked through the Tool-calling API. From [ep-scope.md](ep-scope.md). |
+| **Operator** | The person who deploys and configures PersonalAssistant (config, nodes, tool catalog). |
+| **Tool index (vector)** | A searchable index built at startup from the tool catalog: each tool is represented by text (id, short_description, optional triggers) and stored with its embedding. The index lives in the **same vector database** as memory, in a **dedicated table** (e.g. vec_tools). Used to select a subset of tools per user request. From [ep-scope.md](ep-scope.md). |
+| **Tool pre-selection** | The process of selecting which tools to send to the LLM for a given request (e.g. embed user message, search tool index, take top-k by similarity). Only the selected tools are included in the Tool-calling API request. From [ep-scope.md](ep-scope.md). |
+
+---
+
+## C4 C1 — System Context
+
+<p align="center"><img src="diagrams/c4-context.png" alt="C4 C1 — System Context" /></p>
+
+**Source:** [c4-context.puml](diagrams/c4-context.puml) (C4-PlantUML). To regenerate PNG: `plantuml -tpng diagrams/c4-context.puml` from this directory.
+
+### Flow
+
+User sends a message via Telegram; PersonalAssistant may call the LLM with a tool list; the LLM may return tool_calls; PersonalAssistant validates, executes via run_on_node (or equivalent), and returns results; the user sees the assistant reply or error in chat.
+
+```mermaid
+flowchart LR
+    User[User] -->|Uses| Telegram[Telegram]
+    Telegram -->|Bot API| PA[PersonalAssistant]
+    PA -->|Bot API| Telegram
+    Telegram --> User
+    PA -->|SSH| Nodes[Nodes]
+    PA -->|LLM + tools| LLM[LLM API / Model]
+```
+
+---
+
+## EARS patterns used
+
+- **Ubiquitous:** THE \<system\> SHALL \<response\>
+- **Event-driven:** WHEN \<trigger\>, THE \<system\> SHALL \<response\>
+- **State-driven:** WHILE \<condition\>, THE \<system\> SHALL \<response\>
+- **Unwanted event:** IF \<condition\>, THEN THE \<system\> SHALL \<response\>
+- **Optional feature:** WHERE \<option\>, THE \<system\> SHALL \<response\>
+
+In the following, *System* = PersonalAssistant (or the component stated).
+
+---
+
+## Requirement index
+
+| Id | Type | Section | Summary |
+|----|------|---------|--------|
+| REQ-04.001 | FR | Tool catalog and source of truth | Single source of truth defines all invocable tools |
+| REQ-04.002 | FR | Tool catalog and source of truth | Each tool has id, template, node_id, argument rules |
+| REQ-04.003 | FR | Tool catalog and source of truth | Catalog parsed at startup; used for LLM payload and execution |
+| REQ-04.004 | FR | Tool-calling API | Every completion request includes pre-selected tool list in provider format |
+| REQ-04.005 | FR | Tool-calling API | At least one provider (OpenAI-compatible or Ollama) supported |
+| REQ-04.006 | FR | Tool-calling API | Core handles tool_calls in response and drives tool-result loop |
+| REQ-04.007 | FR | Validation and execution | Arguments validated against source-of-truth schema before execution |
+| REQ-04.008 | FR | Validation and execution | Unknown tool id or invalid arguments produce deterministic error; no command run |
+| REQ-04.009 | FR | Validation and execution | Valid arguments substituted into template; command executed via run_on_node |
+| REQ-04.010 | FR | Validation and execution | Executed command remains under allowlist and SSH model |
+| REQ-04.011 | FR | Errors to chat | Validation and execution errors surfaced to user in chat |
+| REQ-04.012 | FR | Provider interface | Provider interface accepts optional tools payload and returns tool_calls |
+| REQ-04.013 | FR | Sonos support | At least one Sonos tool definable in catalog and executable on configured node |
+| REQ-04.014 | NFR | NFR — Security, testability, observability, consistency | No command executed without valid tool id and schema-passing arguments |
+| REQ-04.015 | NFR | NFR — Security, testability, observability, consistency | New behaviour covered by unit/integration tests; existing tests pass |
+| REQ-04.016 | NFR | NFR — Security, testability, observability, consistency | Tool-call and result (or error) traceable in logs where applicable |
+| REQ-04.017 | NFR | NFR — Security, testability, observability, consistency | Sonos uses same catalog and execution path as other node tools |
+| REQ-04.018 | FR | Tool index and pre-selection | Tool index built at startup from catalog and stored in vector store |
+| REQ-04.019 | FR | Tool index and pre-selection | Tool list for each request built via pre-selection (e.g. embed message, search index, top-k) |
+| REQ-04.020 | FR | Tool index and pre-selection | Fallback when pre-selection returns no or too few tools |
+| REQ-04.021 | NFR | Tool index and pre-selection | Tool index load at startup within 20 s; batching and/or background with fallback |
+
+---
+
+## Requirements
+
+### Tool catalog and source of truth
+
+*REQ-04.001, REQ-04.002, REQ-04.003*
+
+**REQ-04.001** (Ubiquitous)  
+THE System SHALL have a single source of truth (e.g. YAML) that defines all invocable tools; no duplicate or ad-hoc tool definitions elsewhere.
+
+**REQ-04.002** (Ubiquitous)  
+THE System SHALL define each tool in the source of truth with: a stable id, a template (command string with placeholders, no implicit defaults), node_id (or equivalent binding to a node), and argument rules (e.g. allowed_values, pattern, type, min/max). Each tool MAY include optional triggers (example phrases) for use in the tool index.
+
+**REQ-04.003** (Ubiquitous)  
+THE System SHALL parse the tool catalog at service startup and use it both to build the tool list sent to the LLM and to validate and execute tool calls.
+
+---
+
+### Tool-calling API
+
+*REQ-04.004, REQ-04.005, REQ-04.006*
+
+**REQ-04.004** (Ubiquitous)  
+THE System SHALL include the list of tools selected for that request (via tool pre-selection) in every completion request that can trigger tools, in the format required by the provider's Tool-calling API (name/id, short description, parameters schema or example).
+
+**REQ-04.005** (Ubiquitous)  
+THE System SHALL support the Tool-calling API for at least one provider (e.g. OpenAI-compatible or Ollama).
+
+**REQ-04.006** (Event-driven)  
+WHEN the LLM response contains tool_calls, THE System SHALL parse arguments, validate them against the source-of-truth schema, substitute into the tool template, execute via run_on_node (or equivalent), and return tool results (or errors) so the core can continue the request–response–tool-result loop without parsing JSON from assistant text.
+
+---
+
+### Validation and execution
+
+*REQ-04.007, REQ-04.008, REQ-04.009, REQ-04.010*
+
+**REQ-04.007** (Ubiquitous)  
+THE System SHALL validate tool-call arguments (types, allowed_values, pattern, min/max) against the tool's schema from the source of truth before executing any command.
+
+**REQ-04.008** (Unwanted event)  
+IF the tool id is unknown or arguments fail validation, THEN THE System SHALL NOT execute any command and SHALL produce a deterministic error response (e.g. tool result or message to the user).
+
+**REQ-04.009** (Ubiquitous)  
+THE System SHALL substitute validated arguments into the tool's template and execute the resulting command on the node via the existing run_on_node path.
+
+**REQ-04.010** (Ubiquitous)  
+THE System SHALL execute only commands that comply with the existing allowlist and SSH security model for that node.
+
+---
+
+### Errors to chat
+
+*REQ-04.011*
+
+**REQ-04.011** (Ubiquitous)  
+THE System SHALL surface validation failures, execution failures, and node-returned errors to the user in chat (e.g. as the assistant's reply or as a tool result conveyed to the user).
+
+---
+
+### Provider interface
+
+*REQ-04.012*
+
+**REQ-04.012** (Ubiquitous)  
+THE System SHALL extend the LLM provider interface to accept an optional tools payload and to return tool_calls and related metadata so the core can drive the request–response–tool-result loop without parsing JSON from assistant text.
+
+---
+
+### Sonos support
+
+*REQ-04.013*
+
+**REQ-04.013** (Ubiquitous)  
+THE System SHALL allow at least one Sonos-related tool (e.g. volume or play) to be defined in the tool source of truth, exposed to the LLM, and executed via run_on_node on a configured node; validation and error behaviour SHALL be the same as for other node tools.
+
+---
+
+### NFR — Security, testability, observability, consistency
+
+*REQ-04.014, REQ-04.015, REQ-04.016, REQ-04.017*
+
+**REQ-04.014** (NFR — Security)  
+THE System SHALL NOT execute any command on a node unless the tool call matches a known tool and arguments pass the schema defined in the source of truth.
+
+**REQ-04.015** (NFR — Testability)  
+New or changed behaviour SHALL be covered by unit and/or integration tests; existing tests SHALL continue to pass.
+
+**REQ-04.016** (NFR — Observability)  
+Tool invocations (tool id, arguments, result or error) SHALL be traceable in logs where the existing logging subsystem supports it.
+
+**REQ-04.017** (NFR — Consistency)  
+Sonos tools SHALL use the same catalog format, validation, and execution path as other node tools; no separate Sonos-specific API in the core.
+
+---
+
+### Tool index and pre-selection
+
+*REQ-04.018, REQ-04.019, REQ-04.020, REQ-04.021*
+
+**REQ-04.018** (Ubiquitous)  
+THE System SHALL build a tool index at service startup from the parsed catalog (tool id, short_description, and optional triggers per tool), compute embeddings for each index entry, and store them in the **same vector database as memory, in a dedicated table** (e.g. vec_tools). The design SHALL support catalogs of **up to 1000 tools**.
+
+**REQ-04.019** (Event-driven)  
+WHEN building the tool list for a completion request that can trigger tools, THE System SHALL select tools using the tool index (e.g. embed the user message, search the index, and take the top-k tools by similarity) and include only the selected tools in the request to the provider.
+
+**REQ-04.020** (Unwanted event)  
+IF tool pre-selection returns no tools or fewer than a configured minimum, THEN THE System SHALL apply a defined fallback (e.g. include a default subset of tools or all tools up to a cap) so that the LLM can still receive a non-empty, bounded tool list.
+
+**REQ-04.021** (NFR — Performance)  
+THE System SHALL complete tool index load (embedding of all tools and writing to the vector store) **within 20 seconds** from service start. To meet this, the implementation SHALL use one or both of: **batched requests to the embedding API** (where supported), and/or **background index build or update** (service may accept traffic while the index is populating, with a defined fallback until the index is ready).

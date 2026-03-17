@@ -62,7 +62,7 @@ Use these elements (or user-agreed equivalents):
 
 - One clear objective per task.
 - Sub-bullets for technical or procedural details.
-- Traceability: **_Requirements:_** REQ-XXX (link to ep-requirements); **_Acceptance Criteria:_** AC-XXX (link to ep-acceptance-criteria). Use "—" when the task is a checkpoint or has no direct REQ/AC.
+- Traceability: **_Requirements:_** REQ-EE.NNN (link to ep-requirements); **_Acceptance Criteria:_** AC-EE.NNN (link to ep-acceptance-criteria; anchor form e.g. #ac-01-001). Use "—" when the task is a checkpoint or has no direct REQ/AC.
 
 **Quality:** Tasks must be actionable by a coding agent. Each task has a verification criterion. Keep the plan short and specific.
 
@@ -71,8 +71,8 @@ Use these elements (or user-agreed equivalents):
 ```markdown
 - [ ] 1.1 Implement config load and validation
   - Define config struct; load JSON from path; validate required fields.
-  - _Requirements:_ [REQ-003](ep-requirements.md#nodes-and-ssh), [REQ-004](ep-requirements.md#nodes-and-ssh)
-  - _Acceptance Criteria:_ [AC-005](ep-acceptance-criteria.md#ac-005)
+  - _Requirements:_ [REQ-01.003](ep-requirements.md#nodes-and-ssh), [REQ-01.004](ep-requirements.md#nodes-and-ssh)
+  - _Acceptance Criteria:_ [AC-01.005](ep-acceptance-criteria.md#ac-01-005)
   - **Verification:** `go build ./...` passes; invalid config returns error.
 ```
 

@@ -50,7 +50,7 @@ Follow this order:
 
 Use these section headings (or user-agreed equivalents).
 
-- **Epic ID, title, short description** — Stable human-readable identifier (e.g. EP-001), title, one or two sentences describing the epic. Do not use internal UUIDs or system-generated IDs.
+- **Epic ID, title, short description** — Table with: **ID** (stable human-readable identifier, e.g. EP-001), **Status** (one of: NEW | IN_PROGRESS | CANCELED | DONE), **Title**, **Description** (one or two sentences). Do not use internal UUIDs or system-generated IDs.
 - **Glossary** — Terms specific to this epic that readers need for context. May reference the project scope glossary or list 2–5 key definitions for this epic.
 - **Scope (features/capabilities)** — What is in scope for this epic: concrete, testable features or capabilities. Unambiguous phrasing so that later stages can derive requirements and acceptance criteria; bullet list.
 - **Success criteria** — Criteria that indicate the epic is done; must be testable and unambiguous.
@@ -64,6 +64,7 @@ Use these section headings (or user-agreed equivalents).
 | Field | Content |
 |-------|---------|
 | **ID** | EP-XXX |
+| **Status** | One of: NEW, IN_PROGRESS, CANCELED, DONE |
 | **Title** | <Title> |
 | **Description** | [One or two sentences.] |
 

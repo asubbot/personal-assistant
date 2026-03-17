@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// Covers AC-006, AC-009 (US-03, US-05): NewClient with unknown node returns error (client uses only config).
+// Covers AC-01.006, AC-01.009 (US-03, US-05): NewClient with unknown node returns error (client uses only config).
 func TestNewClient_unknownNode_returnsError(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{
@@ -33,7 +33,7 @@ func TestNewClient_unknownNode_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-006 (US-03): client uses only configured credentials; missing key file returns error.
+// Covers AC-01.006 (US-03): client uses only configured credentials; missing key file returns error.
 func TestNewClient_missingKeyFile_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	knownHostsPath := filepath.Join(dir, "known_hosts")
@@ -62,7 +62,7 @@ func TestNewClient_missingKeyFile_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-006 (US-03): SSH client uses only validated credentials; invalid key file format returns error.
+// Covers AC-01.006 (US-03): SSH client uses only validated credentials; invalid key file format returns error.
 func TestNewClient_invalidKeyFile_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	keyPath := filepath.Join(dir, "badkey")

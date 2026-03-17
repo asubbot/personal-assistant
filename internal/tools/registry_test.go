@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Covers AC-022 (US-12): registry Get/List and single contract (tool by name).
+// Covers AC-01.022 (US-12): registry Get/List and single contract (tool by name).
 func TestRegistry_RegisterGetList(t *testing.T) {
 	r := NewRegistry()
 	if got := r.List(); len(got) != 0 {
@@ -25,7 +25,7 @@ func TestRegistry_RegisterGetList(t *testing.T) {
 	}
 }
 
-// Covers AC-022 (US-12): tool registration with empty name is rejected (fail fast).
+// Covers AC-01.022 (US-12): tool registration with empty name is rejected (fail fast).
 func TestRegistry_RegisterEmptyName_panics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
@@ -36,7 +36,7 @@ func TestRegistry_RegisterEmptyName_panics(t *testing.T) {
 	r.Register(&mockTool{name: ""})
 }
 
-// Covers AC-022 (US-12): tool registration with duplicate name is rejected (fail fast).
+// Covers AC-01.022 (US-12): tool registration with duplicate name is rejected (fail fast).
 func TestRegistry_RegisterDuplicate_panics(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
@@ -48,7 +48,7 @@ func TestRegistry_RegisterDuplicate_panics(t *testing.T) {
 	r.Register(&mockTool{name: "x"})
 }
 
-// Covers AC-022 (US-12): ValidateParams accepts params conforming to schema.
+// Covers AC-01.022 (US-12): ValidateParams accepts params conforming to schema.
 func TestValidateParams_valid(t *testing.T) {
 	spec := []ParamSpec{
 		{Name: "a", Required: true, Type: "string"},
@@ -62,7 +62,7 @@ func TestValidateParams_valid(t *testing.T) {
 	}
 }
 
-// Covers AC-023 (US-12): ValidateParams rejects missing required param.
+// Covers AC-01.023 (US-12): ValidateParams rejects missing required param.
 func TestValidateParams_missingRequired(t *testing.T) {
 	spec := []ParamSpec{{Name: "a", Required: true, Type: "string"}}
 	if err := ValidateParams(spec, map[string]any{}); err == nil {
@@ -73,7 +73,7 @@ func TestValidateParams_missingRequired(t *testing.T) {
 	}
 }
 
-// Covers AC-023 (US-12): ValidateParams rejects wrong param type.
+// Covers AC-01.023 (US-12): ValidateParams rejects wrong param type.
 func TestValidateParams_wrongType(t *testing.T) {
 	spec := []ParamSpec{{Name: "a", Required: true, Type: "string"}}
 	if err := ValidateParams(spec, map[string]any{"a": 123}); err == nil {

@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	vectorSearchTopK  = 10
-	contextMaxLen     = 4000 // max chars injected from memory + vector for LLM context
-	logTruncateMaxLen = 2000 // max chars per message/response when logging at DEBUG (REQ-021)
+	defaultContextMaxLen    = 4000 // used when config conversation_context.injected_context_max_chars is 0 or unset
+	defaultVectorSearchTopK = 10   // used when config conversation_context.vector_search_top_k is 0 or unset
+	logTruncateMaxLen       = 2000 // max chars per message/response when logging at DEBUG (REQ-01.021)
 )
 
 // genRequestID returns a short unique id for LLM log entries (16 hex chars from 8 random bytes).
@@ -30,22 +30,24 @@ func genRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-// conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-006, REQ-007, REQ-018).
+// conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-01.006, REQ-01.007, REQ-01.018).
 // Context is built only from vector store (turns and summaries); no full.md day file.
 type conversationHandler struct {
 	provider         llm.Provider
 	vectorStore      vector.Store // optional; for semantic search and indexing
 	embedder         embedding.Embedder
-	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-004, REQ-005, REQ-013)
+	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
 	logger           *slog.Logger
 	maxMessageLength int
+	contextMaxLen    int                 // max chars for injected context block; 0 = defaultContextMaxLen
+	vectorSearchTopK int                 // number of vector search results; 0 = defaultVectorSearchTopK
 	llmLog           llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
 	model            string              // configured model name for LLM log entries
-	logRedactor      func(string) string // optional; redacts content in DEBUG app logs (REQ-026)
+	logRedactor      func(string) string // optional; redacts content in DEBUG app logs (REQ-01.026)
 }
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.
-// Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-006, REQ-007, REQ-018).
+// Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-01.006, REQ-01.007, REQ-01.018).
 func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text string) (string, error) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -78,7 +80,7 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	return result.Content, nil
 }
 
-// handleLLMSuccess logs the LLM call, optionally writes to llmLog, and indexes the turn (REQ-018, REQ-007).
+// handleLLMSuccess logs the LLM call, optionally writes to llmLog, and indexes the turn (REQ-01.018, REQ-01.007).
 func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID string, messages []llm.Message, result *llm.CompletionResult, userText string, duration time.Duration) {
 	if h.llmLog != nil {
 		model := h.model
@@ -105,39 +107,59 @@ func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID st
 	}
 }
 
-// gatherContext returns a string to inject into the system message: semantic search results from vector store (REQ-006, REQ-007).
+// gatherContext returns a string to inject into the system message: semantic search results from vector store (REQ-01.006, REQ-01.007).
+// Only whole chunks are included; when the limit is reached, remaining chunks are dropped (no mid-chunk truncation).
 func (h *conversationHandler) gatherContext(ctx context.Context, userText string) string {
-	var parts []string
-
-	if h.vectorStore != nil && h.embedder != nil {
-		queryEmbedding, err := h.embedder.Embed(ctx, userText)
-		if err != nil {
-			h.logger.Error("embed query", "error", err)
-		} else {
-			results, err := h.vectorStore.Search(ctx, queryEmbedding, vectorSearchTopK)
-			if err != nil {
-				h.logger.Error("vector search", "error", err)
-			} else if len(results) > 0 {
-				var lines []string
-				for _, r := range results {
-					lines = append(lines, "- "+r.Text)
-				}
-				parts = append(parts, "Relevant past context:\n"+strings.Join(lines, "\n"))
-			}
-		}
+	topK := h.vectorSearchTopK
+	if topK <= 0 {
+		topK = defaultVectorSearchTopK
 	}
-
-	if len(parts) == 0 {
+	if h.vectorStore == nil || h.embedder == nil {
 		return ""
 	}
-	s := "\n\n---\n\n" + strings.Join(parts, "\n\n")
-	if len(s) > contextMaxLen {
-		s = s[:contextMaxLen] + "..."
+	queryEmbedding, err := h.embedder.Embed(ctx, userText)
+	if err != nil {
+		h.logger.Error("embed query", "error", err)
+		return ""
 	}
-	return "\n\nUse the following context if relevant to the user's message.\n\n" + s
+	results, err := h.vectorStore.Search(ctx, queryEmbedding, topK)
+	if err != nil {
+		h.logger.Error("vector search", "error", err)
+		return ""
+	}
+	if len(results) == 0 {
+		return ""
+	}
+
+	maxLen := h.contextMaxLen
+	if maxLen <= 0 {
+		maxLen = defaultContextMaxLen
+	}
+	const suffixReserve = 4 // for trailing "\n..." when not all chunks fit
+	prefix := "\n\n---\n\nRelevant past context:\n"
+	buf := prefix
+	fitted := 0
+	for _, r := range results {
+		line := "- " + r.Text + "\n"
+		if len(buf)+len(line)+suffixReserve <= maxLen {
+			buf += line
+			fitted++
+		} else {
+			break
+		}
+	}
+	if fitted == 0 {
+		h.logger.DebugContext(ctx, "context chunks", "fitted", 0, "total", len(results))
+		return ""
+	}
+	if fitted < len(results) {
+		buf += "\n..."
+	}
+	h.logger.DebugContext(ctx, "context chunks", "fitted", fitted, "total", len(results))
+	return "\n\nUse the following context if relevant to the user's message.\n\n" + buf
 }
 
-// logLLMRequest logs the full request at DEBUG (REQ-021). Content may be truncated and redacted (REQ-026).
+// logLLMRequest logs the full request at DEBUG (REQ-01.021). Content may be truncated and redacted (REQ-01.026).
 func (h *conversationHandler) logLLMRequest(ctx context.Context, messages []llm.Message) {
 	for i, m := range messages {
 		content := m.Content
@@ -151,12 +173,12 @@ func (h *conversationHandler) logLLMRequest(ctx context.Context, messages []llm.
 	}
 }
 
-// logLLMMetadata logs message count, response length, and usage at INFO (REQ-021).
+// logLLMMetadata logs message count, response length, and usage at INFO (REQ-01.021).
 func (h *conversationHandler) logLLMMetadata(ctx context.Context, messageCount int, result *llm.CompletionResult) {
 	h.logger.InfoContext(ctx, "llm call", "message_count", messageCount, "response_len", len(result.Content), "prompt_tokens", result.Usage.PromptTokens, "completion_tokens", result.Usage.CompletionTokens, "total_tokens", result.Usage.TotalTokens)
 }
 
-// logLLMResponse logs the full response at DEBUG (REQ-021). Content may be truncated and redacted (REQ-026).
+// logLLMResponse logs the full response at DEBUG (REQ-01.021). Content may be truncated and redacted (REQ-01.026).
 func (h *conversationHandler) logLLMResponse(ctx context.Context, result *llm.CompletionResult) {
 	content := result.Content
 	if len(content) > logTruncateMaxLen {
@@ -168,7 +190,7 @@ func (h *conversationHandler) logLLMResponse(ctx context.Context, result *llm.Co
 	h.logger.DebugContext(ctx, "llm response", "content", content, "content_len", len(result.Content), "usage", result.Usage)
 }
 
-// indexTurn adds the user message and assistant reply to the vector store for future semantic search (REQ-007).
+// indexTurn adds the user message and assistant reply to the vector store for future semantic search (REQ-01.007).
 func (h *conversationHandler) indexTurn(ctx context.Context, userText, reply string) error {
 	chunk := "User: " + userText + "\nAssistant: " + reply
 	emb, err := h.embedder.Embed(ctx, chunk)

@@ -124,7 +124,7 @@ See [ai-sdlc-artefacts/epics/ep-104/11-12-implementation-plan.md](ai-sdlc-artefa
 
 **Scheduled tasks:** The file at `paths.scheduled_tasks_path` is a JSON array of tasks. Each task has a unique `name` (string), `schedule` (cron or `@every` interval), `action` (tool name or `notify`), and `params`. Duplicate or empty names cause a load error. Task names appear in logs when a task runs. Full format and examples: implementation plan, **Config file (JSON)** → Scheduled tasks file.
 
-**Adding nodes and scheduled tasks without rebuild:** Add a new node in config (under `nodes`) or a new task in the scheduled tasks file (path in `paths.scheduled_tasks_path`); restart the application so the new config/tasks are loaded. No Docker image rebuild is required (AC-024).
+**Adding nodes and scheduled tasks without rebuild:** Add a new node in config (under `nodes`) or a new task in the scheduled tasks file (path in `paths.scheduled_tasks_path`); restart the application so the new config/tasks are loaded. No Docker image rebuild is required (AC-01.024).
 
 ---
 

@@ -6,7 +6,7 @@
 
 ---
 
-## AC-004 — Image builds and runs on DS220+ (REQ-002) {#ac-004}
+## AC-01.004 — Image builds and runs on DS220+ (REQ-01.002) {#ac-01-004}
 
 
 **Criterion:** Image builds and runs on DS220+ (or equivalent x86_64) without code change.
@@ -24,7 +24,7 @@
 
 ---
 
-## AC-032 — Verify-nodes (REQ-022) {#ac-032}
+## AC-01.032 — Verify-nodes (REQ-01.022) {#ac-01-032}
 
 
 **Criterion:** With the designated parameter (e.g. `-verify-nodes`), the application loads config, connects to each node over SSH using that node’s credentials, runs one allowlisted command (e.g. probe), reports success or failure per node, and exits without starting normal serving mode. Non-zero exit if config/allowlist load fails or any node fails.
@@ -43,6 +43,6 @@
 
 ## Optional manual checks (strategy §2.3)
 
-- **Node access and allowlist:** Verify node access and allowlist behaviour via CLI or documented steps (overlap with AC-032 and integration tests).
-- **LLM log format:** Optionally inspect LLM log output for format and completeness (AC-017, AC-018).
+- **Node access and allowlist:** Verify node access and allowlist behaviour via CLI or documented steps (overlap with AC-01.032 and integration tests).
+- **LLM log format:** Optionally inspect LLM log output for format and completeness (AC-01.017, AC-01.018).
 - **Architecture and docs:** Review architecture and documentation where required by acceptance criteria.

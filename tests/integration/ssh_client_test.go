@@ -36,8 +36,9 @@ func integrationTmpDir(t *testing.T, subdir string) string {
 }
 
 // TestSSHClient_Exec_Close_Integration runs against an SSH server in Docker: generates keys, starts container, runs test, stops container.
-// Requires Docker and ssh-keygen/ssh-keyscan on PATH. Covers AC-006, ssh.Client Exec/Close.
+// Requires Docker and ssh-keygen/ssh-keyscan on PATH. Covers AC-01.006, ssh.Client Exec/Close.
 func TestSSHClient_Exec_Close_Integration(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
@@ -83,9 +84,10 @@ func TestSSHClient_Exec_Close_Integration(t *testing.T) {
 	}
 }
 
-// Covers AC-010 (US-04): two nodes, same host — each connection uses dedicated user (whoami per node).
+// Covers AC-01.010 (US-04): two nodes, same host — each connection uses dedicated user (whoami per node).
 // Requires Docker and the two-user SSH image (Dockerfile.twousers).
 func TestSSHClient_twoNodes_dedicatedUserPerNode(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 

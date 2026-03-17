@@ -13,5 +13,5 @@ As an operator, I want to configure where LLM logs are written and in what parse
 
 | AC | REQ | Summary |
 |----|-----|---------|
-| [AC-018](../../ep-acceptance-criteria.md#ac-018) | [REQ-015](../../ep-requirements.md#llm-and-logging) | Log destination configured → entries written in parseable format |
-| [AC-019](../../ep-acceptance-criteria.md#ac-019) | [REQ-015](../../ep-requirements.md#llm-and-logging) | Log destination unavailable → error handled per documented behaviour |
+| [AC-01.018](../../ep-acceptance-criteria.md#ac-01-018) | [REQ-01.015](../../ep-requirements.md#llm-and-logging) | Log destination configured → entries written in parseable format |
+| [AC-01.019](../../ep-acceptance-criteria.md#ac-01-019) | [REQ-01.015](../../ep-requirements.md#llm-and-logging) | Log destination unavailable → error handled per documented behaviour |

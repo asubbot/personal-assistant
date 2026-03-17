@@ -5,14 +5,14 @@ import (
 	"fmt"
 )
 
-// ParamSpec describes one parameter for tool input validation (AC-023).
+// ParamSpec describes one parameter for tool input validation (AC-01.023).
 type ParamSpec struct {
 	Name     string
 	Required bool
 	Type     string // "string", "number", "boolean"
 }
 
-// Tool is the extensible tool contract (REQ-010): name, description, params schema, Run (AC-022, AC-023).
+// Tool is the extensible tool contract (REQ-01.010): name, description, params schema, Run (AC-01.022, AC-01.023).
 type Tool interface {
 	Name() string
 	Description() string
@@ -55,7 +55,7 @@ func ValidateParams(spec []ParamSpec, params map[string]any) error {
 	return nil
 }
 
-// Registry holds tools by name; built at startup, read-only after init (REQ-010, REQ-011).
+// Registry holds tools by name; built at startup, read-only after init (REQ-01.010, REQ-01.011).
 type Registry struct {
 	m map[string]Tool
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Covers AC-022 (US-12): tool invoked with validated input returns result from runner.
+// Covers AC-01.022 (US-12): tool invoked with validated input returns result from runner.
 func TestRunOnNodeTool_Run_validParams(t *testing.T) {
 	var gotNodeID, gotCmd string
 	runner := &mockRunOnNodeRunner{
@@ -30,7 +30,7 @@ func TestRunOnNodeTool_Run_validParams(t *testing.T) {
 	}
 }
 
-// Covers AC-023 (US-12): invalid or out-of-schema input is rejected without executing the tool.
+// Covers AC-01.023 (US-12): invalid or out-of-schema input is rejected without executing the tool.
 func TestRunOnNodeTool_Run_invalidParams(t *testing.T) {
 	runner := &mockRunOnNodeRunner{run: func(context.Context, string, string) (string, error) { return "", nil }}
 	tool := NewRunOnNode(runner)
@@ -49,7 +49,7 @@ func TestRunOnNodeTool_Run_invalidParams(t *testing.T) {
 	}
 }
 
-// Covers AC-035 (US-12): tool invoked with nil runner returns error to caller.
+// Covers AC-01.035 (US-12): tool invoked with nil runner returns error to caller.
 func TestRunOnNodeTool_Run_nilRunner(t *testing.T) {
 	tool := NewRunOnNode(nil)
 	_, err := tool.Run(context.Background(), map[string]any{"node_id": "nas", "command": "uptime"})
@@ -58,7 +58,7 @@ func TestRunOnNodeTool_Run_nilRunner(t *testing.T) {
 	}
 }
 
-// Covers AC-008 (US-04), AC-035 (US-12): RunOnNode tool propagates runner error (e.g. allowlist denial) to caller.
+// Covers AC-01.008 (US-04), AC-01.035 (US-12): RunOnNode tool propagates runner error (e.g. allowlist denial) to caller.
 func TestRunOnNodeTool_Run_runnerError(t *testing.T) {
 	wantErr := errors.New("disallowed")
 	runner := &mockRunOnNodeRunner{

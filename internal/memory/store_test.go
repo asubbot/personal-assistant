@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Covers AC-011, AC-012 (US-06): NewStore rejects empty rootDir (memory in designated dir, single store, calendar structure).
+// Covers AC-01.011, AC-01.012 (US-06): NewStore rejects empty rootDir (memory in designated dir, single store, calendar structure).
 func TestNewStore_emptyRootDir(t *testing.T) {
 	_, err := NewStore("")
 	if err == nil {
@@ -17,7 +17,7 @@ func TestNewStore_emptyRootDir(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): day summary path layout and WriteDaySummary/ReadDaySummary roundtrip.
+// Covers AC-01.011, AC-01.012 (US-06): day summary path layout and WriteDaySummary/ReadDaySummary roundtrip.
 func TestWriteDaySummary_ReadDaySummary_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -52,7 +52,7 @@ func TestWriteDaySummary_ReadDaySummary_roundtrip(t *testing.T) {
 	}
 }
 
-// Supporting AC-012 (US-06): ReadDaySummary returns empty when summary file is missing.
+// Supporting AC-01.012 (US-06): ReadDaySummary returns empty when summary file is missing.
 func TestReadDaySummary_missingFile_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestReadDaySummary_missingFile_returnsEmpty(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): month summary written and read from calendar path rootDir/YYYY/MM/summary.md.
+// Covers AC-01.011, AC-01.012 (US-06): month summary written and read from calendar path rootDir/YYYY/MM/summary.md.
 func TestWriteMonthSummary_ReadMonthSummary_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -105,7 +105,7 @@ func TestWriteMonthSummary_ReadMonthSummary_roundtrip(t *testing.T) {
 	}
 }
 
-// Supporting AC-012 (US-06): ReadMonthSummary returns empty when file does not exist.
+// Supporting AC-01.012 (US-06): ReadMonthSummary returns empty when file does not exist.
 func TestReadMonthSummary_missing_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -124,7 +124,7 @@ func TestReadMonthSummary_missing_returnsEmpty(t *testing.T) {
 	}
 }
 
-// Covers AC-011, AC-012 (US-06): year summary written and read from calendar path rootDir/YYYY/summary.md.
+// Covers AC-01.011, AC-01.012 (US-06): year summary written and read from calendar path rootDir/YYYY/summary.md.
 func TestWriteYearSummary_ReadYearSummary_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
@@ -157,7 +157,7 @@ func TestWriteYearSummary_ReadYearSummary_roundtrip(t *testing.T) {
 	}
 }
 
-// Supporting AC-012 (US-06): ReadYearSummary returns empty when file does not exist.
+// Supporting AC-01.012 (US-06): ReadYearSummary returns empty when file does not exist.
 func TestReadYearSummary_missing_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
