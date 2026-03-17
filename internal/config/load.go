@@ -82,6 +82,26 @@ func validate(c *Config) error {
 	if err := validateConversationContext(c); err != nil {
 		return err
 	}
+	if err := validateToolPreSelection(c); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateToolPreSelection(c *Config) error {
+	if c.ToolPreSelection == nil {
+		return nil
+	}
+	t := c.ToolPreSelection
+	if t.ToolSearchTopK < 0 {
+		return errors.New("config: tool_pre_selection.tool_search_top_k must be >= 0")
+	}
+	if t.ToolMinCount < 0 {
+		return errors.New("config: tool_pre_selection.tool_min_count must be >= 0")
+	}
+	if t.ToolFallbackCap < 0 {
+		return errors.New("config: tool_pre_selection.tool_fallback_cap must be >= 0")
+	}
 	return nil
 }
 

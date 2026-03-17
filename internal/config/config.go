@@ -20,6 +20,15 @@ type Config struct {
 	ConversationContext *ConversationContextConfig `json:"conversation_context"` // optional; injected context limits; zero = use defaults
 	// ToolCatalog is the parsed tool catalog when paths.tool_catalog_path is set; nil otherwise. Populated at config load (fail fast on parse/schema error).
 	ToolCatalog *toolcatalog.Catalog `json:"-"`
+	// ToolPreSelection is optional; when present, values are validated (>= 0). Zero values mean use code defaults (topK=10, minTools=1, fallbackCap=50).
+	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
+}
+
+// ToolPreSelection holds parameters for tool pre-selection (REQ-04.019, REQ-04.020). All zero = use code defaults.
+type ToolPreSelection struct {
+	ToolSearchTopK  int `json:"tool_search_top_k"` // top-k from vector search; 0 = 10
+	ToolMinCount    int `json:"tool_min_count"`    // minimum tools; if result has fewer, use fallback; 0 = 1
+	ToolFallbackCap int `json:"tool_fallback_cap"` // max tools when using fallback (sorted catalog ids); 0 = 50
 }
 
 // ConversationContextConfig holds parameters for context injected into the LLM (vector search results).
