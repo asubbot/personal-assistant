@@ -73,28 +73,28 @@
 
 ## 5. Core: tool list, tool_calls, validation, execution
 
-- [ ] **5.1 Core: wire pre-selection and tool list per request**
+- [x] **5.1 Core: wire pre-selection and tool list per request**
   - For each completion request that can trigger tools: run tool pre-selection, build tool list from catalog for selected ids only (id, short_description, parameters schema or example), pass to LLM provider.
   - _Requirements:_ [REQ-04.004](ep-requirements.md#tool-calling-api), [REQ-04.019](ep-requirements.md#tool-index-and-pre-selection)
   - _Acceptance Criteria:_ [AC-04.003](ep-acceptance-criteria.md#ac-04-003), [AC-04.015](ep-acceptance-criteria.md#ac-04-015)
   - **Verification:** Integration test with mock provider: request contains pre-selected tools in provider format.
   - **Checkpoint:** Before proceeding: each completion request that can trigger tools receives a bounded tool list built from pre-selection.
 
-- [ ] **5.2 Core: validate tool_calls and reject invalid/unknown**
+- [x] **5.2 Core: validate tool_calls and reject invalid/unknown**
   - On LLM response with tool_calls: look up tool id in catalog; validate arguments (types, allowed_values, pattern, min/max). If tool id unknown or validation fails: do not execute any command; return deterministic error.
   - _Requirements:_ [REQ-04.007](ep-requirements.md#validation-and-execution), [REQ-04.008](ep-requirements.md#validation-and-execution)
   - _Acceptance Criteria:_ [AC-04.005](ep-acceptance-criteria.md#ac-04-005), [AC-04.006](ep-acceptance-criteria.md#ac-04-006)
   - **Verification:** Unit tests for validation rules; integration test: unknown tool or invalid args → error, no command executed.
   - **Checkpoint:** Before proceeding: unknown tool or invalid arguments never trigger execution; deterministic error returned.
 
-- [ ] **5.3 Core: template substitution and execution via run_on_node**
+- [x] **5.3 Core: template substitution and execution via run_on_node**
   - For valid tool call: substitute validated arguments into tool template; execute resulting command via existing run_on_node path (allowlist and SSH unchanged).
   - _Requirements:_ [REQ-04.009](ep-requirements.md#validation-and-execution), [REQ-04.010](ep-requirements.md#validation-and-execution)
   - _Acceptance Criteria:_ [AC-04.007](ep-acceptance-criteria.md#ac-04-007)
   - **Verification:** Unit test for substitution; integration test: valid tool call runs via run_on_node and allowlist is enforced.
   - **Checkpoint:** Before proceeding: valid tool calls produce a single command and execute via run_on_node; allowlist and SSH model unchanged.
 
-- [ ] **5.4 Core: tool-result loop and errors to chat**
+- [x] **5.4 Core: tool-result loop and errors to chat**
   - Return tool results (or errors) to provider; continue request–response–tool-result loop (append tool result, call provider again) or return final reply. Surface validation and execution errors to user in chat.
   - _Requirements:_ [REQ-04.006](ep-requirements.md#tool-calling-api), [REQ-04.011](ep-requirements.md#errors-to-chat)
   - _Acceptance Criteria:_ [AC-04.004](ep-acceptance-criteria.md#ac-04-004), [AC-04.008](ep-acceptance-criteria.md#ac-04-008)

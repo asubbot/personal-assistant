@@ -48,12 +48,17 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 		}
 	}
 	ctxMaxLen, topK := conversationContextParams(cfg)
+	toolTopK, toolMin, toolCap := toolPreSelectionParams(cfg)
 	handler := &conversationHandler{
 		provider:         llmProvider,
 		vectorStore:      vectorStore,
 		embedder:         embedder,
 		nodeRunner:       nodeRunner,
 		toolIndex:        toolIndex,
+		catalog:          nil,
+		toolSearchTopK:   toolTopK,
+		toolMinCount:     toolMin,
+		toolFallbackCap:  toolCap,
 		logger:           logger,
 		maxMessageLength: maxLen,
 		contextMaxLen:    ctxMaxLen,
@@ -62,7 +67,18 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 		model:            model,
 		logRedactor:      redactor,
 	}
+	if cfg != nil && cfg.ToolCatalog != nil {
+		handler.catalog = cfg.ToolCatalog
+	}
 	return adapter.Run(ctx, handler)
+}
+
+// toolPreSelectionParams returns tool_search_top_k, tool_min_count, tool_fallback_cap from config; 0 means use toolindex defaults.
+func toolPreSelectionParams(cfg *config.Config) (topK, minCount, fallbackCap int) {
+	if cfg == nil || cfg.ToolPreSelection == nil {
+		return 0, 0, 0
+	}
+	return cfg.ToolPreSelection.ToolSearchTopK, cfg.ToolPreSelection.ToolMinCount, cfg.ToolPreSelection.ToolFallbackCap
 }
 
 // conversationContextParams returns injected context max chars and vector search top-K from config; zero means use defaults.

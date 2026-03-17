@@ -77,7 +77,11 @@ func (p *OpenAICompatible) effectiveModelAndMaxTokens(opts *CompletionOptions) (
 }
 
 func (p *OpenAICompatible) buildRequest(model string, messages []Message, maxTokens int, opts *CompletionOptions) ([]byte, error) {
-	reqBody := openAIRequest{Model: model, Messages: messages}
+	oaiMessages := make([]openAIMessage, len(messages))
+	for i := range messages {
+		oaiMessages[i] = messageToOpenAI(messages[i])
+	}
+	reqBody := openAIRequest{Model: model, OAIMessages: oaiMessages}
 	if maxTokens > 0 {
 		reqBody.MaxTokens = &maxTokens
 	}
@@ -170,11 +174,38 @@ type openAIToolFunction struct {
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
 }
 
+// openAIMessage is the OpenAI API message shape (supports tool_call_id and tool_calls).
+type openAIMessage struct {
+	Role       string           `json:"role"`
+	Content    string           `json:"content"`
+	ToolCallID string           `json:"tool_call_id,omitempty"`
+	ToolCalls  []openAIToolCall `json:"tool_calls,omitempty"`
+}
+
+func messageToOpenAI(m Message) openAIMessage {
+	out := openAIMessage{Role: m.Role, Content: m.Content, ToolCallID: m.ToolCallID}
+	if len(m.ToolCalls) > 0 {
+		out.ToolCalls = make([]openAIToolCall, len(m.ToolCalls))
+		for i := range m.ToolCalls {
+			tc := &m.ToolCalls[i]
+			out.ToolCalls[i] = openAIToolCall{
+				ID:   tc.ID,
+				Type: "function",
+				Function: struct {
+					Name      string `json:"name"`
+					Arguments string `json:"arguments"`
+				}{Name: tc.Name, Arguments: tc.Arguments},
+			}
+		}
+	}
+	return out
+}
+
 type openAIRequest struct {
-	Model     string       `json:"model"`
-	Messages  []Message    `json:"messages"`
-	MaxTokens *int         `json:"max_tokens,omitempty"`
-	Tools     []openAITool `json:"tools,omitempty"`
+	Model       string          `json:"model"`
+	OAIMessages []openAIMessage `json:"messages"`
+	MaxTokens   *int            `json:"max_tokens,omitempty"`
+	Tools       []openAITool    `json:"tools,omitempty"`
 }
 
 type openAIToolCall struct {

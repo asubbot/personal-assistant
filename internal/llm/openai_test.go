@@ -314,3 +314,61 @@ func TestOpenAICompatible_Complete_responseToolCallsParsed(t *testing.T) {
 		t.Errorf("Complete: ToolCalls[0] = %+v", tc)
 	}
 }
+
+// buildRequestToolMessagesReq is the shape of the request body for buildRequest serialization test.
+type buildRequestToolMessagesReq struct {
+	Messages []struct {
+		Role       string `json:"role"`
+		Content    string `json:"content"`
+		ToolCallID string `json:"tool_call_id"`
+		ToolCalls  []struct {
+			ID   string `json:"id"`
+			Type string `json:"type"`
+			Fn   struct {
+				Name      string `json:"name"`
+				Arguments string `json:"arguments"`
+			} `json:"function"`
+		} `json:"tool_calls"`
+	} `json:"messages"`
+}
+
+func assertBuildRequestToolMessages(t *testing.T, req *buildRequestToolMessagesReq) {
+	t.Helper()
+	if len(req.Messages) != 2 {
+		t.Fatalf("messages length = %d, want 2", len(req.Messages))
+	}
+	m0 := req.Messages[0]
+	if m0.Role != "assistant" || len(m0.ToolCalls) != 1 {
+		t.Fatalf("first message: role=%q tool_calls=%d", m0.Role, len(m0.ToolCalls))
+	}
+	tc := m0.ToolCalls[0]
+	if tc.ID != "call_1" || tc.Type != "function" || tc.Fn.Name != "run_echo" || tc.Fn.Arguments != `{"msg":"hi"}` {
+		t.Errorf("first message tool_calls[0] = %+v", tc)
+	}
+	m1 := req.Messages[1]
+	if m1.Role != "tool" || m1.ToolCallID != "call_1" || m1.Content != "hello from node" {
+		t.Errorf("second message: role=%q tool_call_id=%q content=%q", m1.Role, m1.ToolCallID, m1.Content)
+	}
+}
+
+// Covers tool-result loop (AC-04.004): request body serializes Message with tool_call_id and tool_calls in OpenAI format.
+func TestOpenAICompatible_buildRequest_serializesToolMessagesAndAssistantToolCalls(t *testing.T) {
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m"}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+	messages := []Message{
+		{Role: "assistant", Content: "", ToolCalls: []ToolCall{{ID: "call_1", Name: "run_echo", Arguments: `{"msg":"hi"}`}}},
+		{Role: "tool", Content: "hello from node", ToolCallID: "call_1"},
+	}
+	body, err := p.buildRequest("m", messages, 0, nil)
+	if err != nil {
+		t.Fatalf("buildRequest: %v", err)
+	}
+	var req buildRequestToolMessagesReq
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("Unmarshal request body: %v", err)
+	}
+	assertBuildRequestToolMessages(t, &req)
+}

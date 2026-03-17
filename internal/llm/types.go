@@ -3,9 +3,12 @@ package llm
 import "context"
 
 // Message is one role/content pair in a conversation (OpenAI chat format).
+// For role "tool": ToolCallID is set to match the tool call. For role "assistant" with tool_calls: ToolCalls is set.
 type Message struct {
-	Role    string `json:"role"`    // "system", "user", "assistant"
-	Content string `json:"content"` // text body
+	Role       string     `json:"role"`                   // "system", "user", "assistant", "tool"
+	Content    string     `json:"content"`                // text body
+	ToolCallID string     `json:"tool_call_id,omitempty"` // for role "tool": id of the tool call this result belongs to
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`   // for role "assistant": tool calls made by the model
 }
 
 // ToolDef is one tool in the completion request (provider-agnostic; core passes these for Tool-calling API).

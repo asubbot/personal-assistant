@@ -3,9 +3,11 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
+	"pa/internal/toolcatalog"
 	"pa/internal/vector"
 	"strings"
 	"testing"
@@ -67,11 +69,16 @@ type mockProvider struct {
 	// lastCall records the last Complete call (messages and opts) for assertion
 	lastMessages []llm.Message
 	lastOpts     *llm.CompletionOptions
+	// CompleteFn if set overrides the default result/err behaviour (for multi-call tests).
+	CompleteFn func(context.Context, []llm.Message, *llm.CompletionOptions) (*llm.CompletionResult, error)
 }
 
 func (m *mockProvider) Complete(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
 	m.lastMessages = messages
 	m.lastOpts = opts
+	if m.CompleteFn != nil {
+		return m.CompleteFn(ctx, messages, opts)
+	}
 	return m.result, m.err
 }
 
@@ -112,6 +119,32 @@ func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vecto
 }
 
 func (m *mockVectorStore) Close() error { return nil }
+
+// mockToolIndex implements ToolIndex for tests (pre-selection uses Store and Ready).
+type mockToolIndex struct {
+	store vector.Store
+	ready bool
+}
+
+func (m *mockToolIndex) Store() vector.Store { return m.store }
+func (m *mockToolIndex) Ready() bool         { return m.ready }
+
+// mockNodeRunner records the last RunOnNode call for assertion.
+type mockNodeRunner struct {
+	lastNodeID  string
+	lastCommand string
+	stdout      string
+	err         error
+}
+
+func (m *mockNodeRunner) RunOnNode(_ context.Context, nodeID, command string) (string, error) {
+	m.lastNodeID = nodeID
+	m.lastCommand = command
+	if m.err != nil {
+		return "", m.err
+	}
+	return m.stdout, nil
+}
 
 // Supporting AC-01.001, REQ-01.001: handler returns provider content to caller.
 func TestHandleMessage_returnsProviderContent(t *testing.T) {
@@ -581,5 +614,299 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 	}
 	if !hasIndexTurnError {
 		t.Errorf("expected Error \"index turn\" record, got records: %+v", cap.records)
+	}
+}
+
+// Covers AC-04.007, AC-04.010: valid tool call → substitute template → execute via RunOnNode; allowlist enforced by existing path.
+func TestExecuteOneToolCall_ValidCall_RunsViaRunOnNode(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID:               "run_echo",
+				ShortDescription: "Echo on node",
+				Template:         "echo {{msg}}",
+				NodeID:           "nas",
+				Arguments:        []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "hello from node"}
+	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+
+	stdout, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "hello"}`)
+	if err != nil {
+		t.Fatalf("executeOneToolCall: %v", err)
+	}
+	if stdout != "hello from node" {
+		t.Errorf("executeOneToolCall: stdout = %q, want hello from node", stdout)
+	}
+	if runner.lastNodeID != "nas" || runner.lastCommand != "echo hello" {
+		t.Errorf("executeOneToolCall: RunOnNode called with (%q, %q), want (nas, echo hello)", runner.lastNodeID, runner.lastCommand)
+	}
+}
+
+// Covers AC-04.006: unknown tool → error, no RunOnNode called.
+func TestExecuteOneToolCall_UnknownTool_ReturnsErrorNoRun(t *testing.T) {
+	catalog := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
+	runner := &mockNodeRunner{}
+	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+
+	_, err := h.executeOneToolCall(context.Background(), "unknown", `{}`)
+	if err == nil {
+		t.Fatal("executeOneToolCall(unknown tool): expected error, got nil")
+	}
+	if runner.lastCommand != "" {
+		t.Error("executeOneToolCall(unknown tool): RunOnNode must not be called")
+	}
+}
+
+// Covers AC-04.004, AC-04.008: tool_calls → execution → tool results → provider called again → final reply to user; errors surfaced in chat.
+func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "hello from node"}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, messages []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "run_echo", Arguments: `{"msg": "hi"}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "Done. Result: hello from node.", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		provider:   provider,
+		catalog:    catalog,
+		nodeRunner: runner,
+		logger:     slog.Default(),
+	}
+
+	reply, err := h.HandleMessage(context.Background(), 1, "run echo hi")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if !strings.Contains(reply, "Done") && !strings.Contains(reply, "hello from node") {
+		t.Errorf("HandleMessage: reply = %q, want final reply containing result", reply)
+	}
+	if callCount != 2 {
+		t.Errorf("HandleMessage: provider.Complete calls = %d, want 2 (initial + after tool round)", callCount)
+	}
+	if runner.lastCommand != "echo hi" {
+		t.Errorf("HandleMessage: RunOnNode command = %q, want echo hi", runner.lastCommand)
+	}
+}
+
+// Covers AC-04.006, AC-04.008: tool_call with invalid args (unknown tool) → no RunOnNode; error surfaced in chat (in messages to next provider call or in reply).
+func TestHandleMessage_toolResultLoop_invalidArgs_noRunOnNode_errorInChat(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	callCount := 0
+	var secondCallMessages []llm.Message
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, messages []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			// Return tool_call with unknown tool id so validation fails.
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "unknown_tool", Arguments: `{"x":"y"}`}},
+			}, nil
+		}
+		secondCallMessages = messages
+		return &llm.CompletionResult{Content: "I could not run the tool: unknown tool.", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		provider:   provider,
+		catalog:    catalog,
+		nodeRunner: runner,
+		logger:     slog.Default(),
+	}
+
+	reply, err := h.HandleMessage(context.Background(), 1, "do something")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if runner.lastCommand != "" {
+		t.Errorf("HandleMessage(invalid tool): RunOnNode must not be called; got lastCommand = %q", runner.lastCommand)
+	}
+	// Error must be visible: either in the tool result message passed to the second provider call, or in the final reply.
+	var toolResultContainsError bool
+	for _, m := range secondCallMessages {
+		if m.Role == "tool" && strings.Contains(m.Content, "unknown tool") {
+			toolResultContainsError = true
+			break
+		}
+	}
+	if !toolResultContainsError && !strings.Contains(reply, "unknown") {
+		t.Errorf("HandleMessage: error must be in tool result or reply; secondCallMessages=%d, reply=%q", len(secondCallMessages), reply)
+	}
+}
+
+// Covers AC-04.008: execution failure (run_on_node error) surfaced to user in chat (tool result content and/or final reply).
+func TestHandleMessage_toolResultLoop_executionError_surfacedInChat(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	execErr := fmt.Errorf("command not in allowlist")
+	runner := &mockNodeRunner{err: execErr}
+	callCount := 0
+	var secondCallMessages []llm.Message
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, messages []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "run_echo", Arguments: `{"msg": "hi"}`}},
+			}, nil
+		}
+		secondCallMessages = messages
+		return &llm.CompletionResult{Content: "The tool failed: command not in allowlist.", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		provider:   provider,
+		catalog:    catalog,
+		nodeRunner: runner,
+		logger:     slog.Default(),
+	}
+
+	reply, err := h.HandleMessage(context.Background(), 1, "run echo")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var toolResultContainsError bool
+	for _, m := range secondCallMessages {
+		if m.Role == "tool" && strings.Contains(m.Content, "allowlist") {
+			toolResultContainsError = true
+			break
+		}
+	}
+	if !toolResultContainsError {
+		t.Errorf("HandleMessage: execution error must appear in tool result message; messages = %v", secondCallMessages)
+	}
+	if !strings.Contains(reply, "allowlist") && !strings.Contains(reply, "failed") {
+		t.Errorf("HandleMessage: reply should surface execution error; got %q", reply)
+	}
+}
+
+// Covers REQ-04.006: loop stops after maxToolRounds to avoid infinite loop when provider keeps returning tool_calls.
+func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "ok"}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		// Always return tool_calls so the loop would run forever without a cap.
+		return &llm.CompletionResult{
+			Content:   "",
+			Usage:     llm.Usage{},
+			ToolCalls: []llm.ToolCall{{ID: "call_x", Name: "run_echo", Arguments: `{"msg": "x"}`}},
+		}, nil
+	}
+	h := &conversationHandler{
+		provider:   provider,
+		catalog:    catalog,
+		nodeRunner: runner,
+		logger:     slog.Default(),
+	}
+
+	reply, err := h.HandleMessage(context.Background(), 1, "run")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if callCount > maxToolRounds {
+		t.Errorf("HandleMessage: Complete calls = %d, must be at most maxToolRounds=%d", callCount, maxToolRounds)
+	}
+	_ = reply
+}
+
+// Covers AC-04.003, AC-04.015: when toolIndex and catalog are set, completion request includes pre-selected tools in provider format.
+func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
+	logger := slog.Default()
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_uptime": {
+				ID:               "run_uptime",
+				ShortDescription: "Run uptime on the node",
+				Template:         "uptime",
+				NodeID:           "nas",
+				Arguments:        []toolcatalog.ArgumentRule{{Name: "node_id", Type: "string", Required: true}},
+			},
+		},
+	}
+	// Tool index returns run_uptime from search (or fallback will include it from catalog).
+	toolStore := &mockVectorStore{
+		searchResults: []vector.SearchResult{{ID: "run_uptime", Text: "uptime", Score: 0.9}},
+	}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+
+	h := &conversationHandler{
+		provider:        provider,
+		catalog:         catalog,
+		toolIndex:       ti,
+		embedder:        emb,
+		toolSearchTopK:  10,
+		toolMinCount:    1,
+		toolFallbackCap: 50,
+		logger:          logger,
+	}
+
+	_, err := h.HandleMessage(context.Background(), 1, "check server status")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if provider.lastOpts == nil {
+		t.Fatal("expected Complete to be called with non-nil opts (tools)")
+	}
+	if len(provider.lastOpts.Tools) == 0 {
+		t.Errorf("expected pre-selected tools in request; got opts.Tools empty")
+	}
+	// First tool should be from catalog (pre-selection returned run_uptime).
+	found := false
+	for _, td := range provider.lastOpts.Tools {
+		if td.Name == "run_uptime" {
+			found = true
+			if td.Description != "Run uptime on the node" {
+				t.Errorf("ToolDef Description = %q, want Run uptime on the node", td.Description)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected tool run_uptime in opts.Tools; got %v", provider.lastOpts.Tools)
 	}
 }

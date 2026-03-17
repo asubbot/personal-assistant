@@ -9,6 +9,8 @@ import (
 	"pa/internal/embedding"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
+	"pa/internal/toolcatalog"
+	"pa/internal/toolindex"
 	"pa/internal/vector"
 	"strings"
 	"time"
@@ -19,6 +21,7 @@ const (
 	defaultContextMaxLen    = 4000 // used when config conversation_context.injected_context_max_chars is 0 or unset
 	defaultVectorSearchTopK = 10   // used when config conversation_context.vector_search_top_k is 0 or unset
 	logTruncateMaxLen       = 2000 // max chars per message/response when logging at DEBUG (REQ-01.021)
+	maxToolRounds           = 10   // max request–tool-result rounds to avoid infinite loop (REQ-04.006)
 )
 
 // genRequestID returns a short unique id for LLM log entries (16 hex chars from 8 random bytes).
@@ -38,6 +41,10 @@ type conversationHandler struct {
 	embedder         embedding.Embedder
 	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
 	toolIndex        ToolIndex  // optional; for tool pre-selection when Ready() (step 3.1)
+	catalog          *toolcatalog.Catalog
+	toolSearchTopK   int
+	toolMinCount     int
+	toolFallbackCap  int
 	logger           *slog.Logger
 	maxMessageLength int
 	contextMaxLen    int                 // max chars for injected context block; 0 = defaultContextMaxLen
@@ -67,18 +74,105 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 		{Role: "system", Content: systemContent},
 		{Role: "user", Content: text},
 	}
+	opts, err := h.buildToolOptions(ctx, text)
+	if err != nil {
+		return "", err
+	}
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMRequest(ctx, messages)
 	}
 	requestID := genRequestID()
 	start := time.Now()
-	result, err := h.provider.Complete(ctx, messages, nil)
+	result, err := h.provider.Complete(ctx, messages, opts)
 	if err != nil {
 		h.logger.Error("llm complete", "error", err)
 		return "", err
 	}
+	messages, result, err = h.runToolResultLoop(ctx, messages, result, opts)
+	if err != nil {
+		return "", err
+	}
 	h.handleLLMSuccess(ctx, requestID, messages, result, text, time.Since(start))
 	return result.Content, nil
+}
+
+// runToolResultLoop continues the request–response–tool-result loop until no tool_calls or max rounds (REQ-04.006).
+func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions) ([]llm.Message, *llm.CompletionResult, error) {
+	for rounds := 1; len(result.ToolCalls) > 0 && rounds < maxToolRounds; rounds++ {
+		messages = h.appendToolRound(ctx, messages, result)
+		var err error
+		result, err = h.provider.Complete(ctx, messages, opts)
+		if err != nil {
+			h.logger.Error("llm complete", "error", err)
+			return nil, nil, err
+		}
+	}
+	return messages, result, nil
+}
+
+func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult) []llm.Message {
+	messages = append(messages, llm.Message{Role: "assistant", Content: result.Content, ToolCalls: result.ToolCalls})
+	for _, tc := range result.ToolCalls {
+		stdout, execErr := h.executeOneToolCall(ctx, tc.Name, tc.Arguments)
+		content := stdout
+		if execErr != nil {
+			content = execErr.Error()
+		}
+		messages = append(messages, llm.Message{Role: "tool", Content: content, ToolCallID: tc.ID})
+	}
+	return messages
+}
+
+// buildToolOptions returns completion options with pre-selected tools when toolIndex and catalog are set (REQ-04.004, AC-04.015).
+func (h *conversationHandler) buildToolOptions(ctx context.Context, userText string) (*llm.CompletionOptions, error) {
+	if h.toolIndex == nil || h.catalog == nil {
+		return nil, nil
+	}
+	ids, err := toolindex.SelectToolIDs(ctx, h.embedder, h.toolIndex.Store(), h.toolIndex.Ready(), h.catalog, userText, h.toolSearchTopK, h.toolMinCount, h.toolFallbackCap, h.logger)
+	if err != nil {
+		h.logger.Error("tool pre-selection", "error", err)
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	toolDefsForLLM, err := toolcatalog.BuildToolDefs(h.catalog, ids)
+	if err != nil {
+		h.logger.Error("build tool list", "error", err)
+		return nil, err
+	}
+	if len(toolDefsForLLM) == 0 {
+		return nil, nil
+	}
+	toolDefs := make([]llm.ToolDef, len(toolDefsForLLM))
+	for i := range toolDefsForLLM {
+		toolDefs[i] = llm.ToolDef{
+			Name:        toolDefsForLLM[i].Name,
+			Description: toolDefsForLLM[i].Description,
+			Parameters:  toolDefsForLLM[i].Parameters,
+		}
+	}
+	return &llm.CompletionOptions{Tools: toolDefs}, nil
+}
+
+// executeOneToolCall validates the tool call, substitutes args into the tool template, and runs the command via nodeRunner (REQ-04.009, REQ-04.010).
+// Returns stdout or an error message string (deterministic) for validation/execution failures.
+func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
+	if h.catalog == nil {
+		return "", fmt.Errorf("tool catalog: unknown tool %q", toolID)
+	}
+	tool, args, err := toolcatalog.ValidateToolCall(h.catalog, toolID, argsJSON)
+	if err != nil {
+		return "", err
+	}
+	command, err := toolcatalog.Substitute(tool.Template, args)
+	if err != nil {
+		return "", fmt.Errorf("tool %q: %w", toolID, err)
+	}
+	if h.nodeRunner == nil {
+		return "", fmt.Errorf("tool %q: no node runner configured", toolID)
+	}
+	return h.nodeRunner.RunOnNode(ctx, tool.NodeID, command)
 }
 
 // handleLLMSuccess logs the LLM call, optionally writes to llmLog, and indexes the turn (REQ-01.018, REQ-01.007).
