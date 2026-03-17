@@ -1,0 +1,10 @@
+# Minimal valid tool catalog for config load test. Covers AC-04.002.
+tools:
+  - id: test_tool
+    short_description: Test tool for config load.
+    template: "echo {{arg}}"
+    node_id: nas
+    arguments:
+      - name: arg
+        type: string
+        required: true

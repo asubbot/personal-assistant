@@ -31,7 +31,8 @@
       "llm_log_dir": "llm_logs",
       "llm_log_retention_days": 7,
       "scheduled_tasks_path": "scheduled_tasks.json",
-      "ssh_known_hosts_path": "known_hosts"
+      "ssh_known_hosts_path": "known_hosts",
+      "tool_catalog_path": "tools.yaml"
     },
     "embedding": {
       "type": "openai",
@@ -57,7 +58,7 @@
     },
     "pa_timezone": "Europe/Lisbon",
     "conversation_context": {
-      "injected_context_max_chars": 4000,
+      "injected_context_max_chars": 10000,
       "vector_search_top_k": 10
     }
   }

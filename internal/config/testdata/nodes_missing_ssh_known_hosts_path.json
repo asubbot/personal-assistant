@@ -9,6 +9,7 @@
     "llm_log_dir": "/d",
     "llm_log_retention_days": 7,
     "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml",
     "ssh_known_hosts_path": ""
   },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },

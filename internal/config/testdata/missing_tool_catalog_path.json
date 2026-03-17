@@ -2,8 +2,7 @@
   "version": 1,
   "telegram": {
     "token_path": "/run/secrets/token",
-    "users_path": "",
-    "max_message_length": 4096
+    "users_path": ""
   },
   "llm_providers": [
     { "type": "ollama", "endpoint": "http://localhost:11434", "model": "llama3.2" }
@@ -14,8 +13,7 @@
     "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "",
-    "tool_catalog_path": "valid_tools.yaml"
+    "scheduled_tasks_path": ""
   },
   "embedding": {
     "type": "ollama",

@@ -1,0 +1,10 @@
+# Minimal valid tool catalog. Covers AC-04.001, AC-04.002.
+tools:
+  - id: example_cmd
+    short_description: Run an example command on a node.
+    template: "echo {{message}}"
+    node_id: nas
+    arguments:
+      - name: message
+        type: string
+        required: true

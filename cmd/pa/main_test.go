@@ -54,12 +54,34 @@ func moduleRoot(t *testing.T) string {
 	}
 }
 
+// minimalToolCatalogYAML is a valid tool catalog so config load succeeds when tool_catalog_path is set.
+const minimalToolCatalogYAML = "tools:\n  - id: _placeholder\n    short_description: placeholder\n    template: echo x\n    node_id: _none\n    arguments: []\n"
+
+// writeValidConfigWithCatalog writes validSummarizeConfig and tools.yaml to dir; returns config path. Use when tests call config.Load.
+func writeValidConfigWithCatalog(t *testing.T, dir string) string {
+	t.Helper()
+	cfgPath := filepath.Join(dir, config.ConfigFileName)
+	if err := os.WriteFile(cfgPath, []byte(validSummarizeConfig), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tools.yaml"), []byte(minimalToolCatalogYAML), 0o600); err != nil {
+		t.Fatalf("write tools.yaml: %v", err)
+	}
+	return cfgPath
+}
+
 // runCLIWithConfig writes configJSON to dir/config.json, runs `go run ./cmd/pa [args...]` with PA_CONFIG_DIR and PA_DATA_DIR set, returns combined output and error (exit error if non-zero).
 func runCLIWithConfig(t *testing.T, dir, configJSON string, args ...string) (output []byte, runErr error) {
 	t.Helper()
 	cfgPath := filepath.Join(dir, config.ConfigFileName)
 	if err := os.WriteFile(cfgPath, []byte(configJSON), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
+	}
+	if strings.Contains(configJSON, "tool_catalog_path") {
+		toolsPath := filepath.Join(dir, "tools.yaml")
+		if err := os.WriteFile(toolsPath, []byte(minimalToolCatalogYAML), 0o600); err != nil {
+			t.Fatalf("write tools.yaml: %v", err)
+		}
 	}
 	cfgDir := filepath.Dir(cfgPath)
 	root := moduleRoot(t)
@@ -82,7 +104,8 @@ var validSummarizeConfig = `{
     "vector_index_path": "vec.sqlite",
     "llm_log_dir": "llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": ""
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "tools.yaml"
   },
   "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4 },
   "nodes": {}
@@ -150,10 +173,7 @@ func testLogger(t *testing.T) *slog.Logger {
 func TestRunSummarize_InvalidScope_returnsError(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
-	cfgPath := filepath.Join(dir, config.ConfigFileName)
-	if err := os.WriteFile(cfgPath, []byte(validSummarizeConfig), 0o600); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+	cfgPath := writeValidConfigWithCatalog(t, dir)
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
@@ -172,10 +192,7 @@ func TestRunSummarize_InvalidScope_returnsError(t *testing.T) {
 func TestRunSummarizeDay_NoEntries_success(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
-	cfgPath := filepath.Join(dir, config.ConfigFileName)
-	if err := os.WriteFile(cfgPath, []byte(validSummarizeConfig), 0o600); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+	cfgPath := writeValidConfigWithCatalog(t, dir)
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
@@ -196,10 +213,7 @@ func TestRunSummarizeDay_NoEntries_success(t *testing.T) {
 func TestRunSummarizeMonth_NoEntries_success(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
-	cfgPath := filepath.Join(dir, config.ConfigFileName)
-	if err := os.WriteFile(cfgPath, []byte(validSummarizeConfig), 0o600); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+	cfgPath := writeValidConfigWithCatalog(t, dir)
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
@@ -220,10 +234,7 @@ func TestRunSummarizeMonth_NoEntries_success(t *testing.T) {
 func TestRunSummarizeYear_NoEntries_success(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
-	cfgPath := filepath.Join(dir, config.ConfigFileName)
-	if err := os.WriteFile(cfgPath, []byte(validSummarizeConfig), 0o600); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+	cfgPath := writeValidConfigWithCatalog(t, dir)
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
@@ -244,10 +255,7 @@ func TestRunSummarizeYear_NoEntries_success(t *testing.T) {
 func TestRunVerifyNodes_EmptyNodes_noError(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
-	cfgPath := filepath.Join(dir, config.ConfigFileName)
-	if err := os.WriteFile(cfgPath, []byte(validSummarizeConfig), 0o600); err != nil {
-		t.Fatalf("write config: %v", err)
-	}
+	cfgPath := writeValidConfigWithCatalog(t, dir)
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		t.Fatalf("load config: %v", err)
@@ -277,6 +285,9 @@ func TestRunVerifyNodes_AllowlistLoadError_returnsError(t *testing.T) {
 	cfgPath := filepath.Join(dir, config.ConfigFileName)
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "tools.yaml"), []byte(minimalToolCatalogYAML), 0o600); err != nil {
+		t.Fatalf("write tools.yaml: %v", err)
 	}
 	cfg, err := config.Load(cfgPath)
 	if err != nil {

@@ -13,7 +13,8 @@
     "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
     "llm_log_retention_days": 0,
-    "scheduled_tasks_path": ""
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml"
   },
   "embedding": {
     "type": "ollama",

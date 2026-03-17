@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"pa/internal/logredact"
+	"pa/internal/toolcatalog"
 	"strings"
 	"time"
 )
@@ -42,6 +43,13 @@ func Load(path string) (*Config, error) {
 			return nil, fmt.Errorf("telegram users file %s: %w", raw.Telegram.UsersPath, err)
 		}
 	}
+
+	// Load tool catalog (path is required); fail fast on parse or schema error.
+	cat, err := toolcatalog.Load(raw.Paths.ToolCatalogPath)
+	if err != nil {
+		return nil, err
+	}
+	raw.ToolCatalog = cat
 
 	return &raw, nil
 }
@@ -186,6 +194,9 @@ func validatePaths(c *Config) error {
 	}
 	if len(c.Nodes) > 0 && strings.TrimSpace(c.Paths.SSHKnownHostsPath) == "" {
 		return errors.New("config: paths.ssh_known_hosts_path is required when nodes are configured")
+	}
+	if strings.TrimSpace(c.Paths.ToolCatalogPath) == "" {
+		return errors.New("config: paths.tool_catalog_path is required")
 	}
 	return nil
 }

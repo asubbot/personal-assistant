@@ -1,5 +1,9 @@
 package config
 
+import (
+	"pa/internal/toolcatalog"
+)
+
 // ConfigFileName is the name of the main config file inside the config directory (PA_CONFIG_DIR).
 const ConfigFileName = "config.json"
 
@@ -14,6 +18,8 @@ type Config struct {
 	LogRedaction        *LogRedaction              `json:"log_redaction"`        // optional; additional redaction patterns (built-in are always applied)
 	PATimezone          string                     `json:"pa_timezone"`          // optional; IANA timezone for assistant's day (e.g. Europe/Moscow); used for summarization date; empty = UTC
 	ConversationContext *ConversationContextConfig `json:"conversation_context"` // optional; injected context limits; zero = use defaults
+	// ToolCatalog is the parsed tool catalog when paths.tool_catalog_path is set; nil otherwise. Populated at config load (fail fast on parse/schema error).
+	ToolCatalog *toolcatalog.Catalog `json:"-"`
 }
 
 // ConversationContextConfig holds parameters for context injected into the LLM (vector search results).
@@ -60,7 +66,7 @@ type LLMProvider struct {
 	Model      string `json:"model"`
 }
 
-// Paths holds paths for memory, logs, vector index, and scheduled tasks.
+// Paths holds paths for memory, logs, vector index, scheduled tasks, and optional tool catalog.
 type Paths struct {
 	MemoryDir           string `json:"memory_dir"`
 	LogPath             string `json:"log_path"`
@@ -69,6 +75,7 @@ type Paths struct {
 	LLMLogRetentionDays int    `json:"llm_log_retention_days"` // Required. Delete llm-YYYY-MM-DD.jsonl older than N days (UTC). Must be >= 1; validated at load (fail fast).
 	ScheduledTasksPath  string `json:"scheduled_tasks_path"`
 	SSHKnownHostsPath   string `json:"ssh_known_hosts_path"` // Required when nodes are configured. OpenSSH known_hosts file for host key verification.
+	ToolCatalogPath     string `json:"tool_catalog_path"`    // Required. Path to tool catalog YAML file; catalog is loaded at startup (fail fast on parse/schema error).
 }
 
 // Node holds SSH node configuration.

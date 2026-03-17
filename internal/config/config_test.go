@@ -109,6 +109,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"invalid pa_timezone", "invalid_pa_timezone.json", "invalid pa_timezone"},
 		{"llm_log_retention_days < 1", "llm_log_retention_zero.json", "llm_log_retention_days must be >= 1"},
 		{"nodes without ssh_known_hosts_path", "nodes_missing_ssh_known_hosts_path.json", "paths.ssh_known_hosts_path is required when nodes are configured"},
+		{"missing tool_catalog_path", "missing_tool_catalog_path.json", "paths.tool_catalog_path is required"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -184,6 +185,61 @@ func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-04.001, AC-04.002: when tool_catalog_path is set, invalid path or invalid catalog causes startup failure.
+func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
+	// Config with tool_catalog_path pointing to nonexistent file; path resolved relative to config dir.
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.json")
+	cfgJSON := `{
+	  "version": 1,
+	  "telegram": { "token_path": "/run/secrets/token", "users_path": "" },
+	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m" } ],
+	  "paths": {
+	    "memory_dir": "/data/memory",
+	    "log_path": "/data/pa.log",
+	    "vector_index_path": "/data/pa.sqlite",
+	    "llm_log_dir": "/data/llm",
+	    "llm_log_retention_days": 7,
+	    "scheduled_tasks_path": "",
+	    "tool_catalog_path": "nonexistent_catalog.yaml"
+	  },
+	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768 },
+	  "nodes": {}
+	}`
+	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(cfgPath)
+	if err == nil {
+		t.Fatal("Load(config with nonexistent tool_catalog_path): expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "tool catalog") && !strings.Contains(err.Error(), "nonexistent") {
+		t.Errorf("Load: error = %v (expect tool catalog or nonexistent)", err)
+	}
+}
+
+// Covers AC-04.002: when tool_catalog_path is set and file is valid, catalog is parsed at load.
+func TestLoad_ToolCatalogPath_ValidCatalog_LoadsCatalog(t *testing.T) {
+	path := filepath.Join("testdata", "valid_with_tool_catalog.json")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load(valid config with tool catalog): %v", err)
+	}
+	if cfg.ToolCatalog == nil {
+		t.Fatal("Load(valid config with tool catalog): ToolCatalog is nil")
+	}
+	if len(cfg.ToolCatalog.Tools) != 1 {
+		t.Errorf("Load(valid config with tool catalog): len(Tools) = %d, want 1", len(cfg.ToolCatalog.Tools))
+	}
+	tool, ok := cfg.ToolCatalog.Tools["test_tool"]
+	if !ok {
+		t.Fatal("Load(valid config with tool catalog): tool test_tool not found")
+	}
+	if tool.Template != "echo {{arg}}" || tool.NodeID != "nas" {
+		t.Errorf("Load(valid config with tool catalog): tool = template %q node_id %q", tool.Template, tool.NodeID)
+	}
+}
+
 // Supporting AC-01.033 (US-19): invalid IANA timezone in pa_timezone refuses start.
 func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
 	_, err := Load(filepath.Join("testdata", "invalid_pa_timezone.json"))
@@ -224,12 +280,16 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
   "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "" },
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
   "nodes": {}
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
+	}
+	// Catalog must exist so load fails on users file, not catalog.
+	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    short_description: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
+		t.Fatalf("setup tools.yaml: %v", err)
 	}
 	_, err := Load(configPath)
 	if err == nil {
@@ -256,6 +316,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
     "llm_log_dir": "` + cfgDir + `",
     "llm_log_retention_days": 7,
     "scheduled_tasks_path": "",
+    "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "` + knownHostsRel + `"
   },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
@@ -270,6 +331,9 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    short_description: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
+		t.Fatalf("setup tools.yaml: %v", err)
 	}
 	_, err := Load(configPath)
 	if err == nil {

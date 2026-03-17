@@ -1,0 +1,7 @@
+# Tool catalog (single source of truth). Required by config. Add tools as needed for EP-004.
+tools:
+  - id: _placeholder
+    short_description: Placeholder tool until real tools are added.
+    template: "echo placeholder"
+    node_id: _none
+    arguments: []
