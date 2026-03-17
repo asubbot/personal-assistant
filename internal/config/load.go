@@ -140,6 +140,9 @@ func validateEmbedding(c *Config) error {
 	if strings.TrimSpace(e.APIKeyPath) == "" && (e.Type == "openai" || e.Type == "openai-compatible") {
 		return errors.New("config: embedding.api_key_path is required for type openai/openai-compatible")
 	}
+	if e.BatchSize < 1 || e.BatchSize > 1000 {
+		return errors.New("config: embedding.batch_size is required and must be between 1 and 1000")
+	}
 	return nil
 }
 

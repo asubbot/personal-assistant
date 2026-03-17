@@ -119,6 +119,181 @@ func TestOpenAICompatible_Embed_success(t *testing.T) {
 	}
 }
 
+// Covers AC-04.017 (REQ-04.021): EmbedBatch returns vectors in order; batch API used for tool index.
+func TestOpenAICompatible_EmbedBatch_success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/embeddings" {
+			t.Errorf("path = %s, want /embeddings", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Return 3 embeddings in order (same as input).
+		_, _ = w.Write([]byte(`{"data":[
+			{"embedding":[1,0,0],"index":0},
+			{"embedding":[0,1,0],"index":1},
+			{"embedding":[0,0,1],"index":2}
+		]}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+
+	vecs, err := p.EmbedBatch(context.Background(), []string{"a", "b", "c"})
+	if err != nil {
+		t.Fatalf("EmbedBatch: %v", err)
+	}
+	if len(vecs) != 3 {
+		t.Fatalf("EmbedBatch: len = %d, want 3", len(vecs))
+	}
+	if len(vecs[0]) != 3 || vecs[0][0] != 1 || vecs[0][1] != 0 || vecs[0][2] != 0 {
+		t.Errorf("EmbedBatch: vecs[0] = %v", vecs[0])
+	}
+	if vecs[1][1] != 1 || vecs[2][2] != 1 {
+		t.Errorf("EmbedBatch: order wrong: vecs[1]=%v vecs[2]=%v", vecs[1], vecs[2])
+	}
+}
+
+// Covers AC-04.017: EmbedBatch empty input returns nil, nil.
+func TestOpenAICompatible_EmbedBatch_empty_returnsNilNil(t *testing.T) {
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: "http://localhost:11434", Model: "m", Dimensions: 3}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vecs, err := p.EmbedBatch(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("EmbedBatch(nil): err = %v", err)
+	}
+	if vecs != nil {
+		t.Errorf("EmbedBatch(nil): vecs = %v, want nil", vecs)
+	}
+	vecs, err = p.EmbedBatch(context.Background(), []string{})
+	if err != nil {
+		t.Fatalf("EmbedBatch(empty): err = %v", err)
+	}
+	if vecs != nil {
+		t.Errorf("EmbedBatch(empty): vecs = %v, want nil", vecs)
+	}
+}
+
+// Covers AC-04.017: EmbedBatch chunks by batch_size; multiple HTTP requests when len(texts) > batch_size; order preserved.
+func TestOpenAICompatible_EmbedBatch_chunking_multipleRequests_orderPreserved(t *testing.T) {
+	var requestCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// 4 texts with batch_size 2 → 2 requests, each with 2 inputs → return 2 embeddings per request.
+		_, _ = w.Write([]byte(`{"data":[
+			{"embedding":[1,0,0],"index":0},
+			{"embedding":[2,0,0],"index":1}
+		]}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 2}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+
+	vecs, err := p.EmbedBatch(context.Background(), []string{"a", "b", "c", "d"})
+	if err != nil {
+		t.Fatalf("EmbedBatch: %v", err)
+	}
+	if requestCount != 2 {
+		t.Errorf("EmbedBatch: got %d requests, want 2 (chunking)", requestCount)
+	}
+	if len(vecs) != 4 {
+		t.Fatalf("EmbedBatch: len = %d, want 4", len(vecs))
+	}
+	// Order: first request gave vecs[0],[1], second gave vecs[2],[3].
+	if vecs[0][0] != 1 || vecs[1][0] != 2 || vecs[2][0] != 1 || vecs[3][0] != 2 {
+		t.Errorf("EmbedBatch: order or values wrong: %v", vecs)
+	}
+}
+
+// Covers AC-01.037: EmbedBatch error path — API error (e.g. 401) returns error.
+func TestOpenAICompatible_EmbedBatch_apiError_returnsError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":{"message":"Invalid API key"}}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 10}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = p.EmbedBatch(context.Background(), []string{"a", "b"})
+	if err == nil {
+		t.Fatal("EmbedBatch(401): expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "401") && !strings.Contains(err.Error(), "Invalid API key") {
+		t.Errorf("EmbedBatch: error = %v", err)
+	}
+}
+
+// Covers AC-01.037: EmbedBatch error path — canceled context returns error.
+func TestOpenAICompatible_EmbedBatch_contextCanceled_returnsError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[{"embedding":[0.1,0,0],"index":0},{"embedding":[0.2,0,0],"index":1}]}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 10}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err = p.EmbedBatch(ctx, []string{"a", "b"})
+	if err == nil {
+		t.Fatal("EmbedBatch(canceled ctx): expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "context") && !strings.Contains(err.Error(), "canceled") {
+		t.Errorf("EmbedBatch: error = %v", err)
+	}
+}
+
+// Covers AC-04.017: EmbedBatch single text uses single-embed path (one request).
+func TestOpenAICompatible_EmbedBatch_single_returnsOneVector(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[{"embedding":[0.5, 0.5, 0.5]}]}`))
+	}))
+	defer server.Close()
+
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vecs, err := p.EmbedBatch(context.Background(), []string{"only"})
+	if err != nil {
+		t.Fatalf("EmbedBatch(single): %v", err)
+	}
+	if len(vecs) != 1 || len(vecs[0]) != 3 {
+		t.Fatalf("EmbedBatch(single): got %d vecs of len %d", len(vecs), len(vecs[0]))
+	}
+	if vecs[0][0] != 0.5 {
+		t.Errorf("EmbedBatch(single): vec[0] = %v", vecs[0])
+	}
+}
+
 // Covers AC-01.037 (US-07): Embed error path — empty response data returns error; system does not crash.
 func TestOpenAICompatible_Embed_emptyData_returnsError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

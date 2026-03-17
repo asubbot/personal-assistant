@@ -37,6 +37,7 @@ type conversationHandler struct {
 	vectorStore      vector.Store // optional; for semantic search and indexing
 	embedder         embedding.Embedder
 	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
+	toolIndex        ToolIndex  // optional; for tool pre-selection when Ready() (step 3.1)
 	logger           *slog.Logger
 	maxMessageLength int
 	contextMaxLen    int                 // max chars for injected context block; 0 = defaultContextMaxLen

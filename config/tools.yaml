@@ -1,7 +1,12 @@
 # Tool catalog (single source of truth). Required by config. Add tools as needed for EP-004.
 tools:
-  - id: _placeholder
-    short_description: Placeholder tool until real tools are added.
-    template: "echo placeholder"
-    node_id: _none
+
+  - id: node_time
+    short_description: Get current date and time on the node.
+    template: "date -Iseconds"
+    node_id: nas
     arguments: []
+    triggers:
+      - "what time is it on the node"
+      - "node time"
+      - "date on server"

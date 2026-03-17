@@ -19,6 +19,7 @@ import (
 	"pa/internal/scheduler"
 	"pa/internal/summarize"
 	"pa/internal/telegram"
+	"pa/internal/toolindex"
 	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
@@ -113,7 +114,7 @@ func main() {
 
 // runServer sets up adapter, stores, LLM, scheduler and runs the core until context is canceled.
 func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error {
-	adapter, memoryStore, vectorStore, embedder, nodeRunner, err := setup(cfg, configPath, logger)
+	adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, err := setup(cfg, configPath, logger)
 	if err != nil {
 		return err
 	}
@@ -121,6 +122,11 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		if vectorStore != nil {
 			if closeErr := vectorStore.Close(); closeErr != nil {
 				logger.Error("close vector store", "error", closeErr)
+			}
+		}
+		if toolIndex != nil {
+			if closeErr := toolIndex.Close(); closeErr != nil {
+				logger.Error("close tool index", "error", closeErr)
 			}
 		}
 	}()
@@ -145,7 +151,8 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	}
 
 	logger.Info("starting", "adapter", "telegram")
-	return core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner)
+	var ti core.ToolIndex = toolIndex
+	return core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner, ti)
 }
 
 // startSchedulerIfConfigured loads scheduled tasks and starts the scheduler when paths.scheduled_tasks_path is set. Returns a cleanup function to call on exit, or nil.
@@ -371,6 +378,29 @@ func runVerifyNodes(cfg *config.Config, command string, logger *slog.Logger) err
 	return nil
 }
 
+// newToolIndex creates the tool vector store and starts building the index from the catalog in the background. Caller must close the returned Index.
+// Requires cfg.ToolCatalog to be non-nil; returns error otherwise. Logs INFO on success, ERROR on build failure.
+func newToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.Logger) (*toolindex.Index, error) {
+	if cfg.ToolCatalog == nil {
+		return nil, fmt.Errorf("tool catalog is required")
+	}
+	toolVectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTools)
+	if err != nil {
+		return nil, err
+	}
+	idx := toolindex.NewIndex(toolVectorStore)
+	catalog := cfg.ToolCatalog
+	go func() {
+		err := idx.BuildAndSetReady(context.Background(), catalog, embedder)
+		if err != nil {
+			logger.Error("tool index build failed", "error", err)
+			return
+		}
+		logger.Info("tool index built", "tools", len(catalog.Tools))
+	}()
+	return idx, nil
+}
+
 // setup creates adapter, memory store, vector store, embedder, and optional node runner from config. Caller must close vectorStore.
 func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	adapter core.Adapter,
@@ -378,44 +408,50 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	vectorStore *sqlite.Store,
 	embedder embedding.Embedder,
 	nodeRunner core.NodeRunner,
+	toolIndex *toolindex.Index,
 	err error,
 ) {
 	adapter, err = telegram.NewAdapter(cfg, configPath)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	if cfg.Paths.MemoryDir != "" {
 		if mkErr := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); mkErr != nil {
-			return nil, nil, nil, nil, nil, mkErr
+			return nil, nil, nil, nil, nil, nil, mkErr
 		}
 		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir)
 		if err != nil {
-			return nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, err
 		}
 	}
 
 	embedder, err = embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
 	if mkErr := os.MkdirAll(vecDir, 0o755); mkErr != nil {
-		return nil, nil, nil, nil, nil, mkErr
+		return nil, nil, nil, nil, nil, nil, mkErr
 	}
 	vectorStore, err = sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, err
+	}
+
+	toolIndex, err = newToolIndex(cfg, embedder, logger)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, err
 	}
 
 	if len(cfg.Nodes) > 0 {
 		al, alErr := allowlist.NewChecker(cfg)
 		if alErr != nil {
-			return nil, nil, nil, nil, nil, alErr
+			return nil, nil, nil, nil, nil, nil, alErr
 		}
 		nodeRunner = noderunner.New(cfg, al, logger)
 	}
 
-	return adapter, memoryStore, vectorStore, embedder, nodeRunner, nil
+	return adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, nil
 }

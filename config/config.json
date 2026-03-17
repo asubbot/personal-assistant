@@ -39,7 +39,8 @@
       "endpoint": "https://api.openai.com/v1",
       "api_key_path": "openai_api_key.txt",
       "model": "text-embedding-3-small",
-      "dimensions": 1536
+      "dimensions": 1536,
+      "batch_size": 100
     },
     "nodes": {
       "nas": {

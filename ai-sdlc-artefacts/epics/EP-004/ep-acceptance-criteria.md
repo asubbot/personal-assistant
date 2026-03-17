@@ -39,6 +39,10 @@ This document defines epic-level acceptance criteria for **EP-004 Structured too
 | [AC-04.015](#ac-04-015) | [REQ-04.019](ep-requirements.md#tool-index-and-pre-selection) | Tool list for each request built via pre-selection (embed message, search index, bounded subset) |
 | [AC-04.016](#ac-04-016) | [REQ-04.020](ep-requirements.md#tool-index-and-pre-selection) | Fallback when pre-selection returns no or too few tools yields non-empty bounded tool list |
 | [AC-04.017](#ac-04-017) | [REQ-04.021](ep-requirements.md#tool-index-and-pre-selection) | Tool index load completes within 20 s or runs in background with fallback; batching used where applicable |
+| [AC-04.018](#ac-04-018) | [REQ-04.022](ep-requirements.md#tool-index-and-pre-selection) | Startup fails if tool catalog missing or tool index store cannot be created |
+| [AC-04.019](#ac-04-019) | [REQ-04.023](ep-requirements.md#tool-index-and-pre-selection) | When index not ready, fallback yields non-empty bounded tool list (same as empty pre-selection) |
+| [AC-04.020](#ac-04-020) | [REQ-04.024](ep-requirements.md#tool-index-and-pre-selection) | Embedding batch_size configurable (e.g. 1–1000); tool index build uses it for chunking |
+| [AC-04.021](#ac-04-021) | [REQ-04.025](ep-requirements.md#tool-index-and-pre-selection) | Tool index build success logged (INFO); build failure logged (ERROR with reason) |
 
 ---
 
@@ -198,3 +202,39 @@ Given the service is started with a tool catalog that may contain up to 1000 too
 When the tool index is built at startup,  
 Then the index load (embedding all tools and writing to the vector store) SHALL complete **within 20 seconds**, or the build SHALL run in the background with a defined fallback (e.g. default tool subset or "index not ready" handling) until the index is ready.  
 And the implementation SHALL use batched requests to the embedding API where supported and/or background index build to meet the 20-second constraint.
+
+---
+
+<a id="ac-04-018"></a>**AC-04.018** (Trace: [REQ-04.022](ep-requirements.md#tool-index-and-pre-selection))
+
+Given the service is configured with a tool catalog path and an embedding provider,  
+When the tool catalog fails to load (e.g. missing or invalid) or the tool index vector store cannot be created (e.g. path invalid),  
+Then startup SHALL fail with a clear error and the service SHALL NOT start.
+
+---
+
+<a id="ac-04-019"></a>**AC-04.019** (Trace: [REQ-04.023](ep-requirements.md#tool-index-and-pre-selection))
+
+Given the tool index is not ready (e.g. background build in progress or build has failed),  
+When the core builds the tool list for a completion request that can trigger tools,  
+Then the system SHALL apply the defined fallback (e.g. all tools up to a cap or a default subset) so that the request receives a non-empty, bounded tool list.  
+And the behaviour SHALL be the same as when pre-selection returns no or too few tools.
+
+---
+
+<a id="ac-04-020"></a>**AC-04.020** (Trace: [REQ-04.024](ep-requirements.md#tool-index-and-pre-selection))
+
+Given the embedding provider is configured with a batch_size in the allowed range (e.g. 1–1000),  
+When the tool index is built at startup,  
+Then embedding API calls for the index SHALL be chunked so that no single request exceeds batch_size texts.  
+And the batch_size SHALL be configurable and validated at config load (e.g. required and within bounds).
+
+---
+
+<a id="ac-04-021"></a>**AC-04.021** (Trace: [REQ-04.025](ep-requirements.md#tool-index-and-pre-selection))
+
+Given the tool index is built at startup (in background or synchronously),  
+When the build completes successfully,  
+Then the system SHALL log an informational message (e.g. "tool index built" with the number of tools indexed).  
+When the build fails,  
+Then the system SHALL log an error message that includes the failure reason (e.g. embedding error, store error).

@@ -13,14 +13,15 @@
     "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": ""
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml"
   },
   "embedding": {
     "type": "ollama",
     "endpoint": "http://localhost:11434",
     "model": "nomic-embed-text",
     "dimensions": 768,
-    "batch_size": 100
+    "batch_size": 1001
   },
   "nodes": {}
 }

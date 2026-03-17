@@ -2,7 +2,7 @@
 
 This document contains the product requirements for EP-004 (Structured tools and Tool-calling API) in EARS form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, solution-free where applicable).
 
-**Total: 21 requirements (16 FR, 5 NFR)**
+**Total: 25 requirements (18 FR, 7 NFR)**
 
 **Contents**
 
@@ -120,6 +120,10 @@ In the following, *System* = PersonalAssistant (or the component stated).
 | REQ-04.019 | FR | Tool index and pre-selection | Tool list for each request built via pre-selection (e.g. embed message, search index, top-k) |
 | REQ-04.020 | FR | Tool index and pre-selection | Fallback when pre-selection returns no or too few tools |
 | REQ-04.021 | NFR | Tool index and pre-selection | Tool index load at startup within 20 s; batching and/or background with fallback |
+| REQ-04.022 | FR | Tool index and pre-selection | Startup fails if tool catalog missing or tool index store cannot be created |
+| REQ-04.023 | FR | Tool index and pre-selection | When index not ready, fallback yields non-empty bounded tool list |
+| REQ-04.024 | NFR | Tool index and pre-selection | Embedding batch_size configurable (e.g. 1–1000); tool index build uses it for chunking |
+| REQ-04.025 | NFR | Tool index and pre-selection | Tool index build success logged (INFO); build failure logged (ERROR with reason) |
 
 ---
 
@@ -220,7 +224,7 @@ Sonos tools SHALL use the same catalog format, validation, and execution path as
 
 ### Tool index and pre-selection
 
-*REQ-04.018, REQ-04.019, REQ-04.020, REQ-04.021*
+*REQ-04.018, REQ-04.019, REQ-04.020, REQ-04.021, REQ-04.022, REQ-04.023, REQ-04.024, REQ-04.025*
 
 **REQ-04.018** (Ubiquitous)  
 THE System SHALL build a tool index at service startup from the parsed catalog (tool id, short_description, and optional triggers per tool), compute embeddings for each index entry, and store them in the **same vector database as memory, in a dedicated table** (e.g. vec_tools). The design SHALL support catalogs of **up to 1000 tools**.
@@ -233,3 +237,15 @@ IF tool pre-selection returns no tools or fewer than a configured minimum, THEN 
 
 **REQ-04.021** (NFR — Performance)  
 THE System SHALL complete tool index load (embedding of all tools and writing to the vector store) **within 20 seconds** from service start. To meet this, the implementation SHALL use one or both of: **batched requests to the embedding API** (where supported), and/or **background index build or update** (service may accept traffic while the index is populating, with a defined fallback until the index is ready).
+
+**REQ-04.022** (Unwanted event)  
+WHEN the service is configured with a tool catalog path and an embedding provider, THE System SHALL create the tool index store and start building the index. IF the tool catalog is not loaded (e.g. nil) or the vector store for the tool table cannot be created, THEN THE System SHALL fail startup and SHALL NOT accept requests.
+
+**REQ-04.023** (State-driven)  
+WHILE the tool index is not ready (e.g. background build not yet completed or build has failed), WHEN the core builds the tool list for a completion request, THEN THE System SHALL apply the same fallback as when pre-selection returns no or too few tools, so that the request still receives a non-empty, bounded tool list.
+
+**REQ-04.024** (NFR — Configurability)  
+WHERE an embedding provider is configured for the tool index, THE System SHALL support a configurable maximum number of texts per batch (batch_size) for embedding API calls, within defined bounds (e.g. 1–1000). The implementation SHALL use this batch_size when building the tool index (e.g. the embedding provider chunks requests so that no single API request exceeds batch_size texts).
+
+**REQ-04.025** (NFR — Observability)  
+THE System SHALL log the tool index build outcome: on success, an informational message (e.g. number of tools indexed); on failure, an error message including the failure reason.

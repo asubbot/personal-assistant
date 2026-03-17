@@ -48,6 +48,7 @@ type EmbeddingProvider struct {
 	APIKeyPath string `json:"api_key_path"`
 	Model      string `json:"model"`      // embedding model name
 	Dimensions int    `json:"dimensions"` // embedding vector size; must match model output
+	BatchSize  int    `json:"batch_size"` // required; max texts per batch for tool index embedding (REQ-04.021); must be 1–1000
 }
 
 // Telegram holds Telegram bot configuration.

@@ -12,7 +12,7 @@
     "tool_catalog_path": "valid_tools.yaml",
     "ssh_known_hosts_path": ""
   },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
   "nodes": {
     "n1": {
       "host": "host.example.com",

@@ -110,6 +110,8 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"llm_log_retention_days < 1", "llm_log_retention_zero.json", "llm_log_retention_days must be >= 1"},
 		{"nodes without ssh_known_hosts_path", "nodes_missing_ssh_known_hosts_path.json", "paths.ssh_known_hosts_path is required when nodes are configured"},
 		{"missing tool_catalog_path", "missing_tool_catalog_path.json", "paths.tool_catalog_path is required"},
+		{"embedding batch_size out of range", "invalid_embedding_batch_size.json", "embedding.batch_size is required and must be between 1 and 1000"},
+		{"missing embedding batch_size", "missing_embedding_batch_size.json", "embedding.batch_size is required and must be between 1 and 1000"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -203,7 +205,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	    "scheduled_tasks_path": "",
 	    "tool_catalog_path": "nonexistent_catalog.yaml"
 	  },
-	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768 },
+	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100 },
 	  "nodes": {}
 	}`
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
@@ -281,7 +283,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
   "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "", "tool_catalog_path": "tools.yaml" },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
   "nodes": {}
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
@@ -319,7 +321,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "` + knownHostsRel + `"
   },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
   "nodes": {
     "n1": {
       "host": "host.example.com",

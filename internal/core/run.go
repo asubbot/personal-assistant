@@ -13,10 +13,17 @@ import (
 	"pa/internal/vector"
 )
 
+// ToolIndex provides the tool vector store and ready state for tool pre-selection (step 3.1). Optional; when nil, no tool index is used.
+type ToolIndex interface {
+	Store() vector.Store
+	Ready() bool
+}
+
 // Run starts the application: wires the adapter to the conversation handler (LLM, vector, optional node runner) and blocks until ctx is cancelled.
 // memoryStore is not used by the handler (context is from vector only); vectorStore and embedder are optional; when provided, the handler runs semantic search and indexes turns (REQ-01.006, REQ-01.007, REQ-01.018).
 // nodeRunner is optional; when provided, tools can run allowlisted commands on nodes via SSH (REQ-01.004, REQ-01.005, REQ-01.013).
-func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, llmProvider llm.Provider, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner) error {
+// toolIndex is optional; when provided and Ready(), step 3.1 will use it for tool pre-selection.
+func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, llmProvider llm.Provider, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex) error {
 	if adapter == nil {
 		return fmt.Errorf("core: adapter is nil")
 	}
@@ -46,6 +53,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 		vectorStore:      vectorStore,
 		embedder:         embedder,
 		nodeRunner:       nodeRunner,
+		toolIndex:        toolIndex,
 		logger:           logger,
 		maxMessageLength: maxLen,
 		contextMaxLen:    ctxMaxLen,

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"pa/internal/config"
+	"pa/internal/toolcatalog"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -107,7 +108,7 @@ var validSummarizeConfig = `{
     "scheduled_tasks_path": "",
     "tool_catalog_path": "tools.yaml"
   },
-  "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4 },
+  "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4, "batch_size": 100 },
   "nodes": {}
 }`
 
@@ -329,5 +330,52 @@ func TestSummarizeCLI_prunesOldLLMLogs(t *testing.T) {
 	}
 	if _, err := os.Stat(todayFile); err != nil {
 		t.Errorf("recent file %s should remain: %v", todayFile, err)
+	}
+}
+
+// newToolIndex with nil ToolCatalog returns error "tool catalog is required".
+func TestNewToolIndex_nilCatalog_returnsError(t *testing.T) {
+	logger := testLogger(t)
+	cfg := &config.Config{
+		ToolCatalog: nil,
+		Embedding:   &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10},
+		Paths:       config.Paths{VectorIndexPath: filepath.Join(t.TempDir(), "vec.db")},
+	}
+
+	idx, err := newToolIndex(cfg, nil, logger)
+	if err == nil {
+		if idx != nil {
+			_ = idx.Close()
+		}
+		t.Fatal("newToolIndex(nil catalog): expected error, got nil")
+	}
+	if idx != nil {
+		t.Error("newToolIndex(nil catalog): expected nil index")
+	}
+	if !strings.Contains(err.Error(), "tool catalog is required") {
+		t.Errorf("newToolIndex: err = %v", err)
+	}
+}
+
+// newToolIndex when NewWithTable fails (e.g. path under non-existent dir) returns error; no goroutine started.
+func TestNewToolIndex_vectorStoreFails_returnsError(t *testing.T) {
+	logger := testLogger(t)
+	// Path under a directory we do not create so sqlite open fails.
+	badPath := filepath.Join(t.TempDir(), "nonexistent", "sub", "vec.db")
+	cfg := &config.Config{
+		ToolCatalog: &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
+		Embedding:   &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10},
+		Paths:       config.Paths{VectorIndexPath: badPath},
+	}
+
+	idx, err := newToolIndex(cfg, nil, logger)
+	if err == nil {
+		if idx != nil {
+			_ = idx.Close()
+		}
+		t.Fatal("newToolIndex(bad path): expected error, got nil")
+	}
+	if idx != nil {
+		t.Error("newToolIndex(bad path): expected nil index")
 	}
 }
