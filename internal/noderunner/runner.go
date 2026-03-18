@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"pa/internal/allowlist"
+	"pa/internal/cmdsafe"
 	"pa/internal/config"
 	"pa/internal/ssh"
 	"strings"
@@ -39,6 +40,9 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 	cmd := strings.TrimSpace(command)
 	if cmd == "" {
 		return "", fmt.Errorf("noderunner: command is empty")
+	}
+	if err := cmdsafe.RejectShellMetacharacters(cmd); err != nil {
+		return "", fmt.Errorf("noderunner: %w", err)
 	}
 	if r.allowlist == nil {
 		return "", fmt.Errorf("noderunner: allowlist not configured")

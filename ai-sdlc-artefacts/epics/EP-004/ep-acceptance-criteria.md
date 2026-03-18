@@ -14,7 +14,7 @@
 
 This document defines epic-level acceptance criteria for **EP-004 Structured tools and Tool-calling API**. It contains testable conditions (Gherkin-style) that apply to the epic as a whole. Traceability to [ep-requirements.md](ep-requirements.md) is given per AC below.
 
-**Scope:** Single source of truth for tools (catalog), tool index at startup (same vector DB as memory, dedicated table; scale up to 1000 tools; load within 20 s via batching or background with fallback) and tool pre-selection per request, tool list (pre-selected subset) in every LLM request, Tool-calling API integration, validation and execution via run_on_node, errors surfaced in chat, provider interface extension, and Sonos tools in the same catalog. Optional: tool invocation for providers that do not support the Tool-calling API (text-based: tools in prompt, parse assistant output in a defined format, same validation and execution path; configurable enable/disable). Scheduler contract unchanged; no MCP or dynamic tool loading.
+**Scope:** Tool catalog with **index_text** (required), optional **system_prompt**, **hermes_prompt**, and **triggers**; tool index from id + index_text + triggers; native Tool-calling API uses **index_text** as tool description; non-empty **system_prompt** appended to system when the tool is selected; text-based (Hermes) path uses **hermes_prompt** or **index_text** per tool. Per-provider **supports_tools**; global **tools.text_based_enabled**. Same vector DB tool index, pre-selection, validation, run_on_node, Sonos in catalog. Scheduler unchanged; no MCP or dynamic tool loading.
 
 ---
 
@@ -22,7 +22,7 @@ This document defines epic-level acceptance criteria for **EP-004 Structured too
 
 | AC ID | REQ | Summary |
 |-------|-----|---------|
-| [AC-04.001](#ac-04-001) | [REQ-04.001](ep-requirements.md#tool-catalog-and-source-of-truth), [REQ-04.002](ep-requirements.md#tool-catalog-and-source-of-truth) | Tool catalog defines all invocable tools with id, template, node_id, argument rules |
+| [AC-04.001](#ac-04-001) | [REQ-04.001](ep-requirements.md#tool-catalog-and-source-of-truth), [REQ-04.002](ep-requirements.md#tool-catalog-and-source-of-truth) | Catalog: id, index_text, template, node_id, arguments; optional triggers, system_prompt, hermes_prompt |
 | [AC-04.002](#ac-04-002) | [REQ-04.003](ep-requirements.md#tool-catalog-and-source-of-truth) | Catalog parsed at startup; used for LLM payload and for validation/execution |
 | [AC-04.003](#ac-04-003) | [REQ-04.004](ep-requirements.md#tool-calling-api), [REQ-04.005](ep-requirements.md#tool-calling-api), [REQ-04.019](ep-requirements.md#tool-index-and-pre-selection) | Every completion request includes pre-selected tool list in provider format; at least one provider supported |
 | [AC-04.004](#ac-04-004) | [REQ-04.006](ep-requirements.md#tool-calling-api) | LLM returns tool_calls → core validates, substitutes, executes via run_on_node, returns tool results in loop |
@@ -46,7 +46,11 @@ This document defines epic-level acceptance criteria for **EP-004 Structured too
 | [AC-04.022](#ac-04-022) | [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api) | When provider lacks Tool-calling API, system MAY support text-based tool invocation (tools in prompt, defined format) |
 | [AC-04.023](#ac-04-023) | [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.028](ep-requirements.md#tool-invocation-without-tool-calling-api) | Text-based: prompt describes tools and format; parsed tool calls use same validation and execution path |
 | [AC-04.024](#ac-04-024) | [REQ-04.029](ep-requirements.md#tool-invocation-without-tool-calling-api) | Parse failure or invalid format → no execution; plain text or deterministic error to user |
-| [AC-04.025](#ac-04-025) | [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api) | Configurable enable/disable of text-based tool invocation per provider or globally |
+| [AC-04.025](#ac-04-025) | [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api) | Configurable enable/disable of text-based tool invocation (global) |
+| [AC-04.026](#ac-04-026) | [REQ-04.032](ep-requirements.md#prompt-text-for-selected-tools) | Selected tools with system_prompt → text appended to system message |
+| [AC-04.027](#ac-04-027) | [REQ-04.033](ep-requirements.md#prompt-text-for-selected-tools) | Text-based list uses hermes_prompt or index_text plus parameters schema |
+| [AC-04.028](#ac-04-028) | [REQ-04.034](ep-requirements.md#provider-interface) | supports_tools required; false → no native tools in HTTP request |
+| [AC-04.029](#ac-04-029) | [REQ-04.031](ep-requirements.md#validation-and-execution) | Command with forbidden shell metacharacters after substitution (or on run_on_node path) → no execution; deterministic error |
 
 ---
 
@@ -56,7 +60,8 @@ This document defines epic-level acceptance criteria for **EP-004 Structured too
 
 Given the operator has configured a tool catalog (e.g. YAML) as the single source of truth,  
 When the catalog is valid,  
-Then every invocable tool is defined there with: a stable id, a template (command string with placeholders), node_id (or binding to a node), and argument rules (e.g. allowed_values, pattern, type, min/max).  
+Then every invocable tool is defined there with: a stable id, **index_text** (non-empty), template (command string with placeholders), node_id (or binding to a node), and argument rules (e.g. allowed_values, pattern, type, min/max).  
+And each tool MAY define optional **triggers**, **system_prompt**, and **hermes_prompt**.  
 And there are no duplicate or ad-hoc tool definitions elsewhere.
 
 ---
@@ -75,8 +80,8 @@ And when the core validates and executes a tool call, it uses the same parsed ca
 
 Given the user sends a message that can trigger tools,  
 When the core calls the LLM provider to get a completion,  
-Then the request includes the pre-selected list of tools (from tool pre-selection) in the format required by the provider's Tool-calling API (name/id, short description, parameters schema or example).  
-And at least one supported provider (e.g. OpenAI-compatible or Ollama) accepts this format and can return tool_calls in the response.
+Then, for providers with **supports_tools** true, the request includes the pre-selected list of tools in the provider's Tool-calling format; each tool's description field SHALL match **index_text** from the catalog (name/id, parameters schema or equivalent).  
+And at least one supported provider accepts this format and can return tool_calls in the response.
 
 ---
 
@@ -247,20 +252,20 @@ Then the system SHALL log an error message that includes the failure reason (e.g
 
 <a id="ac-04-022"></a>**AC-04.022** (Trace: [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api))
 
-Given the configured LLM provider does not support the Tool-calling API (e.g. returns an error indicating tools are not supported),  
-When the feature is enabled (per provider or globally),  
-Then the system MAY support tool invocation by describing the pre-selected tools in the prompt and parsing the assistant's text response for tool calls in a defined, documented format (e.g. Hermes-style `<tool_call>` with JSON).  
-And the format SHALL be documented so operators and implementers know what the model is expected to output.
+Given the configured LLM provider has **supports_tools** false and **tools.text_based_enabled** is true,  
+When the core handles a user message that can trigger tools,  
+Then the system MAY use text-based tool invocation: pre-selected tools described in the prompt and assistant output parsed for a defined format (e.g. Hermes-style `<tool_call>` with JSON).  
+And the format SHALL be documented for operators and implementers.
 
 ---
 
 <a id="ac-04-023"></a>**AC-04.023** (Trace: [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.028](ep-requirements.md#tool-invocation-without-tool-calling-api))
 
-Given text-based tool invocation is enabled and the provider does not support the Tool-calling API,  
-When the core sends a completion request that can trigger tools,  
-Then the prompt SHALL include a description of the available tools and instructions for the model to output tool calls in the defined format.  
+Given text-based tool invocation is enabled and **supports_tools** is false for the active provider,  
+When the core sends the first completion request for a turn that can trigger tools,  
+Then the prompt SHALL list each pre-selected tool with text from **hermes_prompt** when set, otherwise **index_text**, plus parameters schema where non-empty, and instructions for the defined tool-call format.  
 And when the assistant message is received, the core SHALL parse it to extract tool id (or name) and arguments.  
-And parsed tool calls SHALL undergo the same validation (tool id in catalog, arguments conforming to source-of-truth schema) and execution path (template substitution, run_on_node) as tool_calls received via the Tool-calling API.  
+And parsed tool calls SHALL undergo the same validation and execution path as native tool_calls.  
 And the system SHALL NOT execute any command for an unknown tool id or for arguments that fail validation.
 
 ---
@@ -276,7 +281,43 @@ And the system SHALL either treat the response as plain assistant text or surfac
 
 <a id="ac-04-025"></a>**AC-04.025** (Trace: [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api))
 
-Given the system supports text-based tool invocation for providers that do not support the Tool-calling API,  
+Given the system supports text-based tool invocation when **supports_tools** is false,  
 When the operator configures the system,  
-Then configuration SHALL allow enabling or disabling text-based tool invocation (e.g. per provider or globally).  
-And changing this setting SHALL NOT require code changes (config or env only).
+Then configuration SHALL include a global flag (e.g. **tools.text_based_enabled**) to enable or disable text-based tool invocation.  
+And changing this setting SHALL NOT require code changes.
+
+---
+
+<a id="ac-04-026"></a>**AC-04.026** (Trace: [REQ-04.032](ep-requirements.md#prompt-text-for-selected-tools))
+
+Given the catalog defines non-empty **system_prompt** for one or more tools,  
+When those tools are among the pre-selected tools for a completion request,  
+Then the system message for that request SHALL include the **system_prompt** text for each such tool in selection order, associated with the tool id (e.g. a marked section per id).
+
+---
+
+<a id="ac-04-027"></a>**AC-04.027** (Trace: [REQ-04.033](ep-requirements.md#prompt-text-for-selected-tools))
+
+Given text-based tool invocation is active for a request with multiple pre-selected tools,  
+When the core builds the Hermes-style tool list in the prompt,  
+Then each tool line SHALL use **hermes_prompt** when non-empty for that tool, otherwise **index_text**.  
+And non-empty parameters schema SHALL appear for tools that define arguments.
+
+---
+
+<a id="ac-04-028"></a>**AC-04.028** (Trace: [REQ-04.034](ep-requirements.md#provider-interface))
+
+Given the operator configures LLM providers,  
+When config is loaded,  
+Then every provider entry SHALL include **supports_tools** (boolean).  
+When **supports_tools** is false for the provider used for chat completion,  
+Then the HTTP request to that provider SHALL NOT include the native tools payload (tools array / equivalent).
+
+---
+
+<a id="ac-04-029"></a>**AC-04.029** (Trace: [REQ-04.031](ep-requirements.md#validation-and-execution))
+
+Given a command string would be executed on a node after template substitution for a catalog tool, or as supplied to **run_on_node** (e.g. scheduler **run_on_node** tool),  
+When that string contains any sequence from the forbidden shell-metacharacter set (at minimum: semicolon, ampersand, pipe, newline, carriage return, dollar-parenthesis `$(`, backtick),  
+Then the system SHALL NOT execute that command on the node.  
+And the system SHALL produce a deterministic error of the same class as a validation failure (no SSH exec; outcome visible to the user or in tool result as for other pre-execution failures).

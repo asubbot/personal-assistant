@@ -2,7 +2,7 @@
 
 This document contains the product requirements for EP-004 (Structured tools and Tool-calling API) in EARS form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, solution-free where applicable).
 
-**Total: 31 requirements (23 FR, 8 NFR)**
+**Total: 34 requirements (26 FR, 8 NFR)**
 
 **Contents**
 
@@ -21,6 +21,7 @@ This document contains the product requirements for EP-004 (Structured tools and
   - [Sonos support](#sonos-support)
   - [Tool index and pre-selection](#tool-index-and-pre-selection)
   - [Tool invocation without Tool-calling API](#tool-invocation-without-tool-calling-api)
+  - [Prompt text for selected tools](#prompt-text-for-selected-tools)
   - [NFR — Security, testability, observability, consistency](#nfr--security-testability-observability-consistency)
 
 ---
@@ -31,7 +32,7 @@ This document is derived from [ep-scope.md](ep-scope.md). EP-004 builds on EP-00
 
 **Epic scope in brief:**
 
-- Single source of truth for tools (e.g. YAML): id, template, node_id, argument rules; optional triggers per tool; parsed at startup.
+- Single source of truth for tools (e.g. YAML): id, **index_text** (required), optional **system_prompt** and **hermes_prompt**, template, node_id, argument rules; optional **triggers**; parsed at startup.
 - Tool index built at startup from the catalog (id, **index_text**, optional triggers) and stored in the **same vector database as memory, in a dedicated table** (e.g. vec_tools); used for pre-selection per request. Target scale up to **1000 tools**. Index load **within 20 seconds** (batched embedding API and/or background build with fallback until ready).
 - Each LLM request receives a pre-selected subset of tools (from the tool index, e.g. top-k by semantic similarity to the user message) in the provider's Tool-calling format; fallback when selection is empty or too small.
 - Core handles tool_calls in the response: validate, substitute template, execute via run_on_node; results and errors returned as tool results and, when appropriate, shown in chat.
@@ -50,7 +51,7 @@ This document is derived from [ep-scope.md](ep-scope.md). EP-004 builds on EP-00
 | **Core** | The main Go service: orchestration of conversations, LLM calls, tool execution, and SSH-based node management. From [scope.md](../../scope.md). |
 | **Node** | A remote host that the core connects to over SSH; has a defined capability set and credentials in configuration. From [scope.md](../../scope.md). |
 | **Tool (invocable)** | Stable id, **index_text**, optional **system_prompt** / **hermes_prompt**, node binding, schema for arguments. From [ep-scope.md](ep-scope.md). |
-| **Single source of truth (tools)** | One configuration (e.g. YAML) per node or shared base plus per-node overrides, parsed at startup. Defines for each tool: id, template, node_id, and argument rules (allowed_values, pattern, type, min/max). Used to build the tool list for the LLM and to validate and run the command. From [ep-scope.md](ep-scope.md). |
+| **Single source of truth (tools)** | One configuration (e.g. YAML), parsed at startup. Each tool: id, **index_text**, optional **system_prompt**, optional **hermes_prompt**, template, node_id, argument rules, optional **triggers**. Used for tool index text (id + index_text + triggers), native tool description (**index_text**), optional system and Hermes prompt injection, validation, and execution. From [ep-scope.md](ep-scope.md). |
 | **Tool-calling API** | The provider-native mechanism to pass a list of tools in the request and receive structured tool_calls in the response (id and arguments as JSON). PersonalAssistant uses this so the model does not embed JSON in free text. From [ep-scope.md](ep-scope.md). |
 | **index_text** | Short text for vector index and native tool API description. **system_prompt** / **hermes_prompt**: optional per-tool system and Hermes-list text. From [ep-scope.md](ep-scope.md). |
 | **expected_json** | The shape of arguments for a tool. Sent to the LLM as a schema or example; full validation is done in PersonalAssistant from the source of truth. From [ep-scope.md](ep-scope.md). |
@@ -114,6 +115,7 @@ In the following, *System* = PersonalAssistant (or the component stated).
 | REQ-04.010 | FR | Validation and execution | Executed command remains under allowlist and SSH model |
 | REQ-04.011 | FR | Errors to chat | Validation and execution errors surfaced to user in chat |
 | REQ-04.012 | FR | Provider interface | Provider interface accepts optional tools payload and returns tool_calls |
+| REQ-04.034 | FR | Provider interface | supports_tools per provider; omit native tools in HTTP when false |
 | REQ-04.013 | FR | Sonos support | At least one Sonos tool definable in catalog and executable on configured node |
 | REQ-04.014 | NFR | NFR — Security, testability, observability, consistency | No command executed without valid tool id and schema-passing arguments |
 | REQ-04.015 | NFR | NFR — Security, testability, observability, consistency | New behaviour covered by unit/integration tests; existing tests pass |
@@ -131,8 +133,10 @@ In the following, *System* = PersonalAssistant (or the component stated).
 | REQ-04.027 | FR | Tool invocation without Tool-calling API | Tools described in prompt; model outputs in defined format; system parses and extracts tool calls |
 | REQ-04.028 | FR | Tool invocation without Tool-calling API | Parsed text-based tool calls use same validation and execution path as native tool_calls |
 | REQ-04.029 | FR | Tool invocation without Tool-calling API | Parse failure or invalid format yields no execution; error or plain text to user |
-| REQ-04.030 | NFR | Tool invocation without Tool-calling API | Configurable enable/disable of text-based tool invocation per provider or globally |
+| REQ-04.030 | NFR | Tool invocation without Tool-calling API | Configurable enable/disable of text-based tool invocation (global tools config) |
 | REQ-04.031 | FR | Validation and execution | Commands containing shell metacharacters rejected before execution |
+| REQ-04.032 | FR | Prompt text for selected tools | Non-empty system_prompt appended to system when tool is selected |
+| REQ-04.033 | FR | Prompt text for selected tools | Hermes path uses hermes_prompt or index_text per tool plus schema |
 
 ---
 
@@ -146,7 +150,7 @@ In the following, *System* = PersonalAssistant (or the component stated).
 THE System SHALL have a single source of truth (e.g. YAML) that defines all invocable tools; no duplicate or ad-hoc tool definitions elsewhere.
 
 **REQ-04.002** (Ubiquitous)  
-THE System SHALL define each tool in the source of truth with: a stable id, a template (command string with placeholders, no implicit defaults), node_id (or equivalent binding to a node), and argument rules (e.g. allowed_values, pattern, type, min/max). Each tool MAY include optional triggers (example phrases) for use in the tool index.
+THE System SHALL define each tool in the source of truth with: a stable id, **index_text** (non-empty short text for tool index embedding and for the native Tool-calling API tool description), a template (command string with placeholders, no implicit defaults), node_id (or equivalent binding to a node), and argument rules (e.g. allowed_values, pattern, type, min/max). Each tool MAY include optional **triggers** (example phrases concatenated into tool index embedding text only). Each tool MAY include optional **system_prompt** (appended to the system message when that tool is among the selected tools for the request). Each tool MAY include optional **hermes_prompt** (instructional text for the text-based tool list when **hermes_prompt** is non-empty; otherwise the text-based list uses **index_text** for that tool).
 
 **REQ-04.003** (Ubiquitous)  
 THE System SHALL parse the tool catalog at service startup and use it both to build the tool list sent to the LLM and to validate and execute tool calls.
@@ -158,7 +162,7 @@ THE System SHALL parse the tool catalog at service startup and use it both to bu
 *REQ-04.004, REQ-04.005, REQ-04.006*
 
 **REQ-04.004** (Ubiquitous)  
-THE System SHALL include the list of tools selected for that request (via tool pre-selection) in every completion request that can trigger tools, in the format required by the provider's Tool-calling API (name/id, short description, parameters schema or example).
+THE System SHALL include the list of tools selected for that request (via tool pre-selection) in every completion request that uses the native Tool-calling API for that provider, in the format required by the provider (name/id, tool description, parameters schema). The tool description field SHALL be the tool's **index_text** from the catalog.
 
 **REQ-04.005** (Ubiquitous)  
 THE System SHALL support the Tool-calling API for at least one provider (e.g. OpenAI-compatible or Ollama).
@@ -187,6 +191,8 @@ THE System SHALL execute only commands that comply with the existing allowlist a
 **REQ-04.031** (Unwanted event)  
 IF a command string to be executed on a node (after template substitution for catalog tools, or as supplied for paths that invoke run_on_node, e.g. the scheduler) contains any character or sequence from the forbidden shell-metacharacter set, THEN THE System SHALL NOT execute that command on the node and SHALL produce a deterministic error (same class as validation failure: no SSH exec, user- or tool-result-visible outcome as for other pre-execution failures). The forbidden set SHALL include at minimum: semicolon (`;`), ampersand (`&`), pipe (`|`), newline, carriage return, dollar-parenthesis command substitution (`$(`), and backtick (`` ` ``). THE System MAY extend this set (e.g. redirection characters) and SHALL document the full set in the implementation plan or system design.
 
+*Acceptance criteria:* [AC-04.029](ep-acceptance-criteria.md#ac-04-029).
+
 ---
 
 ### Errors to chat
@@ -200,10 +206,13 @@ THE System SHALL surface validation failures, execution failures, and node-retur
 
 ### Provider interface
 
-*REQ-04.012*
+*REQ-04.012, REQ-04.034*
 
 **REQ-04.012** (Ubiquitous)  
 THE System SHALL extend the LLM provider interface to accept an optional tools payload and to return tool_calls and related metadata so the core can drive the request–response–tool-result loop without parsing JSON from assistant text.
+
+**REQ-04.034** (Ubiquitous)  
+THE System SHALL require each LLM provider entry in configuration to declare **supports_tools** (boolean). WHEN **supports_tools** is false for the provider used for a completion, THE System SHALL omit the native tools payload from the HTTP request to that provider.
 
 ---
 
@@ -269,10 +278,10 @@ THE System SHALL log the tool index build outcome: on success, an informational 
 *REQ-04.026, REQ-04.027, REQ-04.028, REQ-04.029, REQ-04.030*
 
 **REQ-04.026** (Optional feature)  
-WHERE the configured LLM provider does not support the Tool-calling API (e.g. returns an error indicating that tools are not supported), THE System MAY support tool invocation by describing the pre-selected tools in the prompt and parsing the assistant's text response for tool calls in a defined, documented format (e.g. Hermes-style `<tool_call>` with JSON containing tool name and arguments, or an equivalent single standard).
+WHERE the configured LLM provider has **supports_tools** false and text-based tool invocation is enabled in configuration, THE System MAY support tool invocation by describing the pre-selected tools in the prompt and parsing the assistant's text response for tool calls in a defined, documented format (e.g. Hermes-style `<tool_call>` with JSON containing tool name and arguments, or an equivalent single standard).
 
 **REQ-04.027** (Ubiquitous)  
-WHEN using text-based tool invocation, THE System SHALL include in the prompt a description of the available tools and instructions for the model to output tool calls in the defined format, and SHALL parse the assistant message to extract tool id (or name) and arguments before validation and execution.
+WHEN using text-based tool invocation, THE System SHALL include in the prompt a per-tool line using **hermes_prompt** when set for that tool, otherwise **index_text**, plus the parameters schema where applicable, and instructions for the defined tool-call format; THE System SHALL parse the assistant message to extract tool id (or name) and arguments before validation and execution.
 
 **REQ-04.028** (Ubiquitous)  
 Parsed tool calls extracted from assistant text SHALL undergo the same validation (tool id known and in the catalog, arguments conforming to the source-of-truth schema) and execution path (template substitution, run_on_node) as tool_calls received via the Tool-calling API; THE System SHALL NOT execute any command for an unknown tool id or for arguments that fail validation.
@@ -281,4 +290,16 @@ Parsed tool calls extracted from assistant text SHALL undergo the same validatio
 IF the assistant text cannot be parsed to obtain a valid tool call (malformed format, missing required fields, or unrecoverable parse error), THEN THE System SHALL NOT execute any command based on that output and SHALL either treat the response as plain assistant text or surface a deterministic error to the user in chat.
 
 **REQ-04.030** (NFR — Configurability)  
-THE System SHALL support configuration (e.g. per provider or global) to enable or disable text-based tool invocation for providers that do not support the Tool-calling API, so that operators can turn the feature off or on without code changes.
+THE System SHALL support a global configuration flag (e.g. under a **tools** section) to enable or disable text-based tool invocation, so that operators can turn the feature off or on without code changes.
+
+---
+
+### Prompt text for selected tools
+
+*REQ-04.032, REQ-04.033*
+
+**REQ-04.032** (Event-driven)  
+WHEN one or more tools are selected for a completion request and the catalog defines non-empty **system_prompt** for one or more of those tools, THE System SHALL append that text to the system message for that request in the same order as the selected tool list, in a form that associates the text with the tool id.
+
+**REQ-04.033** (Optional feature)  
+WHERE text-based tool invocation is used for a request, THE System SHALL build the text-based tool list in the prompt from **hermes_prompt** when set for each selected tool, otherwise from **index_text**, and SHALL include each tool's parameters schema in the prompt where the schema is non-empty.

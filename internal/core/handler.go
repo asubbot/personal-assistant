@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"pa/internal/cmdsafe"
 	"pa/internal/embedding"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
@@ -274,6 +275,9 @@ func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, ar
 	}
 	command, err := toolcatalog.Substitute(tool.Template, args)
 	if err != nil {
+		return "", fmt.Errorf("tool %q: %w", toolID, err)
+	}
+	if err := cmdsafe.RejectShellMetacharacters(command); err != nil {
 		return "", fmt.Errorf("tool %q: %w", toolID, err)
 	}
 	if h.nodeRunner == nil {

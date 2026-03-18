@@ -79,9 +79,9 @@
 ## 5. Core: tool list, tool_calls, validation, execution
 
 - [x] **5.1 Core: wire pre-selection and tool list per request**
-  - Pre-select tools; build native tool list (**index_text** as description + schema); merge **system_prompt** into system; Hermes path uses **hermes_prompt** (fallback **index_text**).
-  - _Requirements:_ [REQ-04.004](ep-requirements.md#tool-calling-api), [REQ-04.019](ep-requirements.md#tool-index-and-pre-selection)
-  - _Acceptance Criteria:_ [AC-04.003](ep-acceptance-criteria.md#ac-04-003), [AC-04.015](ep-acceptance-criteria.md#ac-04-015)
+  - Pre-select tools; append **system_prompt** per selected tool ([REQ-04.032](ep-requirements.md#prompt-text-for-selected-tools)); native path: **index_text** as description + schema ([REQ-04.004](ep-requirements.md#tool-calling-api)); Hermes path: **hermes_prompt** or **index_text** ([REQ-04.033](ep-requirements.md#prompt-text-for-selected-tools)); omit HTTP tools when **supports_tools** false ([REQ-04.034](ep-requirements.md#provider-interface)).
+  - _Requirements:_ [REQ-04.004](ep-requirements.md#tool-calling-api), [REQ-04.019](ep-requirements.md#tool-index-and-pre-selection), [REQ-04.032](ep-requirements.md#prompt-text-for-selected-tools)–[REQ-04.034](ep-requirements.md#provider-interface)
+  - _Acceptance Criteria:_ [AC-04.003](ep-acceptance-criteria.md#ac-04-003), [AC-04.015](ep-acceptance-criteria.md#ac-04-015), [AC-04.026](ep-acceptance-criteria.md#ac-04-026)–[AC-04.028](ep-acceptance-criteria.md#ac-04-028)
   - **Verification:** Integration test with mock provider: request contains pre-selected tools in provider format.
   - **Checkpoint:** Before proceeding: each completion request that can trigger tools receives a bounded tool list built from pre-selection.
 
@@ -95,7 +95,7 @@
 - [x] **5.3 Core: template substitution and execution via run_on_node**
   - For valid tool call: substitute validated arguments into tool template; execute resulting command via existing run_on_node path (allowlist and SSH unchanged).
   - _Requirements:_ [REQ-04.009](ep-requirements.md#validation-and-execution), [REQ-04.010](ep-requirements.md#validation-and-execution)
-  - _Acceptance Criteria:_ [AC-04.007](ep-acceptance-criteria.md#ac-04-007)
+  - _Acceptance Criteria:_ [AC-04.007](ep-acceptance-criteria.md#ac-04-007), [AC-04.029](ep-acceptance-criteria.md#ac-04-029)
   - **Verification:** Unit test for substitution; integration test: valid tool call runs via run_on_node and allowlist is enforced.
   - **Checkpoint:** Before proceeding: valid tool calls produce a single command and execute via run_on_node; allowlist and SSH model unchanged.
 
@@ -131,17 +131,16 @@
 - [x] **7.1 Detect provider without Tool-calling API and config flag**
   - **Required:** each entry in `llm_providers` MUST include boolean `supports_tools`. If the field is missing or not a boolean, **config load MUST fail fast** with a clear error (no implicit default).
   - When the provider is known not to support tools (`supports_tools: false`), do not send `tools` in the completion request. **Out of scope for this step:** automatic retry on HTTP 400 «does not support tools»; operators must set `supports_tools: false` explicitly.
-  - Add configuration to enable or disable text-based tool invocation (per provider or globally).
-  - _Requirements:_ [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api)
-  - _Acceptance Criteria:_ [AC-04.022](ep-acceptance-criteria.md#ac-04-022), [AC-04.025](ep-acceptance-criteria.md#ac-04-025)
+  - Global **tools.text_based_enabled** enables text-based mode when **supports_tools** is false.
+  - _Requirements:_ [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.034](ep-requirements.md#provider-interface)
+  - _Acceptance Criteria:_ [AC-04.022](ep-acceptance-criteria.md#ac-04-022), [AC-04.025](ep-acceptance-criteria.md#ac-04-025), [AC-04.028](ep-acceptance-criteria.md#ac-04-028)
   - **Verification:** Unit test: config without `supports_tools` on a provider → load fails; valid `supports_tools` true/false loads; when provider has `supports_tools: false` and text-based feature enabled, request omits tools.
   - **Checkpoint:** Before proceeding: missing `supports_tools` fails at config parse/load; detection prevents sending tools to unsupported provider; config allows enable/disable text-based mode.
 
 - [x] **7.2 Prompt injection and parsing of assistant text**
-  - When text-based tool invocation is enabled: inject into the prompt a description of the pre-selected tools and instructions for the model to output tool calls in a defined, documented format (e.g. Hermes-style `<tool_call>` with JSON `{"name": "...", "arguments": {...}}`).
-  - Parse the assistant message to extract tool id (or name) and arguments; support at least one documented format.
-  - _Requirements:_ [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api)
-  - _Acceptance Criteria:_ [AC-04.022](ep-acceptance-criteria.md#ac-04-023)
+  - Build tool list from **hermes_prompt** or **index_text** plus schema ([REQ-04.033](ep-requirements.md#prompt-text-for-selected-tools)); Hermes `<tool_call>` JSON format.
+  - _Requirements:_ [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.033](ep-requirements.md#prompt-text-for-selected-tools)
+  - _Acceptance Criteria:_ [AC-04.023](ep-acceptance-criteria.md#ac-04-023), [AC-04.027](ep-acceptance-criteria.md#ac-04-027)
   - **Verification:** Unit tests: parse valid format, reject malformed/missing fields; prompt builder includes tool list and format instructions.
   - **Checkpoint:** Before proceeding: prompt contains tool description and format; parser extracts tool id and arguments from sample assistant text.
 
@@ -157,7 +156,7 @@
 
 ## 8. Tests and closure
 
-- [ ] **8.1 Tests and regression**
+- [x] **8.1 Tests and regression**
   - Cover new and changed behaviour with unit and integration tests; ensure all existing tests pass.
   - _Requirements:_ [REQ-04.014](ep-requirements.md#nfr--security-testability-observability-consistency), [REQ-04.015](ep-requirements.md#nfr--security-testability-observability-consistency)
   - _Acceptance Criteria:_ [AC-04.011](ep-acceptance-criteria.md#ac-04-011), [AC-04.012](ep-acceptance-criteria.md#ac-04-012)

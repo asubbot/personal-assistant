@@ -112,7 +112,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing tool_catalog_path", "missing_tool_catalog_path.json", "paths.tool_catalog_path is required"},
 		{"embedding batch_size out of range", "invalid_embedding_batch_size.json", "embedding.batch_size is required and must be between 1 and 1000"},
 		{"missing embedding batch_size", "missing_embedding_batch_size.json", "embedding.batch_size is required and must be between 1 and 1000"},
-		{"missing supports_tools", "missing_supports_tools.json", "supports_tools is required"},
+		{"missing supports_tools", "missing_supports_tools.json", "supports_tools is required"}, // Covers AC-04.028 (REQ-04.034)
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

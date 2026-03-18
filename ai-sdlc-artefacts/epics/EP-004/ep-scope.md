@@ -9,9 +9,9 @@ This document is the epic scope for EP-004 (Structured tools and Tool-calling AP
 | Field | Content |
 |-------|---------|
 | **ID** | EP-004 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Structured tools and Tool-calling API |
-| **Description** | Single source of truth for tools (`id`, `index_text`, optional `system_prompt`, optional `hermes_prompt`, `node_id`, schema). Vector tool index and pre-selection; native Tool-calling API and Hermes text path; execution via run_on_node. Sonos and similar tools on a configured node. |
+| **Description** | Single source of truth: `id`, required `index_text`, optional `system_prompt`, `hermes_prompt`, `triggers`, `node_id`, argument schema. Vector index uses id + index_text + triggers only. Per-provider `supports_tools`; global `tools.text_based_enabled` for Hermes path. Pre-selection, native API + text-based invocation, run_on_node. Sonos on a configured node. |
 
 ## Glossary
 

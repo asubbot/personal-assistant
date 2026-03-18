@@ -284,7 +284,7 @@ func TestOpenAICompatible_Complete_requestIncludesTools(t *testing.T) {
 	}
 }
 
-// REQ-04.026: supports_tools false omits tools from HTTP body even when opts.Tools is set.
+// Covers AC-04.028 (REQ-04.034, REQ-04.026): supports_tools false omits tools from HTTP body even when opts.Tools is set.
 func TestOpenAICompatible_Complete_supportsToolsFalse_omitsTools(t *testing.T) {
 	var raw []byte
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

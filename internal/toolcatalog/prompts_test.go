@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// Covers AC-04.026: non-empty system_prompt aggregated per tool id in selection order.
 func TestAggregateSystemPrompts_joinsByIdOrder(t *testing.T) {
 	c := &Catalog{Tools: map[string]*Tool{
 		"a": {ID: "a", IndexText: "ia", Template: "x", NodeID: "n", SystemPrompt: "  first  "},
@@ -19,6 +20,7 @@ func TestAggregateSystemPrompts_joinsByIdOrder(t *testing.T) {
 	}
 }
 
+// Covers AC-04.026: tools without system_prompt omitted from aggregated block.
 func TestAggregateSystemPrompts_skipsEmpty(t *testing.T) {
 	c := &Catalog{Tools: map[string]*Tool{
 		"x": {ID: "x", IndexText: "i", Template: "t", NodeID: "n"},
@@ -30,6 +32,7 @@ func TestAggregateSystemPrompts_skipsEmpty(t *testing.T) {
 	}
 }
 
+// Covers AC-04.027: HermesBody returns hermes_prompt trimmed or falls back to index_text.
 func TestTool_HermesBody(t *testing.T) {
 	t.Run("hermes_wins", func(t *testing.T) {
 		tr := &Tool{HermesPrompt: "  H  ", IndexText: "I"}

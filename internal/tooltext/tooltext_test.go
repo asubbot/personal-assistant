@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// Covers AC-04.024: assistant text with no tool_call blocks → empty parse, no execution path from parser.
 func TestParseHermesToolCalls_empty(t *testing.T) {
 	calls, err := ParseHermesToolCalls("plain text only")
 	if err != nil {
@@ -17,6 +18,7 @@ func TestParseHermesToolCalls_empty(t *testing.T) {
 	}
 }
 
+// Covers AC-04.023, AC-04.028: valid Hermes markup → parsed tool id and arguments for validation/execution path.
 func TestParseHermesToolCalls_one(t *testing.T) {
 	s := `Thinking.
 <tool_call>
@@ -37,6 +39,7 @@ func TestParseHermesToolCalls_one(t *testing.T) {
 	}
 }
 
+// Covers AC-04.024: unclosed tool_call → parse error, no valid tool_calls extracted.
 func TestParseHermesToolCalls_unclosed(t *testing.T) {
 	_, err := ParseHermesToolCalls(`<tool_call>{"name":"x"}`)
 	if err == nil {
@@ -44,6 +47,7 @@ func TestParseHermesToolCalls_unclosed(t *testing.T) {
 	}
 }
 
+// Covers AC-04.024: invalid JSON inside tool_call → parse error.
 func TestParseHermesToolCalls_invalidJSON(t *testing.T) {
 	_, err := ParseHermesToolCalls(`<tool_call>not json</tool_call>`)
 	if err == nil {
@@ -51,6 +55,7 @@ func TestParseHermesToolCalls_invalidJSON(t *testing.T) {
 	}
 }
 
+// Covers AC-04.023: prompt instructions include tool ids, format, and parameters for text-based invocation.
 func TestInstructionsForTools_containsFormat(t *testing.T) {
 	s := InstructionsForTools([]llm.ToolDef{{Name: "t1", Description: "d1", Parameters: `{"type":"object"}`}})
 	if !strings.Contains(s, "t1") || !strings.Contains(s, "tool_call") {
@@ -58,6 +63,7 @@ func TestInstructionsForTools_containsFormat(t *testing.T) {
 	}
 }
 
+// Covers AC-04.027: Hermes tool list uses hermes_prompt when non-empty for that tool.
 func TestInstructionsForCatalogTools_hermesPromptOverridesIndex(t *testing.T) {
 	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{
 		"t1": {ID: "t1", IndexText: "short", HermesPrompt: "LONG HERMES", Template: "x", NodeID: "n"},
@@ -68,6 +74,7 @@ func TestInstructionsForCatalogTools_hermesPromptOverridesIndex(t *testing.T) {
 	}
 }
 
+// Covers AC-04.027: when hermes_prompt empty, tool line uses index_text.
 func TestInstructionsForCatalogTools_fallbackIndexText(t *testing.T) {
 	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{
 		"t1": {ID: "t1", IndexText: "only index", Template: "x", NodeID: "n"},
@@ -78,6 +85,7 @@ func TestInstructionsForCatalogTools_fallbackIndexText(t *testing.T) {
 	}
 }
 
+// Covers AC-04.023, AC-04.028: multiple valid tool_call blocks → multiple parsed calls.
 func TestParseHermesToolCalls_multipleBlocks(t *testing.T) {
 	s := `<tool_call>{"name": "a", "arguments": {"x": 1}}</tool_call>
 <tool_call>

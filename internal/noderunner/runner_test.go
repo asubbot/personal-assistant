@@ -125,6 +125,46 @@ func TestRunOnNode_twoNodes_eachUsesCorrectNodeID(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029 (REQ-04.031): command with shell metacharacters rejected before allowlist/exec.
+func TestRunOnNode_shellMetacharacters_rejected(t *testing.T) {
+	dir := t.TempDir()
+	allowlistPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowlistPath, []byte("*\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowlistPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	r := New(cfg, al, slog.Default())
+	var execCalls int
+	r.SetExecutor(&mockExecutor{
+		execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+			execCalls++
+			return nil, nil, nil
+		},
+	})
+	for _, cmd := range []string{"uptime;id", "foo &", "a | b", "x\ny", "echo $(id)", "echo `x`"} {
+		_, err := r.RunOnNode(context.Background(), "n1", cmd)
+		if err == nil {
+			t.Fatalf("RunOnNode(%q): want error", cmd)
+		}
+	}
+	if execCalls != 0 {
+		t.Errorf("executor must not run for rejected commands; calls=%d", execCalls)
+	}
+}
+
 // Covers AC-01.007 (US-04): RunOnNode invokes executor with node ID and command when allowlist allows.
 func TestRunOnNode_allowedCommand_usesExecutorWhenSet(t *testing.T) {
 	dir := t.TempDir()

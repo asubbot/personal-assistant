@@ -1028,6 +1028,86 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	}
 }
 
+// AC-04.026 / REQ-04.032: first system message includes per-tool [id] blocks for non-empty system_prompt when tools are selected.
+func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testing.T) {
+	logger := slog.Default()
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
+	const marker = "UNIQUE_SYSTEM_PROMPT_MARKER_8264"
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"alpha_tool": {
+				ID:           "alpha_tool",
+				IndexText:    "Alpha capability for testing",
+				SystemPrompt: marker + "\nSecond line of rules.",
+				Template:     "echo alpha",
+				NodeID:       "nas",
+				Arguments:    []toolcatalog.ArgumentRule{},
+			},
+		},
+	}
+	toolStore := &mockVectorStore{
+		searchResults: []vector.SearchResult{{ID: "alpha_tool", Text: "alpha", Score: 0.9}},
+	}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		provider:                   provider,
+		catalog:                    catalog,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     logger,
+		firstProviderSupportsTools: true,
+	}
+
+	_, err := h.HandleMessage(context.Background(), 1, "use alpha")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if len(provider.lastMessages) < 1 {
+		t.Fatal("expected at least one message to provider")
+	}
+	sys := provider.lastMessages[0]
+	if sys.Role != "system" {
+		t.Fatalf("first message role = %q, want system", sys.Role)
+	}
+	if !strings.Contains(sys.Content, "Tool instructions:") {
+		t.Errorf("system message missing Tool instructions header: %q", sys.Content)
+	}
+	if !strings.Contains(sys.Content, "[alpha_tool]") {
+		t.Errorf("system message missing [alpha_tool] section: %q", sys.Content)
+	}
+	if !strings.Contains(sys.Content, marker) {
+		t.Errorf("system message missing system_prompt body: %q", sys.Content)
+	}
+}
+
+// Covers AC-04.029 (REQ-04.031): substituted command with shell metacharacter must not reach RunOnNode.
+func TestExecuteOneToolCall_substitutedCommandWithMetachar_noRunOnNode(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID:        "run_echo",
+				IndexText: "Echo",
+				Template:  "echo {{msg}}",
+				NodeID:    "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+	_, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "hi;rm -rf /"}`)
+	if err == nil {
+		t.Fatal("executeOneToolCall: expected error for metacharacter in substituted command")
+	}
+	if runner.lastCommand != "" {
+		t.Errorf("RunOnNode must not run; lastCommand=%q", runner.lastCommand)
+	}
+}
+
 // REQ-04.027–029: text_based + first provider without tools → Hermes in content → execute → follow-up without tools, tool results as user.
 //
 //nolint:gocyclo // Sequential scenario assertions; clarity over splitting.

@@ -401,11 +401,7 @@ func newToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.
 	catalog := cfg.ToolCatalog
 	go func() {
 		err := idx.BuildAndSetReady(context.Background(), catalog, embedder)
-		if err != nil {
-			logger.Error("tool index build failed", "error", err)
-			return
-		}
-		logger.Info("tool index built", "tools", len(catalog.Tools))
+		toolindex.LogBuildOutcome(logger, len(catalog.Tools), err)
 	}()
 	return idx, nil
 }
