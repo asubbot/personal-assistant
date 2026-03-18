@@ -34,9 +34,9 @@ func TestBuild_populatesStoreAndSearchReturnsToolIds(t *testing.T) {
 
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"tool_a":    {ID: "tool_a", ShortDescription: "Do A", Template: "echo a", NodeID: "n1", Arguments: nil, Triggers: []string{"a"}},
-			"tool_b":    {ID: "tool_b", ShortDescription: "Do B", Template: "echo b", NodeID: "n1", Arguments: nil, Triggers: nil},
-			"node_time": {ID: "node_time", ShortDescription: "Get node time", Template: "date", NodeID: "nas", Arguments: nil, Triggers: []string{"time"}},
+			"tool_a":    {ID: "tool_a", IndexText: "Do A", Template: "echo a", NodeID: "n1", Arguments: nil, Triggers: []string{"a"}},
+			"tool_b":    {ID: "tool_b", IndexText: "Do B", Template: "echo b", NodeID: "n1", Arguments: nil, Triggers: nil},
+			"node_time": {ID: "node_time", IndexText: "Get node time", Template: "date", NodeID: "nas", Arguments: nil, Triggers: []string{"time"}},
 		},
 	}
 	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
@@ -79,8 +79,8 @@ func TestBuild_secondBuild_dropsStaleToolIds(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
 	catalog1 := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"stale": {ID: "stale", ShortDescription: "gone", Template: "echo", NodeID: "n", Arguments: nil},
-			"kept":  {ID: "kept", ShortDescription: "stay", Template: "echo", NodeID: "n", Arguments: nil},
+			"stale": {ID: "stale", IndexText: "gone", Template: "echo", NodeID: "n", Arguments: nil},
+			"kept":  {ID: "kept", IndexText: "stay", Template: "echo", NodeID: "n", Arguments: nil},
 		},
 	}
 	if err := Build(ctx, catalog1, emb, store); err != nil {
@@ -88,7 +88,7 @@ func TestBuild_secondBuild_dropsStaleToolIds(t *testing.T) {
 	}
 	catalog2 := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"kept": {ID: "kept", ShortDescription: "stay", Template: "echo", NodeID: "n", Arguments: nil},
+			"kept": {ID: "kept", IndexText: "stay", Template: "echo", NodeID: "n", Arguments: nil},
 		},
 	}
 	if err := Build(ctx, catalog2, emb, store); err != nil {
@@ -122,7 +122,7 @@ func TestBuild_emptyCatalog_clearsStore(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
 	if err := Build(ctx, &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"x": {ID: "x", ShortDescription: "X", Template: "echo", NodeID: "n", Arguments: nil},
+			"x": {ID: "x", IndexText: "X", Template: "echo", NodeID: "n", Arguments: nil},
 		},
 	}, emb, store); err != nil {
 		t.Fatalf("Build: %v", err)
@@ -157,7 +157,7 @@ func TestIndex_Ready_afterBuildAndSetReady(t *testing.T) {
 
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"x": {ID: "x", ShortDescription: "X", Template: "echo x", NodeID: "n", Arguments: nil},
+			"x": {ID: "x", IndexText: "X", Template: "echo x", NodeID: "n", Arguments: nil},
 		},
 	}
 	emb := &mockEmbedder{vec: []float32{0, 0, 0, 1}}
@@ -222,8 +222,8 @@ func TestBuild_usesBatchEmbedder_whenAvailable(t *testing.T) {
 
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"a": {ID: "a", ShortDescription: "A", Template: "echo a", NodeID: "n", Arguments: nil},
-			"b": {ID: "b", ShortDescription: "B", Template: "echo b", NodeID: "n", Arguments: nil},
+			"a": {ID: "a", IndexText: "A", Template: "echo a", NodeID: "n", Arguments: nil},
+			"b": {ID: "b", IndexText: "B", Template: "echo b", NodeID: "n", Arguments: nil},
 		},
 	}
 	emb := &mockBatchEmbedder{vec: []float32{0, 1, 0, 0}}
@@ -270,7 +270,7 @@ func TestBuildAndSetReady_whenBuildFails_ReadyStaysFalse(t *testing.T) {
 	idx := NewIndex(store)
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"x": {ID: "x", ShortDescription: "X", Template: "echo x", NodeID: "n", Arguments: nil},
+			"x": {ID: "x", IndexText: "X", Template: "echo x", NodeID: "n", Arguments: nil},
 		},
 	}
 
@@ -311,8 +311,8 @@ func TestBuild_batched_embedBatchLengthMismatch_returnsError(t *testing.T) {
 
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"a": {ID: "a", ShortDescription: "A", Template: "echo a", NodeID: "n", Arguments: nil},
-			"b": {ID: "b", ShortDescription: "B", Template: "echo b", NodeID: "n", Arguments: nil},
+			"a": {ID: "a", IndexText: "A", Template: "echo a", NodeID: "n", Arguments: nil},
+			"b": {ID: "b", IndexText: "B", Template: "echo b", NodeID: "n", Arguments: nil},
 		},
 	}
 
@@ -336,7 +336,7 @@ func TestBuild_contextCanceled_batched_returnsContextError(t *testing.T) {
 
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"a": {ID: "a", ShortDescription: "A", Template: "echo a", NodeID: "n", Arguments: nil},
+			"a": {ID: "a", IndexText: "A", Template: "echo a", NodeID: "n", Arguments: nil},
 		},
 	}
 
@@ -363,7 +363,7 @@ func TestBuild_contextCanceled_sequential_returnsContextError(t *testing.T) {
 
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
-			"a": {ID: "a", ShortDescription: "A", Template: "echo a", NodeID: "n", Arguments: nil},
+			"a": {ID: "a", IndexText: "A", Template: "echo a", NodeID: "n", Arguments: nil},
 		},
 	}
 

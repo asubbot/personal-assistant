@@ -12,7 +12,7 @@
 
 - [x] **1.1 Add tool catalog to config and define catalog format**
   - Add tool catalog path (or list of paths) to config; validate at load.
-  - Define YAML schema for catalog: per-tool fields `id`, `short_description`, `template` (placeholders), `node_id`, `arguments` (name, type, required, allowed_values, pattern, min, max), optional `triggers`.
+  - YAML catalog: `id`, `index_text`, optional `system_prompt`, optional `hermes_prompt`, `template`, `node_id`, `arguments`, optional `triggers`.
   - Parse catalog at startup; fail fast on parse or schema error.
   - _Requirements:_ [REQ-04.001](ep-requirements.md#tool-catalog-and-source-of-truth), [REQ-04.002](ep-requirements.md#tool-catalog-and-source-of-truth), [REQ-04.003](ep-requirements.md#tool-catalog-and-source-of-truth)
   - _Acceptance Criteria:_ [AC-04.001](ep-acceptance-criteria.md#ac-04-001), [AC-04.002](ep-acceptance-criteria.md#ac-04-002)
@@ -32,7 +32,7 @@
   - **Checkpoint:** Before proceeding: vector store has dedicated tool table; search by embedding returns top-k tool ids from same DB as memory.
 
 - [x] **2.2 Build tool index at startup (20 s or background + fallback)**
-  - For each tool in parsed catalog: build text (id + short_description + optional triggers), obtain embedding (use **batched** embedding API where supported), store in `vec_tools`.
+  - For each tool: embed id + **index_text** + optional triggers (not system/hermes prompts); store in `vec_tools`.
   - Index build MUST complete within 20 seconds from startup, or run in background with a defined fallback (e.g. default tool subset or "index not ready") until ready.
   - _Requirements:_ [REQ-04.018](ep-requirements.md#tool-index-and-pre-selection), [REQ-04.021](ep-requirements.md#tool-index-and-pre-selection)
   - _Acceptance Criteria:_ [AC-04.014](ep-acceptance-criteria.md#ac-04-014), [AC-04.017](ep-acceptance-criteria.md#ac-04-017)
@@ -79,7 +79,7 @@
 ## 5. Core: tool list, tool_calls, validation, execution
 
 - [x] **5.1 Core: wire pre-selection and tool list per request**
-  - For each completion request that can trigger tools: run tool pre-selection, build tool list from catalog for selected ids only (id, short_description, parameters schema or example), pass to LLM provider.
+  - Pre-select tools; build native tool list (**index_text** as description + schema); merge **system_prompt** into system; Hermes path uses **hermes_prompt** (fallback **index_text**).
   - _Requirements:_ [REQ-04.004](ep-requirements.md#tool-calling-api), [REQ-04.019](ep-requirements.md#tool-index-and-pre-selection)
   - _Acceptance Criteria:_ [AC-04.003](ep-acceptance-criteria.md#ac-04-003), [AC-04.015](ep-acceptance-criteria.md#ac-04-015)
   - **Verification:** Integration test with mock provider: request contains pre-selected tools in provider format.

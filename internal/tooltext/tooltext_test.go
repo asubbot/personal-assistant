@@ -2,6 +2,7 @@ package tooltext
 
 import (
 	"pa/internal/llm"
+	"pa/internal/toolcatalog"
 	"strings"
 	"testing"
 )
@@ -53,6 +54,26 @@ func TestParseHermesToolCalls_invalidJSON(t *testing.T) {
 func TestInstructionsForTools_containsFormat(t *testing.T) {
 	s := InstructionsForTools([]llm.ToolDef{{Name: "t1", Description: "d1", Parameters: `{"type":"object"}`}})
 	if !strings.Contains(s, "t1") || !strings.Contains(s, "tool_call") {
+		t.Errorf("instructions: %s", s)
+	}
+}
+
+func TestInstructionsForCatalogTools_hermesPromptOverridesIndex(t *testing.T) {
+	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{
+		"t1": {ID: "t1", IndexText: "short", HermesPrompt: "LONG HERMES", Template: "x", NodeID: "n"},
+	}}
+	s := InstructionsForCatalogTools(cat, []string{"t1"})
+	if !strings.Contains(s, "LONG HERMES") || strings.Contains(s, "- t1: short") {
+		t.Errorf("want hermes line for t1: %s", s)
+	}
+}
+
+func TestInstructionsForCatalogTools_fallbackIndexText(t *testing.T) {
+	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{
+		"t1": {ID: "t1", IndexText: "only index", Template: "x", NodeID: "n"},
+	}}
+	s := InstructionsForCatalogTools(cat, []string{"t1"})
+	if !strings.Contains(s, "only index") {
 		t.Errorf("instructions: %s", s)
 	}
 }

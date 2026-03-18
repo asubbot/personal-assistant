@@ -14,7 +14,7 @@ type Message struct {
 // ToolDef is one tool in the completion request (provider-agnostic; core passes these for Tool-calling API).
 type ToolDef struct {
 	Name        string `json:"name"`                 // tool id/name (e.g. from catalog id)
-	Description string `json:"description"`          // short_description for the model
+	Description string `json:"description"`          // index_text for native tool API
 	Parameters  string `json:"parameters,omitempty"` // JSON schema or object for arguments; empty = no parameters
 }
 

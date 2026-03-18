@@ -39,10 +39,10 @@ func TestLoad_MissingRequiredFields_ReturnsError(t *testing.T) {
 		yaml    string
 		wantErr string
 	}{
-		{"missing id", "tools:\n  - short_description: x\n    template: t\n    node_id: n\n", "id is required"},
-		{"missing short_description", "tools:\n  - id: x\n    template: t\n    node_id: n\n", "short_description is required"},
-		{"missing template", "tools:\n  - id: x\n    short_description: d\n    node_id: n\n", "template is required"},
-		{"missing node_id", "tools:\n  - id: x\n    short_description: d\n    template: t\n", "node_id is required"},
+		{"missing id", "tools:\n  - index_text: x\n    template: t\n    node_id: n\n", "id is required"},
+		{"missing index_text", "tools:\n  - id: x\n    template: t\n    node_id: n\n", "index_text is required"},
+		{"missing template", "tools:\n  - id: x\n    index_text: d\n    node_id: n\n", "template is required"},
+		{"missing node_id", "tools:\n  - id: x\n    index_text: d\n    template: t\n", "node_id is required"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

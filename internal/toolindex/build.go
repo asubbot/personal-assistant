@@ -49,7 +49,7 @@ func (x *Index) Close() error {
 	return err
 }
 
-// Build populates the tool vector store from the catalog: for each tool, build text (id + short_description + triggers),
+// Build populates the tool vector store from the catalog: for each tool, build text (id + index_text + triggers),
 // embed it (using BatchEmbedder when available; provider chunks by its config batch_size), and add to the store.
 func Build(ctx context.Context, catalog *toolcatalog.Catalog, embedder embedding.Embedder, toolStore vector.Store) error {
 	if catalog == nil || embedder == nil || toolStore == nil {
@@ -124,7 +124,7 @@ func buildSequential(ctx context.Context, embedder embedding.Embedder, toolStore
 }
 
 func toolIndexText(t *toolcatalog.Tool) string {
-	parts := []string{t.ID, t.ShortDescription}
+	parts := []string{t.ID, t.IndexText}
 	if len(t.Triggers) > 0 {
 		parts = append(parts, strings.Join(t.Triggers, " "))
 	}

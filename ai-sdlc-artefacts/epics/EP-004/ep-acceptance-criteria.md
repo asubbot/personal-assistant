@@ -174,7 +174,7 @@ Then the tool id, arguments, and result or error are traceable in logs (e.g. for
 
 Given the service is started with a valid tool catalog and vector store (and embedding provider) configured,  
 When the service starts,  
-Then the system builds a tool index from the catalog (tool id, short_description, optional triggers).  
+Then the system builds a tool index from the catalog (tool id, index_text, optional triggers).  
 And each index entry is embedded and stored in the **same vector database as memory, in a dedicated table** (e.g. vec_tools).  
 And the design supports catalogs of up to 1000 tools.  
 And the index is available for tool pre-selection on subsequent completion requests (or a defined fallback applies until the index is ready when built in background).

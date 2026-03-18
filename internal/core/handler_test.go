@@ -625,11 +625,11 @@ func TestExecuteOneToolCall_ValidCall_RunsViaRunOnNode(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID:               "run_echo",
-				ShortDescription: "Echo on node",
-				Template:         "echo {{msg}}",
-				NodeID:           "nas",
-				Arguments:        []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+				ID:        "run_echo",
+				IndexText: "Echo on node",
+				Template:  "echo {{msg}}",
+				NodeID:    "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
 	}
@@ -668,7 +668,7 @@ func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -714,7 +714,7 @@ func TestHandleMessage_toolResultLoop_invalidArgs_noRunOnNode_errorInChat(t *tes
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -768,7 +768,7 @@ func TestHandleMessage_toolResultLoop_executionError_surfacedInChat(t *testing.T
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -821,7 +821,7 @@ func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -862,7 +862,7 @@ func TestHandleMessage_toolInvocation_loggedWithIdArgumentsAndResult(t *testing.
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -924,7 +924,7 @@ func TestHandleMessage_toolInvocation_loggedWithError(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -976,11 +976,11 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_uptime": {
-				ID:               "run_uptime",
-				ShortDescription: "Run uptime on the node",
-				Template:         "uptime",
-				NodeID:           "nas",
-				Arguments:        []toolcatalog.ArgumentRule{{Name: "node_id", Type: "string", Required: true}},
+				ID:        "run_uptime",
+				IndexText: "Run uptime on the node",
+				Template:  "uptime",
+				NodeID:    "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "node_id", Type: "string", Required: true}},
 			},
 		},
 	}
@@ -1035,7 +1035,7 @@ func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -1116,7 +1116,7 @@ func TestHandleMessage_textBasedHermes_invalidMarkup_userMessage(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -1152,7 +1152,7 @@ func TestHandleMessage_textBased_systemPromptIncludesHermesAndTools(t *testing.T
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo on node", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo on node", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -1198,7 +1198,7 @@ func TestHandleMessage_textBasedHermes_unknownTool_noRunOnNode(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -1249,7 +1249,7 @@ func TestHandleMessage_textBasedHermes_plainTextNoBlocks(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -1289,7 +1289,7 @@ func TestHandleMessage_textBasedHermes_followUpMalformed_returnsError(t *testing
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
-				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},

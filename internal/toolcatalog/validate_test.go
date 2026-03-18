@@ -21,7 +21,7 @@ func TestValidateToolCall_MissingRequired_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"t": {
-				ID: "t", ShortDescription: "x", Template: "cmd", NodeID: "n",
+				ID: "t", IndexText: "x", Template: "cmd", NodeID: "n",
 				Arguments: []ArgumentRule{{Name: "req", Type: "string", Required: true}},
 			},
 		},
@@ -39,7 +39,7 @@ func TestValidateToolCall_WrongType_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"t": {
-				ID: "t", ShortDescription: "x", Template: "cmd", NodeID: "n",
+				ID: "t", IndexText: "x", Template: "cmd", NodeID: "n",
 				Arguments: []ArgumentRule{{Name: "level", Type: "integer", Required: true}},
 			},
 		},
@@ -57,7 +57,7 @@ func TestValidateToolCall_AllowedValues_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"t": {
-				ID: "t", ShortDescription: "x", Template: "cmd", NodeID: "n",
+				ID: "t", IndexText: "x", Template: "cmd", NodeID: "n",
 				Arguments: []ArgumentRule{{Name: "x", Type: "string", Required: true, AllowedValues: []string{"a", "b"}}},
 			},
 		},
@@ -75,7 +75,7 @@ func TestValidateToolCall_Pattern_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"t": {
-				ID: "t", ShortDescription: "x", Template: "cmd", NodeID: "n",
+				ID: "t", IndexText: "x", Template: "cmd", NodeID: "n",
 				Arguments: []ArgumentRule{{Name: "id", Type: "string", Required: true, Pattern: `^[a-z]+$`}},
 			},
 		},
@@ -94,7 +94,7 @@ func TestValidateToolCall_MinMax_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"t": {
-				ID: "t", ShortDescription: "x", Template: "cmd", NodeID: "n",
+				ID: "t", IndexText: "x", Template: "cmd", NodeID: "n",
 				Arguments: []ArgumentRule{{Name: "n", Type: "integer", Required: true, Min: &min, Max: &max}},
 			},
 		},
@@ -113,7 +113,7 @@ func TestValidateToolCall_ValidArgs_ReturnsToolAndArgs(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"run_uptime": {
-				ID: "run_uptime", ShortDescription: "Uptime", Template: "uptime", NodeID: "nas",
+				ID: "run_uptime", IndexText: "Uptime", Template: "uptime", NodeID: "nas",
 				Arguments: []ArgumentRule{{Name: "node_id", Type: "string", Required: true}},
 			},
 		},
@@ -131,7 +131,7 @@ func TestValidateToolCall_ValidArgs_ReturnsToolAndArgs(t *testing.T) {
 }
 
 func TestValidateToolCall_InvalidJSON_ReturnsError(t *testing.T) {
-	catalog := &Catalog{Tools: map[string]*Tool{"t": {ID: "t", ShortDescription: "x", Template: "c", NodeID: "n"}}}
+	catalog := &Catalog{Tools: map[string]*Tool{"t": {ID: "t", IndexText: "x", Template: "c", NodeID: "n"}}}
 	_, _, err := ValidateToolCall(catalog, "t", `{invalid}`)
 	if err == nil {
 		t.Fatal("ValidateToolCall(invalid JSON): expected error, got nil")

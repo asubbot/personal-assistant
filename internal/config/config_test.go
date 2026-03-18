@@ -303,7 +303,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 	// Catalog must exist so load fails on users file, not catalog.
-	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    short_description: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
 		t.Fatalf("setup tools.yaml: %v", err)
 	}
 	_, err := Load(configPath)
@@ -347,7 +347,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    short_description: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
 		t.Fatalf("setup tools.yaml: %v", err)
 	}
 	_, err := Load(configPath)

@@ -14,14 +14,16 @@ type Catalog struct {
 	Tools map[string]*Tool // key = tool id
 }
 
-// Tool is one invocable tool: id, template, node_id, argument rules, optional triggers.
+// Tool is one invocable tool: id, index_text (vector + native API description), optional prompts, template, node_id, arguments, optional triggers.
 type Tool struct {
-	ID               string         `yaml:"id"`
-	ShortDescription string         `yaml:"short_description"`
-	Template         string         `yaml:"template"`
-	NodeID           string         `yaml:"node_id"`
-	Arguments        []ArgumentRule `yaml:"arguments"`
-	Triggers         []string       `yaml:"triggers"` // optional; example phrases for pre-selection
+	ID           string         `yaml:"id"`
+	IndexText    string         `yaml:"index_text"`              // embedding + OpenAI tool description (short)
+	SystemPrompt string         `yaml:"system_prompt,omitempty"` // appended to system when tool is selected
+	HermesPrompt string         `yaml:"hermes_prompt,omitempty"` // Hermes tool list body; empty => index_text
+	Template     string         `yaml:"template"`
+	NodeID       string         `yaml:"node_id"`
+	Arguments    []ArgumentRule `yaml:"arguments"`
+	Triggers     []string       `yaml:"triggers"` // optional; example phrases for pre-selection
 }
 
 // ArgumentRule defines one argument: name, type, required, allowed_values, pattern, min, max.
@@ -70,8 +72,8 @@ func validateTool(t *Tool, index int) error {
 	if strings.TrimSpace(t.ID) == "" {
 		return fmt.Errorf("tools[%d]: id is required", index)
 	}
-	if strings.TrimSpace(t.ShortDescription) == "" {
-		return fmt.Errorf("tools[%d]: short_description is required", index)
+	if strings.TrimSpace(t.IndexText) == "" {
+		return fmt.Errorf("tools[%d]: index_text is required", index)
 	}
 	if strings.TrimSpace(t.Template) == "" {
 		return fmt.Errorf("tools[%d]: template is required", index)
@@ -80,4 +82,44 @@ func validateTool(t *Tool, index int) error {
 		return fmt.Errorf("tools[%d]: node_id is required", index)
 	}
 	return nil
+}
+
+// AggregateSystemPrompts joins non-empty system_prompt from tools in the given id order.
+func AggregateSystemPrompts(c *Catalog, ids []string) string {
+	if c == nil || len(ids) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	for _, id := range ids {
+		t := c.Tools[id]
+		if t == nil {
+			continue
+		}
+		sp := strings.TrimSpace(t.SystemPrompt)
+		if sp == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString("\n\n---\n")
+		}
+		b.WriteString("[")
+		b.WriteString(id)
+		b.WriteString("]\n")
+		b.WriteString(sp)
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	return "\n\n---\nTool instructions:\n" + b.String()
+}
+
+// HermesBody returns hermes_prompt if set, otherwise index_text (for Hermes tool list lines).
+func (t *Tool) HermesBody() string {
+	if t == nil {
+		return ""
+	}
+	if s := strings.TrimSpace(t.HermesPrompt); s != "" {
+		return s
+	}
+	return strings.TrimSpace(t.IndexText)
 }

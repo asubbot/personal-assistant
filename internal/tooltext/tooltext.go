@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"pa/internal/llm"
+	"pa/internal/toolcatalog"
 	"strings"
 )
 
@@ -32,6 +33,34 @@ func InstructionsForTools(defs []llm.ToolDef) string {
 		if d.Parameters != "" {
 			b.WriteString("\n  Parameters (JSON schema): ")
 			b.WriteString(d.Parameters)
+		}
+		b.WriteByte('\n')
+	}
+	b.WriteString("\n")
+	b.WriteString(FormatDescription)
+	b.WriteByte('\n')
+	return b.String()
+}
+
+// InstructionsForCatalogTools builds the Hermes tool block using hermes_prompt per tool (fallback index_text).
+func InstructionsForCatalogTools(cat *toolcatalog.Catalog, ids []string) string {
+	if cat == nil || len(ids) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n\n---\nAvailable tools (invoke via text format, not API):\n")
+	for _, id := range ids {
+		t := cat.Tools[id]
+		if t == nil {
+			continue
+		}
+		b.WriteString("- ")
+		b.WriteString(id)
+		b.WriteString(": ")
+		b.WriteString(t.HermesBody())
+		if params := toolcatalog.ParametersJSONForTool(t); params != "" {
+			b.WriteString("\n  Parameters (JSON schema): ")
+			b.WriteString(params)
 		}
 		b.WriteByte('\n')
 	}

@@ -32,7 +32,7 @@ func (m *mockSearchStore) Search(_ context.Context, _ []float32, topK int) ([]ve
 func catalogWithIDs(ids ...string) *toolcatalog.Catalog {
 	tools := make(map[string]*toolcatalog.Tool)
 	for _, id := range ids {
-		tools[id] = &toolcatalog.Tool{ID: id, ShortDescription: id, Template: "echo " + id, NodeID: "n", Arguments: nil}
+		tools[id] = &toolcatalog.Tool{ID: id, IndexText: id, Template: "echo " + id, NodeID: "n", Arguments: nil}
 	}
 	return &toolcatalog.Catalog{Tools: tools}
 }

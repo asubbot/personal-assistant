@@ -10,18 +10,18 @@ func TestBuildToolDefs_ReturnsToolDefsForIdsInCatalog(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"run_uptime": {
-				ID:               "run_uptime",
-				ShortDescription: "Run uptime on the node",
-				Template:         "uptime",
-				NodeID:           "nas",
-				Arguments:        []ArgumentRule{{Name: "node_id", Type: "string", Required: true}},
+				ID:        "run_uptime",
+				IndexText: "Run uptime on the node",
+				Template:  "uptime",
+				NodeID:    "nas",
+				Arguments: []ArgumentRule{{Name: "node_id", Type: "string", Required: true}},
 			},
 			"other": {
-				ID:               "other",
-				ShortDescription: "Other tool",
-				Template:         "cmd",
-				NodeID:           "nas",
-				Arguments:        nil,
+				ID:        "other",
+				IndexText: "Other tool",
+				Template:  "cmd",
+				NodeID:    "nas",
+				Arguments: nil,
 			},
 		},
 	}
@@ -77,10 +77,10 @@ func TestBuildToolDefs_ArgumentsSchema_RequiredAndEnum(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
 			"t": {
-				ID:               "t",
-				ShortDescription: "Desc",
-				Template:         "cmd",
-				NodeID:           "n",
+				ID:        "t",
+				IndexText: "Desc",
+				Template:  "cmd",
+				NodeID:    "n",
 				Arguments: []ArgumentRule{
 					{Name: "level", Type: "string", Required: true, AllowedValues: []string{"low", "high"}},
 				},

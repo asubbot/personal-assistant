@@ -97,37 +97,27 @@ func textToolModeAfterFirstCompletion(textPath bool, result *llm.CompletionResul
 	return true, false, ""
 }
 
-// HandleMessage sends the user message to the LLM and returns the assistant reply.
-// Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-01.006, REQ-01.007, REQ-01.018).
-func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text string) (string, error) {
-	userText, early, stop := h.checkUserMessage(text)
-	if stop {
-		return early, nil
+func (h *conversationHandler) buildSystemContent(ctx context.Context, userText string) string {
+	if block := h.gatherContext(ctx, userText); block != "" {
+		return "You are a personal assistant. Reply concisely." + block
 	}
+	return "You are a helpful assistant. Reply concisely."
+}
 
-	contextBlock := h.gatherContext(ctx, userText)
-	systemContent := "You are a helpful assistant. Reply concisely."
-	if contextBlock != "" {
-		systemContent = "You are a personal assistant. Reply concisely." + contextBlock
+func (h *conversationHandler) appendToolBlocksToSystem(sys *llm.Message, toolIDs []string, opts *llm.CompletionOptions) {
+	if len(toolIDs) == 0 || h.catalog == nil {
+		return
 	}
-	messages := []llm.Message{
-		{Role: "system", Content: systemContent},
-		{Role: "user", Content: userText},
-	}
-	opts, err := h.buildToolOptions(ctx, userText)
-	if err != nil {
-		return "", err
+	if block := toolcatalog.AggregateSystemPrompts(h.catalog, toolIDs); block != "" {
+		sys.Content += block
 	}
 	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
 	if textPath {
-		messages[0].Content += tooltext.InstructionsForTools(opts.Tools)
+		sys.Content += tooltext.InstructionsForCatalogTools(h.catalog, toolIDs)
 	}
-	requestID := genRequestID()
-	start := time.Now()
-	result, err := h.completeUserTurn(ctx, messages, opts)
-	if err != nil {
-		return "", err
-	}
+}
+
+func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool) (string, error) {
 	textToolMode, plainDone, invalidReply := textToolModeAfterFirstCompletion(textPath, result, opts)
 	if invalidReply != "" {
 		return invalidReply, nil
@@ -136,12 +126,39 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 		h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
 		return result.Content, nil
 	}
+	var err error
 	messages, result, err = h.runToolResultLoop(ctx, messages, result, opts, textToolMode)
 	if err != nil {
 		return "", err
 	}
 	h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
 	return result.Content, nil
+}
+
+// HandleMessage sends the user message to the LLM and returns the assistant reply.
+// Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-01.006, REQ-01.007, REQ-01.018).
+func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text string) (string, error) {
+	userText, early, stop := h.checkUserMessage(text)
+	if stop {
+		return early, nil
+	}
+	messages := []llm.Message{
+		{Role: "system", Content: h.buildSystemContent(ctx, userText)},
+		{Role: "user", Content: userText},
+	}
+	opts, toolIDs, err := h.buildToolOptions(ctx, userText)
+	if err != nil {
+		return "", err
+	}
+	h.appendToolBlocksToSystem(&messages[0], toolIDs, opts)
+	requestID := genRequestID()
+	start := time.Now()
+	result, err := h.completeUserTurn(ctx, messages, opts)
+	if err != nil {
+		return "", err
+	}
+	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
+	return h.finishAfterFirstLLM(ctx, requestID, userText, start, messages, result, opts, textPath)
 }
 
 // runToolResultLoop continues until no tool_calls or max rounds (REQ-04.006). textToolMode: follow-up without HTTP tools; tool results as user messages (REQ-04.029).
@@ -213,26 +230,26 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 	return messages
 }
 
-// buildToolOptions returns completion options with pre-selected tools when toolIndex and catalog are set (REQ-04.004, AC-04.015).
-func (h *conversationHandler) buildToolOptions(ctx context.Context, userText string) (*llm.CompletionOptions, error) {
+// buildToolOptions returns completion options with pre-selected tools and the selected tool ids in stable order.
+func (h *conversationHandler) buildToolOptions(ctx context.Context, userText string) (*llm.CompletionOptions, []string, error) {
 	if h.toolIndex == nil || h.catalog == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	ids, err := toolindex.SelectToolIDs(ctx, h.embedder, h.toolIndex.Store(), h.toolIndex.Ready(), h.catalog, userText, h.toolSearchTopK, h.toolMinCount, h.toolFallbackCap, h.logger)
 	if err != nil {
 		h.logger.Error("tool pre-selection", "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if len(ids) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	toolDefsForLLM, err := toolcatalog.BuildToolDefs(h.catalog, ids)
 	if err != nil {
 		h.logger.Error("build tool list", "error", err)
-		return nil, err
+		return nil, nil, err
 	}
 	if len(toolDefsForLLM) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	toolDefs := make([]llm.ToolDef, len(toolDefsForLLM))
 	for i := range toolDefsForLLM {
@@ -242,7 +259,7 @@ func (h *conversationHandler) buildToolOptions(ctx context.Context, userText str
 			Parameters:  toolDefsForLLM[i].Parameters,
 		}
 	}
-	return &llm.CompletionOptions{Tools: toolDefs}, nil
+	return &llm.CompletionOptions{Tools: toolDefs}, ids, nil
 }
 
 // executeOneToolCall validates the tool call, substitutes args into the tool template, and runs the command via nodeRunner (REQ-04.009, REQ-04.010).

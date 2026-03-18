@@ -29,7 +29,7 @@ func BuildToolDefs(catalog *Catalog, ids []string) ([]ToolDefForLLM, error) {
 		params := buildParamsSchema(tool.Arguments)
 		out = append(out, ToolDefForLLM{
 			Name:        tool.ID,
-			Description: tool.ShortDescription,
+			Description: tool.IndexText,
 			Parameters:  params,
 		})
 	}
@@ -37,6 +37,14 @@ func BuildToolDefs(catalog *Catalog, ids []string) ([]ToolDefForLLM, error) {
 }
 
 // buildParamsSchema returns a JSON string for OpenAI-style parameters (type object, properties, required).
+// ParametersJSONForTool returns the JSON schema string for tool arguments (for Hermes instructions, etc.).
+func ParametersJSONForTool(tool *Tool) string {
+	if tool == nil {
+		return ""
+	}
+	return buildParamsSchema(tool.Arguments)
+}
+
 func buildParamsSchema(args []ArgumentRule) string {
 	if len(args) == 0 {
 		return ""

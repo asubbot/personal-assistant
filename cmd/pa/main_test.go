@@ -57,7 +57,7 @@ func moduleRoot(t *testing.T) string {
 }
 
 // minimalToolCatalogYAML is a valid tool catalog so config load succeeds when tool_catalog_path is set.
-const minimalToolCatalogYAML = "tools:\n  - id: _placeholder\n    short_description: placeholder\n    template: echo x\n    node_id: _none\n    arguments: []\n"
+const minimalToolCatalogYAML = "tools:\n  - id: _placeholder\n    index_text: placeholder\n    template: echo x\n    node_id: _none\n    arguments: []\n"
 
 // writeValidConfigWithCatalog writes validSummarizeConfig and tools.yaml to dir; returns config path. Use when tests call config.Load.
 func writeValidConfigWithCatalog(t *testing.T, dir string) string {

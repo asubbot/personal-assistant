@@ -32,7 +32,7 @@ This document is derived from [ep-scope.md](ep-scope.md). EP-004 builds on EP-00
 **Epic scope in brief:**
 
 - Single source of truth for tools (e.g. YAML): id, template, node_id, argument rules; optional triggers per tool; parsed at startup.
-- Tool index built at startup from the catalog (id, short_description, triggers) and stored in the **same vector database as memory, in a dedicated table** (e.g. vec_tools); used for pre-selection per request. Target scale up to **1000 tools**. Index load **within 20 seconds** (batched embedding API and/or background build with fallback until ready).
+- Tool index built at startup from the catalog (id, **index_text**, optional triggers) and stored in the **same vector database as memory, in a dedicated table** (e.g. vec_tools); used for pre-selection per request. Target scale up to **1000 tools**. Index load **within 20 seconds** (batched embedding API and/or background build with fallback until ready).
 - Each LLM request receives a pre-selected subset of tools (from the tool index, e.g. top-k by semantic similarity to the user message) in the provider's Tool-calling format; fallback when selection is empty or too small.
 - Core handles tool_calls in the response: validate, substitute template, execute via run_on_node; results and errors returned as tool results and, when appropriate, shown in chat.
 - Provider interface extended for tools payload and tool_calls; at least one provider (e.g. OpenAI-compatible or Ollama) supported.
@@ -49,16 +49,16 @@ This document is derived from [ep-scope.md](ep-scope.md). EP-004 builds on EP-00
 | **PersonalAssistant (System)** | The set of components: core (Go), Telegram adapter, memory store, vector index, scheduler, LLM providers, and tools. From [scope.md](../../scope.md). |
 | **Core** | The main Go service: orchestration of conversations, LLM calls, tool execution, and SSH-based node management. From [scope.md](../../scope.md). |
 | **Node** | A remote host that the core connects to over SSH; has a defined capability set and credentials in configuration. From [scope.md](../../scope.md). |
-| **Tool (invocable)** | A single invokable capability presented to the LLM: stable id, short_description, bound to a node (or global), and schema (expected_json) for arguments. The LLM returns a tool call with id and arguments; PersonalAssistant validates and executes. From [ep-scope.md](ep-scope.md). |
+| **Tool (invocable)** | Stable id, **index_text**, optional **system_prompt** / **hermes_prompt**, node binding, schema for arguments. From [ep-scope.md](ep-scope.md). |
 | **Single source of truth (tools)** | One configuration (e.g. YAML) per node or shared base plus per-node overrides, parsed at startup. Defines for each tool: id, template, node_id, and argument rules (allowed_values, pattern, type, min/max). Used to build the tool list for the LLM and to validate and run the command. From [ep-scope.md](ep-scope.md). |
 | **Tool-calling API** | The provider-native mechanism to pass a list of tools in the request and receive structured tool_calls in the response (id and arguments as JSON). PersonalAssistant uses this so the model does not embed JSON in free text. From [ep-scope.md](ep-scope.md). |
-| **short_description** | One or two sentences per tool included in every LLM request so the model can choose which tool to call. From [ep-scope.md](ep-scope.md). |
+| **index_text** | Short text for vector index and native tool API description. **system_prompt** / **hermes_prompt**: optional per-tool system and Hermes-list text. From [ep-scope.md](ep-scope.md). |
 | **expected_json** | The shape of arguments for a tool. Sent to the LLM as a schema or example; full validation is done in PersonalAssistant from the source of truth. From [ep-scope.md](ep-scope.md). |
 | **Template (command)** | A string with placeholders (e.g. `systemctl status {{service}}`) from the source of truth. After validating arguments, PersonalAssistant substitutes placeholders and runs the resulting command via run_on_node. From [ep-scope.md](ep-scope.md). |
 | **run_on_node** | Existing EP-001 capability: execution on a node via SSH under the allowlist and security model; invoked after template substitution. |
 | **Sonos (node / tool)** | A node or device that exposes Sonos control (e.g. volume, play) via allowlisted commands (e.g. sonos-cli). Sonos tools are defined in the same source of truth and invoked through the Tool-calling API. From [ep-scope.md](ep-scope.md). |
 | **Operator** | The person who deploys and configures PersonalAssistant (config, nodes, tool catalog). |
-| **Tool index (vector)** | A searchable index built at startup from the tool catalog: each tool is represented by text (id, short_description, optional triggers) and stored with its embedding. The index lives in the **same vector database** as memory, in a **dedicated table** (e.g. vec_tools). Used to select a subset of tools per user request. From [ep-scope.md](ep-scope.md). |
+| **Tool index (vector)** | Text per tool: id + **index_text** + optional triggers (embedded). Same vector DB, dedicated table (e.g. vec_tools). From [ep-scope.md](ep-scope.md). |
 | **Tool pre-selection** | The process of selecting which tools to send to the LLM for a given request (e.g. embed user message, search tool index, take top-k by similarity). Only the selected tools are included in the Tool-calling API request. From [ep-scope.md](ep-scope.md). |
 | **Tool call (text-based)** | When the provider does not support the Tool-calling API, tool invocation by instructing the model (via prompt) to output tool calls in a defined text format (e.g. `<tool_call>` tags with JSON containing name and arguments). The system parses the assistant message, validates and executes as for native tool_calls. |
 
@@ -239,7 +239,7 @@ Sonos tools SHALL use the same catalog format, validation, and execution path as
 *REQ-04.018, REQ-04.019, REQ-04.020, REQ-04.021, REQ-04.022, REQ-04.023, REQ-04.024, REQ-04.025*
 
 **REQ-04.018** (Ubiquitous)  
-THE System SHALL build a tool index at service startup from the parsed catalog (tool id, short_description, and optional triggers per tool), compute embeddings for each index entry, and store them in the **same vector database as memory, in a dedicated table** (e.g. vec_tools). The design SHALL support catalogs of **up to 1000 tools**.
+THE System SHALL build a tool index at service startup from the parsed catalog (tool id, **index_text**, and optional triggers per tool), compute embeddings for each index entry, and store them in the **same vector database as memory, in a dedicated table** (e.g. vec_tools). The design SHALL support catalogs of **up to 1000 tools**.
 
 **REQ-04.019** (Event-driven)  
 WHEN building the tool list for a completion request that can trigger tools, THE System SHALL select tools using the tool index (e.g. embed the user message, search the index, and take the top-k tools by similarity) and include only the selected tools in the request to the provider.

@@ -1,5 +1,5 @@
 tools:
-  - short_description: No id
+  - index_text: No id
     template: "echo x"
     node_id: nas
     arguments: []
