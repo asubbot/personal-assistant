@@ -5,7 +5,12 @@
     "users_path": ""
   },
   "llm_providers": [
-    { "type": "ollama", "endpoint": "http://localhost:11434", "model": "llama3.2" }
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434",
+      "model": "llama3.2",
+      "supports_tools": true
+    }
   ],
   "paths": {
     "memory_dir": "/data/memory",

@@ -6,7 +6,12 @@
     "max_message_length": 4096
   },
   "llm_providers": [
-    { "type": "ollama", "endpoint": "http://localhost:11434", "model": "llama3.2" }
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434",
+      "model": "llama3.2",
+      "supports_tools": true
+    }
   ],
   "paths": {
     "memory_dir": "/data/memory",

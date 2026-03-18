@@ -186,6 +186,9 @@ func validateLLMProviders(c *Config) error {
 		return errors.New("config: at least one llm_providers entry is required")
 	}
 	for i, p := range c.LLMProviders {
+		if p.SupportsTools == nil {
+			return fmt.Errorf("config: llm_providers[%d].supports_tools is required (boolean)", i)
+		}
 		if strings.TrimSpace(p.Type) == "" {
 			return fmt.Errorf("config: llm_providers[%d].type is required", i)
 		}

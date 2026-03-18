@@ -19,10 +19,11 @@ const (
 
 // OpenAICompatible is an OpenAI-compatible HTTP chat completions provider (OpenAI, Ollama with /v1, etc.).
 type OpenAICompatible struct {
-	client  *http.Client
-	baseURL string
-	apiKey  string
-	model   string
+	client        *http.Client
+	baseURL       string
+	apiKey        string
+	model         string
+	supportsTools bool // when false, tools are omitted from the request body
 }
 
 // NewOpenAICompatible builds a provider from config. Reads API key from api_key_path when set (e.g. for openai/openai-compatible).
@@ -42,11 +43,16 @@ func NewOpenAICompatible(cfg *config.LLMProvider) (*OpenAICompatible, error) {
 		apiKey = strings.TrimSpace(string(b))
 	}
 
+	st := true
+	if cfg.SupportsTools != nil {
+		st = *cfg.SupportsTools
+	}
 	return &OpenAICompatible{
-		client:  &http.Client{Timeout: defaultTimeout},
-		baseURL: baseURL,
-		apiKey:  apiKey,
-		model:   model,
+		client:        &http.Client{Timeout: defaultTimeout},
+		baseURL:       baseURL,
+		apiKey:        apiKey,
+		model:         model,
+		supportsTools: st,
 	}, nil
 }
 
@@ -85,7 +91,7 @@ func (p *OpenAICompatible) buildRequest(model string, messages []Message, maxTok
 	if maxTokens > 0 {
 		reqBody.MaxTokens = &maxTokens
 	}
-	if opts != nil && len(opts.Tools) > 0 {
+	if p.supportsTools && opts != nil && len(opts.Tools) > 0 {
 		reqBody.Tools = make([]openAITool, len(opts.Tools))
 		for i := range opts.Tools {
 			t := &opts.Tools[i]

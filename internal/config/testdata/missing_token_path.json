@@ -1,8 +1,32 @@
 {
   "version": 1,
-  "telegram": { "token_path": "", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "", "tool_catalog_path": "valid_tools.yaml" },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "telegram": {
+    "token_path": "",
+    "users_path": ""
+  },
+  "llm_providers": [
+    {
+      "type": "ollama",
+      "endpoint": "http://x",
+      "model": "m",
+      "supports_tools": true
+    }
+  ],
+  "paths": {
+    "memory_dir": "/d",
+    "log_path": "/d",
+    "vector_index_path": "/d/pa_vectors.sqlite",
+    "llm_log_dir": "/d",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml"
+  },
+  "embedding": {
+    "type": "ollama",
+    "endpoint": "http://x",
+    "model": "m",
+    "dimensions": 768,
+    "batch_size": 100
+  },
   "nodes": {}
 }

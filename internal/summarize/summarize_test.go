@@ -10,6 +10,7 @@ import (
 	"pa/internal/memory"
 	"pa/internal/vector"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -46,6 +47,8 @@ func (m *mockVectorStore) Delete(ctx context.Context, id string) error {
 	m.deletes = append(m.deletes, id)
 	return nil
 }
+
+func (m *mockVectorStore) Clear(ctx context.Context) error { return nil }
 
 func (m *mockVectorStore) Search(ctx context.Context, queryEmbedding []float32, topK int) ([]vector.SearchResult, error) {
 	return nil, nil
@@ -363,5 +366,54 @@ func TestYear_withMonthSummaries_callsLLMAndWrites(t *testing.T) {
 	}
 	if len(vecMock.adds) != 1 || vecMock.adds[0] != wantID {
 		t.Errorf("vector adds = %v, want [%s]", vecMock.adds, wantID)
+	}
+}
+
+func TestBuildDayTranscript_omitsSystem(t *testing.T) {
+	out := buildDayTranscript([]llmlog.Entry{{
+		Messages: []llm.Message{
+			{Role: "system", Content: "DO_NOT_LEAK_THIS_SYSTEM_BLOCK"},
+			{Role: "user", Content: "hello"},
+			{Role: "assistant", Content: "hi"},
+		},
+		ResponseContent: "hi",
+	}})
+	if strings.Contains(out, "DO_NOT_LEAK_THIS_SYSTEM_BLOCK") {
+		t.Errorf("transcript must omit system content; got %q", out)
+	}
+	if !strings.Contains(out, "user: hello") || !strings.Contains(out, "assistant: hi") {
+		t.Errorf("want user+assistant; got %q", out)
+	}
+	if strings.Count(out, "hi") > 2 {
+		t.Errorf("unexpected duplication; got %q", out)
+	}
+}
+
+func TestBuildDayTranscript_noDuplicateAssistant(t *testing.T) {
+	out := buildDayTranscript([]llmlog.Entry{{
+		Messages: []llm.Message{
+			{Role: "user", Content: "q"},
+			{Role: "assistant", Content: "final answer"},
+		},
+		ResponseContent: "final answer",
+	}})
+	if strings.Count(out, "final answer") != 1 {
+		t.Errorf("want single final answer; got %q", out)
+	}
+}
+
+func TestBuildDayTranscript_appendsResponseWhenNoAssistantInMessages(t *testing.T) {
+	out := buildDayTranscript([]llmlog.Entry{{
+		Messages: []llm.Message{
+			{Role: "system", Content: "sys"},
+			{Role: "user", Content: "only user"},
+		},
+		ResponseContent: "model reply only here",
+	}})
+	if !strings.Contains(out, "Assistant: model reply only here") {
+		t.Errorf("want Assistant from response_content; got %q", out)
+	}
+	if strings.Contains(out, "sys") {
+		t.Errorf("system should be omitted; got %q", out)
 	}
 }

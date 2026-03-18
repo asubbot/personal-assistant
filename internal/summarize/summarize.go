@@ -289,20 +289,32 @@ func indexSummary(ctx context.Context, store vector.Store, embedder embedding.Em
 	return nil
 }
 
-// buildDayTranscript concatenates log entries into a single transcript (user/assistant turns).
+// buildDayTranscript builds a day transcript for summarization: non-system messages only, no duplicate
+// final assistant line when response_content matches the last assistant message in Messages.
 func buildDayTranscript(entries []llmlog.Entry) string {
 	var b strings.Builder
 	for _, e := range entries {
+		var lastRole, lastContent string
 		for _, m := range e.Messages {
+			if strings.EqualFold(strings.TrimSpace(m.Role), "system") {
+				continue
+			}
 			b.WriteString(m.Role)
 			b.WriteString(": ")
 			b.WriteString(m.Content)
 			b.WriteString("\n")
+			lastRole = m.Role
+			lastContent = m.Content
 		}
-		if e.ResponseContent != "" {
-			b.WriteString("Assistant: ")
-			b.WriteString(e.ResponseContent)
-			b.WriteString("\n")
+		resp := strings.TrimSpace(e.ResponseContent)
+		if resp != "" {
+			if strings.EqualFold(strings.TrimSpace(lastRole), "assistant") && strings.TrimSpace(lastContent) == resp {
+				// Final reply already in Messages; response_content would duplicate.
+			} else {
+				b.WriteString("Assistant: ")
+				b.WriteString(e.ResponseContent)
+				b.WriteString("\n")
+			}
 		}
 		b.WriteString("\n")
 	}

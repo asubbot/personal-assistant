@@ -1,7 +1,17 @@
 {
   "version": 1,
-  "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m" }],
+  "telegram": {
+    "token_path": "/t",
+    "users_path": ""
+  },
+  "llm_providers": [
+    {
+      "type": "ollama",
+      "endpoint": "http://x",
+      "model": "m",
+      "supports_tools": true
+    }
+  ],
   "paths": {
     "memory_dir": "/d",
     "log_path": "/d",
@@ -12,12 +22,20 @@
     "tool_catalog_path": "valid_tools.yaml",
     "ssh_known_hosts_path": ""
   },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "embedding": {
+    "type": "ollama",
+    "endpoint": "http://x",
+    "model": "m",
+    "dimensions": 768,
+    "batch_size": 100
+  },
   "nodes": {
     "n1": {
       "host": "host.example.com",
       "dedicated_user": "pa",
-      "auth": { "private_key_path": "/key" },
+      "auth": {
+        "private_key_path": "/key"
+      },
       "command_allowlist_path": "/allowlist.txt"
     }
   }

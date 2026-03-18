@@ -2,7 +2,7 @@
 
 This document contains the product requirements for EP-004 (Structured tools and Tool-calling API) in EARS form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, solution-free where applicable).
 
-**Total: 25 requirements (18 FR, 7 NFR)**
+**Total: 31 requirements (23 FR, 8 NFR)**
 
 **Contents**
 
@@ -20,6 +20,7 @@ This document contains the product requirements for EP-004 (Structured tools and
   - [Provider interface](#provider-interface)
   - [Sonos support](#sonos-support)
   - [Tool index and pre-selection](#tool-index-and-pre-selection)
+  - [Tool invocation without Tool-calling API](#tool-invocation-without-tool-calling-api)
   - [NFR — Security, testability, observability, consistency](#nfr--security-testability-observability-consistency)
 
 ---
@@ -37,6 +38,7 @@ This document is derived from [ep-scope.md](ep-scope.md). EP-004 builds on EP-00
 - Provider interface extended for tools payload and tool_calls; at least one provider (e.g. OpenAI-compatible or Ollama) supported.
 - Sonos tools definable in the catalog and executable on a configured node; no separate Sonos API in the core.
 - Scheduler contract unchanged; no dynamic tool loading; no MCP or third-party tool servers.
+- Where the LLM provider does not support the Tool-calling API (e.g. returns 400 "does not support tools"), the system MAY support tool invocation by describing tools in the prompt and parsing the assistant's text output for tool calls in a defined format (e.g. Hermes-style `<tool_call>` with JSON); parsed calls use the same validation and execution path as native tool_calls.
 
 ---
 
@@ -58,6 +60,7 @@ This document is derived from [ep-scope.md](ep-scope.md). EP-004 builds on EP-00
 | **Operator** | The person who deploys and configures PersonalAssistant (config, nodes, tool catalog). |
 | **Tool index (vector)** | A searchable index built at startup from the tool catalog: each tool is represented by text (id, short_description, optional triggers) and stored with its embedding. The index lives in the **same vector database** as memory, in a **dedicated table** (e.g. vec_tools). Used to select a subset of tools per user request. From [ep-scope.md](ep-scope.md). |
 | **Tool pre-selection** | The process of selecting which tools to send to the LLM for a given request (e.g. embed user message, search tool index, take top-k by similarity). Only the selected tools are included in the Tool-calling API request. From [ep-scope.md](ep-scope.md). |
+| **Tool call (text-based)** | When the provider does not support the Tool-calling API, tool invocation by instructing the model (via prompt) to output tool calls in a defined text format (e.g. `<tool_call>` tags with JSON containing name and arguments). The system parses the assistant message, validates and executes as for native tool_calls. |
 
 ---
 
@@ -124,6 +127,12 @@ In the following, *System* = PersonalAssistant (or the component stated).
 | REQ-04.023 | FR | Tool index and pre-selection | When index not ready, fallback yields non-empty bounded tool list |
 | REQ-04.024 | NFR | Tool index and pre-selection | Embedding batch_size configurable (e.g. 1–1000); tool index build uses it for chunking |
 | REQ-04.025 | NFR | Tool index and pre-selection | Tool index build success logged (INFO); build failure logged (ERROR with reason) |
+| REQ-04.026 | FR | Tool invocation without Tool-calling API | Optional text-based tool invocation when provider lacks Tool-calling API |
+| REQ-04.027 | FR | Tool invocation without Tool-calling API | Tools described in prompt; model outputs in defined format; system parses and extracts tool calls |
+| REQ-04.028 | FR | Tool invocation without Tool-calling API | Parsed text-based tool calls use same validation and execution path as native tool_calls |
+| REQ-04.029 | FR | Tool invocation without Tool-calling API | Parse failure or invalid format yields no execution; error or plain text to user |
+| REQ-04.030 | NFR | Tool invocation without Tool-calling API | Configurable enable/disable of text-based tool invocation per provider or globally |
+| REQ-04.031 | FR | Validation and execution | Commands containing shell metacharacters rejected before execution |
 
 ---
 
@@ -161,7 +170,7 @@ WHEN the LLM response contains tool_calls, THE System SHALL parse arguments, val
 
 ### Validation and execution
 
-*REQ-04.007, REQ-04.008, REQ-04.009, REQ-04.010*
+*REQ-04.007, REQ-04.008, REQ-04.009, REQ-04.010, REQ-04.031*
 
 **REQ-04.007** (Ubiquitous)  
 THE System SHALL validate tool-call arguments (types, allowed_values, pattern, min/max) against the tool's schema from the source of truth before executing any command.
@@ -174,6 +183,9 @@ THE System SHALL substitute validated arguments into the tool's template and exe
 
 **REQ-04.010** (Ubiquitous)  
 THE System SHALL execute only commands that comply with the existing allowlist and SSH security model for that node.
+
+**REQ-04.031** (Unwanted event)  
+IF a command string to be executed on a node (after template substitution for catalog tools, or as supplied for paths that invoke run_on_node, e.g. the scheduler) contains any character or sequence from the forbidden shell-metacharacter set, THEN THE System SHALL NOT execute that command on the node and SHALL produce a deterministic error (same class as validation failure: no SSH exec, user- or tool-result-visible outcome as for other pre-execution failures). The forbidden set SHALL include at minimum: semicolon (`;`), ampersand (`&`), pipe (`|`), newline, carriage return, dollar-parenthesis command substitution (`$(`), and backtick (`` ` ``). THE System MAY extend this set (e.g. redirection characters) and SHALL document the full set in the implementation plan or system design.
 
 ---
 
@@ -249,3 +261,24 @@ WHERE an embedding provider is configured for the tool index, THE System SHALL s
 
 **REQ-04.025** (NFR — Observability)  
 THE System SHALL log the tool index build outcome: on success, an informational message (e.g. number of tools indexed); on failure, an error message including the failure reason.
+
+---
+
+### Tool invocation without Tool-calling API
+
+*REQ-04.026, REQ-04.027, REQ-04.028, REQ-04.029, REQ-04.030*
+
+**REQ-04.026** (Optional feature)  
+WHERE the configured LLM provider does not support the Tool-calling API (e.g. returns an error indicating that tools are not supported), THE System MAY support tool invocation by describing the pre-selected tools in the prompt and parsing the assistant's text response for tool calls in a defined, documented format (e.g. Hermes-style `<tool_call>` with JSON containing tool name and arguments, or an equivalent single standard).
+
+**REQ-04.027** (Ubiquitous)  
+WHEN using text-based tool invocation, THE System SHALL include in the prompt a description of the available tools and instructions for the model to output tool calls in the defined format, and SHALL parse the assistant message to extract tool id (or name) and arguments before validation and execution.
+
+**REQ-04.028** (Ubiquitous)  
+Parsed tool calls extracted from assistant text SHALL undergo the same validation (tool id known and in the catalog, arguments conforming to the source-of-truth schema) and execution path (template substitution, run_on_node) as tool_calls received via the Tool-calling API; THE System SHALL NOT execute any command for an unknown tool id or for arguments that fail validation.
+
+**REQ-04.029** (Unwanted event)  
+IF the assistant text cannot be parsed to obtain a valid tool call (malformed format, missing required fields, or unrecoverable parse error), THEN THE System SHALL NOT execute any command based on that output and SHALL either treat the response as plain assistant text or surface a deterministic error to the user in chat.
+
+**REQ-04.030** (NFR — Configurability)  
+THE System SHALL support configuration (e.g. per provider or global) to enable or disable text-based tool invocation for providers that do not support the Tool-calling API, so that operators can turn the feature off or on without code changes.

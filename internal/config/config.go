@@ -22,6 +22,13 @@ type Config struct {
 	ToolCatalog *toolcatalog.Catalog `json:"-"`
 	// ToolPreSelection is optional; when present, values are validated (>= 0). Zero values mean use code defaults (topK=10, minTools=1, fallbackCap=50).
 	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
+	// Tools is optional; text_based_enabled defaults to false when omitted or section absent.
+	Tools *ToolsConfig `json:"tools"`
+}
+
+// ToolsConfig holds optional tool-invocation settings (REQ-04.030).
+type ToolsConfig struct {
+	TextBasedEnabled bool `json:"text_based_enabled"`
 }
 
 // ToolPreSelection holds parameters for tool pre-selection (REQ-04.019, REQ-04.020). All zero = use code defaults.
@@ -69,11 +76,13 @@ type Telegram struct {
 }
 
 // LLMProvider holds one LLM provider configuration (order = priority).
+// SupportsTools is required (fail fast if missing); when false, HTTP requests omit tools (REQ-04.026).
 type LLMProvider struct {
-	Type       string `json:"type"`
-	Endpoint   string `json:"endpoint"`
-	APIKeyPath string `json:"api_key_path"`
-	Model      string `json:"model"`
+	Type          string `json:"type"`
+	Endpoint      string `json:"endpoint"`
+	APIKeyPath    string `json:"api_key_path"`
+	Model         string `json:"model"`
+	SupportsTools *bool  `json:"supports_tools"`
 }
 
 // Paths holds paths for memory, logs, vector index, scheduled tasks, and optional tool catalog.

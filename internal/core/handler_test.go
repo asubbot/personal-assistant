@@ -8,6 +8,7 @@ import (
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/toolcatalog"
+	"pa/internal/tooltext"
 	"pa/internal/vector"
 	"strings"
 	"testing"
@@ -107,6 +108,8 @@ func (m *mockVectorStore) Add(_ context.Context, _ string, _ []float32, chunk st
 }
 
 func (m *mockVectorStore) Delete(_ context.Context, _ string) error { return nil }
+
+func (m *mockVectorStore) Clear(_ context.Context) error { return nil }
 
 func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vector.SearchResult, error) {
 	if m.searchErr != nil {
@@ -852,6 +855,120 @@ func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {
 	_ = reply
 }
 
+// Covers AC-04.013, REQ-04.016: tool invocations (id, arguments, result or error) are traceable in logs.
+func TestHandleMessage_toolInvocation_loggedWithIdArgumentsAndResult(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "hello from node"}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "run_echo", Arguments: `{"msg": "hi"}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "Done.", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		provider:   provider,
+		catalog:    catalog,
+		nodeRunner: runner,
+		logger:     logger,
+	}
+
+	_, err := h.HandleMessage(context.Background(), 1, "run echo hi")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var found bool
+	for _, r := range cap.records {
+		if r.msg != "tool invocation" {
+			continue
+		}
+		found = true
+		if r.attrs["tool_id"] != "run_echo" {
+			t.Errorf("tool invocation log: tool_id = %q, want run_echo", r.attrs["tool_id"])
+		}
+		if r.attrs["arguments"] != `{"msg": "hi"}` {
+			t.Errorf("tool invocation log: arguments = %q", r.attrs["arguments"])
+		}
+		if r.attrs["result"] != "hello from node" {
+			t.Errorf("tool invocation log: result = %q, want hello from node", r.attrs["result"])
+		}
+		if r.attrs["invoked_via"] != "tool_calls" {
+			t.Errorf("tool invocation log: invoked_via = %q, want tool_calls", r.attrs["invoked_via"])
+		}
+		break
+	}
+	if !found {
+		t.Errorf("expected one Info \"tool invocation\" record; got records: %+v", cap.records)
+	}
+}
+
+// Covers AC-04.013: tool invocation that fails (e.g. validation) is logged with error.
+func TestHandleMessage_toolInvocation_loggedWithError(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "unknown_tool", Arguments: `{}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "Tool failed.", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		provider:   provider,
+		catalog:    catalog,
+		nodeRunner: runner,
+		logger:     logger,
+	}
+
+	_, _ = h.HandleMessage(context.Background(), 1, "do something")
+	var found bool
+	for _, r := range cap.records {
+		if r.msg == "tool invocation" && r.attrs["tool_id"] == "unknown_tool" {
+			found = true
+			if r.attrs["error"] == "" {
+				t.Error("tool invocation (failed): expected error attr in log")
+			}
+			if r.attrs["invoked_via"] != "tool_calls" {
+				t.Errorf("invoked_via = %q, want tool_calls", r.attrs["invoked_via"])
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected \"tool invocation\" record with error; got records: %+v", cap.records)
+	}
+}
+
 // Covers AC-04.003, AC-04.015: when toolIndex and catalog are set, completion request includes pre-selected tools in provider format.
 func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	logger := slog.Default()
@@ -908,5 +1025,312 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected tool run_uptime in opts.Tools; got %v", provider.lastOpts.Tools)
+	}
+}
+
+// REQ-04.027–029: text_based + first provider without tools → Hermes in content → execute → follow-up without tools, tool results as user.
+//
+//nolint:gocyclo // Sequential scenario assertions; clarity over splitting.
+func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "hello from node"}
+	callCount := 0
+	var secondOpts *llm.CompletionOptions
+	var secondMsgs []llm.Message
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content: `<tool_call>
+{"name": "run_echo", "arguments": {"msg": "hi"}}
+</tool_call>`,
+				Usage: llm.Usage{},
+			}, nil
+		}
+		secondOpts = opts
+		secondMsgs = append([]llm.Message(nil), messages...)
+		return &llm.CompletionResult{Content: "Done with echo.", Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	h := &conversationHandler{
+		provider:                   provider,
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.New(cap),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+
+	reply, err := h.HandleMessage(context.Background(), 1, "run echo")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if reply != "Done with echo." {
+		t.Errorf("reply = %q", reply)
+	}
+	if callCount != 2 {
+		t.Errorf("Complete calls = %d, want 2", callCount)
+	}
+	if secondOpts != nil && len(secondOpts.Tools) > 0 {
+		t.Error("follow-up Complete must not pass tools in opts")
+	}
+	var sawUserTool bool
+	for _, m := range secondMsgs {
+		if m.Role == "user" && strings.Contains(m.Content, "run_echo") && strings.Contains(m.Content, "hello from node") {
+			sawUserTool = true
+			break
+		}
+	}
+	if !sawUserTool {
+		t.Errorf("expected user message with tool result; messages=%+v", secondMsgs)
+	}
+	var sawHermesLog bool
+	for _, r := range cap.records {
+		if r.msg == "tool invocation" && r.attrs["invoked_via"] == "hermes" {
+			sawHermesLog = true
+			break
+		}
+	}
+	if !sawHermesLog {
+		t.Errorf("expected tool invocation with invoked_via=hermes; records=%+v", cap.records)
+	}
+}
+
+func TestHandleMessage_textBasedHermes_invalidMarkup_userMessage(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	provider := &mockProvider{result: &llm.CompletionResult{Content: `<tool_call>broken`, Usage: llm.Usage{}}}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		provider:                   provider,
+		catalog:                    catalog,
+		nodeRunner:                 &mockNodeRunner{},
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if !strings.Contains(reply, "Invalid tool call") {
+		t.Errorf("reply = %q, want user-facing invalid tool message", reply)
+	}
+}
+
+// AC-04.023: text-path first completion request includes Hermes format instructions and pre-selected tool ids in system message.
+func TestHandleMessage_textBased_systemPromptIncludesHermesAndTools(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo on node", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	var firstSystem string
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, msgs []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		if len(msgs) > 0 && msgs[0].Role == "system" {
+			firstSystem = msgs[0].Content
+		}
+		return &llm.CompletionResult{Content: "No tool call here.", Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		provider:                   provider,
+		catalog:                    catalog,
+		nodeRunner:                 &mockNodeRunner{},
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	_, err := h.HandleMessage(context.Background(), 1, "ping")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(firstSystem, tooltext.FormatDescription) {
+		t.Errorf("system prompt missing Hermes format description; len=%d", len(firstSystem))
+	}
+	if !strings.Contains(firstSystem, "run_echo") || !strings.Contains(firstSystem, "Echo on node") {
+		t.Errorf("system prompt missing tool run_echo description; snippet=%.200q...", firstSystem)
+	}
+}
+
+// AC-04.023/006: Hermes unknown tool id — same validation as native; no RunOnNode.
+func TestHandleMessage_textBasedHermes_unknownTool_noRunOnNode(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content: `<tool_call>{"name": "unknown_tool", "arguments": {}}</tool_call>`,
+				Usage:   llm.Usage{},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "Second round.", Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		provider:                   provider,
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	_, err := h.HandleMessage(context.Background(), 1, "x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runner.lastCommand != "" {
+		t.Errorf("RunOnNode must not run for unknown tool; lastCommand=%q", runner.lastCommand)
+	}
+	if callCount != 2 {
+		t.Errorf("Complete calls = %d, want 2", callCount)
+	}
+}
+
+// AC-04.024: text-path response with no tool_call blocks returns plain assistant text.
+func TestHandleMessage_textBasedHermes_plainTextNoBlocks(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	want := "I will answer without using tools."
+	provider := &mockProvider{result: &llm.CompletionResult{Content: want, Usage: llm.Usage{}}}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		provider:                   provider,
+		catalog:                    catalog,
+		nodeRunner:                 &mockNodeRunner{},
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply != want {
+		t.Errorf("reply = %q, want %q", reply, want)
+	}
+	if len(provider.lastMessages) != 2 {
+		t.Errorf("expected single LLM round (system+user only in first call); messages len issue")
+	}
+}
+
+// Hermes follow-up after tool round: malformed second response yields error (no silent success).
+func TestHandleMessage_textBasedHermes_followUpMalformed_returnsError(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", ShortDescription: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "out"}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content: `<tool_call>{"name": "run_echo", "arguments": {"msg": "x"}}</tool_call>`,
+				Usage:   llm.Usage{},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: `<tool_call>unclosed`, Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		provider:                   provider,
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	_, err := h.HandleMessage(context.Background(), 1, "run echo")
+	if err == nil {
+		t.Fatal("expected error from follow-up Hermes parse failure")
+	}
+	if !strings.Contains(err.Error(), "follow-up tool_call parse") {
+		t.Errorf("err = %v, want follow-up tool_call parse", err)
+	}
+	if callCount != 2 {
+		t.Errorf("Complete calls = %d, want 2", callCount)
 	}
 }

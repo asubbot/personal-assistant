@@ -10,3 +10,20 @@ tools:
       - "what time is it on the node"
       - "node time"
       - "date on server"
+
+  - id: sonos
+    short_description: >-
+      USE HERMES ONLY FORMAT: <tool_call>{"name":"sonos","arguments":{"speaker":"<room>","tail":"<action>"}}</tool_call>.
+      Do not output <sonos>. speaker examples: Bedroom, "Living Room". tail examples: stop, play, next, pause, volume 25, etc.
+    template: "/volume1/homes/openclaw-runner/.local/bin/sonos {{speaker}} {{tail}}"
+    node_id: nas
+    arguments:
+      - name: speaker
+        required: true
+        type: string
+      - name: tail
+        required: true
+        type: string
+    triggers:
+      - "sonos"
+      - "music"

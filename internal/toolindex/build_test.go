@@ -65,6 +65,80 @@ func TestBuild_populatesStoreAndSearchReturnsToolIds(t *testing.T) {
 	}
 }
 
+// Second Build clears vec_tools then repopulates; removed catalog ids no longer appear in Search.
+func TestBuild_secondBuild_dropsStaleToolIds(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vec.db")
+	ctx := context.Background()
+
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	if err != nil {
+		t.Fatalf("NewWithTable: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
+	catalog1 := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"stale": {ID: "stale", ShortDescription: "gone", Template: "echo", NodeID: "n", Arguments: nil},
+			"kept":  {ID: "kept", ShortDescription: "stay", Template: "echo", NodeID: "n", Arguments: nil},
+		},
+	}
+	if err := Build(ctx, catalog1, emb, store); err != nil {
+		t.Fatalf("Build first: %v", err)
+	}
+	catalog2 := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"kept": {ID: "kept", ShortDescription: "stay", Template: "echo", NodeID: "n", Arguments: nil},
+		},
+	}
+	if err := Build(ctx, catalog2, emb, store); err != nil {
+		t.Fatalf("Build second: %v", err)
+	}
+	results, err := store.Search(ctx, []float32{1, 0, 0, 0}, 10)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	for _, r := range results {
+		if r.ID == "stale" {
+			t.Errorf("Search: stale id %q should not exist after second Build", r.ID)
+		}
+	}
+	if len(results) != 1 || results[0].ID != "kept" {
+		t.Errorf("Search: got %+v, want single id kept", results)
+	}
+}
+
+// Empty catalog after Build leaves vec_tools empty (no stale rows).
+func TestBuild_emptyCatalog_clearsStore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vec.db")
+	ctx := context.Background()
+
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	if err != nil {
+		t.Fatalf("NewWithTable: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
+	if err := Build(ctx, &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"x": {ID: "x", ShortDescription: "X", Template: "echo", NodeID: "n", Arguments: nil},
+		},
+	}, emb, store); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if err := Build(ctx, &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}, emb, store); err != nil {
+		t.Fatalf("Build empty: %v", err)
+	}
+	results, err := store.Search(ctx, []float32{1, 0, 0, 0}, 5)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("after empty catalog Build: want 0 results, got %d", len(results))
+	}
+}
+
 // Covers AC-04.017: when Build completes synchronously, SetReady makes Index ready; when BuildAndSetReady runs, Ready becomes true.
 func TestIndex_Ready_afterBuildAndSetReady(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")

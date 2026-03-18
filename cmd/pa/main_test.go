@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"pa/internal/config"
 	"pa/internal/toolcatalog"
+	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -98,7 +99,7 @@ func runCLIWithConfig(t *testing.T, dir, configJSON string, args ...string) (out
 var validSummarizeConfig = `{
   "version": 1,
   "telegram": { "token_path": "t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "supports_tools": true }],
   "paths": {
     "memory_dir": "memory",
     "log_path": "pa.log",
@@ -377,5 +378,117 @@ func TestNewToolIndex_vectorStoreFails_returnsError(t *testing.T) {
 	}
 	if idx != nil {
 		t.Error("newToolIndex(bad path): expected nil index")
+	}
+}
+
+func testClearContextConfig(vectorPath string) *config.Config {
+	return &config.Config{
+		Embedding: &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10},
+		Paths:     config.Paths{VectorIndexPath: vectorPath},
+	}
+}
+
+// clearConversationContext removes all vec_items rows so semantic context is empty on next Search.
+func TestClearConversationContext_vecItemsEmptyAfterClear(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "vec.sqlite")
+
+	mem, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
+	if err != nil {
+		t.Fatalf("NewWithTable memory: %v", err)
+	}
+	if err := mem.Add(ctx, "turn1", []float32{1, 0, 0, 0}, "User: hello"); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if err := mem.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	if err := clearConversationContext(testClearContextConfig(dbPath)); err != nil {
+		t.Fatalf("clearConversationContext: %v", err)
+	}
+
+	mem2, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer func() { _ = mem2.Close() }()
+	results, err := mem2.Search(ctx, []float32{1, 0, 0, 0}, 10)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("Search after clear: got %d results, want 0", len(results))
+	}
+}
+
+// clearConversationContext does not delete vec_tools (tool pre-selection index).
+func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "both.sqlite")
+
+	mem, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
+	if err != nil {
+		t.Fatalf("NewWithTable memory: %v", err)
+	}
+	if err := mem.Add(ctx, "mem1", []float32{1, 0, 0, 0}, "context chunk"); err != nil {
+		t.Fatalf("Add mem: %v", err)
+	}
+	if err := mem.Close(); err != nil {
+		t.Fatalf("Close mem: %v", err)
+	}
+
+	tools, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools)
+	if err != nil {
+		t.Fatalf("NewWithTable tools: %v", err)
+	}
+	if err := tools.Add(ctx, "tool_x", []float32{0, 1, 0, 0}, "tool text"); err != nil {
+		t.Fatalf("Add tools: %v", err)
+	}
+	if err := tools.Close(); err != nil {
+		t.Fatalf("Close tools: %v", err)
+	}
+
+	if err := clearConversationContext(testClearContextConfig(dbPath)); err != nil {
+		t.Fatalf("clearConversationContext: %v", err)
+	}
+
+	mem2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
+	defer func() { _ = mem2.Close() }()
+	rMem, _ := mem2.Search(ctx, []float32{1, 0, 0, 0}, 10)
+	if len(rMem) != 0 {
+		t.Errorf("vec_items: want 0 after clear, got %d", len(rMem))
+	}
+
+	tools2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools)
+	defer func() { _ = tools2.Close() }()
+	rTools, err := tools2.Search(ctx, []float32{0, 1, 0, 0}, 10)
+	if err != nil {
+		t.Fatalf("Search tools: %v", err)
+	}
+	if len(rTools) != 1 || rTools[0].ID != "tool_x" {
+		t.Errorf("vec_tools after clear: got %+v, want one row tool_x", rTools)
+	}
+}
+
+func TestClearConversationContext_validationErrors(t *testing.T) {
+	if err := clearConversationContext(nil); err == nil {
+		t.Fatal("nil config: want error")
+	}
+	cfg := testClearContextConfig(filepath.Join(t.TempDir(), "x.db"))
+	cfg.Embedding = nil
+	if err := clearConversationContext(cfg); err == nil {
+		t.Fatal("nil embedding: want error")
+	}
+	cfg2 := testClearContextConfig(filepath.Join(t.TempDir(), "y.db"))
+	cfg2.Embedding.Dimensions = 0
+	if err := clearConversationContext(cfg2); err == nil {
+		t.Fatal("dimensions 0: want error")
+	}
+	cfg3 := &config.Config{Embedding: &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10}, Paths: config.Paths{VectorIndexPath: "  "}}
+	if err := clearConversationContext(cfg3); err == nil {
+		t.Fatal("empty vector path: want error")
 	}
 }

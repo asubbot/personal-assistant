@@ -11,6 +11,7 @@ import (
 	"pa/internal/llmlog"
 	"pa/internal/toolcatalog"
 	"pa/internal/toolindex"
+	"pa/internal/tooltext"
 	"pa/internal/vector"
 	"strings"
 	"time"
@@ -52,73 +53,162 @@ type conversationHandler struct {
 	llmLog           llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
 	model            string              // configured model name for LLM log entries
 	logRedactor      func(string) string // optional; redacts content in DEBUG app logs (REQ-01.026)
+	// textBasedEnabled + firstProviderSupportsTools: when true + false, Hermes text tool path (REQ-04.027–029).
+	textBasedEnabled           bool
+	firstProviderSupportsTools bool // true if first LLM provider sends tools in HTTP (supports_tools)
+}
+
+// checkUserMessage returns trimmed text, or earlyReply when the message must not reach the LLM.
+func (h *conversationHandler) checkUserMessage(text string) (trimmed string, earlyReply string, reject bool) {
+	trimmed = strings.TrimSpace(text)
+	if trimmed == "" {
+		return "", "Please send a non-empty message.", true
+	}
+	if h.maxMessageLength > 0 && utf8.RuneCountInString(trimmed) > h.maxMessageLength {
+		return "", fmt.Sprintf("Message is too long. Maximum length is %d characters.", h.maxMessageLength), true
+	}
+	return trimmed, "", false
+}
+
+func (h *conversationHandler) completeUserTurn(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+	if h.logger.Enabled(ctx, slog.LevelDebug) {
+		h.logLLMRequest(ctx, messages)
+	}
+	result, err := h.provider.Complete(ctx, messages, opts)
+	if err != nil {
+		h.logger.Error("llm complete", "error", err)
+	}
+	return result, err
+}
+
+// textToolModeAfterFirstCompletion sets result.ToolCalls from Hermes when applicable. plainDone: finish with result.Content. invalidFormatReply: user chat message when markup is broken.
+func textToolModeAfterFirstCompletion(textPath bool, result *llm.CompletionResult, opts *llm.CompletionOptions) (textToolMode, plainDone bool, invalidFormatReply string) {
+	if !textPath || len(result.ToolCalls) > 0 || opts == nil || len(opts.Tools) == 0 {
+		return false, false, ""
+	}
+	calls, perr := tooltext.ParseHermesToolCalls(result.Content)
+	if perr != nil {
+		return false, true, "Invalid tool call format in the assistant response. Please try again."
+	}
+	if len(calls) == 0 {
+		return false, true, ""
+	}
+	result.ToolCalls = calls
+	return true, false, ""
 }
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.
 // Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-01.006, REQ-01.007, REQ-01.018).
 func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text string) (string, error) {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return "Please send a non-empty message.", nil
-	}
-	if h.maxMessageLength > 0 && utf8.RuneCountInString(text) > h.maxMessageLength {
-		return fmt.Sprintf("Message is too long. Maximum length is %d characters.", h.maxMessageLength), nil
+	userText, early, stop := h.checkUserMessage(text)
+	if stop {
+		return early, nil
 	}
 
-	contextBlock := h.gatherContext(ctx, text)
+	contextBlock := h.gatherContext(ctx, userText)
 	systemContent := "You are a helpful assistant. Reply concisely."
 	if contextBlock != "" {
 		systemContent = "You are a personal assistant. Reply concisely." + contextBlock
 	}
 	messages := []llm.Message{
 		{Role: "system", Content: systemContent},
-		{Role: "user", Content: text},
+		{Role: "user", Content: userText},
 	}
-	opts, err := h.buildToolOptions(ctx, text)
+	opts, err := h.buildToolOptions(ctx, userText)
 	if err != nil {
 		return "", err
 	}
-	if h.logger.Enabled(ctx, slog.LevelDebug) {
-		h.logLLMRequest(ctx, messages)
+	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
+	if textPath {
+		messages[0].Content += tooltext.InstructionsForTools(opts.Tools)
 	}
 	requestID := genRequestID()
 	start := time.Now()
-	result, err := h.provider.Complete(ctx, messages, opts)
-	if err != nil {
-		h.logger.Error("llm complete", "error", err)
-		return "", err
-	}
-	messages, result, err = h.runToolResultLoop(ctx, messages, result, opts)
+	result, err := h.completeUserTurn(ctx, messages, opts)
 	if err != nil {
 		return "", err
 	}
-	h.handleLLMSuccess(ctx, requestID, messages, result, text, time.Since(start))
+	textToolMode, plainDone, invalidReply := textToolModeAfterFirstCompletion(textPath, result, opts)
+	if invalidReply != "" {
+		return invalidReply, nil
+	}
+	if plainDone {
+		h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
+		return result.Content, nil
+	}
+	messages, result, err = h.runToolResultLoop(ctx, messages, result, opts, textToolMode)
+	if err != nil {
+		return "", err
+	}
+	h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
 	return result.Content, nil
 }
 
-// runToolResultLoop continues the request–response–tool-result loop until no tool_calls or max rounds (REQ-04.006).
-func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions) ([]llm.Message, *llm.CompletionResult, error) {
+// runToolResultLoop continues until no tool_calls or max rounds (REQ-04.006). textToolMode: follow-up without HTTP tools; tool results as user messages (REQ-04.029).
+func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textToolMode bool) ([]llm.Message, *llm.CompletionResult, error) {
+	optsFollow := opts
+	if textToolMode {
+		optsFollow = copyOptsNoTools(opts)
+	}
 	for rounds := 1; len(result.ToolCalls) > 0 && rounds < maxToolRounds; rounds++ {
-		messages = h.appendToolRound(ctx, messages, result)
+		messages = h.appendToolRound(ctx, messages, result, textToolMode)
 		var err error
-		result, err = h.provider.Complete(ctx, messages, opts)
+		result, err = h.provider.Complete(ctx, messages, optsFollow)
 		if err != nil {
 			h.logger.Error("llm complete", "error", err)
 			return nil, nil, err
+		}
+		if textToolMode && len(result.ToolCalls) == 0 {
+			calls, perr := tooltext.ParseHermesToolCalls(result.Content)
+			if perr != nil {
+				return nil, nil, fmt.Errorf("follow-up tool_call parse: %w", perr)
+			}
+			result.ToolCalls = calls
 		}
 	}
 	return messages, result, nil
 }
 
-func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult) []llm.Message {
-	messages = append(messages, llm.Message{Role: "assistant", Content: result.Content, ToolCalls: result.ToolCalls})
+func copyOptsNoTools(o *llm.CompletionOptions) *llm.CompletionOptions {
+	if o == nil {
+		return nil
+	}
+	return &llm.CompletionOptions{
+		Model:       o.Model,
+		MaxTokens:   o.MaxTokens,
+		Temperature: o.Temperature,
+	}
+}
+
+func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, textToolMode bool) []llm.Message {
+	if textToolMode {
+		messages = append(messages, llm.Message{Role: "assistant", Content: result.Content})
+	} else {
+		messages = append(messages, llm.Message{Role: "assistant", Content: result.Content, ToolCalls: result.ToolCalls})
+	}
 	for _, tc := range result.ToolCalls {
 		stdout, execErr := h.executeOneToolCall(ctx, tc.Name, tc.Arguments)
 		content := stdout
 		if execErr != nil {
 			content = execErr.Error()
 		}
-		messages = append(messages, llm.Message{Role: "tool", Content: content, ToolCallID: tc.ID})
+		if h.logger != nil {
+			src := "tool_calls"
+			if textToolMode {
+				src = "hermes"
+			}
+			if execErr != nil {
+				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", tc.Arguments, "invoked_via", src, "error", execErr.Error())
+			} else {
+				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", tc.Arguments, "invoked_via", src, "result", stdout)
+			}
+		}
+		if textToolMode {
+			line := fmt.Sprintf("Tool %s (call_id %s) result:\n%s", tc.Name, tc.ID, content)
+			messages = append(messages, llm.Message{Role: "user", Content: line})
+		} else {
+			messages = append(messages, llm.Message{Role: "tool", Content: content, ToolCallID: tc.ID})
+		}
 	}
 	return messages
 }

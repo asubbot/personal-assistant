@@ -30,47 +30,78 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 	if llmProvider == nil {
 		return fmt.Errorf("core: llm provider is nil")
 	}
+	redactor := buildRedactor(cfg)
+	handler, err := newRunConversationHandler(cfg, logger, redactor, llmProvider, vectorStore, embedder, nodeRunner, toolIndex)
+	if err != nil {
+		return err
+	}
+	return adapter.Run(ctx, handler)
+}
+
+func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, llmProvider llm.Provider, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex) (*conversationHandler, error) {
 	maxLen := 0
 	if cfg != nil && cfg.Telegram.MaxMessageLength > 0 {
 		maxLen = cfg.Telegram.MaxMessageLength
 	}
-	redactor := buildRedactor(cfg)
-	var llmLog llmlog.Writer
-	var model string
-	if cfg != nil && cfg.Paths.LLMLogDir != "" {
-		var err error
-		llmLog, err = llmlog.NewWriter(cfg.Paths.LLMLogDir, logger, llmlog.Redactor(redactor))
-		if err != nil {
-			return fmt.Errorf("core: llm log writer: %w", err)
-		}
-		if len(cfg.LLMProviders) > 0 {
-			model = cfg.LLMProviders[0].Model
-		}
+	llmLog, model, err := openLLMLogIfConfigured(cfg, logger, redactor)
+	if err != nil {
+		return nil, err
 	}
 	ctxMaxLen, topK := conversationContextParams(cfg)
 	toolTopK, toolMin, toolCap := toolPreSelectionParams(cfg)
-	handler := &conversationHandler{
-		provider:         llmProvider,
-		vectorStore:      vectorStore,
-		embedder:         embedder,
-		nodeRunner:       nodeRunner,
-		toolIndex:        toolIndex,
-		catalog:          nil,
-		toolSearchTopK:   toolTopK,
-		toolMinCount:     toolMin,
-		toolFallbackCap:  toolCap,
-		logger:           logger,
-		maxMessageLength: maxLen,
-		contextMaxLen:    ctxMaxLen,
-		vectorSearchTopK: topK,
-		llmLog:           llmLog,
-		model:            model,
-		logRedactor:      redactor,
+	firstSupportsTools, textBased := firstProviderTextToolFlags(cfg)
+	h := &conversationHandler{
+		provider:                   llmProvider,
+		vectorStore:                vectorStore,
+		embedder:                   embedder,
+		nodeRunner:                 nodeRunner,
+		toolIndex:                  toolIndex,
+		toolSearchTopK:             toolTopK,
+		toolMinCount:               toolMin,
+		toolFallbackCap:            toolCap,
+		logger:                     logger,
+		maxMessageLength:           maxLen,
+		contextMaxLen:              ctxMaxLen,
+		vectorSearchTopK:           topK,
+		llmLog:                     llmLog,
+		model:                      model,
+		logRedactor:                redactor,
+		textBasedEnabled:           textBased,
+		firstProviderSupportsTools: firstSupportsTools,
 	}
 	if cfg != nil && cfg.ToolCatalog != nil {
-		handler.catalog = cfg.ToolCatalog
+		h.catalog = cfg.ToolCatalog
 	}
-	return adapter.Run(ctx, handler)
+	return h, nil
+}
+
+func openLLMLogIfConfigured(cfg *config.Config, logger *slog.Logger, redactor func(string) string) (llmlog.Writer, string, error) {
+	if cfg == nil || cfg.Paths.LLMLogDir == "" {
+		return nil, "", nil
+	}
+	w, err := llmlog.NewWriter(cfg.Paths.LLMLogDir, logger, llmlog.Redactor(redactor))
+	if err != nil {
+		return nil, "", fmt.Errorf("core: llm log writer: %w", err)
+	}
+	model := ""
+	if len(cfg.LLMProviders) > 0 {
+		model = cfg.LLMProviders[0].Model
+	}
+	return w, model, nil
+}
+
+func firstProviderTextToolFlags(cfg *config.Config) (firstSupportsTools, textBased bool) {
+	firstSupportsTools = true
+	if cfg == nil {
+		return firstSupportsTools, textBased
+	}
+	if len(cfg.LLMProviders) > 0 && cfg.LLMProviders[0].SupportsTools != nil {
+		firstSupportsTools = *cfg.LLMProviders[0].SupportsTools
+	}
+	if cfg.Tools != nil {
+		textBased = cfg.Tools.TextBasedEnabled
+	}
+	return firstSupportsTools, textBased
 }
 
 // toolPreSelectionParams returns tool_search_top_k, tool_min_count, tool_fallback_cap from config; 0 means use toolindex defaults.

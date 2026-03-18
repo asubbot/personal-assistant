@@ -39,6 +39,11 @@
   - **Verification:** Unit test with mock embedder; test or benchmark that index build for N tools (e.g. 100–1000) finishes within 20 s or background path and fallback behave correctly.
   - **Checkpoint:** Before proceeding: tool index build completes within 20 s or background + fallback is defined and working; no request uses tools until index is ready without fallback.
 
+- [x] **2.3 Sync `vec_tools` with catalog on each build**
+  - Before inserting embeddings, clear all rows in the tool vector store so removed catalog tools do not remain in pre-selection search results.
+  - Empty catalog still runs clear (no stale rows after removing all tools).
+  - **Verification:** `go test ./internal/toolindex/... ./internal/vector/sqlite/...`; second build drops ids absent from the new catalog.
+
 ---
 
 ## 3. Tool pre-selection
@@ -105,14 +110,14 @@
 
 ## 6. Observability and Sonos
 
-- [ ] **6.1 Tool invocation logging**
+- [x] **6.1 Tool invocation logging**
   - Log tool id, arguments, and result or error for each tool invocation where the existing logging subsystem supports it.
   - _Requirements:_ [REQ-04.016](ep-requirements.md#nfr--security-testability-observability-consistency)
   - _Acceptance Criteria:_ [AC-04.013](ep-acceptance-criteria.md#ac-04-013)
   - **Verification:** Test or manual check that logs contain tool invocation data.
   - **Checkpoint:** Before proceeding: tool invocations (id, arguments, result/error) are traceable in logs.
 
-- [ ] **6.2 Sonos tool in catalog**
+- [x] **6.2 Sonos tool in catalog**
   - Ensure at least one Sonos-related tool (e.g. volume or play) can be defined in the catalog, bound to a configured node, exposed to the LLM, and executed via the same validation and run_on_node path as other tools.
   - _Requirements:_ [REQ-04.013](ep-requirements.md#sonos-support), [REQ-04.017](ep-requirements.md#nfr--security-testability-observability-consistency)
   - _Acceptance Criteria:_ [AC-04.010](ep-acceptance-criteria.md#ac-04-010), [AC-04.011](ep-acceptance-criteria.md#ac-04-011)
@@ -121,9 +126,38 @@
 
 ---
 
-## 7. Tests and closure
+## 7. Tool invocation without Tool-calling API (optional)
 
-- [ ] **7.1 Tests and regression**
+- [x] **7.1 Detect provider without Tool-calling API and config flag**
+  - **Required:** each entry in `llm_providers` MUST include boolean `supports_tools`. If the field is missing or not a boolean, **config load MUST fail fast** with a clear error (no implicit default).
+  - When the provider is known not to support tools (`supports_tools: false`), do not send `tools` in the completion request. **Out of scope for this step:** automatic retry on HTTP 400 «does not support tools»; operators must set `supports_tools: false` explicitly.
+  - Add configuration to enable or disable text-based tool invocation (per provider or globally).
+  - _Requirements:_ [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api)
+  - _Acceptance Criteria:_ [AC-04.022](ep-acceptance-criteria.md#ac-04-022), [AC-04.025](ep-acceptance-criteria.md#ac-04-025)
+  - **Verification:** Unit test: config without `supports_tools` on a provider → load fails; valid `supports_tools` true/false loads; when provider has `supports_tools: false` and text-based feature enabled, request omits tools.
+  - **Checkpoint:** Before proceeding: missing `supports_tools` fails at config parse/load; detection prevents sending tools to unsupported provider; config allows enable/disable text-based mode.
+
+- [x] **7.2 Prompt injection and parsing of assistant text**
+  - When text-based tool invocation is enabled: inject into the prompt a description of the pre-selected tools and instructions for the model to output tool calls in a defined, documented format (e.g. Hermes-style `<tool_call>` with JSON `{"name": "...", "arguments": {...}}`).
+  - Parse the assistant message to extract tool id (or name) and arguments; support at least one documented format.
+  - _Requirements:_ [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api)
+  - _Acceptance Criteria:_ [AC-04.022](ep-acceptance-criteria.md#ac-04-023)
+  - **Verification:** Unit tests: parse valid format, reject malformed/missing fields; prompt builder includes tool list and format instructions.
+  - **Checkpoint:** Before proceeding: prompt contains tool description and format; parser extracts tool id and arguments from sample assistant text.
+
+- [x] **7.3 Same validation/execution path; parse failure handling**
+  - Route parsed tool calls through the same validation (catalog lookup, schema) and execution path (substitution, run_on_node) as native tool_calls.
+  - If parsing fails or format is invalid: do not execute any command; treat response as plain assistant text or surface deterministic error to user in chat.
+  - _Requirements:_ [REQ-04.028](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.029](ep-requirements.md#tool-invocation-without-tool-calling-api)
+  - _Acceptance Criteria:_ [AC-04.023](ep-acceptance-criteria.md#ac-04-023), [AC-04.024](ep-acceptance-criteria.md#ac-04-024)
+  - **Verification:** Integration test: provider without tools → prompt with tools, model outputs format → parsed → validated → executed; parse failure → no execution, user sees text or error.
+  - **Checkpoint:** Before proceeding: parsed text-based tool calls behave like native tool_calls; parse failure does not trigger execution.
+
+---
+
+## 8. Tests and closure
+
+- [ ] **8.1 Tests and regression**
   - Cover new and changed behaviour with unit and integration tests; ensure all existing tests pass.
   - _Requirements:_ [REQ-04.014](ep-requirements.md#nfr--security-testability-observability-consistency), [REQ-04.015](ep-requirements.md#nfr--security-testability-observability-consistency)
   - _Acceptance Criteria:_ [AC-04.011](ep-acceptance-criteria.md#ac-04-011), [AC-04.012](ep-acceptance-criteria.md#ac-04-012)
@@ -142,4 +176,7 @@
 - 4.2 → 5.1, 5.4
 - 5.1 → 5.2 → 5.3 → 5.4
 - 6.1, 6.2 can be done in parallel with 5.x once catalog and execution path exist
-- 7.1 after all feature tasks
+- 7.1, 7.2, 7.3 (text-based tool invocation) depend on 5.4 (tool-result loop); optional, can be done after 6.x
+- 8.1 after all feature tasks (including 7.x if implemented)
+
+---

@@ -28,6 +28,7 @@ Terms from the project [scope.md](../../scope.md) glossary apply. Epic-specific 
 | **Sonos (node / tool)** | A node or device type that exposes Sonos control (e.g. volume, play, track) via allowlisted commands (e.g. sonos-cli). Tools for Sonos are defined in the same source of truth as other node tools (id, template, args) and are invoked through the Tool-calling API. |
 | **Tool index (vector)** | A searchable index built at startup from the tool catalog: each tool is represented by text (e.g. id, short_description, optional triggers) and stored with its embedding. The index lives in the **same vector database** as memory, in a **dedicated table** (e.g. vec_tools), so one DB file can hold multiple logical stores (memory, tools, and future ones such as skills). Used to select a subset of tools per user request. |
 | **Tool pre-selection** | The process of selecting which tools to send to the LLM for a given request. The core embeds the user message (and optionally conversation context), searches the tool index, and obtains a bounded subset (e.g. top-k by similarity); only that subset is included in the Tool-calling API request. |
+| **Tool call (text-based)** | When the provider does not support the Tool-calling API, tool invocation by instructing the model (via prompt) to output tool calls in a defined text format (e.g. `<tool_call>` tags with JSON). The system parses the assistant message, validates and executes as for native tool_calls. |
 
 ## Scope (features/capabilities)
 
@@ -39,6 +40,7 @@ Terms from the project [scope.md](../../scope.md) glossary apply. Epic-specific 
 - **Errors to chat:** If validation fails, execution fails, or the node returns an error, the user sees the error in chat (e.g. as the assistant's reply or as a tool result conveyed to the user).
 - **Provider interface extension:** The LLM provider interface is extended to accept an optional tools payload and to return tool_calls and related metadata so the core can drive the request–response–tool-result loop without parsing JSON from assistant text.
 - **Sonos support:** Tools for controlling Sonos (e.g. volume, play/pause, track selection) are definable in the tool source of truth. They target a configured node that runs the Sonos control interface (e.g. sonos-cli). Argument rules (e.g. volume 0–100, service name) follow the same schema (allowed_values, type integer with min/max, or pattern). No separate Sonos-specific API in the core; Sonos is one of the node tool sets described in the catalog.
+- **Tool invocation without Tool-calling API (optional):** Where the LLM provider does not support the Tool-calling API (e.g. returns 400 "does not support tools"), the system MAY support tool invocation by describing tools in the prompt and parsing the assistant's text output for tool calls in a defined format (e.g. Hermes-style `<tool_call>` with JSON). Parsed calls use the same validation and execution path as native tool_calls. Configuration SHALL allow enabling or disabling this behaviour per provider or globally.
 
 ## Scale and performance
 
@@ -56,6 +58,7 @@ Terms from the project [scope.md](../../scope.md) glossary apply. Epic-specific 
 - **Sonos tools:** At least one Sonos-related tool (e.g. volume or play) is definable in the source of truth, exposed to the LLM, and executable via run_on_node on a configured node; validation and errors behave like other tools.
 - **Tests:** New or changed behaviour is covered by unit and/or integration tests; existing tests continue to pass.
 - **Tool index and pre-selection:** Tool index is built at startup (same vector DB, dedicated table); scale target 1000 tools; load within 20 s (batching or background). Each LLM request receives only a pre-selected subset of tools (with fallback when selection is empty or too small).
+- **Text-based tool invocation (optional):** When the provider does not support the Tool-calling API, the system MAY describe tools in the prompt and parse the assistant text for tool calls in a defined format; parsed calls undergo the same validation and execution. Parse failure or invalid format does not trigger execution. Configuration allows enabling or disabling this feature per provider or globally.
 
 ## Out of scope / deferred
 

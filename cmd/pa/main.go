@@ -77,6 +77,7 @@ func main() {
 	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
 	summarizeFlag := flag.String("summarize", "", "Run summarization and exit: YYYY-MM-DD (day), YYYY-MM (month), YYYY (year). No default.")
+	clearContextOnStart := flag.Bool("clear-context-on-start", false, "Clear conversation context index (vec_items) before starting the bot; does not affect vec_tools or memory files")
 	flag.Parse()
 
 	configFilePath := configFilePath()
@@ -104,6 +105,14 @@ func main() {
 			os.Exit(1)
 		}
 		return
+	}
+
+	if *clearContextOnStart {
+		if err := clearConversationContext(cfg); err != nil {
+			logger.Error("clear-context-on-start", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("cleared conversation context index (vec_items) before start")
 	}
 
 	if err := runServer(cfg, configFilePath, logger); err != nil && !errors.Is(err, context.Canceled) {
@@ -454,4 +463,27 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	}
 
 	return adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, nil
+}
+
+// clearConversationContext deletes all rows from vec_items (semantic context for the LLM). vec_tools and memory/ files are unchanged.
+func clearConversationContext(cfg *config.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("clear context: config is nil")
+	}
+	if cfg.Embedding == nil || cfg.Embedding.Dimensions <= 0 {
+		return fmt.Errorf("clear context: embedding.dimensions must be positive")
+	}
+	if strings.TrimSpace(cfg.Paths.VectorIndexPath) == "" {
+		return fmt.Errorf("clear context: paths.vector_index_path is required")
+	}
+	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
+	if err := os.MkdirAll(vecDir, 0o755); err != nil {
+		return fmt.Errorf("clear context: mkdir: %w", err)
+	}
+	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = store.Close() }()
+	return store.Clear(context.Background())
 }

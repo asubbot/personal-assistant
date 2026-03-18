@@ -98,6 +98,35 @@ func TestStore_Delete_removesById(t *testing.T) {
 	}
 }
 
+// Clear removes all rows; memory and tools tables are independent.
+func TestStore_Clear_removesAllRows(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "vec.db")
+	ctx := context.Background()
+
+	store, err := NewWithTable(path, testDimensions, TableMemory)
+	if err != nil {
+		t.Fatalf("NewWithTable: %v", err)
+	}
+	defer func() { _ = store.Close() }()
+
+	if err := store.Add(ctx, "a", []float32{1, 0, 0, 0}, "a"); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if err := store.Add(ctx, "b", []float32{0, 1, 0, 0}, "b"); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if err := store.Clear(ctx); err != nil {
+		t.Fatalf("Clear: %v", err)
+	}
+	results, err := store.Search(ctx, []float32{1, 0, 0, 0}, 5)
+	if err != nil {
+		t.Fatalf("Search: %v", err)
+	}
+	if len(results) != 0 {
+		t.Errorf("after Clear: want 0 results, got %d", len(results))
+	}
+}
+
 // Covers AC-01.013 (US-07): Add rejects wrong embedding dimensions.
 func TestStore_Add_wrongDimensions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")

@@ -284,6 +284,37 @@ func TestOpenAICompatible_Complete_requestIncludesTools(t *testing.T) {
 	}
 }
 
+// REQ-04.026: supports_tools false omits tools from HTTP body even when opts.Tools is set.
+func TestOpenAICompatible_Complete_supportsToolsFalse_omitsTools(t *testing.T) {
+	var raw []byte
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		raw, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"ok"},"index":0}],"usage":{}}`))
+	}))
+	defer server.Close()
+
+	f := false
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", SupportsTools: &f}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := &CompletionOptions{Tools: []ToolDef{{Name: "x", Description: "y"}}}
+	_, err = p.Complete(context.Background(), []Message{{Role: "user", Content: "hi"}}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), `"tools"`) {
+		t.Errorf("body should not contain tools key; body=%s", string(raw))
+	}
+}
+
 // Covers AC-04.003 (REQ-04.004, REQ-04.005): response with tool_calls is parsed into result.ToolCalls.
 func TestOpenAICompatible_Complete_responseToolCallsParsed(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

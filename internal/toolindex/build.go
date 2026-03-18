@@ -55,6 +55,9 @@ func Build(ctx context.Context, catalog *toolcatalog.Catalog, embedder embedding
 	if catalog == nil || embedder == nil || toolStore == nil {
 		return nil
 	}
+	if err := toolStore.Clear(ctx); err != nil {
+		return fmt.Errorf("toolindex: clear tool store: %w", err)
+	}
 	ids, texts := orderedToolTexts(catalog)
 	if len(ids) == 0 {
 		return nil

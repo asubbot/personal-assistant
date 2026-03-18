@@ -14,7 +14,7 @@
 
 This document defines epic-level acceptance criteria for **EP-004 Structured tools and Tool-calling API**. It contains testable conditions (Gherkin-style) that apply to the epic as a whole. Traceability to [ep-requirements.md](ep-requirements.md) is given per AC below.
 
-**Scope:** Single source of truth for tools (catalog), tool index at startup (same vector DB as memory, dedicated table; scale up to 1000 tools; load within 20 s via batching or background with fallback) and tool pre-selection per request, tool list (pre-selected subset) in every LLM request, Tool-calling API integration, validation and execution via run_on_node, errors surfaced in chat, provider interface extension, and Sonos tools in the same catalog. Scheduler contract unchanged; no MCP or dynamic tool loading.
+**Scope:** Single source of truth for tools (catalog), tool index at startup (same vector DB as memory, dedicated table; scale up to 1000 tools; load within 20 s via batching or background with fallback) and tool pre-selection per request, tool list (pre-selected subset) in every LLM request, Tool-calling API integration, validation and execution via run_on_node, errors surfaced in chat, provider interface extension, and Sonos tools in the same catalog. Optional: tool invocation for providers that do not support the Tool-calling API (text-based: tools in prompt, parse assistant output in a defined format, same validation and execution path; configurable enable/disable). Scheduler contract unchanged; no MCP or dynamic tool loading.
 
 ---
 
@@ -43,6 +43,10 @@ This document defines epic-level acceptance criteria for **EP-004 Structured too
 | [AC-04.019](#ac-04-019) | [REQ-04.023](ep-requirements.md#tool-index-and-pre-selection) | When index not ready, fallback yields non-empty bounded tool list (same as empty pre-selection) |
 | [AC-04.020](#ac-04-020) | [REQ-04.024](ep-requirements.md#tool-index-and-pre-selection) | Embedding batch_size configurable (e.g. 1–1000); tool index build uses it for chunking |
 | [AC-04.021](#ac-04-021) | [REQ-04.025](ep-requirements.md#tool-index-and-pre-selection) | Tool index build success logged (INFO); build failure logged (ERROR with reason) |
+| [AC-04.022](#ac-04-022) | [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api) | When provider lacks Tool-calling API, system MAY support text-based tool invocation (tools in prompt, defined format) |
+| [AC-04.023](#ac-04-023) | [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.028](ep-requirements.md#tool-invocation-without-tool-calling-api) | Text-based: prompt describes tools and format; parsed tool calls use same validation and execution path |
+| [AC-04.024](#ac-04-024) | [REQ-04.029](ep-requirements.md#tool-invocation-without-tool-calling-api) | Parse failure or invalid format → no execution; plain text or deterministic error to user |
+| [AC-04.025](#ac-04-025) | [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api) | Configurable enable/disable of text-based tool invocation per provider or globally |
 
 ---
 
@@ -238,3 +242,41 @@ When the build completes successfully,
 Then the system SHALL log an informational message (e.g. "tool index built" with the number of tools indexed).  
 When the build fails,  
 Then the system SHALL log an error message that includes the failure reason (e.g. embedding error, store error).
+
+---
+
+<a id="ac-04-022"></a>**AC-04.022** (Trace: [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api))
+
+Given the configured LLM provider does not support the Tool-calling API (e.g. returns an error indicating tools are not supported),  
+When the feature is enabled (per provider or globally),  
+Then the system MAY support tool invocation by describing the pre-selected tools in the prompt and parsing the assistant's text response for tool calls in a defined, documented format (e.g. Hermes-style `<tool_call>` with JSON).  
+And the format SHALL be documented so operators and implementers know what the model is expected to output.
+
+---
+
+<a id="ac-04-023"></a>**AC-04.023** (Trace: [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.028](ep-requirements.md#tool-invocation-without-tool-calling-api))
+
+Given text-based tool invocation is enabled and the provider does not support the Tool-calling API,  
+When the core sends a completion request that can trigger tools,  
+Then the prompt SHALL include a description of the available tools and instructions for the model to output tool calls in the defined format.  
+And when the assistant message is received, the core SHALL parse it to extract tool id (or name) and arguments.  
+And parsed tool calls SHALL undergo the same validation (tool id in catalog, arguments conforming to source-of-truth schema) and execution path (template substitution, run_on_node) as tool_calls received via the Tool-calling API.  
+And the system SHALL NOT execute any command for an unknown tool id or for arguments that fail validation.
+
+---
+
+<a id="ac-04-024"></a>**AC-04.024** (Trace: [REQ-04.029](ep-requirements.md#tool-invocation-without-tool-calling-api))
+
+Given the assistant text is received and text-based tool invocation is enabled,  
+When the text cannot be parsed to obtain a valid tool call (malformed format, missing required fields, or unrecoverable parse error),  
+Then the system SHALL NOT execute any command based on that output.  
+And the system SHALL either treat the response as plain assistant text or surface a deterministic error to the user in chat.
+
+---
+
+<a id="ac-04-025"></a>**AC-04.025** (Trace: [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api))
+
+Given the system supports text-based tool invocation for providers that do not support the Tool-calling API,  
+When the operator configures the system,  
+Then configuration SHALL allow enabling or disabling text-based tool invocation (e.g. per provider or globally).  
+And changing this setting SHALL NOT require code changes (config or env only).

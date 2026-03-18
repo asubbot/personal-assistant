@@ -10,6 +10,8 @@ type Store interface {
 	Add(ctx context.Context, id string, embedding []float32, text string) error
 	// Delete removes the document with the given id. No-op if the id does not exist.
 	Delete(ctx context.Context, id string) error
+	// Clear removes all documents from this store (e.g. full tool index rebuild).
+	Clear(ctx context.Context) error
 	// Search returns the top-k nearest neighbors for the query embedding.
 	// Score is distance (lower is closer). Order is by distance ascending.
 	Search(ctx context.Context, queryEmbedding []float32, topK int) ([]SearchResult, error)

@@ -6,3 +6,5 @@
 echo *
 systemctl status *
 uptime
+date -Iseconds
+/volume1/homes/openclaw-runner/.local/bin/sonos *

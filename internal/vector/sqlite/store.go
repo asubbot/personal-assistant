@@ -115,6 +115,15 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// Clear implements vector.Store. Removes all rows from this table.
+func (s *Store) Clear(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s", s.table))
+	if err != nil {
+		return fmt.Errorf("vector/sqlite: clear: %w", err)
+	}
+	return nil
+}
+
 // Search implements vector.Store.
 func (s *Store) Search(ctx context.Context, queryEmbedding []float32, topK int) ([]vector.SearchResult, error) {
 	if len(queryEmbedding) != s.dimensions {

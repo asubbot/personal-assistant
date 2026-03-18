@@ -1,29 +1,32 @@
 {
   "version": 1,
   "telegram": {
-    "token_path": "/t",
-    "users_path": "testdata/good_users.json"
+    "token_path": "/run/secrets/token",
+    "users_path": ""
   },
   "llm_providers": [
     {
       "type": "ollama",
-      "endpoint": "http://x",
-      "model": "m",
+      "endpoint": "http://localhost:11434",
+      "model": "llama3.2",
       "supports_tools": true
     }
   ],
+  "tools": {
+    "text_based_enabled": true
+  },
   "paths": {
-    "memory_dir": "/d",
-    "log_path": "/d",
-    "vector_index_path": "/d/pa_vectors.sqlite",
-    "llm_log_dir": "/d",
+    "memory_dir": "/data/memory",
+    "log_path": "/data/pa.log",
+    "vector_index_path": "/data/pa_vectors.sqlite",
+    "llm_log_dir": "/data/llm_logs",
     "llm_log_retention_days": 7,
     "scheduled_tasks_path": "",
     "tool_catalog_path": "valid_tools.yaml"
   },
   "embedding": {
     "type": "ollama",
-    "endpoint": "http://x",
+    "endpoint": "http://localhost:11434",
     "model": "nomic-embed-text",
     "dimensions": 768,
     "batch_size": 100

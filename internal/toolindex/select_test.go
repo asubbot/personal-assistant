@@ -18,6 +18,7 @@ type mockSearchStore struct {
 
 func (m *mockSearchStore) Add(_ context.Context, _ string, _ []float32, _ string) error { return nil }
 func (m *mockSearchStore) Delete(_ context.Context, _ string) error                     { return nil }
+func (m *mockSearchStore) Clear(_ context.Context) error                                { return nil }
 func (m *mockSearchStore) Close() error                                                 { return nil }
 
 func (m *mockSearchStore) Search(_ context.Context, _ []float32, topK int) ([]vector.SearchResult, error) {

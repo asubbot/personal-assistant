@@ -5,12 +5,7 @@
     "users_path": ""
   },
   "llm_providers": [
-    {
-      "type": "ollama",
-      "endpoint": "http://localhost:11434",
-      "model": "llama3.2",
-      "supports_tools": true
-    }
+    { "type": "ollama", "endpoint": "http://localhost:11434", "model": "llama3.2" }
   ],
   "paths": {
     "memory_dir": "/data/memory",
@@ -28,6 +23,5 @@
     "dimensions": 768,
     "batch_size": 100
   },
-  "nodes": {},
-  "pa_timezone": "Invalid/Zone"
+  "nodes": {}
 }
