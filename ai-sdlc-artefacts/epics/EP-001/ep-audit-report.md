@@ -104,8 +104,8 @@ Integration tests (tag `integration`) run with `make check` and include: Telegra
 | [AC-01.040](ep-acceptance-criteria.md#ac-01-040) | [REQ-01.028](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | ✓ | — | — | — | internal/logredact/logredact_test.go |
 | [AC-01.041](ep-acceptance-criteria.md#ac-01-041) | [REQ-01.029](ep-requirements.md#secret-protection-prompt-injection--exfiltration) | ✓ | — | — | — | internal/logredact/logredact_test.go, internal/config/config_test.go |
 | [AC-01.042](ep-acceptance-criteria.md#ac-01-042) | [REQ-01.030](ep-requirements.md#configuration-paths-and-environment) | ✓ | — | — | — | cmd/pa/main_test.go, internal/config/resolve_test.go |
-| [AC-01.043](ep-acceptance-criteria.md#ac-01-043) | [REQ-01.031](ep-requirements.md#llm-and-logging) | ✓ | — | — | — | internal/llm/fallback_test.go |
-| [AC-01.044](ep-acceptance-criteria.md#ac-01-044) | [REQ-01.031](ep-requirements.md#llm-and-logging), [REQ-01.014](ep-requirements.md#llm-and-logging) | ✓ | — | — | — | internal/core/handler_test.go |
+| **[AC-01.043](ep-acceptance-criteria.md#ac-01-043)** | **[REQ-01.031](ep-requirements.md#llm-and-logging)** | ✓ | — | — | — | internal/llm/openai_test.go; **LEGACY after EP-006 (transport/network fallback baseline only)** |
+| **[AC-01.044](ep-acceptance-criteria.md#ac-01-044)** | **[REQ-01.031](ep-requirements.md#llm-and-logging)**, [REQ-01.014](ep-requirements.md#llm-and-logging) | ✓ | — | — | — | internal/core/handler_test.go; **LEGACY after EP-006 (not full tool-path escalation coverage)** |
 
 **Notes:** Unit = `*_test.go` in packages; Integration = `tests/integration/*_test.go` (build tag `integration`); E2E = none in repo; Manual = scenarios in [ep-manual-test-scenarios.md](ep-manual-test-scenarios.md). Run `make check` for all automated checks. Integration tests require Docker; the two-user SSH test uses a Debian image (see project README § Development).
 
@@ -119,6 +119,18 @@ Integration tests (tag `integration`) run with `make check` and include: Telegra
 ---
 
 ## Gaps, risks, recommendations
+
+## EP-001 items impacted by EP-006
+
+The following EP-001 traceability items are now **partially outdated** after EP-006 (tool-path reliability and model escalation):
+
+- **REQ-01.031** fallback semantics are now **scope-limited**: they remain valid for transport/network fallback paths, but conversation tool-path recovery is governed by EP-006 policy (`tools.llm_escalation`, typed tool failures, bounded per-message escalation).
+- **AC-01.043** and **AC-01.044** should be treated as **legacy baseline checks** for fallback transport behavior, not as full coverage of current conversation recovery behavior.
+- **Tests cited for AC-01.043/AC-01.044** in this report (`internal/llm/fallback_test.go`, `internal/core/handler_test.go`) are therefore **not sufficient alone** to represent current post-EP-006 behavior; EP-006 tests (`internal/core/handler_ep006_audit_test.go`, `internal/escalationpolicy/catalog_test.go`) are now primary for escalation scenarios.
+
+Recommendation: keep REQ/AC IDs in EP-001 unchanged for historical MVP traceability, but interpret them as baseline/legacy after EP-006 and rely on EP-006 audit matrix for escalation-related acceptance.
+
+---
 
 **Gaps**
 

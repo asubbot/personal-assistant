@@ -1,6 +1,6 @@
 # EP-006 — Audit report
 
-**Date and time of creation:** 2026-03-19 (UTC) (stage 9 after audit-gap fixes + `make check`)
+**Date and time of creation:** 2026-03-16 (UTC) (stage 9 epic audit run via `make check`)
 
 **Pipeline:** Stage 9 ([09-audit.skill.md](../../../ai-sdlc/specification/skills/09-audit.skill.md)).
 
@@ -34,7 +34,7 @@
 
 - **Command:** `make check`
 - **Result:** PASS
-- **Total statement coverage:** **77.5%** (from `go tool cover -func=coverage.out` total line)
+- **Total statement coverage:** **78.0%** (from `go tool cover -func=coverage.out` total line)
 
 ---
 
