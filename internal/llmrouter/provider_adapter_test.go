@@ -25,3 +25,18 @@ func TestProviderAdapter_retryableFallbackAndModelLabel(t *testing.T) {
 		t.Errorf("model = %q, want b/m1", result.Model)
 	}
 }
+
+func TestProviderAdapter_doesNotOverrideExistingModel(t *testing.T) {
+	p := &testProvider{result: &llm.CompletionResult{Content: "ok", Model: "provider/native"}}
+	adapter, err := NewProviderAdapter([]llm.Provider{p}, []string{"a/m0"}, nil)
+	if err != nil {
+		t.Fatalf("NewProviderAdapter: %v", err)
+	}
+	result, err := adapter.Complete(context.Background(), nil, nil)
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if result.Model != "provider/native" {
+		t.Errorf("model = %q, want provider/native", result.Model)
+	}
+}
