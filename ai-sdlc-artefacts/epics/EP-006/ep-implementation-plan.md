@@ -51,13 +51,12 @@
   - _Acceptance Criteria:_ [AC-06.003](ep-acceptance-criteria.md#ac-06-003), [AC-06.004](ep-acceptance-criteria.md#ac-06-004), [AC-06.012](ep-acceptance-criteria.md#ac-06-012)
   - **Verification:** unit tests in `toolfailure`; `make check`.
 
-- [ ] **8. Package `internal/escalationpolicy` (central policy mapping)** — *not started; aligns with stakeholder choice*
+- [x] **8. Package `internal/escalationpolicy` (central policy mapping)**
   - Add `pa/internal/escalationpolicy` with `doc.go` describing scope: mapping **classified** tool-path causes to `toolfailure.NoEscalate` / `toolfailure.MayEscalate` ([REQ-06.004](ep-requirements.md#error-classification), [REQ-06.005](ep-requirements.md#error-classification), [REQ-06.017](ep-requirements.md#nfr--security-testability-observability)).
-  - **Migrate** handler logic `wrapCatalogValidateError` into exported functions (e.g. `WrapCatalogValidateError(err error) error` or `ApplyCatalogValidatePolicy(err error) error`). Handler calls `escalationpolicy` from `executeOneToolCall`; remove or shrink inline policy in `handler.go`.
-  - **Dependencies:** import only `pa/internal/core/toolfailure` initially; optionally `pa/internal/toolcatalog` after exported `ValidateError`/`Kind` or `errors.Is` sentinels ([REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs)).
-  - **Optional consolidation:** route `noderunner` through the same package for a single policy matrix (design decision; if deferred, document in package doc that node outcomes remain typed in `noderunner`).
-  - **Tests:** table-driven unit tests in `internal/escalationpolicy`; **fail-closed** for unknown/unclassified input (no accidental `MayEscalate`); tests MUST NOT import `internal/core` handler or start Telegram/LLM ([REQ-06.017](ep-requirements.md#nfr--security-testability-observability)).
-  - **Module boundaries:** confirm `scripts/check-module-boundaries.sh` after adding imports; `escalationpolicy` must not import `internal/core` (parent), `telegram`, or concrete LLM packages ([ep-system-design.md](ep-system-design.md)).
+  - **Done:** `WrapCatalogValidateError` in [catalog.go](../../../internal/escalationpolicy/catalog.go); handler calls `escalationpolicy` from `executeOneToolCall`; fail-closed for unrecognized validate-shaped errors (substring markers aligned with `toolcatalog` messages until sentinels land).
+  - **Dependencies:** `pa/internal/core/toolfailure` only; optional future `toolcatalog` kinds ([REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs)).
+  - **Deferred:** route `noderunner` through the same package (optional consolidation per [ep-system-design.md](ep-system-design.md)).
+  - **Tests:** [catalog_test.go](../../../internal/escalationpolicy/catalog_test.go) with `Covers AC-06.014` / Supporting.
   - _Requirements:_ [REQ-06.017](ep-requirements.md#nfr--security-testability-observability), [REQ-06.004](ep-requirements.md#error-classification), [REQ-06.005](ep-requirements.md#error-classification)
   - _Acceptance Criteria:_ [AC-06.014](ep-acceptance-criteria.md#ac-06-014)
   - **Verification:** `go test ./internal/escalationpolicy/...`; `make check`.

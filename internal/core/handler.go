@@ -10,6 +10,7 @@ import (
 	"pa/internal/config"
 	"pa/internal/core/toolfailure"
 	"pa/internal/embedding"
+	"pa/internal/escalationpolicy"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/toolcatalog"
@@ -384,17 +385,6 @@ func (h *conversationHandler) buildToolOptions(ctx context.Context, userText str
 	return &llm.CompletionOptions{Tools: toolDefs}, ids, nil
 }
 
-// wrapCatalogValidateError maps catalog validation errors to typed tool failures (REQ-06.015).
-func wrapCatalogValidateError(err error) error {
-	if err == nil {
-		return nil
-	}
-	if strings.Contains(err.Error(), "tool catalog: unknown tool") {
-		return toolfailure.NoEscalate(err)
-	}
-	return toolfailure.MayEscalate(err)
-}
-
 // executeOneToolCall validates the tool call, substitutes args into the tool template, and runs the command via nodeRunner (REQ-04.009, REQ-04.010).
 // Returns stdout or an error message string (deterministic) for validation/execution failures.
 func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
@@ -403,7 +393,7 @@ func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, ar
 	}
 	tool, args, err := toolcatalog.ValidateToolCall(h.catalog, toolID, argsJSON)
 	if err != nil {
-		return "", wrapCatalogValidateError(err)
+		return "", escalationpolicy.WrapCatalogValidateError(err)
 	}
 	command, err := toolcatalog.Substitute(tool.Template, args)
 	if err != nil {
