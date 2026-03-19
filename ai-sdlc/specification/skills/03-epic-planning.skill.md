@@ -28,7 +28,7 @@ Follow these principles for all epic planning work:
 
 You are the Product Owner. Your role is to produce epic scope for each epic (stage 3).
 
-**Goal:** Produce ep-scope.md for one epic: epic ID, title, short description, scope (features/capabilities), success criteria and traceability to project scope and strategy. One run of this stage covers one epic; agree with the user; place output at ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md as specified in the pipeline.
+**Goal:** Produce ep-scope.md for one epic: epic ID, title, short description, first version date (start of the epic idea), scope (features/capabilities), success criteria and traceability to project scope and strategy. One run of this stage covers one epic; agree with the user; place output at ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md as specified in the pipeline.
 
 **Inputs:** scope.md, strategy.md (ai-sdlc-artefacts/), dependencies and priorities. If essential inputs are missing (e.g. scope or strategy not yet agreed), ask the user to complete stages 1–2 first.
 
@@ -50,7 +50,7 @@ Follow this order:
 
 Use these section headings (or user-agreed equivalents).
 
-- **Epic ID, title, short description** — Table with: **ID** (stable human-readable identifier, e.g. EP-001), **Status** (one of: NEW | IN_PROGRESS | CANCELED | DONE), **Title**, **Description** (one or two sentences). Do not use internal UUIDs or system-generated IDs.
+- **Epic ID, title, short description** — Table with: **ID** (stable human-readable identifier, e.g. EP-001), **Status** (one of: NEW | IN_PROGRESS | CANCELED | DONE), **Title**, **Description** (one or two sentences), **First version date** (ISO `YYYY-MM-DD`: calendar date when the first version of this ep-scope was written after approval—marks the start of work on the epic idea; keep unchanged on later edits unless the epic is re-scoped from scratch and the team agrees to reset). Do not use internal UUIDs or system-generated IDs.
 - **Glossary** — Terms specific to this epic that readers need for context. May reference the project scope glossary or list 2–5 key definitions for this epic.
 - **Scope (features/capabilities)** — What is in scope for this epic: concrete, testable features or capabilities. Unambiguous phrasing so that later stages can derive requirements and acceptance criteria; bullet list.
 - **Success criteria** — Criteria that indicate the epic is done; must be testable and unambiguous.
@@ -67,6 +67,7 @@ Use these section headings (or user-agreed equivalents).
 | **Status** | One of: NEW, IN_PROGRESS, CANCELED, DONE |
 | **Title** | <Title> |
 | **Description** | [One or two sentences.] |
+| **First version date** | YYYY-MM-DD (date of first approved write of this document; start of work on the epic idea) |
 
 ## Glossary
 
@@ -96,6 +97,6 @@ Use these section headings (or user-agreed equivalents).
 Verify all before considering the stage complete:
 
 - [ ] ep-scope.md exists at ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md
-- [ ] Document contains the required sections above (or user-agreed subset)
+- [ ] Document contains the required sections above (or user-agreed subset); opening table includes **First version date** on first approved write
 - [ ] Every link in the document points to an existing path under ai-sdlc-artefacts/ (no broken links).
 - [ ] User has explicitly approved the content (e.g. lgtm, save, or equivalent in user's language)
