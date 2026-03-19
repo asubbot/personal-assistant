@@ -352,7 +352,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 
 - **Rule:** In reference, sample, and production `config.json` files, **every key defined for the active schema version SHALL be present** with an explicit value. Do not rely on JSON omission for defaults (use `0`, `false`, `""`, or empty arrays where documented).
 - **Why:** Self-documenting configs, clearer diffs/reviews, fewer surprises when operators copy partial examples.
-- **Scope:** Applies to top-level objects (`telegram`, `paths`, `embedding`, `tools`, `llm_escalation`, etc.) and their documented fields. Keys deferred post-MVP (e.g. `versioned_state`) stay out of the file until implemented.
+- **Scope:** Applies to top-level objects (`telegram`, `paths`, `embedding`, `tools`, `llm_providers`, etc.) and their documented fields (including nested keys such as `tools.llm_escalation`). Keys deferred post-MVP (e.g. `versioned_state`) stay out of the file until implemented.
 - **Loader:** The Go loader may still accept omitted keys for backward compatibility in older deployments; new edits SHOULD converge to the full explicit shape. Validation rules (fail fast) apply regardless of whether a key was omitted or set to an invalid value.
 
 ### Canonical example (all keys for version 1)
@@ -367,17 +367,17 @@ _Reference material._ Application config is a single JSON file at `config.json` 
     "max_message_length": 200
   },
   "tools": {
-    "text_based_enabled": false
+    "text_based_enabled": false,
+    "llm_escalation": {
+      "enabled": false,
+      "max_per_user_message": 2,
+      "baseline_index": 0
+    }
   },
   "tool_pre_selection": {
     "tool_search_top_k": 0,
     "tool_min_count": 0,
     "tool_fallback_cap": 0
-  },
-  "llm_escalation": {
-    "enabled": false,
-    "max_per_user_message": 2,
-    "baseline_index": 0
   },
   "llm_providers": [
     {
@@ -447,7 +447,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 - **telegram.max_message_length**: **Key required**; max message length in runes. `0` = no limit; `> 0` rejects longer messages with a clear reply (no LLM call).
 - **tools.text_based_enabled**: **Key required**; Hermes-style text tool path when `true` and baseline provider has `supports_tools: false` ([REQ-04.027](ep-requirements.md)).
 - **tool_pre_selection**: **Object required**; use `0` for each numeric field to mean code defaults (topK=10, minTools=1, fallbackCap=50).
-- **llm_escalation**: **Object required** ([EP-006](../EP-006/ep-requirements.md)); `enabled: false` keeps transport-level `FallbackProvider` only. When `enabled: true`, at least two `llm_providers` and valid `baseline_index` / `max_per_user_message` are validated at load.
+- **tools.llm_escalation**: **Object required** under `tools` ([EP-006](../EP-006/ep-requirements.md)); `enabled: false` keeps transport-level `FallbackProvider` only. When `enabled: true`, at least two `llm_providers` and valid `baseline_index` / `max_per_user_message` are validated at load.
 - **llm_providers[].supports_tools**: **Required** boolean per provider ([REQ-04.026](ep-requirements.md)).
 - **llm_providers[].api_key_path**: **Key required** for every entry; use `""` for providers that do not use an API key (e.g. `ollama`).
 - **command_allowlist_path** (per node): path to a file with the list of allowed command patterns. The same path can be used by multiple nodes to share one allowlist. File format: one pattern per line (leading/trailing whitespace ignored; empty lines and lines starting with `#` ignored). Matching rules (prefix/glob/regex) are defined in task 2.1. Example file `/etc/pa/allowlist.txt`:
@@ -460,7 +460,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 /usr/bin/systemctl stop *
 ```
 
-- **llm_providers**: ordered list; with `llm_escalation.enabled: false`, transport-level fallback tries the next provider on connection/5xx errors ([REQ-01.031](ep-requirements.md#llm-and-logging)). At least one entry required.
+- **llm_providers**: ordered list; with `tools.llm_escalation.enabled: false`, transport-level fallback tries the next provider on connection/5xx errors ([REQ-01.031](ep-requirements.md#llm-and-logging)). At least one entry required.
 - **embedding**: **Object required**; dedicated provider for vector memory. Fields: `type`, `endpoint`, `model`, `dimensions` (positive), `batch_size` (1–1000, [REQ-04.021](../EP-004/ep-requirements.md)); `api_key_path` required for `openai` / `openai-compatible`, may be `""` for `ollama`.
 - **paths.scheduled_tasks_path**: **Key required**; path to scheduled tasks JSON (see below). Use `""` to disable the in-process scheduler (no tasks loaded).
 - **paths.ssh_known_hosts_path**: **Key required** in reference configs; when `nodes` is non-empty, must be non-empty and the file must exist at load time. When `nodes` is empty, may be `""`. Resolved relative to the config directory. Populate with host keys, e.g. `ssh-keyscan -H <host> >> known_hosts` ([REQ-01.003](ep-requirements.md#nodes-and-ssh)).

@@ -109,7 +109,7 @@ func TestSecretLeakage_LLMContextAndReplyAndLogsDoNotContainFakeSecret(t *testin
 	defer cancel()
 	done := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, provider, nil, nil, nil, nil, nil, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
 		close(done)
 	}()
 

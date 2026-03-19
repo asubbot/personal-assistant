@@ -36,6 +36,7 @@ This document defines epic-level acceptance criteria for **EP-006 Tool-call reli
 | [AC-06.012](#ac-06-012) | [REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) | Qualifying decision uses typed tool errors; plain errors do not qualify alone |
 | [AC-06.013](#ac-06-013) | [REQ-06.016](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) | Hermes parse failure escalates to next provider when enabled and policy allows |
 | [AC-06.014](#ac-06-014) | [REQ-06.017](ep-requirements.md#nfr--security-testability-observability) | Escalation policy mapping in `internal/escalationpolicy`; unit tests without full handler |
+| [AC-06.015](#ac-06-015) | [REQ-06.018](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) | Catalog validate errors: policy uses typed `ValidateKind` / `errors.As`, not `Error()` substring rules |
 
 ---
 
@@ -165,6 +166,17 @@ When an engineer inspects the implementation of escalation-allowance mapping for
 Then that mapping is implemented in the Go package `pa/internal/escalationpolicy` (not only ad hoc inside the handler).  
 And when unit tests for that package run,  
 Then they exercise the mapping table or equivalent without starting the full conversation handler, Telegram adapter, or real LLM client.
+
+---
+
+<a id="ac-06-015"></a>**AC-06.015** (Trace: [REQ-06.018](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs))
+
+Given a failure returned from `toolcatalog.ValidateToolCall` (including unknown tool and invalid arguments),  
+When `internal/escalationpolicy.WrapCatalogValidateError` maps that failure to `toolfailure.NoEscalate` or `MayEscalate`,  
+Then the decision uses `errors.As` on the dedicated catalog validation error type and its `ValidateKind` (or equivalent), and does not classify catalog validation outcomes by scanning substrings of `Error()` text alone.  
+And given an error that is not a catalog validation error of that type but resembles validate message text,  
+When `WrapCatalogValidateError` is applied,  
+Then the outcome fails closed to non-qualifying escalation (same as [AC-06.012](ep-acceptance-criteria.md#ac-06-012) for untyped errors).
 
 ---
 

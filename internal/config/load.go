@@ -92,19 +92,19 @@ func validate(c *Config) error {
 }
 
 func validateLLMEscalation(c *Config) error {
-	if c.LLMEscalation == nil || !c.LLMEscalation.Enabled {
+	e := c.ToolsLLMEscalation()
+	if e == nil || !e.Enabled {
 		return nil
 	}
-	e := c.LLMEscalation
 	n := len(c.LLMProviders)
 	if n < 2 {
-		return errors.New("config: llm_escalation.enabled requires at least two llm_providers")
+		return errors.New("config: tools.llm_escalation.enabled requires at least two llm_providers")
 	}
 	if e.BaselineIndex < 0 || e.BaselineIndex >= n {
-		return fmt.Errorf("config: llm_escalation.baseline_index must be in [0, %d)", n)
+		return fmt.Errorf("config: tools.llm_escalation.baseline_index must be in [0, %d)", n)
 	}
 	if e.MaxPerUserMessage < 0 {
-		return errors.New("config: llm_escalation.max_per_user_message must be >= 0")
+		return errors.New("config: tools.llm_escalation.max_per_user_message must be >= 0")
 	}
 	return nil
 }

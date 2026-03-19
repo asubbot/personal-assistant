@@ -14,16 +14,16 @@ import (
 // If tool id is unknown or arguments fail validation (required, type, allowed_values, pattern, min/max), returns an error.
 func ValidateToolCall(catalog *Catalog, toolID string, argsJSON string) (*Tool, map[string]any, error) {
 	if catalog == nil {
-		return nil, nil, fmt.Errorf("tool catalog: unknown tool %q", toolID)
+		return nil, nil, validateErr(ValidateKindUnknownTool, fmt.Errorf("tool catalog: unknown tool %q", toolID))
 	}
 	tool, ok := catalog.Tools[toolID]
 	if !ok {
-		return nil, nil, fmt.Errorf("tool catalog: unknown tool %q", toolID)
+		return nil, nil, validateErr(ValidateKindUnknownTool, fmt.Errorf("tool catalog: unknown tool %q", toolID))
 	}
 	var args map[string]any
 	if strings.TrimSpace(argsJSON) != "" {
 		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
-			return nil, nil, fmt.Errorf("tool %q: invalid arguments JSON: %w", toolID, err)
+			return nil, nil, validateErr(ValidateKindInvalidArgsJSON, fmt.Errorf("tool %q: invalid arguments JSON: %w", toolID, err))
 		}
 	}
 	if args == nil {
@@ -48,7 +48,7 @@ func validateOneArg(toolID string, r ArgumentRule, args map[string]any) error {
 	v, ok := args[r.Name]
 	if !ok || v == nil {
 		if r.Required {
-			return fmt.Errorf("tool %q: missing required argument %q", toolID, r.Name)
+			return validateErr(ValidateKindMissingRequiredArg, fmt.Errorf("tool %q: missing required argument %q", toolID, r.Name))
 		}
 		return nil
 	}
@@ -74,7 +74,7 @@ func validateAllowedValues(toolID, name string, allowed []string, v any) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("tool %q: argument %q must be one of %v", toolID, name, allowed)
+	return validateErr(ValidateKindAllowedValuesMismatch, fmt.Errorf("tool %q: argument %q must be one of %v", toolID, name, allowed))
 }
 
 func validatePattern(toolID, name, pattern string, v any) error {
@@ -84,10 +84,10 @@ func validatePattern(toolID, name, pattern string, v any) error {
 	s := argToString(v)
 	matched, err := regexp.MatchString(pattern, s)
 	if err != nil {
-		return fmt.Errorf("tool %q: argument %q pattern: %w", toolID, name, err)
+		return validateErr(ValidateKindPatternInvalid, fmt.Errorf("tool %q: argument %q pattern: %w", toolID, name, err))
 	}
 	if !matched {
-		return fmt.Errorf("tool %q: argument %q does not match pattern %q", toolID, name, pattern)
+		return validateErr(ValidateKindPatternMismatch, fmt.Errorf("tool %q: argument %q does not match pattern %q", toolID, name, pattern))
 	}
 	return nil
 }
@@ -98,13 +98,13 @@ func validateMinMax(toolID, name string, min, max *int, v any) error {
 	}
 	n, err := argToNumber(v)
 	if err != nil {
-		return fmt.Errorf("tool %q: argument %q must be number for min/max: %w", toolID, name, err)
+		return validateErr(ValidateKindMinMaxNonNumber, fmt.Errorf("tool %q: argument %q must be number for min/max: %w", toolID, name, err))
 	}
 	if min != nil && n < *min {
-		return fmt.Errorf("tool %q: argument %q must be >= %d", toolID, name, *min)
+		return validateErr(ValidateKindMinViolated, fmt.Errorf("tool %q: argument %q must be >= %d", toolID, name, *min))
 	}
 	if max != nil && n > *max {
-		return fmt.Errorf("tool %q: argument %q must be <= %d", toolID, name, *max)
+		return validateErr(ValidateKindMaxViolated, fmt.Errorf("tool %q: argument %q must be <= %d", toolID, name, *max))
 	}
 	return nil
 }
@@ -113,31 +113,31 @@ func validateArgType(toolID, name, typ string, v any) error {
 	switch strings.ToLower(strings.TrimSpace(typ)) {
 	case "string":
 		if _, ok := v.(string); !ok {
-			return fmt.Errorf("tool %q: argument %q must be string", toolID, name)
+			return validateErr(ValidateKindArgTypeString, fmt.Errorf("tool %q: argument %q must be string", toolID, name))
 		}
 	case "integer", "int":
 		switch val := v.(type) {
 		case float64:
 			if val != float64(int64(val)) {
-				return fmt.Errorf("tool %q: argument %q must be integer", toolID, name)
+				return validateErr(ValidateKindArgTypeInteger, fmt.Errorf("tool %q: argument %q must be integer", toolID, name))
 			}
 		case int, int64:
 		default:
-			return fmt.Errorf("tool %q: argument %q must be integer", toolID, name)
+			return validateErr(ValidateKindArgTypeInteger, fmt.Errorf("tool %q: argument %q must be integer", toolID, name))
 		}
 	case "number":
 		switch v.(type) {
 		case float64, int, int64:
 		default:
-			return fmt.Errorf("tool %q: argument %q must be number", toolID, name)
+			return validateErr(ValidateKindArgTypeNumber, fmt.Errorf("tool %q: argument %q must be number", toolID, name))
 		}
 	case "boolean", "bool":
 		if _, ok := v.(bool); !ok {
-			return fmt.Errorf("tool %q: argument %q must be boolean", toolID, name)
+			return validateErr(ValidateKindArgTypeBoolean, fmt.Errorf("tool %q: argument %q must be boolean", toolID, name))
 		}
 	default:
 		if _, ok := v.(string); !ok {
-			return fmt.Errorf("tool %q: argument %q must be string", toolID, name)
+			return validateErr(ValidateKindArgTypeString, fmt.Errorf("tool %q: argument %q must be string", toolID, name))
 		}
 	}
 	return nil

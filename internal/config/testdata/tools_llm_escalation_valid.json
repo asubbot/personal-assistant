@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "telegram": {
+    "token_path": "/run/secrets/token",
+    "users_path": ""
+  },
+  "llm_providers": [
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434",
+      "model": "a",
+      "supports_tools": true
+    },
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434",
+      "model": "b",
+      "supports_tools": true
+    }
+  ],
+  "tools": {
+    "text_based_enabled": false,
+    "llm_escalation": {
+      "enabled": true,
+      "max_per_user_message": 2,
+      "baseline_index": 1
+    }
+  },
+  "paths": {
+    "memory_dir": "/data/memory",
+    "log_path": "/data/pa.log",
+    "vector_index_path": "/data/pa_vectors.sqlite",
+    "llm_log_dir": "/data/llm_logs",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml"
+  },
+  "embedding": {
+    "type": "ollama",
+    "endpoint": "http://localhost:11434",
+    "model": "nomic-embed-text",
+    "dimensions": 768,
+    "batch_size": 100
+  },
+  "nodes": {}
+}

@@ -2,7 +2,7 @@
 
 This document contains the product requirements for EP-006 (Tool-call reliability and model escalation) in EARS form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, solution-free where applicable).
 
-**Total: 17 requirements (12 FR, 5 NFR)**
+**Total: 18 requirements (13 FR, 5 NFR)**
 
 **Contents**
 
@@ -31,7 +31,7 @@ This document is derived from [ep-scope.md](ep-scope.md). EP-006 improves automa
 **Epic scope in brief:**
 
 - Error classification: stable categories for tool-related and tool-flow failures; map to allowed actions (no escalation, one repair, escalate once, or stop).
-- Typed tool failures: outcomes that participate in escalation policy are represented with explicit, inspectable error types (not only unstructured message text).
+- Typed tool failures: outcomes that participate in escalation policy are represented with explicit, inspectable error types (not only unstructured message text). Catalog validation failures carry a stable `ValidateKind` for policy mapping ([REQ-06.018](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs)).
 - Hermes text-tool path: parser failures after a Complete call may trigger the same bounded escalation policy as qualifying tool execution failures when escalation is enabled.
 - Escalation policy: bounded behaviour per user message (max escalations per turn); no escalation for errors a stronger model cannot fix.
 - Multi-provider chain: ordered list; escalation advances along configuration order until policy stops or list exhausted.
@@ -118,6 +118,7 @@ In the following, *System* = PersonalAssistant (or the component stated).
 | REQ-06.015 | FR | Typed tool failures and Hermes parse | Tool outcomes for escalation policy use typed errors inspectable without substring matching on Error() alone |
 | REQ-06.016 | FR | Typed tool failures and Hermes parse | Hermes parser failure qualifies for escalation and triggers next Complete when policy allows |
 | REQ-06.017 | NFR | Security, testability, observability | Escalation-allowance mapping in `internal/escalationpolicy`; testable without full handler |
+| REQ-06.018 | FR | Typed tool failures and Hermes parse | Catalog validation errors expose stable kind via dedicated type inspectable with errors.As; policy does not use Error() substrings for those failures |
 
 ---
 
@@ -164,13 +165,16 @@ THE System SHALL support an ordered list of two or more LLM providers for escala
 
 ### Typed tool failures and Hermes parse (escalation inputs)
 
-*REQ-06.015, REQ-06.016*
+*REQ-06.015, REQ-06.016, REQ-06.018*
 
 **REQ-06.015** (Ubiquitous)  
 THE System SHALL represent tool-invocation outcomes that participate in escalation policy using error values distinguishable by type (for example a dedicated wrapper type with an explicit escalation-allowed flag) that callers inspect with the language standard error inspection API, so that the decision whether a failure qualifies for escalation does not depend solely on matching substrings in the string returned by the error `Error()` method.
 
 **REQ-06.016** (Event-driven)  
 WHERE escalation is enabled and the assistant reply is interpreted with the Hermes text-tool markup parser after a Complete call (including the first completion for a user message and follow-up completions inside the tool-result loop), WHEN that parser reports a failure, THE System SHALL treat that outcome as qualifying for the same escalation policy as a qualifying tool execution failure, subject to the configured maximum escalations per user message and provider chain limits, and SHALL perform a new Complete call on the next provider when policy permits, or SHALL produce the deterministic user-visible outcome for exhausted escalation when policy does not permit further advance.
+
+**REQ-06.018** (Ubiquitous)  
+THE System SHALL attach every failure returned from tool catalog validation (`ValidateToolCall` and its argument validation helpers) to a stable enumerated classification (`ValidateKind` or equivalent) carried in a dedicated error type that callers inspect with the language standard error inspection API (`errors.As`), so that the mapping from catalog validation outcomes to escalation allowance in `internal/escalationpolicy` does not rely on matching substrings in the string returned by the error `Error()` method for those failures.
 
 ---
 

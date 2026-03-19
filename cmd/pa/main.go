@@ -14,6 +14,7 @@ import (
 	"pa/internal/embedding"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
+	"pa/internal/llmrouter"
 	"pa/internal/memory"
 	"pa/internal/noderunner"
 	"pa/internal/scheduler"
@@ -51,25 +52,18 @@ func buildLLMProviders(cfg *config.Config) ([]llm.Provider, []string, error) {
 	return providers, labels, nil
 }
 
-// newLLMProvider builds a fallback chain from cfg.LLMProviders (transport retry on retryable errors).
+// newLLMProvider builds a provider adapter backed by unified llmrouter transport routing.
 func newLLMProvider(cfg *config.Config, logger *slog.Logger) (llm.Provider, error) {
 	providers, labels, err := buildLLMProviders(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return llm.NewFallbackProvider(providers, labels, logger), nil
+	return llmrouter.NewProviderAdapter(providers, labels, logger)
 }
 
-// newLLMForConversation returns (transport, chain, labels) for core.Run: when tool escalation is enabled, transport is nil and chain is non-nil.
-func newLLMForConversation(cfg *config.Config, logger *slog.Logger) (transport llm.Provider, chain []llm.Provider, labels []string, err error) {
-	providers, lab, err := buildLLMProviders(cfg)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if cfg.LLMEscalation != nil && cfg.LLMEscalation.Enabled {
-		return nil, providers, lab, nil
-	}
-	return llm.NewFallbackProvider(providers, lab, logger), nil, lab, nil
+// newLLMForConversation returns the ordered providers and labels for the unified router in core.
+func newLLMForConversation(cfg *config.Config) (providers []llm.Provider, labels []string, err error) {
+	return buildLLMProviders(cfg)
 }
 
 // configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./config") joined with config.ConfigFileName.
@@ -161,7 +155,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		}
 	}()
 
-	llmTransport, llmChain, llmLabels, err := newLLMForConversation(cfg, logger)
+	llmProviders, llmLabels, err := newLLMForConversation(cfg)
 	if err != nil {
 		return err
 	}
@@ -178,7 +172,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
-	return core.Run(ctx, cfg, logger, adapter, llmTransport, llmChain, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti)
+	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti)
 }
 
 func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {
@@ -186,8 +180,8 @@ func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {
 	if model == "" {
 		model = "default"
 	}
-	if cfg.LLMEscalation != nil && cfg.LLMEscalation.Enabled {
-		bi := cfg.LLMEscalation.BaselineIndex
+	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled {
+		bi := esc.BaselineIndex
 		if bi >= 0 && bi < len(cfg.LLMProviders) {
 			model = cfg.LLMProviders[bi].Model
 			if model == "" {

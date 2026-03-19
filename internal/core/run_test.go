@@ -17,7 +17,7 @@ func TestRun_nilAdapter_returnsError(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
 
-	err := Run(context.Background(), cfg, logger, nil, provider, nil, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, nil, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error when adapter is nil")
 	}
@@ -26,18 +26,18 @@ func TestRun_nilAdapter_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-01.003 (US-02): core.Run with nil provider returns error and does not start serving.
+// Covers AC-01.003 (US-02): core.Run with no providers returns error and does not start serving.
 func TestRun_nilProvider_returnsError(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, nil, nil, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, nil, nil, nil, nil, nil, nil, nil)
 	if err == nil {
-		t.Fatal("expected error when provider is nil")
+		t.Fatal("expected error when providers are empty")
 	}
-	if err.Error() != "core: llm provider is nil" {
-		t.Errorf("err = %q, want %q", err.Error(), "core: llm provider is nil")
+	if err.Error() != "core: providers are required" {
+		t.Errorf("err = %q, want %q", err.Error(), "core: providers are required")
 	}
 }
 
@@ -58,7 +58,7 @@ func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, provider, nil, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), nil, logger, adapter, provider, nil, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), nil, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run(cfg=nil): %v", err)
 	}
@@ -119,7 +119,7 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, provider, nil, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -136,28 +136,28 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 	}
 }
 
-// Covers AC-06.005 (EP-006): Run rejects non-nil transport when llmChain is set.
-func TestRun_chainWithNonNilTransport_returnsError(t *testing.T) {
+// Covers wiring validation: labels must match providers length.
+func TestRun_labelsLengthMismatch_returnsError(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
 	p := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
 	adapter := &capturingAdapter{}
-	err := Run(context.Background(), cfg, logger, adapter, p, []llm.Provider{p}, []string{"t/m"}, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{p}, nil, nil, nil, nil, nil, nil)
 	if err == nil {
-		t.Fatal("expected error when both transport and chain set")
+		t.Fatal("expected error when labels length mismatches providers")
 	}
-	if !strings.Contains(err.Error(), "llmTransport must be nil") {
+	if !strings.Contains(err.Error(), "provider labels length") {
 		t.Errorf("err = %q", err.Error())
 	}
 }
 
-// Covers AC-06.001 (EP-006): llmChain mode wires handler and Complete uses chain entries.
-func TestRun_llmChain_wiresHandler(t *testing.T) {
+// Covers provider chain mode: first provider in chain can handle completion.
+func TestRun_providerChain_wiresHandler(t *testing.T) {
 	cfg := &config.Config{}
 	logger := slog.Default()
 	p := &mockProvider{result: &llm.CompletionResult{Content: "from-chain"}}
 	adapter := &capturingAdapter{}
-	err := Run(context.Background(), cfg, logger, adapter, nil, []llm.Provider{p}, []string{"openai/gpt"}, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{p}, []string{"openai/gpt"}, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}

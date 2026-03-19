@@ -8,6 +8,7 @@ data/
 .env
 .secrets/
 .vscode/
+config/config.json
 
 # OS
 .DS_Store

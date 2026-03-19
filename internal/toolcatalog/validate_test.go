@@ -1,11 +1,24 @@
 package toolcatalog
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
 
+func assertValidateKind(t *testing.T, err error, want ValidateKind) {
+	t.Helper()
+	var ve *ValidateError
+	if !errors.As(err, &ve) {
+		t.Fatalf("errors.As(ValidateError): false, err=%v", err)
+	}
+	if ve.Kind != want {
+		t.Fatalf("ValidateKind: got %v, want %v", ve.Kind, want)
+	}
+}
+
 // Covers AC-04.005, AC-04.006: validation checks types, allowed_values, pattern, min/max; unknown tool or invalid args return error.
+// Covers AC-06.015 (REQ-06.018): each failure is *ValidateError with expected ValidateKind.
 func TestValidateToolCall_UnknownTool_ReturnsError(t *testing.T) {
 	catalog := &Catalog{Tools: map[string]*Tool{}}
 	_, _, err := ValidateToolCall(catalog, "no_such_tool", `{}`)
@@ -15,6 +28,7 @@ func TestValidateToolCall_UnknownTool_ReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "unknown tool") {
 		t.Errorf("ValidateToolCall(unknown tool): error = %v, want 'unknown tool'", err)
 	}
+	assertValidateKind(t, err, ValidateKindUnknownTool)
 }
 
 func TestValidateToolCall_MissingRequired_ReturnsError(t *testing.T) {
@@ -33,6 +47,7 @@ func TestValidateToolCall_MissingRequired_ReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "missing required") || !strings.Contains(err.Error(), "req") {
 		t.Errorf("ValidateToolCall(missing required): error = %v", err)
 	}
+	assertValidateKind(t, err, ValidateKindMissingRequiredArg)
 }
 
 func TestValidateToolCall_WrongType_ReturnsError(t *testing.T) {
@@ -51,6 +66,7 @@ func TestValidateToolCall_WrongType_ReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "must be integer") {
 		t.Errorf("ValidateToolCall(wrong type): error = %v", err)
 	}
+	assertValidateKind(t, err, ValidateKindArgTypeInteger)
 }
 
 func TestValidateToolCall_AllowedValues_ReturnsError(t *testing.T) {
@@ -69,6 +85,7 @@ func TestValidateToolCall_AllowedValues_ReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "must be one of") {
 		t.Errorf("ValidateToolCall(allowed_values): error = %v", err)
 	}
+	assertValidateKind(t, err, ValidateKindAllowedValuesMismatch)
 }
 
 func TestValidateToolCall_Pattern_ReturnsError(t *testing.T) {
@@ -87,6 +104,7 @@ func TestValidateToolCall_Pattern_ReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "does not match pattern") {
 		t.Errorf("ValidateToolCall(pattern): error = %v", err)
 	}
+	assertValidateKind(t, err, ValidateKindPatternMismatch)
 }
 
 func TestValidateToolCall_MinMax_ReturnsError(t *testing.T) {
@@ -103,10 +121,12 @@ func TestValidateToolCall_MinMax_ReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("ValidateToolCall(n < min): expected error, got nil")
 	}
+	assertValidateKind(t, err, ValidateKindMinViolated)
 	_, _, err = ValidateToolCall(catalog, "t", `{"n": 11}`)
 	if err == nil {
 		t.Fatal("ValidateToolCall(n > max): expected error, got nil")
 	}
+	assertValidateKind(t, err, ValidateKindMaxViolated)
 }
 
 func TestValidateToolCall_ValidArgs_ReturnsToolAndArgs(t *testing.T) {
@@ -136,4 +156,5 @@ func TestValidateToolCall_InvalidJSON_ReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("ValidateToolCall(invalid JSON): expected error, got nil")
 	}
+	assertValidateKind(t, err, ValidateKindInvalidArgsJSON)
 }

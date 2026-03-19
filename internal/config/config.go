@@ -24,20 +24,27 @@ type Config struct {
 	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
 	// Tools is optional; text_based_enabled defaults to false when omitted or section absent.
 	Tools *ToolsConfig `json:"tools"`
-	// LLMEscalation is optional; when enabled, core uses per-message provider escalation on qualifying tool failures (EP-006).
-	LLMEscalation *LLMEscalationConfig `json:"llm_escalation"`
 }
 
-// LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002).
+// LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002). JSON: tools.llm_escalation.
 type LLMEscalationConfig struct {
 	Enabled           bool `json:"enabled"`
 	MaxPerUserMessage int  `json:"max_per_user_message"`
 	BaselineIndex     int  `json:"baseline_index"`
 }
 
-// ToolsConfig holds optional tool-invocation settings (REQ-04.030).
+// ToolsConfig holds optional tool-invocation settings (REQ-04.030) and tools.llm_escalation (EP-006).
 type ToolsConfig struct {
-	TextBasedEnabled bool `json:"text_based_enabled"`
+	TextBasedEnabled bool                 `json:"text_based_enabled"`
+	LLMEscalation    *LLMEscalationConfig `json:"llm_escalation,omitempty"`
+}
+
+// ToolsLLMEscalation returns tools.llm_escalation for EP-006 (nil if tools section or escalation block absent).
+func (c *Config) ToolsLLMEscalation() *LLMEscalationConfig {
+	if c == nil || c.Tools == nil {
+		return nil
+	}
+	return c.Tools.LLMEscalation
 }
 
 // ToolPreSelection holds parameters for tool pre-selection (REQ-04.019, REQ-04.020). All zero = use code defaults.

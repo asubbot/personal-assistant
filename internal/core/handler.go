@@ -13,6 +13,7 @@ import (
 	"pa/internal/escalationpolicy"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
+	"pa/internal/llmrouter"
 	"pa/internal/toolcatalog"
 	"pa/internal/toolindex"
 	"pa/internal/tooltext"
@@ -47,9 +48,7 @@ type llmTurnState struct {
 // conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-01.006, REQ-01.007, REQ-01.018).
 // Context is built only from vector store (turns and summaries); no full.md day file.
 type conversationHandler struct {
-	provider         llm.Provider   // used when llmChain is nil (transport FallbackProvider)
-	llmChain         []llm.Provider // non-nil when tool escalation is enabled (EP-006)
-	llmLabels        []string       // parallel to llmChain for logging / result.Model
+	router           *llmrouter.Router
 	escalation       *config.LLMEscalationConfig
 	vectorStore      vector.Store // optional; for semantic search and indexing
 	embedder         embedding.Embedder
@@ -84,7 +83,10 @@ func (h *conversationHandler) checkUserMessage(text string) (trimmed string, ear
 }
 
 func (h *conversationHandler) escalationEnabled() bool {
-	return h.escalation != nil && h.escalation.Enabled && len(h.llmChain) > 0
+	if h.escalation == nil || !h.escalation.Enabled {
+		return false
+	}
+	return h.router != nil
 }
 
 func activeIndex(st *llmTurnState) int {
@@ -94,28 +96,46 @@ func activeIndex(st *llmTurnState) int {
 	return st.activeIdx
 }
 
-// completeAt runs Complete on the transport provider (legacy) or on llmChain[idx] (EP-006).
-func (h *conversationHandler) completeAt(ctx context.Context, idx int, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+func (h *conversationHandler) onRouteEvent(ctx context.Context, e llmrouter.Event) {
+	if e.Action == llmrouter.ActionEscalatePolicy {
+		h.logger.InfoContext(ctx, "llm tool escalation", e.LogAttrs()...)
+		return
+	}
+	if e.Action == llmrouter.ActionSwitchNextTransport {
+		h.logger.WarnContext(ctx, "llm provider failed, trying next", e.LogAttrs()...)
+		return
+	}
+	h.logger.WarnContext(ctx, "llm routing stop", e.LogAttrs()...)
+}
+
+func (h *conversationHandler) completeViaRouter(ctx context.Context, st *llmTurnState, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+	rs := &llmrouter.State{ActiveIndex: 0, EscUsed: 0}
+	if st != nil {
+		rs.ActiveIndex = st.activeIdx
+		rs.EscUsed = st.escUsed
+	}
+	result, err := h.router.Complete(ctx, rs, messages, opts, func(e llmrouter.Event) {
+		h.onRouteEvent(ctx, e)
+	})
+	if st != nil {
+		st.activeIdx = rs.ActiveIndex
+		st.escUsed = rs.EscUsed
+	}
+	if err != nil {
+		h.logger.Error("llm complete", "error", err, "provider_index", activeIndex(st))
+	}
+	return result, err
+}
+
+// completeAt runs Complete through the unified router.
+func (h *conversationHandler) completeAt(ctx context.Context, st *llmTurnState, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMRequest(ctx, messages)
 	}
-	var result *llm.CompletionResult
-	var err error
-	if len(h.llmChain) > 0 {
-		if idx < 0 || idx >= len(h.llmChain) {
-			return nil, fmt.Errorf("core: llm provider index %d out of range [0,%d)", idx, len(h.llmChain))
-		}
-		result, err = h.llmChain[idx].Complete(ctx, messages, opts)
-		if result != nil && idx < len(h.llmLabels) {
-			result.Model = h.llmLabels[idx]
-		}
-	} else {
-		result, err = h.provider.Complete(ctx, messages, opts)
+	if h.router == nil {
+		return nil, fmt.Errorf("core: llm router is nil")
 	}
-	if err != nil {
-		h.logger.Error("llm complete", "error", err, "provider_index", idx)
-	}
-	return result, err
+	return h.completeViaRouter(ctx, st, messages, opts)
 }
 
 // failureClass is e.g. tool_execution, hermes_parse (REQ-06.010, REQ-06.016).
@@ -123,34 +143,23 @@ func (h *conversationHandler) maybeEscalate(ctx context.Context, st *llmTurnStat
 	if st == nil || !h.escalationEnabled() || !hadQualifyingFailure {
 		return
 	}
-	if st.escUsed >= h.escalation.MaxPerUserMessage {
-		return
-	}
-	if st.activeIdx+1 >= len(h.llmChain) {
-		return
-	}
 	if failureClass == "" {
 		failureClass = "tool_execution"
 	}
-	prev := st.activeIdx
-	st.activeIdx++
-	st.escUsed++
-	var beforeLabel, afterLabel string
-	if prev < len(h.llmLabels) {
-		beforeLabel = h.llmLabels[prev]
+	if st.escUsed >= h.escalation.MaxPerUserMessage {
+		return
 	}
-	if st.activeIdx < len(h.llmLabels) {
-		afterLabel = h.llmLabels[st.activeIdx]
+	if h.router == nil {
+		return
 	}
-	h.logger.InfoContext(ctx, "llm tool escalation",
-		"failure_class", failureClass,
-		"escalation", true,
-		"provider_index_before", prev,
-		"provider_index_after", st.activeIdx,
-		"provider_label_before", beforeLabel,
-		"provider_label_after", afterLabel,
-		"escalation_count", st.escUsed,
-	)
+	rs := &llmrouter.State{ActiveIndex: st.activeIdx, EscUsed: st.escUsed}
+	escalated := h.router.OnQualifyingFailure(rs, llmrouter.PhaseToolFailure, failureClass, func(e llmrouter.Event) {
+		h.onRouteEvent(ctx, e)
+	})
+	if escalated {
+		st.activeIdx = rs.ActiveIndex
+		st.escUsed = rs.EscUsed
+	}
 }
 
 // textToolModeAfterFirstCompletion sets result.ToolCalls from Hermes when applicable. plainDone: finish with result.Content. invalidFormatReply: user chat message when markup is broken.
@@ -202,7 +211,7 @@ func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID
 				return invalidReply, nil
 			}
 			var err error
-			result, err = h.completeAt(ctx, activeIndex(st), messages, opts)
+			result, err = h.completeAt(ctx, st, messages, opts)
 			if err != nil {
 				return "", err
 			}
@@ -241,10 +250,13 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	requestID := genRequestID()
 	start := time.Now()
 	var st *llmTurnState
-	if h.escalationEnabled() {
+	if h.router != nil {
+		rs := h.router.NewState()
+		st = &llmTurnState{activeIdx: rs.ActiveIndex, escUsed: rs.EscUsed}
+	} else if h.escalationEnabled() {
 		st = &llmTurnState{activeIdx: h.escalation.BaselineIndex, escUsed: 0}
 	}
-	result, err := h.completeAt(ctx, activeIndex(st), messages, opts)
+	result, err := h.completeAt(ctx, st, messages, opts)
 	if err != nil {
 		return "", err
 	}
@@ -269,7 +281,7 @@ func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Contex
 		if activeIndex(st) == prev {
 			return nil, fmt.Errorf("follow-up tool_call parse: %w", perr)
 		}
-		next, err := h.completeAt(ctx, activeIndex(st), messages, optsFollow)
+		next, err := h.completeAt(ctx, st, messages, optsFollow)
 		if err != nil {
 			h.logger.Error("llm complete", "error", err)
 			return nil, err
@@ -290,7 +302,7 @@ func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []
 		messages, qual = h.appendToolRound(ctx, messages, result, textToolMode)
 		h.maybeEscalate(ctx, st, qual, "tool_execution")
 		var err error
-		result, err = h.completeAt(ctx, activeIndex(st), messages, optsFollow)
+		result, err = h.completeAt(ctx, st, messages, optsFollow)
 		if err != nil {
 			h.logger.Error("llm complete", "error", err)
 			return nil, nil, err
