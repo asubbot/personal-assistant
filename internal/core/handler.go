@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"pa/internal/cmdsafe"
+	"pa/internal/config"
+	"pa/internal/core/toolfailure"
 	"pa/internal/embedding"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
@@ -35,10 +37,19 @@ func genRequestID() string {
 	return hex.EncodeToString(b)
 }
 
+// llmTurnState holds active provider index and escalation count for one user message (EP-006).
+type llmTurnState struct {
+	activeIdx int
+	escUsed   int
+}
+
 // conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-01.006, REQ-01.007, REQ-01.018).
 // Context is built only from vector store (turns and summaries); no full.md day file.
 type conversationHandler struct {
-	provider         llm.Provider
+	provider         llm.Provider   // used when llmChain is nil (transport FallbackProvider)
+	llmChain         []llm.Provider // non-nil when tool escalation is enabled (EP-006)
+	llmLabels        []string       // parallel to llmChain for logging / result.Model
+	escalation       *config.LLMEscalationConfig
 	vectorStore      vector.Store // optional; for semantic search and indexing
 	embedder         embedding.Embedder
 	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
@@ -71,15 +82,74 @@ func (h *conversationHandler) checkUserMessage(text string) (trimmed string, ear
 	return trimmed, "", false
 }
 
-func (h *conversationHandler) completeUserTurn(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+func (h *conversationHandler) escalationEnabled() bool {
+	return h.escalation != nil && h.escalation.Enabled && len(h.llmChain) > 0
+}
+
+func activeIndex(st *llmTurnState) int {
+	if st == nil {
+		return 0
+	}
+	return st.activeIdx
+}
+
+// completeAt runs Complete on the transport provider (legacy) or on llmChain[idx] (EP-006).
+func (h *conversationHandler) completeAt(ctx context.Context, idx int, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMRequest(ctx, messages)
 	}
-	result, err := h.provider.Complete(ctx, messages, opts)
+	var result *llm.CompletionResult
+	var err error
+	if len(h.llmChain) > 0 {
+		if idx < 0 || idx >= len(h.llmChain) {
+			return nil, fmt.Errorf("core: llm provider index %d out of range [0,%d)", idx, len(h.llmChain))
+		}
+		result, err = h.llmChain[idx].Complete(ctx, messages, opts)
+		if result != nil && idx < len(h.llmLabels) {
+			result.Model = h.llmLabels[idx]
+		}
+	} else {
+		result, err = h.provider.Complete(ctx, messages, opts)
+	}
 	if err != nil {
-		h.logger.Error("llm complete", "error", err)
+		h.logger.Error("llm complete", "error", err, "provider_index", idx)
 	}
 	return result, err
+}
+
+// failureClass is e.g. tool_execution, hermes_parse (REQ-06.010, REQ-06.016).
+func (h *conversationHandler) maybeEscalate(ctx context.Context, st *llmTurnState, hadQualifyingFailure bool, failureClass string) {
+	if st == nil || !h.escalationEnabled() || !hadQualifyingFailure {
+		return
+	}
+	if st.escUsed >= h.escalation.MaxPerUserMessage {
+		return
+	}
+	if st.activeIdx+1 >= len(h.llmChain) {
+		return
+	}
+	if failureClass == "" {
+		failureClass = "tool_execution"
+	}
+	prev := st.activeIdx
+	st.activeIdx++
+	st.escUsed++
+	var beforeLabel, afterLabel string
+	if prev < len(h.llmLabels) {
+		beforeLabel = h.llmLabels[prev]
+	}
+	if st.activeIdx < len(h.llmLabels) {
+		afterLabel = h.llmLabels[st.activeIdx]
+	}
+	h.logger.InfoContext(ctx, "llm tool escalation",
+		"failure_class", failureClass,
+		"escalation", true,
+		"provider_index_before", prev,
+		"provider_index_after", st.activeIdx,
+		"provider_label_before", beforeLabel,
+		"provider_label_after", afterLabel,
+		"escalation_count", st.escUsed,
+	)
 }
 
 // textToolModeAfterFirstCompletion sets result.ToolCalls from Hermes when applicable. plainDone: finish with result.Content. invalidFormatReply: user chat message when markup is broken.
@@ -118,22 +188,37 @@ func (h *conversationHandler) appendToolBlocksToSystem(sys *llm.Message, toolIDs
 	}
 }
 
-func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool) (string, error) {
-	textToolMode, plainDone, invalidReply := textToolModeAfterFirstCompletion(textPath, result, opts)
-	if invalidReply != "" {
-		return invalidReply, nil
-	}
-	if plainDone {
+func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool, st *llmTurnState) (string, error) {
+	for {
+		textToolMode, plainDone, invalidReply := textToolModeAfterFirstCompletion(textPath, result, opts)
+		if invalidReply != "" {
+			if !h.escalationEnabled() || st == nil {
+				return invalidReply, nil
+			}
+			prev := activeIndex(st)
+			h.maybeEscalate(ctx, st, true, "hermes_parse")
+			if activeIndex(st) == prev {
+				return invalidReply, nil
+			}
+			var err error
+			result, err = h.completeAt(ctx, activeIndex(st), messages, opts)
+			if err != nil {
+				return "", err
+			}
+			continue
+		}
+		if plainDone {
+			h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
+			return result.Content, nil
+		}
+		var err error
+		messages, result, err = h.runToolResultLoop(ctx, messages, result, opts, textToolMode, st)
+		if err != nil {
+			return "", err
+		}
 		h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
 		return result.Content, nil
 	}
-	var err error
-	messages, result, err = h.runToolResultLoop(ctx, messages, result, opts, textToolMode)
-	if err != nil {
-		return "", err
-	}
-	h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
-	return result.Content, nil
 }
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.
@@ -154,34 +239,66 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	h.appendToolBlocksToSystem(&messages[0], toolIDs, opts)
 	requestID := genRequestID()
 	start := time.Now()
-	result, err := h.completeUserTurn(ctx, messages, opts)
+	var st *llmTurnState
+	if h.escalationEnabled() {
+		st = &llmTurnState{activeIdx: h.escalation.BaselineIndex, escUsed: 0}
+	}
+	result, err := h.completeAt(ctx, activeIndex(st), messages, opts)
 	if err != nil {
 		return "", err
 	}
 	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
-	return h.finishAfterFirstLLM(ctx, requestID, userText, start, messages, result, opts, textPath)
+	return h.finishAfterFirstLLM(ctx, requestID, userText, start, messages, result, opts, textPath, st)
+}
+
+// resolveHermesFollowUpCompletion parses result.Content into tool calls for text-tool follow-ups; may escalate and re-Complete (REQ-06.016).
+func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Context, st *llmTurnState, messages []llm.Message, optsFollow *llm.CompletionOptions, result *llm.CompletionResult) (*llm.CompletionResult, error) {
+	cur := result
+	for {
+		calls, perr := tooltext.ParseHermesToolCalls(cur.Content)
+		if perr == nil {
+			cur.ToolCalls = calls
+			return cur, nil
+		}
+		if st == nil || !h.escalationEnabled() {
+			return nil, fmt.Errorf("follow-up tool_call parse: %w", perr)
+		}
+		prev := activeIndex(st)
+		h.maybeEscalate(ctx, st, true, "hermes_parse")
+		if activeIndex(st) == prev {
+			return nil, fmt.Errorf("follow-up tool_call parse: %w", perr)
+		}
+		next, err := h.completeAt(ctx, activeIndex(st), messages, optsFollow)
+		if err != nil {
+			h.logger.Error("llm complete", "error", err)
+			return nil, err
+		}
+		cur = next
+	}
 }
 
 // runToolResultLoop continues until no tool_calls or max rounds (REQ-04.006). textToolMode: follow-up without HTTP tools; tool results as user messages (REQ-04.029).
-func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textToolMode bool) ([]llm.Message, *llm.CompletionResult, error) {
+// st is non-nil when EP-006 escalation is enabled; after a qualifying tool failure the active provider may advance before the next Complete.
+func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textToolMode bool, st *llmTurnState) ([]llm.Message, *llm.CompletionResult, error) {
 	optsFollow := opts
 	if textToolMode {
 		optsFollow = copyOptsNoTools(opts)
 	}
 	for rounds := 1; len(result.ToolCalls) > 0 && rounds < maxToolRounds; rounds++ {
-		messages = h.appendToolRound(ctx, messages, result, textToolMode)
+		var qual bool
+		messages, qual = h.appendToolRound(ctx, messages, result, textToolMode)
+		h.maybeEscalate(ctx, st, qual, "tool_execution")
 		var err error
-		result, err = h.provider.Complete(ctx, messages, optsFollow)
+		result, err = h.completeAt(ctx, activeIndex(st), messages, optsFollow)
 		if err != nil {
 			h.logger.Error("llm complete", "error", err)
 			return nil, nil, err
 		}
 		if textToolMode && len(result.ToolCalls) == 0 {
-			calls, perr := tooltext.ParseHermesToolCalls(result.Content)
-			if perr != nil {
-				return nil, nil, fmt.Errorf("follow-up tool_call parse: %w", perr)
+			result, err = h.resolveHermesFollowUpCompletion(ctx, st, messages, optsFollow, result)
+			if err != nil {
+				return nil, nil, err
 			}
-			result.ToolCalls = calls
 		}
 	}
 	return messages, result, nil
@@ -198,7 +315,8 @@ func copyOptsNoTools(o *llm.CompletionOptions) *llm.CompletionOptions {
 	}
 }
 
-func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, textToolMode bool) []llm.Message {
+func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, textToolMode bool) ([]llm.Message, bool) {
+	qualifyingFailure := false
 	if textToolMode {
 		messages = append(messages, llm.Message{Role: "assistant", Content: result.Content})
 	} else {
@@ -209,6 +327,9 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 		content := stdout
 		if execErr != nil {
 			content = execErr.Error()
+			if toolfailure.QualifiesForEscalation(execErr) {
+				qualifyingFailure = true
+			}
 		}
 		if h.logger != nil {
 			src := "tool_calls"
@@ -228,7 +349,7 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 			messages = append(messages, llm.Message{Role: "tool", Content: content, ToolCallID: tc.ID})
 		}
 	}
-	return messages
+	return messages, qualifyingFailure
 }
 
 // buildToolOptions returns completion options with pre-selected tools and the selected tool ids in stable order.
@@ -263,25 +384,36 @@ func (h *conversationHandler) buildToolOptions(ctx context.Context, userText str
 	return &llm.CompletionOptions{Tools: toolDefs}, ids, nil
 }
 
+// wrapCatalogValidateError maps catalog validation errors to typed tool failures (REQ-06.015).
+func wrapCatalogValidateError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "tool catalog: unknown tool") {
+		return toolfailure.NoEscalate(err)
+	}
+	return toolfailure.MayEscalate(err)
+}
+
 // executeOneToolCall validates the tool call, substitutes args into the tool template, and runs the command via nodeRunner (REQ-04.009, REQ-04.010).
 // Returns stdout or an error message string (deterministic) for validation/execution failures.
 func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
 	if h.catalog == nil {
-		return "", fmt.Errorf("tool catalog: unknown tool %q", toolID)
+		return "", toolfailure.NoEscalate(fmt.Errorf("tool catalog: unknown tool %q", toolID))
 	}
 	tool, args, err := toolcatalog.ValidateToolCall(h.catalog, toolID, argsJSON)
 	if err != nil {
-		return "", err
+		return "", wrapCatalogValidateError(err)
 	}
 	command, err := toolcatalog.Substitute(tool.Template, args)
 	if err != nil {
-		return "", fmt.Errorf("tool %q: %w", toolID, err)
+		return "", toolfailure.MayEscalate(fmt.Errorf("tool %q: %w", toolID, err))
 	}
 	if err := cmdsafe.RejectShellMetacharacters(command); err != nil {
-		return "", fmt.Errorf("tool %q: %w", toolID, err)
+		return "", toolfailure.NoEscalate(fmt.Errorf("tool %q: %w", toolID, err))
 	}
 	if h.nodeRunner == nil {
-		return "", fmt.Errorf("tool %q: no node runner configured", toolID)
+		return "", toolfailure.NoEscalate(fmt.Errorf("tool %q: no node runner configured", toolID))
 	}
 	return h.nodeRunner.RunOnNode(ctx, tool.NodeID, command)
 }

@@ -1,0 +1,45 @@
+@startuml C4 Container - PersonalAssistant (EP-006)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam ArrowColor #707070
+skinparam ComponentBorderColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-006 Tool-call reliability and model escalation
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(nodes, "Nodes", "Remote hosts")
+System_Ext(llm_ext, "LLM API / Models", "Ordered providers; escalation target chain")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Telegram Bot", "Go", "Message adapter")
+    Container(core, "Go Core", "Go", "Orchestration, tool-result loop, failure classification, baseline and escalation policy")
+    ContainerDb(cfg, "Config", "JSON", "llm_providers, baseline, escalation toggle, max escalations")
+    Container(llm, "LLM Provider layer", "Go", "Complete to active provider; provider index per user message")
+    Container(log, "Logging", "Go", "Classification, escalation, provider labels (no secrets)")
+    Container(tools, "Tools", "Go", "run_on_node, validation")
+    Container(ssh, "SSH Client", "Go", "Node connections")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "Forward messages")
+Rel(core, tg, "Send replies / errors")
+Rel(core, cfg, "Load at startup; validate escalation settings")
+Rel(core, llm, "Complete; may advance provider on qualifying failure")
+Rel(llm, llm_ext, "HTTP to active endpoint")
+Rel(core, log, "Escalation and provider decisions")
+Rel(core, tools, "Execute tools")
+Rel(core, ssh, "Commands")
+Rel(ssh, nodes, "SSH")
+
+@enduml

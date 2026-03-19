@@ -28,17 +28,17 @@ import (
 	"time"
 )
 
-// newLLMProvider builds a fallback chain from cfg.LLMProviders (order = priority). Labels are Type/Model per provider for logging.
-func newLLMProvider(cfg *config.Config, logger *slog.Logger) (llm.Provider, error) {
+// buildLLMProviders builds one Provider per cfg.LLMProviders entry and parallel labels (Type/Model).
+func buildLLMProviders(cfg *config.Config) ([]llm.Provider, []string, error) {
 	if len(cfg.LLMProviders) == 0 {
-		return nil, fmt.Errorf("no llm providers configured")
+		return nil, nil, fmt.Errorf("no llm providers configured")
 	}
 	var providers []llm.Provider
 	var labels []string
 	for i := range cfg.LLMProviders {
 		p, err := llm.NewProvider(&cfg.LLMProviders[i])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		providers = append(providers, p)
 		typ := strings.TrimSpace(strings.ToLower(cfg.LLMProviders[i].Type))
@@ -48,7 +48,28 @@ func newLLMProvider(cfg *config.Config, logger *slog.Logger) (llm.Provider, erro
 		}
 		labels = append(labels, typ+"/"+model)
 	}
+	return providers, labels, nil
+}
+
+// newLLMProvider builds a fallback chain from cfg.LLMProviders (transport retry on retryable errors).
+func newLLMProvider(cfg *config.Config, logger *slog.Logger) (llm.Provider, error) {
+	providers, labels, err := buildLLMProviders(cfg)
+	if err != nil {
+		return nil, err
+	}
 	return llm.NewFallbackProvider(providers, labels, logger), nil
+}
+
+// newLLMForConversation returns (transport, chain, labels) for core.Run: when tool escalation is enabled, transport is nil and chain is non-nil.
+func newLLMForConversation(cfg *config.Config, logger *slog.Logger) (transport llm.Provider, chain []llm.Provider, labels []string, err error) {
+	providers, lab, err := buildLLMProviders(cfg)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if cfg.LLMEscalation != nil && cfg.LLMEscalation.Enabled {
+		return nil, providers, lab, nil
+	}
+	return llm.NewFallbackProvider(providers, lab, logger), nil, lab, nil
 }
 
 // configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./config") joined with config.ConfigFileName.
@@ -140,15 +161,11 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		}
 	}()
 
-	llmProvider, err := newLLMProvider(cfg, logger)
+	llmTransport, llmChain, llmLabels, err := newLLMForConversation(cfg, logger)
 	if err != nil {
 		return err
 	}
-	model := cfg.LLMProviders[0].Model
-	if model == "" {
-		model = "default"
-	}
-	logger.Info("llm model", "model", model)
+	logLLMStartupInfo(cfg, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -161,7 +178,26 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
-	return core.Run(ctx, cfg, logger, adapter, llmProvider, memoryStore, vectorStore, embedder, nodeRunner, ti)
+	return core.Run(ctx, cfg, logger, adapter, llmTransport, llmChain, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti)
+}
+
+func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {
+	model := cfg.LLMProviders[0].Model
+	if model == "" {
+		model = "default"
+	}
+	if cfg.LLMEscalation != nil && cfg.LLMEscalation.Enabled {
+		bi := cfg.LLMEscalation.BaselineIndex
+		if bi >= 0 && bi < len(cfg.LLMProviders) {
+			model = cfg.LLMProviders[bi].Model
+			if model == "" {
+				model = "default"
+			}
+		}
+		logger.Info("llm escalation", "enabled", true, "baseline_index", bi, "model", model)
+		return
+	}
+	logger.Info("llm model", "model", model)
 }
 
 // startSchedulerIfConfigured loads scheduled tasks and starts the scheduler when paths.scheduled_tasks_path is set. Returns a cleanup function to call on exit, or nil.

@@ -1,0 +1,30 @@
+@startuml C4 Context - PersonalAssistant
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(system, $fontColor="black", $bgColor="#1168BD", $borderColor="#0B5DAD")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 100
+skinparam ArrowColor #707070
+skinparam ComponentBorderColor #707070
+
+title PersonalAssistant - System Context (C1) — EP-006 Tool-call reliability and model escalation
+
+Person(user, "User", "User of the assistant")
+System(pa, "PersonalAssistant", "Personal assistant")
+System_Ext(telegram, "Telegram", "Messaging / Bot API")
+System_Ext(nodes, "Nodes", "Remote hosts")
+System_Ext(llm_ext, "LLM API / Model", "OpenAI, Ollama, self-hosted")
+
+Rel(user, telegram, "Uses")
+Rel(pa, telegram, "Bot API")
+Rel(pa, nodes, "SSH")
+Rel(pa, llm_ext, "LLM calls")
+
+@enduml

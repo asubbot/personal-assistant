@@ -85,6 +85,27 @@ func validate(c *Config) error {
 	if err := validateToolPreSelection(c); err != nil {
 		return err
 	}
+	if err := validateLLMEscalation(c); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateLLMEscalation(c *Config) error {
+	if c.LLMEscalation == nil || !c.LLMEscalation.Enabled {
+		return nil
+	}
+	e := c.LLMEscalation
+	n := len(c.LLMProviders)
+	if n < 2 {
+		return errors.New("config: llm_escalation.enabled requires at least two llm_providers")
+	}
+	if e.BaselineIndex < 0 || e.BaselineIndex >= n {
+		return fmt.Errorf("config: llm_escalation.baseline_index must be in [0, %d)", n)
+	}
+	if e.MaxPerUserMessage < 0 {
+		return errors.New("config: llm_escalation.max_per_user_message must be >= 0")
+	}
 	return nil
 }
 

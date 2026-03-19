@@ -58,7 +58,7 @@ func TestVectorStore_injectsPastContext(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	done1 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx1, cfg, logger, adapter1, provider, nil, vecStore, emb, nil, nil)
+		_ = core.Run(ctx1, cfg, logger, adapter1, provider, nil, nil, nil, vecStore, emb, nil, nil)
 		close(done1)
 	}()
 
@@ -78,7 +78,7 @@ func TestVectorStore_injectsPastContext(t *testing.T) {
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	done2 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx2, cfg, logger, adapter2, provider, nil, vecStore, emb, nil, nil)
+		_ = core.Run(ctx2, cfg, logger, adapter2, provider, nil, nil, nil, vecStore, emb, nil, nil)
 		close(done2)
 	}()
 

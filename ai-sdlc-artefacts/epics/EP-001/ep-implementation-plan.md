@@ -346,7 +346,16 @@ _Do this when most functionality is in place._
 
 ## Config file (JSON)
 
-_Reference material._ Application config is a single JSON file at `config.json` inside the config directory (from `PA_CONFIG_DIR`; default `./config`). Example:
+_Reference material._ Application config is a single JSON file at `config.json` inside the config directory (from `PA_CONFIG_DIR`; default `./config`).
+
+### Policy — explicit keys (mandatory in reference configs)
+
+- **Rule:** In reference, sample, and production `config.json` files, **every key defined for the active schema version SHALL be present** with an explicit value. Do not rely on JSON omission for defaults (use `0`, `false`, `""`, or empty arrays where documented).
+- **Why:** Self-documenting configs, clearer diffs/reviews, fewer surprises when operators copy partial examples.
+- **Scope:** Applies to top-level objects (`telegram`, `paths`, `embedding`, `tools`, `llm_escalation`, etc.) and their documented fields. Keys deferred post-MVP (e.g. `versioned_state`) stay out of the file until implemented.
+- **Loader:** The Go loader may still accept omitted keys for backward compatibility in older deployments; new edits SHOULD converge to the full explicit shape. Validation rules (fail fast) apply regardless of whether a key was omitted or set to an invalid value.
+
+### Canonical example (all keys for version 1)
 
 ```json
 {
@@ -357,17 +366,33 @@ _Reference material._ Application config is a single JSON file at `config.json` 
     "notify_chat_id": 0,
     "max_message_length": 200
   },
+  "tools": {
+    "text_based_enabled": false
+  },
+  "tool_pre_selection": {
+    "tool_search_top_k": 0,
+    "tool_min_count": 0,
+    "tool_fallback_cap": 0
+  },
+  "llm_escalation": {
+    "enabled": false,
+    "max_per_user_message": 2,
+    "baseline_index": 0
+  },
   "llm_providers": [
     {
       "type": "openai",
       "endpoint": "https://api.openai.com/v1",
       "api_key_path": "openai_api_key.txt",
-      "model": "gpt-4o-mini"
+      "model": "gpt-4o-mini",
+      "supports_tools": true
     },
     {
       "type": "ollama",
-      "endpoint": "http://localhost:11434",
-      "model": "llama3.2"
+      "endpoint": "http://localhost:11434/v1",
+      "api_key_path": "",
+      "model": "llama3.2",
+      "supports_tools": false
     }
   ],
   "paths": {
@@ -377,18 +402,21 @@ _Reference material._ Application config is a single JSON file at `config.json` 
     "llm_log_dir": "llm_logs",
     "llm_log_retention_days": 7,
     "scheduled_tasks_path": "scheduled_tasks.json",
-    "ssh_known_hosts_path": "known_hosts"
+    "ssh_known_hosts_path": "known_hosts",
+    "tool_catalog_path": "tools.yaml"
   },
   "embedding": {
     "type": "openai",
     "endpoint": "https://api.openai.com/v1",
     "api_key_path": "openai_api_key.txt",
     "model": "text-embedding-3-small",
-    "dimensions": 1536
+    "dimensions": 1536,
+    "batch_size": 100
   },
   "nodes": {
     "nas": {
       "host": "192.168.1.99",
+      "port": 22,
       "dedicated_user": "openclaw-runner",
       "auth": {
         "private_key_path": "/path/to/ssh/private_key"
@@ -400,17 +428,28 @@ _Reference material._ Application config is a single JSON file at `config.json` 
     "additional_patterns": [
       { "id": "custom_secret", "regex": "\\bsecret-[0-9]+\\b", "replacement": "[REDACTED]" }
     ]
+  },
+  "pa_timezone": "UTC",
+  "conversation_context": {
+    "injected_context_max_chars": 0,
+    "vector_search_top_k": 0
   }
 }
 ```
 
 - **version**: integer; config schema version for backward compatibility. The loader rejects unsupported versions and can migrate or validate per-version rules.
-- **pa_timezone** (optional): IANA timezone name (e.g. `Europe/Moscow`, `UTC`) for the assistant’s day boundaries (e.g. in summarization). Summarization CLI requires an explicit scope: `pa -summarize=YYYY-MM-DD` (day), `pa -summarize=YYYY-MM` (month), `pa -summarize=YYYY` (year). If empty or omitted, UTC is used. Invalid value refuses start with clear error (e.g. “invalid pa_timezone: unknown timezone …”).
-- **paths.llm_log_retention_days** (required): integer; number of days to keep LLM log files `llm-YYYY-MM-DD.jsonl` in `paths.llm_log_dir`. Files older than this many days (UTC) are deleted when summarization runs (`-summarize`). Must be >= 1; if &lt; 1 the application refuses to start (fail fast). **Recommended value: 7** (one week).
+- **pa_timezone**: **Key required** in reference configs; use `""` or a valid IANA name (e.g. `Europe/Moscow`, `UTC`). Empty string means UTC for summarization day boundaries. Invalid non-empty value refuses start with clear error (e.g. “invalid pa_timezone: unknown timezone …”).
+- **paths.llm_log_retention_days**: integer; number of days to keep LLM log files `llm-YYYY-MM-DD.jsonl` in `paths.llm_log_dir`. Files older than this many days (UTC) are deleted when summarization runs (`-summarize`). Must be >= 1; if &lt; 1 the application refuses to start (fail fast). **Recommended value: 7** (one week).
 - **paths.vector_index_path**: path to the vector index file. Use `./data/pa_vectors.sqlite` (or `/data/pa_vectors.sqlite` in production) for the default SQLite+sqlite-vec implementation.
-- **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin). Format: see [Telegram users file](#telegram-users-file) below.
-- **telegram.notify_chat_id**: optional; Telegram chat ID (e.g. user or group) to which the scheduler sends messages for tasks with `action` `"notify"`. When non-zero, that chat is used. When zero or omitted and `users_path` lists at least one user, the first allowed user’s ID is used as the destination ([REQ-01.023](ep-requirements.md#scheduler-and-tools)). When no destination is available, the notify action does not send and is handled per implementation (e.g. log).
-- **telegram.max_message_length**: optional; max message length in runes. If > 0, longer messages are rejected with a clear message (no LLM call). 0 or omitted = no limit. If missing or empty, behaviour is defined at implementation time (e.g. no limit).
+- **paths.tool_catalog_path**: **Required**; path to tool catalog YAML; fail fast if missing or invalid (see EP-004 / tool catalog).
+- **telegram.users_path**: path to a file that lists allowed Telegram users and their role (user/admin). Format: see [Telegram users file](#telegram-users-file) below. Key must be present; empty string if not used (behaviour defined at adapter level).
+- **telegram.notify_chat_id**: **Key required**; Telegram chat ID for scheduler `notify` tasks. Use `0` for “fall back to first allowed user” when `users_path` is populated ([REQ-01.023](ep-requirements.md#scheduler-and-tools)).
+- **telegram.max_message_length**: **Key required**; max message length in runes. `0` = no limit; `> 0` rejects longer messages with a clear reply (no LLM call).
+- **tools.text_based_enabled**: **Key required**; Hermes-style text tool path when `true` and baseline provider has `supports_tools: false` ([REQ-04.027](ep-requirements.md)).
+- **tool_pre_selection**: **Object required**; use `0` for each numeric field to mean code defaults (topK=10, minTools=1, fallbackCap=50).
+- **llm_escalation**: **Object required** ([EP-006](../EP-006/ep-requirements.md)); `enabled: false` keeps transport-level `FallbackProvider` only. When `enabled: true`, at least two `llm_providers` and valid `baseline_index` / `max_per_user_message` are validated at load.
+- **llm_providers[].supports_tools**: **Required** boolean per provider ([REQ-04.026](ep-requirements.md)).
+- **llm_providers[].api_key_path**: **Key required** for every entry; use `""` for providers that do not use an API key (e.g. `ollama`).
 - **command_allowlist_path** (per node): path to a file with the list of allowed command patterns. The same path can be used by multiple nodes to share one allowlist. File format: one pattern per line (leading/trailing whitespace ignored; empty lines and lines starting with `#` ignored). Matching rules (prefix/glob/regex) are defined in task 2.1. Example file `/etc/pa/allowlist.txt`:
 
 ```text
@@ -421,11 +460,13 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 /usr/bin/systemctl stop *
 ```
 
-- **llm_providers**: ordered list; the first available provider is used for a request; on failure (e.g. timeout, 5xx) the core may try the next. At least one provider required.
-- **embedding** (required): dedicated provider for vector memory (embeddings). The assistant requires vector memory for good UX. Fields: `type` (e.g. `openai`, `openai-compatible`, `ollama`), `endpoint`, `api_key_path` (required for openai/openai-compatible), `model`, `dimensions` (positive integer; must match the model’s output size).
-- **scheduled_tasks_path**: path to a separate JSON file that defines scheduled tasks (see below). Optional; if missing or empty, no scheduled tasks run.
-- **paths.ssh_known_hosts_path**: path to an OpenSSH-format `known_hosts` file used to verify SSH host keys when connecting to nodes. **Required when `nodes` is non-empty**; if nodes are configured and this path is missing or empty, the application refuses to start. The file must exist at load time. Resolved relative to the config directory (same as `scheduled_tasks_path`). Populate the file with the host keys of all nodes, e.g. `ssh-keyscan -H <host> >> known_hosts` for each node host. This enables host key verification and addresses gosec G106 (InsecureIgnoreHostKey).
-- **log_redaction** (optional): additional redaction patterns applied to LLM and application log output ([REQ-01.026](ep-requirements.md#secret-protection-prompt-injection--exfiltration), [REQ-01.028](ep-requirements.md#secret-protection-prompt-injection--exfiltration)). Object with `additional_patterns`: array of `{ "id", "regex", "replacement" }`. Built-in patterns are always applied and cannot be overridden ([REQ-01.027](ep-requirements.md#secret-protection-prompt-injection--exfiltration)). Pattern `id` must not equal any built-in identifier; `regex` must compile. Invalid config refuses start with clear error ([REQ-01.029](ep-requirements.md#secret-protection-prompt-injection--exfiltration), [AC-01.041](ep-acceptance-criteria.md#ac-01-041)).
+- **llm_providers**: ordered list; with `llm_escalation.enabled: false`, transport-level fallback tries the next provider on connection/5xx errors ([REQ-01.031](ep-requirements.md#llm-and-logging)). At least one entry required.
+- **embedding**: **Object required**; dedicated provider for vector memory. Fields: `type`, `endpoint`, `model`, `dimensions` (positive), `batch_size` (1–1000, [REQ-04.021](../EP-004/ep-requirements.md)); `api_key_path` required for `openai` / `openai-compatible`, may be `""` for `ollama`.
+- **paths.scheduled_tasks_path**: **Key required**; path to scheduled tasks JSON (see below). Use `""` to disable the in-process scheduler (no tasks loaded).
+- **paths.ssh_known_hosts_path**: **Key required** in reference configs; when `nodes` is non-empty, must be non-empty and the file must exist at load time. When `nodes` is empty, may be `""`. Resolved relative to the config directory. Populate with host keys, e.g. `ssh-keyscan -H <host> >> known_hosts` ([REQ-01.003](ep-requirements.md#nodes-and-ssh)).
+- **nodes.*.port**: **Key required**; use `22` for default SSH port or the node’s actual port (`0` in config may be treated as default 22 at runtime—prefer explicit `22` in reference files).
+- **log_redaction**: **Object required** in reference configs; `additional_patterns` is an array (may be `[]`) of `{ "id", "regex", "replacement" }` ([REQ-01.026](ep-requirements.md#secret-protection-prompt-injection--exfiltration)–[REQ-01.029](ep-requirements.md#secret-protection-prompt-injection--exfiltration)). Built-in patterns are always applied ([REQ-01.027](ep-requirements.md#secret-protection-prompt-injection--exfiltration)). Invalid pattern ids or regex refuse start ([AC-01.041](ep-acceptance-criteria.md#ac-01-041)).
+- **conversation_context**: **Object required**; use `0` for `injected_context_max_chars` and `vector_search_top_k` to mean code defaults (4000 / 10).
 - **versioned_state** (optional, **post-MVP/deferred**): planned git-backed state for PA-owned writes ([REQ-01.016](ep-requirements.md#version-control-and-audit)). Deferred in EP-001 and intentionally excluded from MVP implementation and validation.
 
 **Telegram users file** (e.g. `/etc/pa/telegram_users.json`): JSON array of user entries with Telegram user id, role, and optional display name. Example:

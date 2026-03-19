@@ -7,6 +7,7 @@ import (
 	"pa/internal/allowlist"
 	"pa/internal/cmdsafe"
 	"pa/internal/config"
+	"pa/internal/core/toolfailure"
 	"pa/internal/ssh"
 	"strings"
 )
@@ -39,17 +40,17 @@ func (r *Runner) SetExecutor(e Executor) {
 func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout string, err error) {
 	cmd := strings.TrimSpace(command)
 	if cmd == "" {
-		return "", fmt.Errorf("noderunner: command is empty")
+		return "", toolfailure.NoEscalate(fmt.Errorf("noderunner: command is empty"))
 	}
 	if err := cmdsafe.RejectShellMetacharacters(cmd); err != nil {
-		return "", fmt.Errorf("noderunner: %w", err)
+		return "", toolfailure.NoEscalate(fmt.Errorf("noderunner: %w", err))
 	}
 	if r.allowlist == nil {
-		return "", fmt.Errorf("noderunner: allowlist not configured")
+		return "", toolfailure.NoEscalate(fmt.Errorf("noderunner: allowlist not configured"))
 	}
 	if !r.allowlist.Allow(nodeID, cmd) {
 		r.logger.Warn("command not on allowlist", "node_id", nodeID, "command", cmd)
-		return "", fmt.Errorf("noderunner: command not allowed for node %q", nodeID)
+		return "", toolfailure.NoEscalate(fmt.Errorf("noderunner: command not allowed for node %q", nodeID))
 	}
 	var out, stderr []byte
 	if r.executor != nil {
@@ -58,7 +59,7 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 		client, connErr := ssh.NewClient(ctx, r.cfg, nodeID)
 		if connErr != nil {
 			r.logger.Error("ssh connect", "node_id", nodeID, "error", connErr)
-			return "", fmt.Errorf("noderunner: ssh: %w", connErr)
+			return "", toolfailure.MayEscalate(fmt.Errorf("noderunner: ssh: %w", connErr))
 		}
 		defer func() {
 			if closeErr := client.Close(); closeErr != nil && err == nil {
@@ -69,7 +70,7 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 	}
 	if err != nil {
 		r.logger.Error("ssh exec", "node_id", nodeID, "command", cmd, "error", err)
-		return "", fmt.Errorf("noderunner: exec: %w", err)
+		return "", toolfailure.MayEscalate(fmt.Errorf("noderunner: exec: %w", err))
 	}
 	if len(stderr) > 0 {
 		r.logger.Debug("ssh stderr", "node_id", nodeID, "stderr", string(stderr))

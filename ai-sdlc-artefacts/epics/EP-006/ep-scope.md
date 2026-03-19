@@ -18,6 +18,9 @@
 ## Scope (features/capabilities)
 
 - **Error classification:** Define stable categories for tool-related and tool-flow failures (e.g. policy/security vs transient execution vs model-format). Map categories to allowed actions: no escalation, one repair attempt on the same provider, escalate once to the next provider, or stop.
+- **Escalation policy package:** Centralize the mapping from classified causes to escalation allowance in `pa/internal/escalationpolicy` (see [ep-system-design.md](ep-system-design.md), [REQ-06.017](ep-requirements.md#nfr--security-testability-observability)) for testability and clear module boundaries; implementation tracked in [ep-implementation-plan.md](ep-implementation-plan.md) Task 8.
+- **Typed escalation inputs:** Represent tool-path outcomes that drive escalation using explicit error types (or equivalent) inspectable via the language error API, not only unstructured message text ([REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) in requirements).
+- **Hermes parse and escalation:** When the text-tool (Hermes) parser fails after a `Complete`, apply the same bounded escalation policy as for qualifying tool execution failures where configured ([REQ-06.016](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs)).
 - **Escalation policy:** Bounded behaviour per user message: maximum number of escalations per turn, respect for existing tool-round caps, and no escalation for errors that a stronger model cannot fix (e.g. allowlist denial, unknown tool id in catalog).
 - **Multi-provider chain:** Support ordered lists with more than two providers; escalation advances strictly along configuration order until policy stops or the list is exhausted.
 - **Exhaustion and stop:** When escalation cannot help or the chain is exhausted, produce a deterministic user-visible outcome and structured logs; do not loop indefinitely.

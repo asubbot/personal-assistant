@@ -23,22 +23,30 @@ type ToolIndex interface {
 // memoryStore is not used by the handler (context is from vector only); vectorStore and embedder are optional; when provided, the handler runs semantic search and indexes turns (REQ-01.006, REQ-01.007, REQ-01.018).
 // nodeRunner is optional; when provided, tools can run allowlisted commands on nodes via SSH (REQ-01.004, REQ-01.005, REQ-01.013).
 // toolIndex is optional; when provided and Ready(), step 3.1 will use it for tool pre-selection.
-func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, llmProvider llm.Provider, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex) error {
+// llmTransport is the FallbackProvider (or any single Provider) when llmChain is nil. When llmChain is non-nil (tool escalation mode, EP-006), llmTransport must be nil and llmChainLabels must match llmChain length.
+func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, llmTransport llm.Provider, llmChain []llm.Provider, llmChainLabels []string, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex) error {
 	if adapter == nil {
 		return fmt.Errorf("core: adapter is nil")
 	}
-	if llmProvider == nil {
+	if len(llmChain) > 0 {
+		if llmTransport != nil {
+			return fmt.Errorf("core: llmTransport must be nil when llmChain is set")
+		}
+		if len(llmChainLabels) != len(llmChain) {
+			return fmt.Errorf("core: llm chain labels length %d != chain length %d", len(llmChainLabels), len(llmChain))
+		}
+	} else if llmTransport == nil {
 		return fmt.Errorf("core: llm provider is nil")
 	}
 	redactor := buildRedactor(cfg)
-	handler, err := newRunConversationHandler(cfg, logger, redactor, llmProvider, vectorStore, embedder, nodeRunner, toolIndex)
+	handler, err := newRunConversationHandler(cfg, logger, redactor, llmTransport, llmChain, llmChainLabels, vectorStore, embedder, nodeRunner, toolIndex)
 	if err != nil {
 		return err
 	}
 	return adapter.Run(ctx, handler)
 }
 
-func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, llmProvider llm.Provider, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex) (*conversationHandler, error) {
+func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, llmTransport llm.Provider, llmChain []llm.Provider, llmChainLabels []string, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex) (*conversationHandler, error) {
 	maxLen := 0
 	if cfg != nil && cfg.Telegram.MaxMessageLength > 0 {
 		maxLen = cfg.Telegram.MaxMessageLength
@@ -51,7 +59,10 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	toolTopK, toolMin, toolCap := toolPreSelectionParams(cfg)
 	firstSupportsTools, textBased := firstProviderTextToolFlags(cfg)
 	h := &conversationHandler{
-		provider:                   llmProvider,
+		provider:                   llmTransport,
+		llmChain:                   llmChain,
+		llmLabels:                  llmChainLabels,
+		escalation:                 escalationFromConfig(cfg),
 		vectorStore:                vectorStore,
 		embedder:                   embedder,
 		nodeRunner:                 nodeRunner,
@@ -75,6 +86,13 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	return h, nil
 }
 
+func escalationFromConfig(cfg *config.Config) *config.LLMEscalationConfig {
+	if cfg == nil || cfg.LLMEscalation == nil {
+		return nil
+	}
+	return cfg.LLMEscalation
+}
+
 func openLLMLogIfConfigured(cfg *config.Config, logger *slog.Logger, redactor func(string) string) (llmlog.Writer, string, error) {
 	if cfg == nil || cfg.Paths.LLMLogDir == "" {
 		return nil, "", nil
@@ -85,7 +103,11 @@ func openLLMLogIfConfigured(cfg *config.Config, logger *slog.Logger, redactor fu
 	}
 	model := ""
 	if len(cfg.LLMProviders) > 0 {
-		model = cfg.LLMProviders[0].Model
+		idx := 0
+		if cfg.LLMEscalation != nil && cfg.LLMEscalation.Enabled && cfg.LLMEscalation.BaselineIndex < len(cfg.LLMProviders) {
+			idx = cfg.LLMEscalation.BaselineIndex
+		}
+		model = cfg.LLMProviders[idx].Model
 	}
 	return w, model, nil
 }
@@ -95,8 +117,12 @@ func firstProviderTextToolFlags(cfg *config.Config) (firstSupportsTools, textBas
 	if cfg == nil {
 		return firstSupportsTools, textBased
 	}
-	if len(cfg.LLMProviders) > 0 && cfg.LLMProviders[0].SupportsTools != nil {
-		firstSupportsTools = *cfg.LLMProviders[0].SupportsTools
+	idx := 0
+	if cfg.LLMEscalation != nil && cfg.LLMEscalation.Enabled && cfg.LLMEscalation.BaselineIndex < len(cfg.LLMProviders) {
+		idx = cfg.LLMEscalation.BaselineIndex
+	}
+	if len(cfg.LLMProviders) > idx && cfg.LLMProviders[idx].SupportsTools != nil {
+		firstSupportsTools = *cfg.LLMProviders[idx].SupportsTools
 	}
 	if cfg.Tools != nil {
 		textBased = cfg.Tools.TextBasedEnabled

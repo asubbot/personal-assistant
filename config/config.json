@@ -1,71 +1,88 @@
 {
-    "version": 1,
-    "telegram": {
-      "token_path": "telegram_bot_token.txt",
-      "users_path": "telegram_users.json",
-      "notify_chat_id": 0,
-      "max_message_length": 200
+  "version": 1,
+  "telegram": {
+    "token_path": "telegram_bot_token.txt",
+    "users_path": "telegram_users.json",
+    "notify_chat_id": 0,
+    "max_message_length": 200
+  },
+  "tools": {
+    "text_based_enabled": true
+  },
+  "tool_pre_selection": {
+    "tool_search_top_k": 0,
+    "tool_min_count": 0,
+    "tool_fallback_cap": 0
+  },
+  "llm_escalation": {
+    "enabled": false,
+    "max_per_user_message": 2,
+    "baseline_index": 0
+  },
+  "llm_providers": [
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434/v1",
+      "api_key_path": "",
+      "model": "llama3:8b",
+      "supports_tools": false
     },
-    "tools": {
-      "text_based_enabled": true
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434/v1",
+      "api_key_path": "",
+      "model": "qwen3:8b",
+      "supports_tools": false
     },
-    "llm_providers": [
-      {
-        "type": "ollama",
-        "endpoint": "http://localhost:11434/v1",
-        "model": "llama3:8b",
-        "supports_tools": false
-      },
-      {
-        "type": "ollama",
-        "endpoint": "http://localhost:11434/v1",
-        "model": "qwen3:8b",
-        "supports_tools": false
-      },
-      {
-        "type": "openai",
-        "endpoint": "https://api.openai.com/v1",
-        "api_key_path": "openai_api_key.txt",
-        "model": "gpt-4o-mini",
-        "supports_tools": true
-      }
-    ],
-    "paths": {
-      "memory_dir": "memory",
-      "log_path": "pa.log",
-      "vector_index_path": "pa_vectors.sqlite",
-      "llm_log_dir": "llm_logs",
-      "llm_log_retention_days": 7,
-      "scheduled_tasks_path": "scheduled_tasks.json",
-      "ssh_known_hosts_path": "known_hosts",
-      "tool_catalog_path": "tools.yaml"
-    },
-    "embedding": {
+    {
       "type": "openai",
       "endpoint": "https://api.openai.com/v1",
       "api_key_path": "openai_api_key.txt",
-      "model": "text-embedding-3-small",
-      "dimensions": 1536,
-      "batch_size": 100
-    },
-    "nodes": {
-      "nas": {
-        "host": "192.168.1.99",
-        "dedicated_user": "openclaw-runner",
-        "auth": {
-          "private_key_path": "/Users/asubbot/.ssh/openclaw_synology"
-        },
-        "command_allowlist_path": "nas_allowlist.txt"
-      }
-    },
-    "log_redaction": {
-      "additional_patterns": [
-        { "id": "custom_secret", "regex": "\\bsecret-[0-9]+\\b", "replacement": "[REDACTED]" }
-      ]
-    },
-    "pa_timezone": "Europe/Lisbon",
-    "conversation_context": {
-      "injected_context_max_chars": 10000,
-      "vector_search_top_k": 10
+      "model": "gpt-4o-mini",
+      "supports_tools": true
     }
+  ],
+  "paths": {
+    "memory_dir": "memory",
+    "log_path": "pa.log",
+    "vector_index_path": "pa_vectors.sqlite",
+    "llm_log_dir": "llm_logs",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "scheduled_tasks.json",
+    "ssh_known_hosts_path": "known_hosts",
+    "tool_catalog_path": "tools.yaml"
+  },
+  "embedding": {
+    "type": "openai",
+    "endpoint": "https://api.openai.com/v1",
+    "api_key_path": "openai_api_key.txt",
+    "model": "text-embedding-3-small",
+    "dimensions": 1536,
+    "batch_size": 100
+  },
+  "nodes": {
+    "nas": {
+      "host": "192.168.1.99",
+      "port": 22,
+      "dedicated_user": "openclaw-runner",
+      "auth": {
+        "private_key_path": "/Users/asubbot/.ssh/openclaw_synology"
+      },
+      "command_allowlist_path": "nas_allowlist.txt"
+    }
+  },
+  "log_redaction": {
+    "additional_patterns": [
+      {
+        "id": "custom_secret",
+        "regex": "\\bsecret-[0-9]+\\b",
+        "replacement": "[REDACTED]"
+      }
+    ]
+  },
+  "pa_timezone": "Europe/Lisbon",
+  "conversation_context": {
+    "injected_context_max_chars": 10000,
+    "vector_search_top_k": 10
   }
+}

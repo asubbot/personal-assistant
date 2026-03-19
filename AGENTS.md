@@ -2,31 +2,37 @@
 
 ## Cooperation with the user
 - The agent works **in cooperation with the user**. When multiple valid options exist (design, naming, artefact location, implementation approach, or interpretation of the request), present them clearly (e.g. A / B or 1A / 2B) with short pros/cons if helpful, and **ask the user to choose**. Do not decide autonomously. Proceed only after an explicit user choice.
+- **Chat language:** Reply in the language the user uses unless they ask otherwise. (Code, commits, and in-repo technical docs remain English per **Language** below.)
 
 ## File changing
-- Don't change source files without my allowing
-- Don't commit without my allowing
+- **Product code and behaviour** (`cmd/`, `internal/`, `tests/`, build files, etc.): do not change without my explicit allowance.
+- **Project artefacts** under `ai-sdlc-artefacts/`: follow the relevant skill (e.g. draft in chat until I approve **save** where the skill says so).
+- **Commits:** do not commit without my explicit allowance.
+- **Secrets:** never commit real tokens, passwords, or private keys; do not paste them into the repo or examples. Use placeholders and existing secret-file patterns from README/config docs.
 
 ## Architecture
-- Use KISS and "fail fast" approach
-- Source of truth for requirements and design: **ai-sdlc-artefacts** (e.g. epics/ep-104 for requirements, design, implementation plan). Process definition: **ai-sdlc/specification/** (pipeline, skills, templates).
+- Use **KISS** and **fail fast**.
+- Source of truth for requirements and design: **`ai-sdlc-artefacts`** (active epic folders under `epics/EP-XXX/`: scope, requirements, design, implementation plan, acceptance criteria). Process definition: **`ai-sdlc/specification/`** ([pipeline.spec.md](ai-sdlc/specification/pipeline.spec.md), [skills](ai-sdlc/specification/skills/README.md), templates).
+- **Heavy or SDLC tasks:** **read and follow** the matching skill under **`ai-sdlc/specification/skills/`** first. The skill is the workflow (outputs, verification, when to write files). Do not invent a parallel process.
+
+## Heavy tasks, skills, and optional plans/subagents
+- **Primary:** non-trivial work (epics, audits, requirements, code review, consistency checks, etc.) is driven by the **skills**—open the right `*.skill.md` and execute it.
+- **Optional:** if you also use Cursor **plans** or **subagents**, align with the same rules: **one step at a time** with clear verification, **review** before moving on, **stop** on failure or doubt and report options (retry, fix manually, skip, change plan)—no automatic retries or bundling multiple steps without my approval. **Parallel** delegated work only when steps are independent and you can still review each outcome clearly.
+- **Commits:** do not commit delegated or multi-step work until I approve; commit messages in English and, when helpful, reference the skill or plan step.
 
 ## Language
-- All code comments, UI/user-facing messages, and commit messages must be in English.
-
+- All code comments, UI/user-facing messages in the product, and commit messages must be in English.
 
 ## Research / Docs-first
-- When solving an issue, first search official documentation using the USER's keywords (preserve the user's wording).
-- Prefer official docs over GitHub issues/blog posts; fall back only if official docs lack the answer.
+- **Behaviour of this repo:** prefer **`ai-sdlc-artefacts`** and the current codebase over external sources.
+- **Third-party libraries, APIs, and platforms:** search **official documentation** using the USER's keywords (preserve the user's wording). Prefer official docs over GitHub issues or blog posts; fall back only if official docs lack the answer.
 
-## Workflow with subagents
-- **Plan first:** For multi-step or non-trivial tasks, create a plan in planning mode (CreatePlan). The plan is the single source of truth for scope and order of work.
-- **Verification per step:** Each plan step must include a verification block: how to confirm the step is done correctly (commands, tests, acceptance criteria). A step is not done until verification passes.
-- **One step per subagent:** Execute each plan step by delegating to a subagent (mcp_task). Pass a self-contained task description: what to do, which files, and the verification criteria from the plan. Do not bundle multiple plan steps into one subagent run without my approval.
-- **Review after each step:** After the subagent finishes, review the result: changes, adherence to project rules (e.g. KISS), test/lint outcome, and whether new dependencies or complexity are justified. Summarise in chat: agree or disagree and why.
-- **Stop on failure or doubt:** If the subagent did not fulfil the step (verification failed, wrong approach, or review disagrees), stop and report in chat: what was done, what failed, and options (retry with clarified prompt, fix manually, skip, change plan). Do not continue or retry automatically without my decision.
-- **Parallel steps:** If the plan has steps with no dependencies, you may run several subagents in parallel. Do so only when the plan allows it and when review per step stays clear.
-- **Commits:** Do not commit subagent results until I approve. After approval, commit with a message that references the plan step; one commit per step unless I say otherwise.
+## Quality checks
+- After non-trivial code changes, run **`make check`** (fmt, vet, lint, tests with coverage) when you are allowed to execute commands, and fix failures before handing off—unless I say otherwise.
+
+## Security (basics)
+- Treat config paths, SSH, Telegram, and LLM logs as sensitive contexts; follow requirements in epics (e.g. redaction, allowlists) when touching related code.
+- Do not weaken security or reliability for convenience without an explicit trade-off discussion with me.
 
 ## About this file
-- I expect you to suggest improvements to this file when you see ways to make it clearer, more complete, or better aligned with how we work.
+- Suggest improvements to this file when you see ways to make it clearer, more complete, or better aligned with how we work—especially after we change process or tooling.

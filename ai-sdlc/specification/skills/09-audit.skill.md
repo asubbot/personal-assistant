@@ -107,13 +107,13 @@ When producing the **project-level** audit draft, use this structure. File path:
 | **EP** | Markdown link to the epic scope: `[EP-XXX](epics/EP-XXX/ep-scope.md)`. |
 | **Name** | Epic title (from ep-scope.md, "Title" field). |
 | **Status** | Epic status (from ep-scope.md, "Status" field: NEW, IN_PROGRESS, CANCELED, DONE). |
-| **Total coverage** | Total statement coverage from that epic's ep-audit-report.md if present (e.g. `76.1%`); otherwise `—`. |
+| **Test coverage** | Total statement coverage from that epic's ep-audit-report.md if present (e.g. `76.1%`); otherwise `—`. |
 | **ep_audit-report** | If the file exists: markdown link to ep-audit-report plus the **date of that report** (from its "Date and time" header); e.g. `[ep-audit-report (YYYY-MM-DD)](epics/EP-XXX/ep-audit-report.md)` or link and date. Otherwise `—`. |
 
 **Example:**
 
 ```markdown
-| EP | Name | Status | Total coverage | ep_audit-report |
+| EP | Name | Status | Test coverage | ep_audit-report |
 |----|------|--------|----------------|-----------------|
 | [EP-001](epics/EP-001/ep-scope.md) | PersonalAssistant MVP | DONE | 76.1% | [ep-audit-report (2026-03-16)](epics/EP-001/ep-audit-report.md) |
 | [EP-002](epics/EP-002/ep-scope.md) | Automatic memory summarization | NEW | — | — |

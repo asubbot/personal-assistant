@@ -24,6 +24,15 @@ type Config struct {
 	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
 	// Tools is optional; text_based_enabled defaults to false when omitted or section absent.
 	Tools *ToolsConfig `json:"tools"`
+	// LLMEscalation is optional; when enabled, core uses per-message provider escalation on qualifying tool failures (EP-006).
+	LLMEscalation *LLMEscalationConfig `json:"llm_escalation"`
+}
+
+// LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002).
+type LLMEscalationConfig struct {
+	Enabled           bool `json:"enabled"`
+	MaxPerUserMessage int  `json:"max_per_user_message"`
+	BaselineIndex     int  `json:"baseline_index"`
 }
 
 // ToolsConfig holds optional tool-invocation settings (REQ-04.030).

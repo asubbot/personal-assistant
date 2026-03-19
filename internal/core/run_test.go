@@ -17,7 +17,7 @@ func TestRun_nilAdapter_returnsError(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
 
-	err := Run(context.Background(), cfg, logger, nil, provider, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, nil, provider, nil, nil, nil, nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error when adapter is nil")
 	}
@@ -32,7 +32,7 @@ func TestRun_nilProvider_returnsError(t *testing.T) {
 	logger := slog.Default()
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error when provider is nil")
 	}
@@ -58,7 +58,7 @@ func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, provider, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, provider, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), nil, logger, adapter, provider, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), nil, logger, adapter, provider, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run(cfg=nil): %v", err)
 	}
@@ -119,7 +119,7 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, provider, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, provider, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -133,5 +133,39 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 		if strings.Contains(m.Content, fakeSecret) {
 			t.Errorf("message[%d] (role=%q) must not contain config secret; content contains %q", i, m.Role, fakeSecret)
 		}
+	}
+}
+
+// Covers AC-06.005 (EP-006): Run rejects non-nil transport when llmChain is set.
+func TestRun_chainWithNonNilTransport_returnsError(t *testing.T) {
+	cfg := &config.Config{}
+	logger := slog.Default()
+	p := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
+	adapter := &capturingAdapter{}
+	err := Run(context.Background(), cfg, logger, adapter, p, []llm.Provider{p}, []string{"t/m"}, nil, nil, nil, nil, nil)
+	if err == nil {
+		t.Fatal("expected error when both transport and chain set")
+	}
+	if !strings.Contains(err.Error(), "llmTransport must be nil") {
+		t.Errorf("err = %q", err.Error())
+	}
+}
+
+// Covers AC-06.001 (EP-006): llmChain mode wires handler and Complete uses chain entries.
+func TestRun_llmChain_wiresHandler(t *testing.T) {
+	cfg := &config.Config{}
+	logger := slog.Default()
+	p := &mockProvider{result: &llm.CompletionResult{Content: "from-chain"}}
+	adapter := &capturingAdapter{}
+	err := Run(context.Background(), cfg, logger, adapter, nil, []llm.Provider{p}, []string{"openai/gpt"}, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "hi")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if reply != "from-chain" {
+		t.Errorf("reply = %q, want from-chain", reply)
 	}
 }
