@@ -5,6 +5,7 @@
 - [Overview](#overview)
 - [Architecture](#architecture)
   - [C4 C2 — Containers (PlantUML)](#c4-c2--containers-plantuml)
+  - [C4 C3 — Core components (PlantUML)](#c4-c3--core-components-plantuml)
   - [Escalation and provider flow](#escalation-and-provider-flow)
   - [Module boundaries](#module-boundaries)
 - [Components and interfaces](#components-and-interfaces)
@@ -36,6 +37,14 @@ EP-006 adds **configurable baseline provider** and **bounded escalation** along 
 <p align="center"><img src="diagrams/c4-container.png" alt="C4 C2 — Containers" /></p>
 
 **Source:** [c4-container.puml](diagrams/c4-container.puml) (C4-PlantUML). To regenerate PNG: `plantuml -tpng diagrams/c4-container.puml` from this directory.
+
+### C4 C3 — Core components (PlantUML)
+
+Component view of the **Go codebase** paths that implement EP-006: config and startup (`cmd/pa`, `internal/config`), conversation orchestration (**Core** / `pa/internal/core` + `internal/llmrouter` + `internal/llm`), catalog validation and centralized policy (`internal/toolcatalog`, `internal/escalationpolicy`, `internal/core/toolfailure`), Hermes text-tool parsing (`internal/tooltext`), and tool execution to nodes (`internal/tools`, `internal/noderunner`). Matches current imports and call flow in `core.Run`, `conversationHandler`, and `executeOneToolCall`. Diagram labels use **Core** as in the Go package name.
+
+<p align="center"><img src="diagrams/c4-component-go.png" alt="C4 C3 — Core components (PlantUML) (EP-006)" /></p>
+
+**Source:** [c4-component-go.puml](diagrams/c4-component-go.puml) (C4-PlantUML). To regenerate PNG: `plantuml -tpng diagrams/c4-component-go.puml` from this directory.
 
 ### Escalation and provider flow
 

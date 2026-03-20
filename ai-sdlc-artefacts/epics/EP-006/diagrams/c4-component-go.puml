@@ -1,0 +1,58 @@
+@startuml c4-component-go
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(component, $fontColor="black", $bgColor="#85BBF0", $borderColor="#78A9D8")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 70
+skinparam ranksep 55
+skinparam ArrowColor #707070
+skinparam ComponentBorderColor #707070
+
+title PersonalAssistant — C4 C3 — Core components (PlantUML) — EP-006 escalation & tool path
+
+Container_Boundary(go_app, "PersonalAssistant — Core component (EP-006 focus)") {
+    Component(pa_main, "cmd/pa", "Go", "Load config; build []llm.Provider + labels; wire telegram adapter, node runner, tool index; core.Run")
+    Component(cfg, "internal/config", "Go", "Load/validate; ToolsLLMEscalation (baseline, max, enabled)")
+    Component(tg, "internal/telegram", "Go", "Adapter implements core.Adapter; forwards user text to MessageHandler")
+    Component(core_pkg, "Core", "Go", "Package pa/internal/core — conversationHandler: HandleMessage, completeAt, maybeEscalate, runToolResultLoop, executeOneToolCall, Hermes follow-up")
+    Component(router, "internal/llmrouter", "Go", "Router + per-turn State: NewState (baseline), Complete (transport retry), OnQualifyingFailure (policy escalation)")
+    Component(llm_pkg, "internal/llm", "Go", "Provider.Complete — HTTP to configured model endpoint")
+    Component(epol, "internal/escalationpolicy", "Go", "WrapCatalogValidateError (ValidateKind via errors.As)")
+    Component(tf, "internal/core/toolfailure", "Go", "NoEscalate / MayEscalate; QualifiesForEscalation")
+    Component(tc, "internal/toolcatalog", "Go", "ValidateToolCall, Substitute; *ValidateError + ValidateKind")
+    Component(tt, "internal/tooltext", "Go", "ParseHermesToolCalls (text-tool path)")
+    Component(tools_pkg, "internal/tools", "Go", "Tool registry; run_on_node implementation")
+    Component(nr, "internal/noderunner", "Go", "RunOnNode — SSH/exec; typed failures for escalation input")
+    Component(llmlog, "internal/llmlog", "Go", "Optional redacted LLM request/response log")
+}
+
+' External LLM: declared after the app boundary; Rel_D + Lay_D place it below the Core component box
+System_Ext(llm_api, "LLM HTTP API", "OpenAI-compatible endpoints")
+
+Rel(pa_main, cfg, "config.Load", "")
+Rel(pa_main, tg, "NewAdapter", "")
+Rel(pa_main, core_pkg, "Run(..., adapter, providers, labels, ...)", "")
+Rel(pa_main, llm_pkg, "NewProvider per llm_providers[]", "")
+Rel(tg, core_pkg, "adapter.Run → MessageHandler", "")
+Rel(core_pkg, cfg, "ToolsLLMEscalation; catalog ref", "")
+Rel(core_pkg, router, "Complete / OnQualifyingFailure; route events → slog", "")
+Rel(core_pkg, epol, "WrapCatalogValidateError after ValidateToolCall", "")
+Rel(core_pkg, tf, "QualifiesForEscalation on tool errors", "")
+Rel(core_pkg, tc, "ValidateToolCall, BuildToolDefs, Substitute", "")
+Rel(core_pkg, tt, "Hermes parse; escalation on parse failure", "")
+Rel(core_pkg, tools_pkg, "Invoke registered tools", "")
+Rel(core_pkg, llmlog, "Log LLM entries", "")
+Rel(router, llm_pkg, "Active index → Provider.Complete", "")
+Rel_D(llm_pkg, llm_api, "HTTPS", "")
+Lay_D(go_app, llm_api)
+Rel(epol, tf, "NoEscalate / MayEscalate wrappers", "")
+Rel(epol, tc, "errors.As *ValidateError", "")
+Rel(tools_pkg, nr, "RunOnNode", "")
+
+@enduml

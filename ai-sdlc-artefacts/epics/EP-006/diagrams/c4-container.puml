@@ -1,4 +1,4 @@
-@startuml C4 Container - PersonalAssistant (EP-006)
+@startuml c4-container
 
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
 
@@ -23,7 +23,7 @@ System_Ext(llm_ext, "LLM API / Models", "Ordered providers; escalation target ch
 
 Container_Boundary(pa, "PersonalAssistant") {
     Container(tg, "Telegram Bot", "Go", "Message adapter")
-    Container(core, "Go Core", "Go", "Orchestration, tool-result loop, failure classification, baseline and escalation policy")
+    Container(core, "Core", "Go", "Orchestration, tool-result loop, failure classification, baseline and escalation policy (pa/internal/core)")
     ContainerDb(cfg, "Config", "JSON", "llm_providers, baseline, escalation toggle, max escalations")
     Container(llm, "LLM Provider layer", "Go", "Complete to active provider; provider index per user message")
     Container(log, "Logging", "Go", "Classification, escalation, provider labels (no secrets)")
