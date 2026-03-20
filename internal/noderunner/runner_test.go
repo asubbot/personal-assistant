@@ -1,6 +1,7 @@
 package noderunner
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log/slog"
@@ -275,4 +276,197 @@ func TestRunOnNode_escalationPolicy_smoke(t *testing.T) {
 			t.Fatal("expected MayEscalate for remote exec failure")
 		}
 	})
+}
+
+// Remote stderr/stdout from the node are appended to the exec error (and logs) so tools and operators see script output.
+func TestRunOnNode_execError_includesRemoteStderr(t *testing.T) {
+	dir := t.TempDir()
+	allowPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowPath, []byte("echo *\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	r := New(cfg, al, slog.Default())
+	stderrLine := "Error: Speaker name '' is ambiguous within {'Bedroom'}"
+	r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+		return nil, []byte(stderrLine), errors.New("ssh: exec: Process exited with status 1")
+	}})
+	_, runErr := r.RunOnNode(context.Background(), "n1", "echo hello")
+	if runErr == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(runErr.Error(), stderrLine) {
+		t.Errorf("error should include remote stderr; got %v", runErr)
+	}
+	if !strings.Contains(runErr.Error(), "stderr:") {
+		t.Errorf("error should label stderr; got %v", runErr)
+	}
+	if !toolfailure.QualifiesForEscalation(runErr) {
+		t.Fatal("expected MayEscalate for remote exec failure")
+	}
+}
+
+func TestRunOnNode_execError_includesStdoutAndStderr(t *testing.T) {
+	dir := t.TempDir()
+	allowPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowPath, []byte("echo *\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	r := New(cfg, al, slog.Default())
+	r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+		return []byte("partial out\n"), []byte("partial err\n"), errors.New("remote failed")
+	}})
+	_, runErr := r.RunOnNode(context.Background(), "n1", "echo hello")
+	if runErr == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(runErr.Error(), "stdout:") || !strings.Contains(runErr.Error(), "partial out") {
+		t.Errorf("error should include stdout; got %v", runErr)
+	}
+	if !strings.Contains(runErr.Error(), "stderr:") || !strings.Contains(runErr.Error(), "partial err") {
+		t.Errorf("error should include stderr; got %v", runErr)
+	}
+}
+
+func TestRunOnNode_execError_truncatesLongRemoteStreams(t *testing.T) {
+	dir := t.TempDir()
+	allowPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowPath, []byte("echo *\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	long := strings.Repeat("x", maxRemoteStreamBytes+100)
+	r := New(cfg, al, slog.Default())
+	r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+		return nil, []byte(long), errors.New("exit 1")
+	}})
+	_, runErr := r.RunOnNode(context.Background(), "n1", "echo hello")
+	if runErr == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(runErr.Error(), remoteStreamTruncatedSuffix) {
+		t.Errorf("long stderr should be truncated in error: %v", runErr)
+	}
+	if strings.Count(runErr.Error(), "x") > maxRemoteStreamBytes+50 {
+		t.Errorf("error should not include full long stderr")
+	}
+}
+
+// REQ-01.026: DEBUG ssh exec output redacts remote stream fragments when SetLogRedactor is set.
+func TestRunOnNode_debugLog_redactsRemoteStreams(t *testing.T) {
+	dir := t.TempDir()
+	allowPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowPath, []byte("echo *\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	r := New(cfg, al, logger)
+	r.SetLogRedactor(func(s string) string { return strings.ReplaceAll(s, "SECRETPAYLOAD", "[REDACTED]") })
+	r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+		return []byte("ok"), []byte("stderr line SECRETPAYLOAD\n"), nil
+	}})
+	_, err = r.RunOnNode(context.Background(), "n1", "echo hello")
+	if err != nil {
+		t.Fatalf("RunOnNode: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "[REDACTED]") || strings.Contains(out, "SECRETPAYLOAD") {
+		t.Errorf("DEBUG log should redact stream attrs; got:\n%s", out)
+	}
+}
+
+// Returned exec error keeps unredacted remote detail for tool/LLM; Error log attrs are redacted.
+func TestRunOnNode_errorLog_redactsStreams_returnUnredacted(t *testing.T) {
+	dir := t.TempDir()
+	allowPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowPath, []byte("echo *\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	r := New(cfg, al, logger)
+	r.SetLogRedactor(func(s string) string { return strings.ReplaceAll(s, "SECRETPAYLOAD", "[REDACTED]") })
+	r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+		return nil, []byte("SECRETPAYLOAD"), errors.New("exit 1")
+	}})
+	_, runErr := r.RunOnNode(context.Background(), "n1", "echo hello")
+	if runErr == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(runErr.Error(), "SECRETPAYLOAD") {
+		t.Errorf("returned error should keep raw stderr for diagnostics; got %v", runErr)
+	}
+	logOut := buf.String()
+	if !strings.Contains(logOut, "[REDACTED]") || strings.Contains(logOut, "SECRETPAYLOAD") {
+		t.Errorf("Error log should redact stream attrs; got:\n%s", logOut)
+	}
 }

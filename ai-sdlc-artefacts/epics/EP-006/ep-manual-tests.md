@@ -46,7 +46,7 @@ What counts: SSH connect failure, remote command error, or similar node path →
 
 The handler can run **multiple tool rounds** in one user turn. You need **two** separate failures that both qualify, without ending the turn between them.
 
-1. Set **`max_per_user_message`** to **1** (or **0** to test “no advance” variants in other scenarios).
+1. Set **`max_per_user_message`** to **1** (to test “no policy escalation” on tool failures, use **`enabled: false`** instead—not `max_per_user_message: 0`, which the app rejects at load).
 2. Use a **staging** setup as in **A**, where the first tool call fails (e.g. node down).
 3. **Prompt the model** so that after the first failed tool round it issues **another** tool call in the **same** turn (e.g. “run X on the node, then run Y” using tool names from your catalog). If the model stops after one tool, try a stronger model or a clearer instruction; **automation** covers the policy math—manual check is best-effort.
 4. **Pass interpretation:** after the **first** qualifying failure you should see **one** escalation; after the **second** qualifying failure in that same message, logs should show **no further** index advance beyond the cap.
@@ -122,7 +122,7 @@ Use **`PA_LOG_LEVEL=info`** (or `debug` if you accept noise). Search log files f
 
 **Steps:**
 
-1. Set **`max_per_user_message`** to **1** (or **0** to see “no advance” behaviour—align expectations with [AC-06.007](ep-acceptance-criteria.md#ac-06-007)).
+1. Set **`max_per_user_message`** to **1** (for “no advance” from **disabled** policy escalation, use **`enabled: false`**; `max_per_user_message: 0` with `enabled: true` is invalid—see [AC-06.007](ep-acceptance-criteria.md#ac-06-007) and unit tests for exhausted-cap behaviour).
 2. Follow **[§ B](#how-to-execute-the-steps-operators)** to get **two** qualifying tool failures in **one** user turn (node broken + model issues two tool calls in sequence). If you only achieve **one** failure, you can still **partially** sign off: verify **one** escalation line, then rely on automated tests for the second failure.
 3. Inspect logs: after the cap is reached, **no** further `to_index` advances for that message; remaining completes use the **last** allowed provider until the turn ends.
 

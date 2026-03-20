@@ -23,7 +23,7 @@ var builtInPatterns = []struct {
 }{
 	{BuiltInIDOpenAIKey, regexp.MustCompile(`sk-[a-zA-Z0-9]{20,}`)},
 	{BuiltInIDTelegramToken, regexp.MustCompile(`\d{8,10}:[a-zA-Z0-9_-]{35}`)},
-	{BuiltInIDBearerToken, regexp.MustCompile(`(?i)Bearer\s+[^\s]+`)},
+	{BuiltInIDBearerToken, regexp.MustCompile(`(?i)Bearer\s+\S+`)},
 	{BuiltInIDSecretPath, regexp.MustCompile(`/[\w/.-]*(?:token|secret|key|credential|password)(?:s)?[\w/.-]*`)},
 }
 
@@ -76,8 +76,8 @@ func compiledAdditional(expr string) *regexp.Regexp {
 	}
 	additionalCacheMu.Lock()
 	defer additionalCacheMu.Unlock()
-	if re = additionalCache[expr]; re != nil {
-		return re
+	if cached := additionalCache[expr]; cached != nil {
+		return cached
 	}
 	re, err := regexp.Compile(expr)
 	if err != nil {

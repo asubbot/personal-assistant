@@ -402,6 +402,7 @@ func runVerifyNodes(cfg *config.Config, command string, logger *slog.Logger) err
 		return fmt.Errorf("allowlist: %w", err)
 	}
 	runner := noderunner.New(cfg, al, logger)
+	runner.SetLogRedactor(core.BuildLogRedactor(cfg))
 	ctx := context.Background()
 	for nodeID := range cfg.Nodes {
 		logger.Info("verify node", "node_id", nodeID, "command", command)
@@ -410,7 +411,7 @@ func runVerifyNodes(cfg *config.Config, command string, logger *slog.Logger) err
 			return fmt.Errorf("node %q: %w", nodeID, err)
 		}
 		logger.Info("node OK", "node_id", nodeID)
-		if len(stdout) > 0 {
+		if stdout != "" {
 			logger.Info("node output", "node_id", nodeID, "stdout", stdout)
 		}
 	}
@@ -485,7 +486,9 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 		if alErr != nil {
 			return nil, nil, nil, nil, nil, nil, alErr
 		}
-		nodeRunner = noderunner.New(cfg, al, logger)
+		nr := noderunner.New(cfg, al, logger)
+		nr.SetLogRedactor(core.BuildLogRedactor(cfg))
+		nodeRunner = nr
 	}
 
 	return adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, nil

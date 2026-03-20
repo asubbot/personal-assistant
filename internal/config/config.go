@@ -27,6 +27,7 @@ type Config struct {
 }
 
 // LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002). JSON: tools.llm_escalation.
+// When Enabled is true, MaxPerUserMessage must be >= 1 at load (zero would disable policy escalation and is rejected as a misconfiguration).
 type LLMEscalationConfig struct {
 	Enabled           bool `json:"enabled"`
 	MaxPerUserMessage int  `json:"max_per_user_message"`

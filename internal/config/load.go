@@ -103,8 +103,8 @@ func validateLLMEscalation(c *Config) error {
 	if e.BaselineIndex < 0 || e.BaselineIndex >= n {
 		return fmt.Errorf("config: tools.llm_escalation.baseline_index must be in [0, %d)", n)
 	}
-	if e.MaxPerUserMessage < 0 {
-		return errors.New("config: tools.llm_escalation.max_per_user_message must be >= 0")
+	if e.MaxPerUserMessage < 1 {
+		return errors.New("config: tools.llm_escalation.max_per_user_message must be >= 1 when enabled")
 	}
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 
 // Covers AC-01.007 (US-04): Allow returns allowed for allowlisted commands.
 func TestChecker_Allow_allowlistedCommands(t *testing.T) {
-	_, checker := mustNewChecker(t)
+	checker := mustNewChecker(t)
 
 	tests := []struct {
 		nodeID  string
@@ -30,7 +30,7 @@ func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 
 // Covers AC-01.008 (US-04): Allow returns denied when command not in allowlist.
 func TestChecker_Allow_deniedWhenNotInAllowlist(t *testing.T) {
-	_, checker := mustNewChecker(t)
+	checker := mustNewChecker(t)
 
 	denied := []struct {
 		nodeID  string
@@ -52,7 +52,7 @@ func TestChecker_Allow_deniedWhenNotInAllowlist(t *testing.T) {
 
 // Supporting AC-01.007, AC-01.008 (US-04): Allow(unknown node) returns false.
 func TestChecker_Allow_unknownNode(t *testing.T) {
-	_, checker := mustNewChecker(t)
+	checker := mustNewChecker(t)
 	if checker.Allow("nonexistent", "any") {
 		t.Error("Allow(unknown node, any) = true, want false")
 	}
@@ -94,7 +94,7 @@ func TestNewChecker_sameFileSharedByNodes(t *testing.T) {
 	}
 }
 
-func mustNewChecker(t *testing.T) (*config.Config, *Checker) {
+func mustNewChecker(t *testing.T) *Checker {
 	t.Helper()
 	cfg := &config.Config{
 		Version:  1,
@@ -118,5 +118,5 @@ func mustNewChecker(t *testing.T) (*config.Config, *Checker) {
 	if err != nil {
 		t.Fatalf("NewChecker: %v", err)
 	}
-	return cfg, checker
+	return checker
 }

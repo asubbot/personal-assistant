@@ -161,3 +161,8 @@ func buildRedactor(cfg *config.Config) func(string) string {
 	}
 	return logredact.NewRedactor(additional)
 }
+
+// BuildLogRedactor returns the application log redactor from config (same as handler and tool-invocation INFO logs). Callers such as cmd/pa may attach it to noderunner for consistent redaction of remote stream fragments in app logs (REQ-01.026).
+func BuildLogRedactor(cfg *config.Config) func(string) string {
+	return buildRedactor(cfg)
+}

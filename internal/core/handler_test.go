@@ -932,6 +932,118 @@ func TestHandleMessage_toolInvocation_loggedWithIdArgumentsAndResult(t *testing.
 	}
 }
 
+// Covers REQ-01.026: logRedactor applies to INFO tool invocation attrs (arguments, result, error).
+func TestHandleMessage_toolInvocation_redactsInfoLogAttrs(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	redactor := func(s string) string { return strings.ReplaceAll(s, "secret", "[REDACTED]") }
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "node says secret"}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "run_echo", Arguments: `{"msg": "secret"}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "Done.", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:      mustRouterSingle(t, provider),
+		catalog:     catalog,
+		nodeRunner:  runner,
+		logger:      logger,
+		logRedactor: redactor,
+	}
+
+	_, err := h.HandleMessage(context.Background(), 1, "run echo")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var argsLog, resLog string
+	for _, r := range cap.records {
+		if r.msg == "tool invocation" {
+			argsLog = r.attrs["arguments"]
+			resLog = r.attrs["result"]
+			break
+		}
+	}
+	if argsLog == "" && resLog == "" {
+		t.Fatalf("expected tool invocation log; records=%+v", cap.records)
+	}
+	if strings.Contains(argsLog, "secret") || !strings.Contains(argsLog, "[REDACTED]") {
+		t.Errorf("arguments attr should be redacted; got %q", argsLog)
+	}
+	if strings.Contains(resLog, "secret") || !strings.Contains(resLog, "[REDACTED]") {
+		t.Errorf("result attr should be redacted; got %q", resLog)
+	}
+}
+
+// Covers REQ-01.026: INFO tool invocation error string is redacted (e.g. remote stderr from noderunner).
+func TestHandleMessage_toolInvocation_redactsErrorAttr(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	redactor := func(s string) string { return strings.ReplaceAll(s, "secret", "[REDACTED]") }
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{err: errors.New("stderr: secret failure")}
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "run_echo", Arguments: `{"msg": "hi"}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "after tool", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:      mustRouterSingle(t, provider),
+		catalog:     catalog,
+		nodeRunner:  runner,
+		logger:      logger,
+		logRedactor: redactor,
+	}
+
+	_, err := h.HandleMessage(context.Background(), 1, "run echo")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var errLog string
+	for _, r := range cap.records {
+		if r.msg == "tool invocation" && r.attrs["error"] != "" {
+			errLog = r.attrs["error"]
+			break
+		}
+	}
+	if errLog == "" {
+		t.Fatalf("expected tool invocation with error attr; records=%+v", cap.records)
+	}
+	if strings.Contains(errLog, "secret") || !strings.Contains(errLog, "[REDACTED]") {
+		t.Errorf("error attr should be redacted; got %q", errLog)
+	}
+}
+
 // Covers AC-04.013: tool invocation that fails (e.g. validation) is logged with error.
 func TestHandleMessage_toolInvocation_loggedWithError(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}

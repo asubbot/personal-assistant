@@ -114,6 +114,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing embedding batch_size", "missing_embedding_batch_size.json", "embedding.batch_size is required and must be between 1 and 1000"},
 		{"missing supports_tools", "missing_supports_tools.json", "supports_tools is required"}, // Covers AC-04.028 (REQ-04.034)
 		{"tools.llm_escalation enabled with one provider", "tools_llm_escalation_enabled_one_provider.json", "tools.llm_escalation.enabled requires at least two llm_providers"},
+		{"tools.llm_escalation enabled max_per_user_message zero", "tools_llm_escalation_max_zero.json", "max_per_user_message must be >= 1 when enabled"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

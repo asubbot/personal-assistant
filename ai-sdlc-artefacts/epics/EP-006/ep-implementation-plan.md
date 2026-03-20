@@ -2,7 +2,7 @@
 
 **Pipeline:** Stage 7 ([07-implementation-planning.skill.md](../../../ai-sdlc/specification/skills/07-implementation-planning.skill.md)).
 
-**Artefacts:** [ep-scope.md](ep-scope.md) · [ep-requirements.md](ep-requirements.md) · [ep-acceptance-criteria.md](ep-acceptance-criteria.md) · [ep-system-design.md](ep-system-design.md) · [strategy.md](../../strategy.md)
+**Artefacts:** [ep-scope.md](ep-scope.md) · [ep-requirements.md](ep-requirements.md) · [ep-acceptance-criteria.md](ep-acceptance-criteria.md) · [ep-system-design.md](ep-system-design.md) · [ep-code-review.md](ep-code-review.md) · [strategy.md](../../strategy.md)
 
 **Goal:** Implement configurable baseline LLM provider, tool-driven escalation along the ordered provider list (bounded per user message), end-of-turn rollback to baseline, classification of tool failures, **centralized escalation-allowance mapping in `internal/escalationpolicy`** ([REQ-06.017](ep-requirements.md#nfr--security-testability-observability)), structured logging (no secrets), and tests.
 
@@ -19,7 +19,7 @@
 ## Task list
 
 - [x] **1. Config: `tools.llm_escalation` and validation**
-  - Optional JSON under `tools`: `llm_escalation` with `enabled` (bool), `max_per_user_message` (int, >= 0), `baseline_index` (int, 0-based into `llm_providers`).
+  - Optional JSON under `tools`: `llm_escalation` with `enabled` (bool), `max_per_user_message` (int, >= 1 when `enabled`), `baseline_index` (int, 0-based into `llm_providers`).
   - When `enabled` is true: require `len(llm_providers) >= 2`, `baseline_index` in `[0, len-1)`, validate in `config.Load` / `validate`.
   - When section omitted or `enabled` false: no escalation chain in core (existing transport `FallbackProvider` only).
   - _Requirements:_ [REQ-06.002](ep-requirements.md#baseline-and-configuration)

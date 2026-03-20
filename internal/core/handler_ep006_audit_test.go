@@ -94,7 +94,8 @@ func TestHandleMessage_escalation_threeProviders_secondReceivesNextComplete(t *t
 	}
 }
 
-// Covers AC-06.007 (REQ-06.008): when max_per_user_message is 0, qualifying failure does not advance provider (exhausted budget / stop path).
+// Covers AC-06.007 (REQ-06.008): when escalation budget is zero, qualifying failure does not advance provider.
+// Load() rejects enabled escalation with max_per_user_message < 1; this constructs the handler directly to test router/handler behaviour.
 func TestHandleMessage_escalation_maxZero_noAdvance(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{

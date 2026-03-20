@@ -64,13 +64,20 @@ type conversationHandler struct {
 	vectorSearchTopK int                 // number of vector search results; 0 = defaultVectorSearchTopK
 	llmLog           llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
 	model            string              // configured model name for LLM log entries
-	logRedactor      func(string) string // optional; redacts content in DEBUG app logs (REQ-01.026)
+	logRedactor      func(string) string // optional; redacts content in DEBUG app logs and INFO tool-invocation logs (REQ-01.026)
 	// textBasedEnabled + firstProviderSupportsTools: when true + false, Hermes text tool path (REQ-04.027–029).
 	textBasedEnabled           bool
 	firstProviderSupportsTools bool // true if first LLM provider sends tools in HTTP (supports_tools)
 }
 
 // checkUserMessage returns trimmed text, or earlyReply when the message must not reach the LLM.
+func (h *conversationHandler) redactLogString(s string) string {
+	if h == nil || h.logRedactor == nil {
+		return s
+	}
+	return h.logRedactor(s)
+}
+
 func (h *conversationHandler) checkUserMessage(text string) (trimmed string, earlyReply string, reject bool) {
 	trimmed = strings.TrimSpace(text)
 	if trimmed == "" {
@@ -253,8 +260,6 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	if h.router != nil {
 		rs := h.router.NewState()
 		st = &llmTurnState{activeIdx: rs.ActiveIndex, escUsed: rs.EscUsed}
-	} else if h.escalationEnabled() {
-		st = &llmTurnState{activeIdx: h.escalation.BaselineIndex, escUsed: 0}
 	}
 	result, err := h.completeAt(ctx, st, messages, opts)
 	if err != nil {
@@ -349,10 +354,11 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 			if textToolMode {
 				src = "hermes"
 			}
+			argsLog := h.redactLogString(tc.Arguments)
 			if execErr != nil {
-				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", tc.Arguments, "invoked_via", src, "error", execErr.Error())
+				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", argsLog, "invoked_via", src, "error", h.redactLogString(execErr.Error()))
 			} else {
-				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", tc.Arguments, "invoked_via", src, "result", stdout)
+				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", argsLog, "invoked_via", src, "result", h.redactLogString(stdout))
 			}
 		}
 		if textToolMode {

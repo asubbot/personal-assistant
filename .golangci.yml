@@ -18,6 +18,10 @@ linters:
     - gosec
     - contextcheck
     - noctx
+    - revive
+    - gocritic
+    - unparam
+    - forbidigo
   settings:
     gocyclo:
       min-complexity: 12
@@ -34,6 +38,38 @@ linters:
         - G703   # path traversal: dir/path from config
         - G704   # SSRF: HTTP URLs from config (operator-controlled)
         - G204   # exec in test (fixed "go run" args)
+    revive:
+      severity: warning
+      rules:
+        - name: unreachable-code
+        - name: error-return
+        - name: error-naming
+        - name: indent-error-flow
+        - name: increment-decrement
+        - name: var-declaration
+        - name: range
+        - name: empty-lines
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+      disabled-checks:
+        # high noise / false positives (e.g. filepath.Join in tests with fixture paths)
+        - hugeParam
+        - rangeValCopy
+        - ptrToRefParam
+        - filepathJoin
+        - paramTypeCombine
+        - tooManyResultsChecker
+        - unnamedResult
+        - builtinShadow
+    forbidigo:
+      forbid:
+        - pattern: ^fmt\.Print
+          msg: use structured logging (log/slog) instead of fmt.Print*
+        - pattern: io/ioutil\.
+          msg: io/ioutil is deprecated; use os or io packages
   exclusions:
     generated: lax
 issues:
