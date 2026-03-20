@@ -1,6 +1,6 @@
 # specification/skills — Agent instructions
 
-Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stage (1–9)**, plus **optional cross-cutting** skills (code review, C4 C3 diagram, project comparison). Paths in skills use **ai-sdlc-artefacts/** (project root: `scope.md`, `strategy.md`, optional `analytics/`) and **ai-sdlc-artefacts/epics/<epic-id>/** for epic artefacts: ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design, ep-implementation-plan, ep-audit-report. Story-level paths are not used by the pipeline.
+Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stage (1–9)**, plus **optional cross-cutting** skills (code review, C4 C3 diagram, project comparison, threat model from code). Paths in skills use **ai-sdlc-artefacts/** (project root: `scope.md`, `strategy.md`, optional `analytics/`) and **ai-sdlc-artefacts/epics/<epic-id>/** for epic artefacts: ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design, ep-implementation-plan, ep-audit-report. Story-level paths are not used by the pipeline.
 
 **Common behaviour:** The agent works in cooperation with the user. When several valid choices exist (output format, path, scope, or interpretation of the request), present them (e.g. A / B) and ask the user which they prefer. Do not proceed until the user has chosen. See [pipeline.spec.md](../pipeline.spec.md) (Human-in-the-loop).
 
@@ -36,6 +36,7 @@ Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stag
 | [ep-C4-component.skill.md](ep-C4-component.skill.md) | C4 **C3** Go component diagram for `ep-system-design.md` (optional; complements mandatory C2 container) |
 | [project-comparison-report.skill.md](project-comparison-report.skill.md) | Compare an external repo with PersonalAssistant; analytics report under `ai-sdlc-artefacts/analytics/` |
 | [user-documentation.skill.md](user-documentation.skill.md) | End-user / operator docs under `docs/` and root `README.md` (installation, config, Docker, operations) |
+| [threat-model-report.skill.md](threat-model-report.skill.md) | Code-grounded threat model report (default `docs/threat-model.md` or `ai-sdlc-artefacts/analytics/...`) |
 
 ---
 
@@ -58,11 +59,12 @@ When a user request matches an intent below, use the corresponding skill.
 | **Code review** / PR review | [code-review.skill.md](code-review.skill.md) |
 | **Analyse or compare** an external project with PA | [project-comparison-report.skill.md](project-comparison-report.skill.md) |
 | **User docs** / operator guide / refresh **README** for deployers | [user-documentation.skill.md](user-documentation.skill.md) |
+| **Threat model** / STRIDE / attack surface **from source code** | [threat-model-report.skill.md](threat-model-report.skill.md) |
 
 ---
 
 ## All skill files in this folder
 
-Numbered: `01`–`09` (table above). Cross-cutting: `code-review.skill.md`, `ep-C4-component.skill.md`, `project-comparison-report.skill.md`, `user-documentation.skill.md`.
+Numbered: `01`–`09` (table above). Cross-cutting: `code-review.skill.md`, `ep-C4-component.skill.md`, `project-comparison-report.skill.md`, `user-documentation.skill.md`, `threat-model-report.skill.md`.
 
 **Single source of stage I/O:** [pipeline.spec.md](../pipeline.spec.md) §2 (table of stages, inputs, outputs).

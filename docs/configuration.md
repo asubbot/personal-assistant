@@ -55,4 +55,6 @@ When `paths.tool_catalog_path` is set, the YAML catalog is loaded at startup; a 
 
 Built-in patterns redact common secret shapes (e.g. OpenAI-style keys, Telegram bot tokens, Bearer tokens, paths suggesting secrets). Additional patterns come from `log_redaction.additional_patterns`. LLM JSONL logs are redacted before write as well.
 
-For epic-level design notes (not required for day-to-day ops), see under `ai-sdlc-artefacts/epics/`.
+**Tool invocation** lines at **INFO** (arguments, results, error text) use the redactor from config. **SSH remote stdout/stderr fragments** in **Error** and **DEBUG** noderunner logs use the same redactor when `cmd/pa` wires `noderunner.SetLogRedactor(core.BuildLogRedactor(cfg))`. **Returned** tool error strings may still embed truncated remote stdout/stderr for model diagnostics — treat logs and user-visible tool text as sensitive contexts.
+
+For epic-level design notes (not required for day-to-day ops), see under `ai-sdlc-artefacts/epics/`. For a consolidated threat summary, see [threat-model.md](../ai-sdlc-artefacts/threat-model.md).

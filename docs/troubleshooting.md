@@ -23,6 +23,7 @@ Use **symptom → check → fix**. Prefer `./pa` with `PA_LOG_LEVEL=debug` only 
 | Check | Action |
 |-------|--------|
 | Private key | `nodes.<id>.auth.private_key_path` resolved with `PA_SECRETS_DIR`; file readable. |
+| Docker: key “no such file” | Use a **bare filename** in config (e.g. `openclaw_synology`) and mount the key under **`PA_SECRETS_DIR`** with the **same basename** (see [docker.md](docker.md) secrets table). Host paths like `/Users/.../.ssh/...` do not exist inside the container unless you mount them explicitly. |
 | Allowlist | `command_allowlist_path` relative to `PA_CONFIG_DIR`; command exactly allowlisted (no shell metacharacters where forbidden). |
 | `known_hosts` | `paths.ssh_known_hosts_path` relative to config dir; host key must match. |
 | Probe | Run `./pa -verify-nodes` and optional `-verify-nodes-command` (must be allowlisted). |

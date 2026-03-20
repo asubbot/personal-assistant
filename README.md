@@ -61,7 +61,7 @@ See [docs/operations.md](docs/operations.md) and [docs/docker.md](docs/docker.md
 
 ## Development
 
-**`make check`** does not install the app — it runs the full local **quality gate** on the repo: format, vet, lint, **all tests** (including integration), coverage, and module-boundary checks.
+**`make check`** does not install the app — it runs the full local **quality gate** on the repo: format, vet, lint, **tests with the race detector** (`-race`, integration tag), then a **coverage** pass, and module-boundary checks.
 
 ```bash
 make check
@@ -79,3 +79,4 @@ Integration tests need **Docker** and SSH tooling on `PATH`; see [docs/installat
 | Docker secrets & cron | [docs/docker.md](docs/docker.md) |
 | Config sections & validation | [docs/configuration.md](docs/configuration.md) |
 | Problems | [docs/troubleshooting.md](docs/troubleshooting.md) |
+| Threat model (security overview) | [ai-sdlc-artefacts/threat-model.md](ai-sdlc-artefacts/threat-model.md) |

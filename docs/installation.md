@@ -49,10 +49,12 @@ Or set the same variables in `.env` and run `./pa` from a shell where they are e
 
 ## Contributors: full code quality gate (not installation)
 
-**`make check` does not install or deploy PersonalAssistant.** It runs the full automated verification of the **source tree**: `go fmt`, `go vet`, `golangci-lint` (with the integration build tag), **`go test`** for all packages (including integration tests), statement **coverage** across `./...`, and the **module-boundaries** script.
+**`make check` does not install or deploy PersonalAssistant.** It runs the full automated verification of the **source tree**, in order: `go fmt`, `go vet`, `golangci-lint` (with the integration build tag), **`go test -race -tags=integration ./...`** (race detector; slower than plain tests), **`go test` with coverage** across `./...`, and the **module-boundaries** script.
 
 ```bash
 make check
 ```
+
+For a **non-race** test run (e.g. faster local iteration), use `make test`. For integration tests only: `make test-integration`.
 
 Integration tests require **Docker** and tools such as `ssh-keygen` / `ssh-keyscan` on `PATH`. See the root [README.md](../README.md#development).
