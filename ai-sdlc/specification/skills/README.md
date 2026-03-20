@@ -35,6 +35,7 @@ Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stag
 | [code-review.skill.md](code-review.skill.md) | PR / branch / pre-merge structured review |
 | [ep-C4-component.skill.md](ep-C4-component.skill.md) | C4 **C3** Go component diagram for `ep-system-design.md` (optional; complements mandatory C2 container) |
 | [project-comparison-report.skill.md](project-comparison-report.skill.md) | Compare an external repo with PersonalAssistant; analytics report under `ai-sdlc-artefacts/analytics/` |
+| [user-documentation.skill.md](user-documentation.skill.md) | End-user / operator docs under `docs/` and root `README.md` (installation, config, Docker, operations) |
 
 ---
 
@@ -56,11 +57,12 @@ When a user request matches an intent below, use the corresponding skill.
 | **Audit** / quality gate / status report (epic or project) | [09-audit.skill.md](09-audit.skill.md) |
 | **Code review** / PR review | [code-review.skill.md](code-review.skill.md) |
 | **Analyse or compare** an external project with PA | [project-comparison-report.skill.md](project-comparison-report.skill.md) |
+| **User docs** / operator guide / refresh **README** for deployers | [user-documentation.skill.md](user-documentation.skill.md) |
 
 ---
 
 ## All skill files in this folder
 
-Numbered: `01`–`09` (table above). Cross-cutting: `code-review.skill.md`, `ep-C4-component.skill.md`, `project-comparison-report.skill.md`.
+Numbered: `01`–`09` (table above). Cross-cutting: `code-review.skill.md`, `ep-C4-component.skill.md`, `project-comparison-report.skill.md`, `user-documentation.skill.md`.
 
 **Single source of stage I/O:** [pipeline.spec.md](../pipeline.spec.md) §2 (table of stages, inputs, outputs).

@@ -1,0 +1,9 @@
+# Single-arch overlay: linux/amd64 (Intel/AMD, Synology x86_64).
+include:
+  - path: docker-compose.yml
+
+services:
+  pa:
+    build:
+      platforms:
+        - linux/amd64

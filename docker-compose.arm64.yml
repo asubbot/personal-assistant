@@ -1,0 +1,9 @@
+# Single-arch overlay: linux/arm64 (Apple Silicon, ARM64 NAS/servers).
+include:
+  - path: docker-compose.yml
+
+services:
+  pa:
+    build:
+      platforms:
+        - linux/arm64

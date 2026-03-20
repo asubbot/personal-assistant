@@ -1,27 +1,42 @@
-# Multi-stage build for PersonalAssistant (EP-104, REQ-002). Target: linux/amd64 (e.g. Synology DS220+).
-# Debian-based: sqlite-vec C code requires glibc/Linux (u_int*_t etc.); Alpine/musl fails to compile.
+# syntax=docker/dockerfile:1
+# Multi-stage build. linux/amd64 and linux/arm64 (Debian/glibc for CGO + sqlite-vec).
+# Builder runs on $BUILDPLATFORM (native go mod download / compile — avoids QEMU issues).
+# go build uses TARGETARCH from buildx with cross-compilers when host != target.
 
-# Build stage: CGO required for SQLite + sqlite-vec.
-FROM golang:1.26-bookworm AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS builder
+ARG TARGETOS=linux
+ARG TARGETARCH
+ARG BUILDARCH
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libsqlite3-dev \
+    gcc-x86-64-linux-gnu \
+    libc6-dev-amd64-cross \
+    gcc-aarch64-linux-gnu \
+    libc6-dev-arm64-cross \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 COPY go.mod go.sum ./
-# Reuse module cache across builds (BuildKit).
-RUN --mount=type=cache,target=/go/pkg/mod go mod download
+RUN go mod download
 COPY . .
-ARG CGO_ENABLED=1
-ARG GOOS=linux
-ARG GOARCH=amd64
-# BuildKit cache mounts: reuse Go module and build caches across builds (faster rebuilds).
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go build -ldflags="-s -w" -o /pa ./cmd/pa
+RUN set -eux; \
+  ARCH="${TARGETARCH:-amd64}"; \
+  case "$ARCH" in \
+    amd64) \
+      if [ "$BUILDARCH" = "amd64" ]; then export CC=gcc CXX=g++; \
+      else export CC=x86_64-linux-gnu-gcc CXX=x86_64-linux-gnu-g++; fi \
+      ;; \
+    arm64) \
+      if [ "$BUILDARCH" = "arm64" ]; then export CC=gcc CXX=g++; \
+      else export CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++; fi \
+      ;; \
+    *) echo "unsupported TARGETARCH=$ARCH (use amd64 or arm64)" >&2; exit 1 ;; \
+  esac; \
+  CGO_ENABLED=1 GOOS="${TARGETOS:-linux}" GOARCH="$ARCH" \
+  go build -ldflags="-s -w" -o /pa ./cmd/pa
 
-# Runtime stage: minimal Debian slim, binary + shared libs.
-FROM debian:bookworm-slim
+ARG TARGETPLATFORM=linux/amd64
+FROM --platform=$TARGETPLATFORM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     cron \
@@ -30,15 +45,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -s /bin/false pa
 
-# Entrypoint: chown /data, write cron.d for summarization from env, start cron, exec app as user pa.
-# Summarization auto-run is via in-container cron (day 0:15, month 1st 0:30, year Jan 1 0:45).
-COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
+COPY --chmod=755 scripts/entrypoint.sh /entrypoint.sh
 COPY --from=builder /pa /pa
-COPY scripts/summarize.sh /usr/local/bin/summarize.sh
-RUN chmod +x /usr/local/bin/summarize.sh
-# Config directory; config file is config.json inside it. Override via PA_CONFIG_DIR.
+COPY --chmod=755 scripts/summarize.sh /usr/local/bin/summarize.sh
 ENV PA_CONFIG_DIR=/etc/pa
 ENTRYPOINT ["/entrypoint.sh"]
 CMD []

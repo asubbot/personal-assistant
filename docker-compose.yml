@@ -1,5 +1,9 @@
-# PersonalAssistant — Docker Compose for DS220+ (linux/amd64).
-# Uses config/ and .secrets/; set PA_DATA_DIR and PA_SECRETS_DIR so relative paths in config resolve. See README § Docker deploy.
+# PersonalAssistant — Docker Compose base (no fixed image platform).
+# For an explicit single-arch build, use:
+#   docker compose -f docker-compose.arm64.yml ...   (Apple Silicon / ARM64 Linux)
+#   docker compose -f docker-compose.amd64.yml ...   (Intel/AMD / Synology x86_64)
+# Plain `docker compose up --build` uses this file only: BuildKit targets the host architecture.
+# Uses config/ and .secrets/; set PA_DATA_DIR and PA_SECRETS_DIR so relative paths in config resolve. See docs/docker.md.
 
 secrets:
   telegram_bot_token:
@@ -8,15 +12,22 @@ secrets:
     file: ./.secrets/telegram_users.json
   openai_api_key:
     file: ./.secrets/openai_api_key.txt
+  # Node SSH key: basename must match nodes.*.auth.private_key_path in config (resolves under PA_SECRETS_DIR).
+  openclaw_synology:
+    file: ./.secrets/openclaw_synology
 
 volumes:
   pa_data:
 
 services:
   pa:
-    build: .
-    platform: linux/amd64
+    build:
+      context: .
     restart: unless-stopped
+    # Optional: copy .env.example → .env for PA_LOG_LEVEL etc. (see docs/docker.md).
+    env_file:
+      - path: .env
+        required: false
     # Config uses bare filenames; PA_SECRETS_DIR=/run/secrets → /run/secrets/<name>.
     secrets:
       - source: telegram_bot_token
@@ -25,11 +36,13 @@ services:
         target: /run/secrets/telegram_users.json
       - source: openai_api_key
         target: /run/secrets/openai_api_key.txt
+      - source: openclaw_synology
+        target: /run/secrets/openclaw_synology
     volumes:
       - ./config:/etc/pa:ro
       - pa_data:/data
+    # Overrides .env: paths must match container layout. PA_LOG_LEVEL defaults to info in-app if unset.
     environment:
       - PA_CONFIG_DIR=/etc/pa
       - PA_DATA_DIR=/data
       - PA_SECRETS_DIR=/run/secrets
-      - PA_LOG_LEVEL=info
