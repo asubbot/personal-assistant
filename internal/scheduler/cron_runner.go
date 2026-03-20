@@ -30,7 +30,6 @@ func newCronRunner(tasks []Task, cfg Config, execute func(context.Context, Task)
 			cfg.Logger.Warn("scheduler: task has empty schedule", "index", i)
 			continue
 		}
-		task := task
 		_, err := r.cron.AddFunc(task.Schedule, func() {
 			r.execute(r.ctx, task)
 		})

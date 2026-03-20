@@ -22,6 +22,13 @@ linters:
     - gocritic
     - unparam
     - forbidigo
+    - copyloopvar
+    - durationcheck
+    - fatcontext
+    - loggercheck
+    - mirror
+    - paralleltest
+    - thelper
   settings:
     gocyclo:
       min-complexity: 12
@@ -70,6 +77,10 @@ linters:
           msg: use structured logging (log/slog) instead of fmt.Print*
         - pattern: io/ioutil\.
           msg: io/ioutil is deprecated; use os or io packages
+    paralleltest:
+      # Do not require t.Parallel() on every test (would be hundreds of edits; many tests use env/tempdir).
+      # Still flags incorrect use of t.Parallel (e.g. unsafe subtests).
+      ignore-missing: true
   exclusions:
     generated: lax
 issues:

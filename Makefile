@@ -1,22 +1,26 @@
-.PHONY: help fmt test test-integration vet lint coverage coverage-html check check-boundaries
+.PHONY: help fmt test test-race test-integration vet lint coverage coverage-html check check-boundaries
 
 help:
 	@echo "Available commands:"
 	@echo "  make fmt    - Format Go code"
 	@echo "  make test   - Run all tests (unit + integration; integration tests require Docker)"
+	@echo "  make test-race - Same as test but with -race (slower; no coverage)"
 	@echo "  make test-integration - Run only integration tests (requires Docker; two-user SSH uses Debian image)"
 	@echo "  make vet    - Run go vet"
 	@echo "  make lint   - Run golangci-lint (if installed)"
 	@echo "  make coverage     - Print coverage summary (all tests)"
 	@echo "  make coverage-html - Build HTML coverage report"
 	@echo "  make check-boundaries - Verify module boundaries (no cycles, forbidden edges)"
-	@echo "  make check  - Run fmt + vet + lint + check-boundaries + test (all tests, one coverage)"
+	@echo "  make check  - Run fmt + vet + lint + test-race + coverage + check-boundaries"
 
 fmt:
 	go fmt ./...
 
 test:
 	go test -tags=integration ./...
+
+test-race:
+	go test -race -tags=integration ./...
 
 test-integration:
 	go test -tags=integration ./tests/integration/...
@@ -46,4 +50,4 @@ coverage-html:
 check-boundaries:
 	@./scripts/check-module-boundaries.sh
 
-check: fmt vet lint coverage check-boundaries
+check: fmt vet lint test-race coverage check-boundaries
