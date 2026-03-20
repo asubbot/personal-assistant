@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-006 |
-| **Status** | IN PROGRESS |
+| **Status** | DONE |
 | **Title** | Tool-call reliability and model escalation |
 | **Description** | Improve automatic recovery when tool invocations fail or the model produces unusable tool output, using the ordered list of configured LLM providers without requiring the user to intervene. Introduce explicit policy (error classification, limits, observability), a **configurable baseline** model (not assumed minimal/cheap), and **rollback at end of user turn** (Option A): the next user message always starts from the configured baseline; mid-turn rollback variants are out of scope. |
 | **First version date** | 2026-03-19 (date of first approved write of this document; start of work on the epic idea) |

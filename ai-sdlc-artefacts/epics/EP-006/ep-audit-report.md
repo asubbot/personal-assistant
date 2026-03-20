@@ -1,6 +1,6 @@
 # EP-006 — Audit report
 
-**Date and time of creation:** 2026-03-20 11:37 UTC (stage 9 epic audit; `make check` on same calendar date)
+**Date and time of creation:** 2026-03-20 13:01 UTC (project-level stage 9 audit; `make check` on same date)
 
 **Pipeline:** Stage 9 ([09-audit.skill.md](../../../ai-sdlc/specification/skills/09-audit.skill.md)).
 
@@ -10,7 +10,7 @@
 
 ## Summary
 
-**PASS:** `make check` succeeded (fmt, vet, golangci-lint, `go test -tags=integration ./...`, module boundaries). Escalation policy: `internal/escalationpolicy` covers catalog (`WrapCatalogValidateError` / `ValidateKind`) and noderunner (`WrapNodeOutcome`). Handler unit tests in [handler_ep006_audit_test.go](../../../internal/core/handler_ep006_audit_test.go) cover 3-provider order, max-escalation / last-provider stop, baseline per message (AC-06.001 + AC-06.008), escalation logs, escalation disabled with chain present, and Hermes parse escalation. Integration: [ep006_escalation_run_test.go](../../../tests/integration/ep006_escalation_run_test.go) including `TestEP006_Run_threeProviders_threeMessages_chainAndBaselineReset`. **README** documents `tools.llm_escalation`. **Manual:** [ep-manual-tests.md](ep-manual-tests.md) for operator sign-off in real environments.
+**PASS:** `make check` succeeded (fmt, vet, golangci-lint, `go test -tags=integration ./...`, module boundaries). Escalation policy: `internal/escalationpolicy` covers catalog (`WrapCatalogValidateError` / `ValidateKind`) and noderunner (`WrapNodeOutcome`). Handler unit tests in [handler_ep006_audit_test.go](../../../internal/core/handler_ep006_audit_test.go) cover 3-provider order, max-escalation / last-provider stop, baseline per message (AC-06.001 + AC-06.008), escalation logs, escalation disabled with chain present, and Hermes parse escalation. Integration: [ep006_escalation_run_test.go](../../../tests/integration/ep006_escalation_run_test.go) including `TestEP006_Run_threeProviders_threeMessages_chainAndBaselineReset`. **README** documents `tools.llm_escalation`. **Manual:** [ep-manual-tests.md](ep-manual-tests.md) for operator sign-off in real environments. **Epic status** in [ep-scope.md](ep-scope.md): **DONE**.
 
 ---
 
@@ -34,7 +34,7 @@
 
 - **Command:** `make check`
 - **Result:** PASS
-- **Total statement coverage:** **78.3%** (from `go tool cover -func=coverage.out` total line)
+- **Total statement coverage:** **78.6%** (from `go tool cover -func=coverage.out` total line)
 
 ---
 
@@ -75,5 +75,5 @@
 | Type | Item |
 |------|------|
 | **Observation** | [REQ-06.011](ep-requirements.md#observability) (*tried_providers* summary): optional; handler tests note it may be absent — no functional gap. |
+| **Observation** | [ep-scope.md](ep-scope.md): epic **DONE** (closure recorded). |
 | **Recommendation** | Before production: run selected scenarios in [ep-manual-tests.md](ep-manual-tests.md) (escalation on/off, secrets in logs). |
-| **Recommendation** | [ep-scope.md](ep-scope.md) remains **IN PROGRESS** until epic closure is decided after operator sign-off. |
