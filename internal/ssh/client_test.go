@@ -123,3 +123,28 @@ func TestNewClient_emptySSHKnownHostsPath_returnsError(t *testing.T) {
 		t.Errorf("NewClient: error = %v, want ssh_known_hosts_path in message", err)
 	}
 }
+
+func TestVerifyDialAndHandshake_propagatesNewClientError(t *testing.T) {
+	dir := t.TempDir()
+	knownHostsPath := filepath.Join(dir, "known_hosts")
+	if err := os.WriteFile(knownHostsPath, nil, 0o600); err != nil {
+		t.Fatalf("write known_hosts: %v", err)
+	}
+	cfg := &config.Config{
+		Paths: config.Paths{SSHKnownHostsPath: knownHostsPath},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "missing_key")},
+				CommandAllowlistPath: "/a.txt",
+			},
+		},
+	}
+	ctx := context.Background()
+
+	err := VerifyDialAndHandshake(ctx, cfg, "n1")
+	if err == nil {
+		t.Fatal("VerifyDialAndHandshake: expected error")
+	}
+}

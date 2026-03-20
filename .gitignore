@@ -2,7 +2,8 @@
 *.out
 coverage.html
 data/
-pa
+# Binary / output named pa at repo root only (not cmd/pa)
+/pa
 
 # Environment and secrets
 .env

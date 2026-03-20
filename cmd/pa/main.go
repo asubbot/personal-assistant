@@ -18,12 +18,14 @@ import (
 	"pa/internal/memory"
 	"pa/internal/noderunner"
 	"pa/internal/scheduler"
+	"pa/internal/ssh"
 	"pa/internal/summarize"
 	"pa/internal/telegram"
 	"pa/internal/toolindex"
 	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -142,6 +144,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	if err != nil {
 		return err
 	}
+	warnIfNodesSSHUnreachable(context.Background(), cfg, logger)
 	defer func() {
 		if vectorStore != nil {
 			if closeErr := vectorStore.Close(); closeErr != nil {
@@ -173,6 +176,28 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
 	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti)
+}
+
+const sshStartupCheckTimeout = 5 * time.Second
+
+// warnIfNodesSSHUnreachable tries SSH dial and handshake for each configured node; logs a warning on failure and never returns an error.
+func warnIfNodesSSHUnreachable(ctx context.Context, cfg *config.Config, logger *slog.Logger) {
+	if cfg == nil || len(cfg.Nodes) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(cfg.Nodes))
+	for id := range cfg.Nodes {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+	for _, nodeID := range ids {
+		checkCtx, cancel := context.WithTimeout(ctx, sshStartupCheckTimeout)
+		err := ssh.VerifyDialAndHandshake(checkCtx, cfg, nodeID)
+		cancel()
+		if err != nil {
+			logger.Warn("ssh startup check failed", "node_id", nodeID, "error", err)
+		}
+	}
 }
 
 func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {

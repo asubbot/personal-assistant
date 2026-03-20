@@ -80,6 +80,16 @@ func NewClient(ctx context.Context, cfg *config.Config, nodeID string) (*Client,
 	return &Client{client: client, nodeID: nodeID}, nil
 }
 
+// VerifyDialAndHandshake opens an SSH connection to the node and closes it immediately.
+// It checks TCP reachability, known_hosts verification, and public-key authentication.
+func VerifyDialAndHandshake(ctx context.Context, cfg *config.Config, nodeID string) error {
+	c, err := NewClient(ctx, cfg, nodeID)
+	if err != nil {
+		return err
+	}
+	return c.Close()
+}
+
 // Exec runs the command on the node. Command is executed exec-style (no shell on our side).
 // The remote server may run it in a shell; allowlist must restrict what is allowed (enforced by caller).
 func (c *Client) Exec(ctx context.Context, command string) (stdout, stderr []byte, err error) {

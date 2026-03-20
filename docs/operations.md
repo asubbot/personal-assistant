@@ -16,6 +16,8 @@ PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets PA_LOG_LEVEL=i
 
 The process runs until stopped (SIGINT/SIGTERM).
 
+When **`nodes`** is non-empty, the binary runs a short SSH check per node (TCP, host key, key auth) immediately after startup setup. Failures are logged at **warn** severity; the bot still starts. For a stricter check that runs an allowlisted remote command and exits non-zero on failure, use **`-verify-nodes`**.
+
 ## CLI flags (`cmd/pa`)
 
 All flags are defined in `cmd/pa/main.go` via the standard `flag` package.
