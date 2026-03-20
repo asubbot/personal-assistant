@@ -115,6 +115,11 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing supports_tools", "missing_supports_tools.json", "supports_tools is required"}, // Covers AC-04.028 (REQ-04.034)
 		{"tools.llm_escalation enabled with one provider", "tools_llm_escalation_enabled_one_provider.json", "tools.llm_escalation.enabled requires at least two llm_providers"},
 		{"tools.llm_escalation enabled max_per_user_message zero", "tools_llm_escalation_max_zero.json", "max_per_user_message must be >= 1 when enabled"},
+		{"missing tools section", "missing_tools.json", "tools is required"},
+		{"missing log_redaction section", "missing_log_redaction.json", "log_redaction is required"},
+		{"missing pa_timezone", "missing_pa_timezone.json", "pa_timezone is required"},
+		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
+		{"conversation_context zero max chars", "conversation_context_zero.json", "injected_context_max_chars must be >= 1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -209,7 +214,12 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	    "tool_catalog_path": "nonexistent_catalog.yaml"
 	  },
 	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100 },
-	  "nodes": {}
+	  "nodes": {},
+	  "tools": { "text_based_enabled": false },
+	  "log_redaction": { "additional_patterns": [] },
+	  "pa_timezone": "UTC",
+	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+	  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
 	}`
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
 		t.Fatal(err)
@@ -289,14 +299,6 @@ func TestLoad_ValidPATimezone_loads(t *testing.T) {
 	if cfg.PATimezone != "Europe/Moscow" {
 		t.Errorf("PATimezone = %q, want Europe/Moscow", cfg.PATimezone)
 	}
-	// Empty/omitted pa_timezone loads (valid_no_users.json has no pa_timezone)
-	cfg2, err := Load(filepath.Join("testdata", "valid_no_users.json"))
-	if err != nil {
-		t.Fatalf("Load(valid_no_users): %v", err)
-	}
-	if cfg2.PATimezone != "" {
-		t.Errorf("PATimezone when omitted = %q, want empty", cfg2.PATimezone)
-	}
 }
 
 // Covers AC-01.005 (US-03): users_path points to nonexistent file returns clear error.
@@ -311,7 +313,12 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true }],
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
-  "nodes": {}
+  "nodes": {},
+  "tools": { "text_based_enabled": false },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -356,7 +363,12 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
       "auth": { "private_key_path": "/key" },
       "command_allowlist_path": "/allowlist.txt"
     }
-  }
+  },
+  "tools": { "text_based_enabled": false },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)

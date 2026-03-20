@@ -107,6 +107,7 @@ func TestEP006_Run_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 		},
 		ToolCatalog: catalog,
 	}
+	ensureCoreRunConfigRequiredSections(cfg)
 
 	results := make(chan result, 2)
 	adapter := &fakeAdapterSequential{userID: 1, messages: []string{"one", "two"}, results: results}
@@ -172,6 +173,7 @@ func TestEP006_Run_toolEscalation_secondProviderCompletes(t *testing.T) {
 		},
 		ToolCatalog: catalog,
 	}
+	ensureCoreRunConfigRequiredSections(cfg)
 
 	adapter := &fakeAdapter{userID: 1, text: "run echo", done: make(chan result, 1)}
 	logger := slog.Default()
@@ -249,6 +251,7 @@ func TestEP006_Run_threeProviders_threeMessages_chainAndBaselineReset(t *testing
 		},
 		ToolCatalog: catalog,
 	}
+	ensureCoreRunConfigRequiredSections(cfg)
 
 	results := make(chan result, 3)
 	adapter := &fakeAdapterSequential{userID: 1, messages: []string{"first", "second", "third"}, results: results}

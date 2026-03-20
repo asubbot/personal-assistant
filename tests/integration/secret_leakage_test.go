@@ -87,7 +87,7 @@ func TestSecretLeakage_LLMContextAndReplyAndLogsDoNotContainFakeSecret(t *testin
 	t.Parallel()
 	dir := t.TempDir()
 	tokenPath, apiKeyPath, usersPath := writeFakeSecretFiles(t, dir)
-
+	st := true
 	cfg := &config.Config{
 		Version: 1,
 		Telegram: config.Telegram{
@@ -95,10 +95,11 @@ func TestSecretLeakage_LLMContextAndReplyAndLogsDoNotContainFakeSecret(t *testin
 			UsersPath: usersPath,
 		},
 		LLMProviders: []config.LLMProvider{
-			{Type: "openai", Endpoint: "https://api.example.com/v1", APIKeyPath: apiKeyPath, Model: "gpt-4"},
+			{Type: "openai", Endpoint: "https://api.example.com/v1", APIKeyPath: apiKeyPath, Model: "gpt-4", SupportsTools: &st},
 		},
 		Paths: config.Paths{},
 	}
+	ensureCoreRunConfigRequiredSections(cfg)
 
 	var logBuf bytes.Buffer
 	logger := slog.New(&bufferHandler{buf: &logBuf})

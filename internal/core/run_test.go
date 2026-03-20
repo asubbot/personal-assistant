@@ -11,9 +11,20 @@ import (
 	"testing"
 )
 
+// minimalConfigForRun satisfies config fields required by newRunConversationHandler when tests bypass config.Load.
+func minimalConfigForRun() *config.Config {
+	return &config.Config{
+		Tools:               &config.ToolsConfig{},
+		LogRedaction:        &config.LogRedaction{},
+		PATimezone:          "UTC",
+		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
+		ConversationContext: &config.ConversationContextConfig{InjectedContextMaxChars: 4000, VectorSearchTopK: 10},
+	}
+}
+
 // Covers AC-01.003 (US-02): core.Run with nil adapter returns error and does not start serving.
 func TestRun_nilAdapter_returnsError(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := minimalConfigForRun()
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
 
@@ -28,7 +39,7 @@ func TestRun_nilAdapter_returnsError(t *testing.T) {
 
 // Covers AC-01.003 (US-02): core.Run with no providers returns error and does not start serving.
 func TestRun_nilProvider_returnsError(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := minimalConfigForRun()
 	logger := slog.Default()
 	adapter := &capturingAdapter{}
 
@@ -53,7 +64,7 @@ func (a *capturingAdapter) Run(ctx context.Context, handler MessageHandler) erro
 
 // Covers AC-01.003 (US-02): core.Run calls adapter.Run with non-nil handler (valid wiring).
 func TestRun_callsAdapterRunWithHandler(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := minimalConfigForRun()
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
@@ -112,8 +123,13 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 	}
 
 	cfg := &config.Config{
-		Version:  1,
-		Telegram: config.Telegram{TokenPath: secretPath},
+		Version:             1,
+		Telegram:            config.Telegram{TokenPath: secretPath},
+		Tools:               &config.ToolsConfig{},
+		LogRedaction:        &config.LogRedaction{},
+		PATimezone:          "UTC",
+		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
+		ConversationContext: &config.ConversationContextConfig{InjectedContextMaxChars: 4000, VectorSearchTopK: 10},
 	}
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -138,7 +154,7 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 
 // Covers wiring validation: labels must match providers length.
 func TestRun_labelsLengthMismatch_returnsError(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := minimalConfigForRun()
 	logger := slog.Default()
 	p := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
 	adapter := &capturingAdapter{}
@@ -153,7 +169,7 @@ func TestRun_labelsLengthMismatch_returnsError(t *testing.T) {
 
 // Covers provider chain mode: first provider in chain can handle completion.
 func TestRun_providerChain_wiresHandler(t *testing.T) {
-	cfg := &config.Config{}
+	cfg := minimalConfigForRun()
 	logger := slog.Default()
 	p := &mockProvider{result: &llm.CompletionResult{Content: "from-chain"}}
 	adapter := &capturingAdapter{}

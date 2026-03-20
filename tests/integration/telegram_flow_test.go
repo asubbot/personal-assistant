@@ -60,6 +60,7 @@ func TestTelegramFlow_OneMessage_ReplyWithinTimeout(t *testing.T) {
 	adapter := &fakeAdapter{userID: 1, text: "hi", done: make(chan result, 1)}
 	provider := &mockLLM{content: wantReply}
 	cfg := &config.Config{}
+	ensureCoreRunConfigRequiredSections(cfg)
 	logger := slog.Default()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -93,6 +94,7 @@ func TestTelegramFlow_EmptyMessage_RejectionNoLLMCall(t *testing.T) {
 	provider := &mockLLMWithCalled{content: "should not be used"}
 	adapter := &fakeAdapter{userID: 1, text: "   ", done: make(chan result, 1)}
 	cfg := &config.Config{}
+	ensureCoreRunConfigRequiredSections(cfg)
 	logger := slog.Default()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -129,6 +131,7 @@ func TestTelegramFlow_OverMaxLength_RejectionNoLLMCall(t *testing.T) {
 	provider := &mockLLMWithCalled{content: "should not be used"}
 	adapter := &fakeAdapter{userID: 1, text: "1234567", done: make(chan result, 1)}
 	cfg := &config.Config{}
+	ensureCoreRunConfigRequiredSections(cfg)
 	cfg.Telegram.MaxMessageLength = 5
 	logger := slog.Default()
 
@@ -165,6 +168,7 @@ func TestTelegramFlow_DifferentProviderUsedPerRun(t *testing.T) {
 	t.Parallel()
 	logger := slog.Default()
 	cfg := &config.Config{}
+	ensureCoreRunConfigRequiredSections(cfg)
 
 	// First run: provider A
 	replyA := "reply from provider A"

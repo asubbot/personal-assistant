@@ -13,6 +13,15 @@ import (
 
 const supportedVersion = 1
 
+// Upper bounds for tool pre-selection and conversation context (catch typos; values must be explicit in config).
+const (
+	maxToolSearchTopK          = 500
+	maxToolMinCount            = 500
+	maxToolFallbackCap         = 1000
+	maxVectorSearchTopK        = 500
+	maxInjectedContextMaxChars = 10_000_000
+)
+
 // Load reads and validates config from path. On validation failure returns a clear error.
 func Load(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
@@ -28,6 +37,7 @@ func Load(path string) (*Config, error) {
 	if err := validate(&raw); err != nil {
 		return nil, err
 	}
+	raw.PATimezone = strings.TrimSpace(raw.PATimezone)
 
 	ResolvePaths(&raw, path)
 
@@ -55,6 +65,13 @@ func Load(path string) (*Config, error) {
 }
 
 func validate(c *Config) error {
+	if err := validateCore(c); err != nil {
+		return err
+	}
+	return validateMandatoryJSONSections(c)
+}
+
+func validateCore(c *Config) error {
 	if err := validateVersion(c); err != nil {
 		return err
 	}
@@ -73,6 +90,13 @@ func validate(c *Config) error {
 	if err := validateNodes(c); err != nil {
 		return err
 	}
+	return nil
+}
+
+func validateMandatoryJSONSections(c *Config) error {
+	if err := validateTools(c); err != nil {
+		return err
+	}
 	if err := validateLogRedaction(c); err != nil {
 		return err
 	}
@@ -87,6 +111,13 @@ func validate(c *Config) error {
 	}
 	if err := validateLLMEscalation(c); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateTools(c *Config) error {
+	if c.Tools == nil {
+		return errors.New("config: tools is required (use {\"tools\": {}} with explicit text_based_enabled if needed)")
 	}
 	return nil
 }
@@ -111,48 +142,64 @@ func validateLLMEscalation(c *Config) error {
 
 func validateToolPreSelection(c *Config) error {
 	if c.ToolPreSelection == nil {
-		return nil
+		return errors.New("config: tool_pre_selection is required")
 	}
 	t := c.ToolPreSelection
-	if t.ToolSearchTopK < 0 {
-		return errors.New("config: tool_pre_selection.tool_search_top_k must be >= 0")
+	if t.ToolSearchTopK < 1 {
+		return errors.New("config: tool_pre_selection.tool_search_top_k must be >= 1")
 	}
-	if t.ToolMinCount < 0 {
-		return errors.New("config: tool_pre_selection.tool_min_count must be >= 0")
+	if t.ToolSearchTopK > maxToolSearchTopK {
+		return fmt.Errorf("config: tool_pre_selection.tool_search_top_k must be <= %d", maxToolSearchTopK)
 	}
-	if t.ToolFallbackCap < 0 {
-		return errors.New("config: tool_pre_selection.tool_fallback_cap must be >= 0")
+	if t.ToolMinCount < 1 {
+		return errors.New("config: tool_pre_selection.tool_min_count must be >= 1")
+	}
+	if t.ToolMinCount > maxToolMinCount {
+		return fmt.Errorf("config: tool_pre_selection.tool_min_count must be <= %d", maxToolMinCount)
+	}
+	if t.ToolFallbackCap < 1 {
+		return errors.New("config: tool_pre_selection.tool_fallback_cap must be >= 1")
+	}
+	if t.ToolFallbackCap > maxToolFallbackCap {
+		return fmt.Errorf("config: tool_pre_selection.tool_fallback_cap must be <= %d", maxToolFallbackCap)
 	}
 	return nil
 }
 
 func validateConversationContext(c *Config) error {
 	if c.ConversationContext == nil {
-		return nil
+		return errors.New("config: conversation_context is required")
 	}
 	cc := c.ConversationContext
-	if cc.InjectedContextMaxChars < 0 {
-		return errors.New("config: conversation_context.injected_context_max_chars must be >= 0")
+	if cc.InjectedContextMaxChars < 1 {
+		return errors.New("config: conversation_context.injected_context_max_chars must be >= 1")
 	}
-	if cc.VectorSearchTopK < 0 {
-		return errors.New("config: conversation_context.vector_search_top_k must be >= 0")
+	if cc.InjectedContextMaxChars > maxInjectedContextMaxChars {
+		return fmt.Errorf("config: conversation_context.injected_context_max_chars must be <= %d", maxInjectedContextMaxChars)
+	}
+	if cc.VectorSearchTopK < 1 {
+		return errors.New("config: conversation_context.vector_search_top_k must be >= 1")
+	}
+	if cc.VectorSearchTopK > maxVectorSearchTopK {
+		return fmt.Errorf("config: conversation_context.vector_search_top_k must be <= %d", maxVectorSearchTopK)
 	}
 	return nil
 }
 
 func validatePATimezone(c *Config) error {
-	if strings.TrimSpace(c.PATimezone) == "" {
-		return nil
+	tz := strings.TrimSpace(c.PATimezone)
+	if tz == "" {
+		return errors.New("config: pa_timezone is required (e.g. \"UTC\" or an IANA timezone name)")
 	}
-	if _, err := time.LoadLocation(c.PATimezone); err != nil {
-		return fmt.Errorf("config: invalid pa_timezone %q: %w", c.PATimezone, err)
+	if _, err := time.LoadLocation(tz); err != nil {
+		return fmt.Errorf("config: invalid pa_timezone %q: %w", tz, err)
 	}
 	return nil
 }
 
 func validateLogRedaction(c *Config) error {
 	if c.LogRedaction == nil {
-		return nil
+		return errors.New("config: log_redaction is required (use {\"log_redaction\": {\"additional_patterns\": []}} if none)")
 	}
 	additional := make([]logredact.Pattern, 0, len(c.LogRedaction.AdditionalPatterns))
 	for _, p := range c.LogRedaction.AdditionalPatterns {

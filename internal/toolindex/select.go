@@ -11,15 +11,9 @@ import (
 	"sort"
 )
 
-const (
-	defaultTopK        = 10
-	defaultMinTools    = 1
-	defaultFallbackCap = 50
-)
-
 // SelectToolIDs returns tool IDs for the given query: either from vector search (top-k) or fallback (sorted catalog IDs up to cap).
 // catalog nil or empty → empty slice. When index is not ready or store is nil, or search returns fewer than minTools, fallback is used.
-// topK, minTools, fallbackCap <= 0 use defaults: 10, 1, 50.
+// topK, minTools, and fallbackCap must be positive (enforced at config load for production paths).
 func SelectToolIDs(
 	ctx context.Context,
 	embedder embedding.Embedder,
@@ -30,8 +24,6 @@ func SelectToolIDs(
 	topK, minTools, fallbackCap int,
 	logger *slog.Logger,
 ) ([]string, error) {
-	topK, minTools, fallbackCap = applyPreSelectionDefaults(topK, minTools, fallbackCap)
-
 	if catalog == nil || len(catalog.Tools) == 0 {
 		return nil, nil
 	}
@@ -56,19 +48,6 @@ func SelectToolIDs(
 		return doFallback("below minimum"), nil
 	}
 	return ids, nil
-}
-
-func applyPreSelectionDefaults(topK, minTools, fallbackCap int) (int, int, int) {
-	if topK <= 0 {
-		topK = defaultTopK
-	}
-	if minTools <= 0 {
-		minTools = defaultMinTools
-	}
-	if fallbackCap <= 0 {
-		fallbackCap = defaultFallbackCap
-	}
-	return topK, minTools, fallbackCap
 }
 
 func logFallbackReason(ctx context.Context, logger *slog.Logger, reason string) {

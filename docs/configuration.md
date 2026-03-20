@@ -37,11 +37,11 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 - **`embedding`** — separate provider for memory embeddings (vector index).
 - **`paths`** — `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, **`llm_log_retention_days`** (required, ≥ 1), `scheduled_tasks_path`, `ssh_known_hosts_path`, `tool_catalog_path`.
 - **`nodes`** — named nodes with `host`, `port`, `dedicated_user`, `auth.private_key_path`, `command_allowlist_path`.
-- **`tools`** — optional `text_based_enabled`; optional **`llm_escalation`** (`enabled`, `max_per_user_message`, `baseline_index`). When `enabled` is true: at least two `llm_providers`, valid `baseline_index`, and **`max_per_user_message` ≥ 1**.
-- **`tool_pre_selection`** — optional; **all zero** means use code defaults (vector top-K, minimum tools, fallback cap). Non-zero values are validated (≥ 0).
-- **`conversation_context`** — optional limits for injected context; zeros use defaults.
-- **`pa_timezone`** — IANA timezone name for assistant day boundaries / summarization (empty → UTC).
-- **`log_redaction`** — optional `additional_patterns` (`id`, `regex`, `replacement`); IDs must not collide with built-in redactor IDs.
+- **`tools`** — **required** object (use `{}` minimum). Optional `text_based_enabled`; optional **`llm_escalation`** (`enabled`, `max_per_user_message`, `baseline_index`). When `enabled` is true: at least two `llm_providers`, valid `baseline_index`, and **`max_per_user_message` ≥ 1**.
+- **`tool_pre_selection`** — **required**; `tool_search_top_k`, `tool_min_count`, and `tool_fallback_cap` must each be **≥ 1** (with documented upper caps to catch typos). No implicit defaults.
+- **`conversation_context`** — **required**; `injected_context_max_chars` and `vector_search_top_k` must each be **≥ 1**.
+- **`pa_timezone`** — **required**; non-empty IANA name (e.g. `UTC`, `Europe/Moscow`) for assistant day boundaries / summarization.
+- **`log_redaction`** — **required**; `additional_patterns` may be an empty array. Each pattern has `id`, `regex`, `replacement`; IDs must not collide with built-in redactor IDs.
 
 ## Scheduled tasks
 

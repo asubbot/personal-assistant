@@ -1,8 +1,41 @@
 {
   "version": 1,
-  "telegram": { "token_path": "/t", "users_path": "" },
+  "telegram": {
+    "token_path": "/t",
+    "users_path": ""
+  },
   "llm_providers": [],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "", "tool_catalog_path": "valid_tools.yaml" },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
-  "nodes": {}
+  "paths": {
+    "memory_dir": "/d",
+    "log_path": "/d",
+    "vector_index_path": "/d/pa_vectors.sqlite",
+    "llm_log_dir": "/d",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml"
+  },
+  "embedding": {
+    "type": "ollama",
+    "endpoint": "http://x",
+    "model": "m",
+    "dimensions": 768,
+    "batch_size": 100
+  },
+  "nodes": {},
+  "tools": {
+    "text_based_enabled": false
+  },
+  "log_redaction": {
+    "additional_patterns": []
+  },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": {
+    "tool_search_top_k": 10,
+    "tool_min_count": 1,
+    "tool_fallback_cap": 50
+  },
+  "conversation_context": {
+    "injected_context_max_chars": 4000,
+    "vector_search_top_k": 10
+  }
 }

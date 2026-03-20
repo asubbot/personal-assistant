@@ -442,10 +442,12 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 	}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
-		router:      mustRouterSingle(t, provider),
-		vectorStore: vs,
-		embedder:    emb,
-		logger:      logger,
+		router:           mustRouterSingle(t, provider),
+		vectorStore:      vs,
+		embedder:         emb,
+		logger:           logger,
+		contextMaxLen:    defaultContextMaxLen,
+		vectorSearchTopK: defaultVectorSearchTopK,
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "what did I say about fruit?")
@@ -468,10 +470,12 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	vs := &mockVectorStore{}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
-		router:      mustRouterSingle(t, provider),
-		vectorStore: vs,
-		embedder:    emb,
-		logger:      logger,
+		router:           mustRouterSingle(t, provider),
+		vectorStore:      vs,
+		embedder:         emb,
+		logger:           logger,
+		contextMaxLen:    defaultContextMaxLen,
+		vectorSearchTopK: defaultVectorSearchTopK,
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "user said this")
@@ -609,10 +613,12 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 	vs := &mockVectorStore{}
 
 	h := &conversationHandler{
-		router:      mustRouterSingle(t, provider),
-		vectorStore: vs,
-		embedder:    emb,
-		logger:      logger,
+		router:           mustRouterSingle(t, provider),
+		vectorStore:      vs,
+		embedder:         emb,
+		logger:           logger,
+		contextMaxLen:    defaultContextMaxLen,
+		vectorSearchTopK: defaultVectorSearchTopK,
 	}
 
 	reply, err := h.HandleMessage(context.Background(), 1, "hi")

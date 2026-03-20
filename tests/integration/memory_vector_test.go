@@ -51,6 +51,7 @@ func TestVectorStore_injectsPastContext(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
 	provider := &mockLLMWithMessages{content: "Noted: March 15."}
 	cfg := &config.Config{}
+	ensureCoreRunConfigRequiredSections(cfg)
 	logger := slog.Default()
 
 	// First run: user states a fact -> indexTurn adds it to vector store.

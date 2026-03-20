@@ -58,8 +58,16 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	if err != nil {
 		return nil, err
 	}
-	ctxMaxLen, topK := conversationContextParams(cfg)
-	toolTopK, toolMin, toolCap := toolPreSelectionParams(cfg)
+	var ctxMaxLen, topK int
+	var toolTopK, toolMin, toolCap int
+	if cfg != nil {
+		ctxMaxLen, topK = conversationContextParams(cfg)
+		toolTopK, toolMin, toolCap = toolPreSelectionParams(cfg)
+	} else {
+		// core.Run allows nil config only for narrow tests; match historical implicit defaults.
+		ctxMaxLen, topK = 4000, 10
+		toolTopK, toolMin, toolCap = 10, 1, 50
+	}
 	firstSupportsTools, textBased := firstProviderTextToolFlags(cfg)
 	h := &conversationHandler{
 		router:                     router,
@@ -128,27 +136,14 @@ func firstProviderTextToolFlags(cfg *config.Config) (firstSupportsTools, textBas
 	return firstSupportsTools, textBased
 }
 
-// toolPreSelectionParams returns tool_search_top_k, tool_min_count, tool_fallback_cap from config; 0 means use toolindex defaults.
+// toolPreSelectionParams returns tool pre-selection from config (validated at config.Load).
 func toolPreSelectionParams(cfg *config.Config) (topK, minCount, fallbackCap int) {
-	if cfg == nil || cfg.ToolPreSelection == nil {
-		return 0, 0, 0
-	}
 	return cfg.ToolPreSelection.ToolSearchTopK, cfg.ToolPreSelection.ToolMinCount, cfg.ToolPreSelection.ToolFallbackCap
 }
 
-// conversationContextParams returns injected context max chars and vector search top-K from config; zero means use defaults.
+// conversationContextParams returns conversation context limits from config (validated at config.Load).
 func conversationContextParams(cfg *config.Config) (contextMaxLen, vectorSearchTopK int) {
-	contextMaxLen = defaultContextMaxLen
-	vectorSearchTopK = defaultVectorSearchTopK
-	if cfg != nil && cfg.ConversationContext != nil {
-		if cfg.ConversationContext.InjectedContextMaxChars > 0 {
-			contextMaxLen = cfg.ConversationContext.InjectedContextMaxChars
-		}
-		if cfg.ConversationContext.VectorSearchTopK > 0 {
-			vectorSearchTopK = cfg.ConversationContext.VectorSearchTopK
-		}
-	}
-	return contextMaxLen, vectorSearchTopK
+	return cfg.ConversationContext.InjectedContextMaxChars, cfg.ConversationContext.VectorSearchTopK
 }
 
 // buildRedactor returns a redactor from built-in patterns plus config additional_patterns (REQ-01.027, REQ-01.028).

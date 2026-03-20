@@ -110,7 +110,12 @@ var validSummarizeConfig = `{
     "tool_catalog_path": "tools.yaml"
   },
   "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4, "batch_size": 100 },
-  "nodes": {}
+  "nodes": {},
+  "tools": { "text_based_enabled": false },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
 }`
 
 // runSummarizeCLI runs `go run ./cmd/pa -summarize=<value>` with minimal config in dir; expects exit 0 (e.g. skip when no data).

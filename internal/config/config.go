@@ -15,14 +15,14 @@ type Config struct {
 	Embedding           *EmbeddingProvider         `json:"embedding"` // optional; dedicated provider for vector memory embeddings
 	Paths               Paths                      `json:"paths"`
 	Nodes               map[string]Node            `json:"nodes"`
-	LogRedaction        *LogRedaction              `json:"log_redaction"`        // optional; additional redaction patterns (built-in are always applied)
-	PATimezone          string                     `json:"pa_timezone"`          // optional; IANA timezone for assistant's day (e.g. Europe/Moscow); used for summarization date; empty = UTC
-	ConversationContext *ConversationContextConfig `json:"conversation_context"` // optional; injected context limits; zero = use defaults
+	LogRedaction        *LogRedaction              `json:"log_redaction"`        // required; additional_patterns may be empty (built-in patterns always applied)
+	PATimezone          string                     `json:"pa_timezone"`          // required; IANA name for assistant's day (e.g. UTC, Europe/Moscow); used for summarization
+	ConversationContext *ConversationContextConfig `json:"conversation_context"` // required; injected context limits (all fields must be >= 1)
 	// ToolCatalog is the parsed tool catalog when paths.tool_catalog_path is set; nil otherwise. Populated at config load (fail fast on parse/schema error).
 	ToolCatalog *toolcatalog.Catalog `json:"-"`
-	// ToolPreSelection is optional; when present, values are validated (>= 0). Zero values mean use code defaults (topK=10, minTools=1, fallbackCap=50).
+	// ToolPreSelection is required; all numeric fields must be >= 1 (no runtime defaults).
 	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
-	// Tools is optional; text_based_enabled defaults to false when omitted or section absent.
+	// Tools is required; use {"tools":{}} minimum; text_based_enabled defaults to false when the key is omitted inside the object.
 	Tools *ToolsConfig `json:"tools"`
 }
 
@@ -48,21 +48,20 @@ func (c *Config) ToolsLLMEscalation() *LLMEscalationConfig {
 	return c.Tools.LLMEscalation
 }
 
-// ToolPreSelection holds parameters for tool pre-selection (REQ-04.019, REQ-04.020). All zero = use code defaults.
+// ToolPreSelection holds parameters for tool pre-selection (REQ-04.019, REQ-04.020). Validated at load; no implicit defaults.
 type ToolPreSelection struct {
-	ToolSearchTopK  int `json:"tool_search_top_k"` // top-k from vector search; 0 = 10
-	ToolMinCount    int `json:"tool_min_count"`    // minimum tools; if result has fewer, use fallback; 0 = 1
-	ToolFallbackCap int `json:"tool_fallback_cap"` // max tools when using fallback (sorted catalog ids); 0 = 50
+	ToolSearchTopK  int `json:"tool_search_top_k"` // top-k from vector search (>= 1)
+	ToolMinCount    int `json:"tool_min_count"`    // minimum tools from search before accepting; else fallback (>= 1)
+	ToolFallbackCap int `json:"tool_fallback_cap"` // max tools when using fallback (sorted catalog ids) (>= 1)
 }
 
-// ConversationContextConfig holds parameters for context injected into the LLM (vector search results).
-// Optional; zero values mean use defaults (4000 chars, top 10).
+// ConversationContextConfig holds parameters for context injected into the LLM (vector search results). All fields >= 1 at load.
 type ConversationContextConfig struct {
-	InjectedContextMaxChars int `json:"injected_context_max_chars"` // max chars for vector+memory block injected into LLM; 0 = 4000
-	VectorSearchTopK        int `json:"vector_search_top_k"`        // number of vector search results to inject; 0 = 10
+	InjectedContextMaxChars int `json:"injected_context_max_chars"` // max chars for vector+memory block injected into LLM
+	VectorSearchTopK        int `json:"vector_search_top_k"`        // number of vector search results to inject
 }
 
-// LogRedaction holds optional additional redaction patterns (REQ-01.028). Built-in patterns cannot be overridden (REQ-01.027).
+// LogRedaction holds additional redaction patterns (REQ-01.028). Built-in patterns cannot be overridden (REQ-01.027).
 type LogRedaction struct {
 	AdditionalPatterns []RedactionPattern `json:"additional_patterns"`
 }

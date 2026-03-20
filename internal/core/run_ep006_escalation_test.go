@@ -63,8 +63,12 @@ func TestRun_toolMayEscalate_advancesToSecondProvider(t *testing.T) {
 			{Type: "b", Model: "m1", SupportsTools: boolAsPtr(true)},
 			{Type: "c", Model: "m2", SupportsTools: boolAsPtr(true)},
 		},
-		Tools:       ep006EscalationConfig(true, 3, 0),
-		ToolCatalog: catalog,
+		Tools:               ep006EscalationConfig(true, 3, 0),
+		ToolCatalog:         catalog,
+		LogRedaction:        &config.LogRedaction{},
+		PATimezone:          "UTC",
+		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
+		ConversationContext: &config.ConversationContextConfig{InjectedContextMaxChars: 4000, VectorSearchTopK: 10},
 	}
 	logger := slog.Default()
 	adapter := &capturingAdapter{}
@@ -122,8 +126,12 @@ func TestRun_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 			{Type: "b", Model: "m1", SupportsTools: boolAsPtr(true)},
 			{Type: "c", Model: "m2", SupportsTools: boolAsPtr(true)},
 		},
-		Tools:       ep006EscalationConfig(true, 3, 1),
-		ToolCatalog: catalog,
+		Tools:               ep006EscalationConfig(true, 3, 1),
+		ToolCatalog:         catalog,
+		LogRedaction:        &config.LogRedaction{},
+		PATimezone:          "UTC",
+		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
+		ConversationContext: &config.ConversationContextConfig{InjectedContextMaxChars: 4000, VectorSearchTopK: 10},
 	}
 	adapter := &capturingAdapter{}
 	err := Run(context.Background(), cfg, slog.Default(), adapter,

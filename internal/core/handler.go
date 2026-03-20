@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	defaultContextMaxLen    = 4000 // used when config conversation_context.injected_context_max_chars is 0 or unset
-	defaultVectorSearchTopK = 10   // used when config conversation_context.vector_search_top_k is 0 or unset
+	defaultContextMaxLen    = 4000 // tests: explicit handler.contextMaxLen when simulating production defaults
+	defaultVectorSearchTopK = 10   // tests: explicit handler.vectorSearchTopK when simulating production defaults
 	logTruncateMaxLen       = 2000 // max chars per message/response when logging at DEBUG (REQ-01.021)
 	maxToolRounds           = 10   // max request–tool-result rounds to avoid infinite loop (REQ-04.006)
 )
@@ -60,8 +60,8 @@ type conversationHandler struct {
 	toolFallbackCap  int
 	logger           *slog.Logger
 	maxMessageLength int
-	contextMaxLen    int                 // max chars for injected context block; 0 = defaultContextMaxLen
-	vectorSearchTopK int                 // number of vector search results; 0 = defaultVectorSearchTopK
+	contextMaxLen    int                 // max chars for injected context block (from config; >= 1 when using loaded config)
+	vectorSearchTopK int                 // vector search top-K for context injection (from config; >= 1 when using loaded config)
 	llmLog           llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
 	model            string              // configured model name for LLM log entries
 	logRedactor      func(string) string // optional; redacts content in DEBUG app logs and INFO tool-invocation logs (REQ-01.026)
@@ -457,9 +457,6 @@ func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID st
 // Only whole chunks are included; when the limit is reached, remaining chunks are dropped (no mid-chunk truncation).
 func (h *conversationHandler) gatherContext(ctx context.Context, userText string) string {
 	topK := h.vectorSearchTopK
-	if topK <= 0 {
-		topK = defaultVectorSearchTopK
-	}
 	if h.vectorStore == nil || h.embedder == nil {
 		return ""
 	}
@@ -478,9 +475,6 @@ func (h *conversationHandler) gatherContext(ctx context.Context, userText string
 	}
 
 	maxLen := h.contextMaxLen
-	if maxLen <= 0 {
-		maxLen = defaultContextMaxLen
-	}
 	const suffixReserve = 4 // for trailing "\n..." when not all chunks fit
 	prefix := "\n\n---\n\nRelevant past context:\n"
 	buf := prefix

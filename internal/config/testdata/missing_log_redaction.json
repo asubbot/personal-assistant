@@ -12,9 +12,6 @@
       "supports_tools": true
     }
   ],
-  "tools": {
-    "text_based_enabled": true
-  },
   "paths": {
     "memory_dir": "/data/memory",
     "log_path": "/data/pa.log",
@@ -32,8 +29,8 @@
     "batch_size": 100
   },
   "nodes": {},
-  "log_redaction": {
-    "additional_patterns": []
+  "tools": {
+    "text_based_enabled": false
   },
   "pa_timezone": "UTC",
   "tool_pre_selection": {

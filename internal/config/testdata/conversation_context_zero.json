@@ -12,9 +12,6 @@
       "supports_tools": true
     }
   ],
-  "tools": {
-    "text_based_enabled": true
-  },
   "paths": {
     "memory_dir": "/data/memory",
     "log_path": "/data/pa.log",
@@ -32,6 +29,9 @@
     "batch_size": 100
   },
   "nodes": {},
+  "tools": {
+    "text_based_enabled": false
+  },
   "log_redaction": {
     "additional_patterns": []
   },
@@ -42,7 +42,7 @@
     "tool_fallback_cap": 50
   },
   "conversation_context": {
-    "injected_context_max_chars": 4000,
+    "injected_context_max_chars": 0,
     "vector_search_top_k": 10
   }
 }
