@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-006 |
-| **Status** | NEW |
+| **Status** | IN PROGRESS |
 | **Title** | Tool-call reliability and model escalation |
 | **Description** | Improve automatic recovery when tool invocations fail or the model produces unusable tool output, using the ordered list of configured LLM providers without requiring the user to intervene. Introduce explicit policy (error classification, limits, observability), a **configurable baseline** model (not assumed minimal/cheap), and **rollback at end of user turn** (Option A): the next user message always starts from the configured baseline; mid-turn rollback variants are out of scope. |
 | **First version date** | 2026-03-19 (date of first approved write of this document; start of work on the epic idea) |
@@ -40,6 +40,7 @@
 
 - **Scope:** [scope.md](../../scope.md) — PersonalAssistant focuses on reliability; the core orchestrates LLM and tools. This epic improves automatic handling when tools or tool-formatting fail, without changing the security model (allowlists, dedicated user, validation before execution).
 - **Strategy:** [strategy.md](../../strategy.md) — Testable increments; integration tests for meaningful subsets; security checks remain explicit. Builds on the existing multi-provider fallback and tool pipeline delivered under [EP-004](../EP-004/ep-scope.md).
+- **Manual tests:** [ep-manual-tests.md](ep-manual-tests.md) — operator scenarios for real LLM/Telegram/log checks (supplements unit and integration tests).
 - **Related epics:** [EP-004](../EP-004/ep-scope.md) (tools, tool-result loop, providers); [EP-001](../EP-001/ep-scope.md) (core and nodes); optional interaction with [EP-005](../EP-005/ep-scope.md) (execution transport) only if execution error classification must distinguish subsystem vs legacy errors in policy.
 
 ## Out of scope (this epic)

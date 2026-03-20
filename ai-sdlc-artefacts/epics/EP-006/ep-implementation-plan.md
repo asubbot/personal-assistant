@@ -12,7 +12,7 @@
 
 - [x] After config + core wiring: `make check` passes.
 - [x] After tests: every new test file references `Covers AC-06.NNN` where applicable.
-- [ ] Before merge: user review of config shape and default (escalation off).
+- [x] Before merge: user review of config shape and default (escalation off).
 
 ---
 
@@ -55,8 +55,8 @@
   - Add `pa/internal/escalationpolicy` with `doc.go` describing scope: mapping **classified** tool-path causes to `toolfailure.NoEscalate` / `toolfailure.MayEscalate` ([REQ-06.004](ep-requirements.md#error-classification), [REQ-06.005](ep-requirements.md#error-classification), [REQ-06.017](ep-requirements.md#nfr--security-testability-observability)).
   - **Done:** `WrapCatalogValidateError` in [catalog.go](../../../internal/escalationpolicy/catalog.go) uses `*toolcatalog.ValidateError` / `ValidateKind` via `errors.As`; handler calls `escalationpolicy` from `executeOneToolCall`; fail-closed for errors that are not `*ValidateError`.
   - **Dependencies:** `pa/internal/core/toolfailure`, `pa/internal/toolcatalog` ([REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs), [REQ-06.018](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs)).
-  - **Deferred:** route `noderunner` through the same package (optional consolidation per [ep-system-design.md](ep-system-design.md)).
-  - **Tests:** [catalog_test.go](../../../internal/escalationpolicy/catalog_test.go) with `Covers AC-06.014` / Supporting.
+  - **Done (noderunner path):** `WrapNodeOutcome` in [node.go](../../../internal/escalationpolicy/node.go); [runner.go](../../../internal/noderunner/runner.go) maps allowlist/cmdsafe/SSH/exec outcomes through it (no direct `toolfailure` in noderunner).
+  - **Tests:** [catalog_test.go](../../../internal/escalationpolicy/catalog_test.go) with `Covers AC-06.014` / Supporting; [node_test.go](../../../internal/escalationpolicy/node_test.go) for `WrapNodeOutcome` / `QualifiesForEscalation`.
   - _Requirements:_ [REQ-06.017](ep-requirements.md#nfr--security-testability-observability), [REQ-06.004](ep-requirements.md#error-classification), [REQ-06.005](ep-requirements.md#error-classification)
   - _Acceptance Criteria:_ [AC-06.014](ep-acceptance-criteria.md#ac-06-014), [AC-06.015](ep-acceptance-criteria.md#ac-06-015)
   - **Verification:** `go test ./internal/escalationpolicy/...`; `go test ./internal/toolcatalog/...`; `make check`.
@@ -78,8 +78,9 @@
   - _Acceptance Criteria:_ [AC-06.009](ep-acceptance-criteria.md#ac-06-009)
   - **Verification:** grep tests or log capture in unit test; `make check`.
 
-- [x] **7. Integration tests and documentation** (partial: unit tests in `handler_ep006_audit_test.go` cover 3-provider order, baseline reset, Hermes escalation, README documents `tools.llm_escalation`; optional dedicated `tests/integration` chain test still deferred)
-  - Add integration test: mock chain of 3 providers, qualifying failure on first → second provider receives next `Complete`; third user message starts from baseline (separate `HandleMessage` calls).
+- [x] **7. Integration tests and documentation**
+  - Integration: [`ep006_escalation_run_test.go`](../../../tests/integration/ep006_escalation_run_test.go) `TestEP006_Run_threeProviders_threeMessages_chainAndBaselineReset` — 3 mock providers, qualifying failure on msg1 → second provider’s next `Complete`; messages 2–3 each start from baseline (separate `HandleMessage` via sequential adapter). Unit coverage remains in `handler_ep006_audit_test.go` (3-provider order, Hermes, etc.). README documents `tools.llm_escalation`.
+  - Manual: [ep-manual-tests.md](ep-manual-tests.md) for real-environment checks (escalation on/off, caps, baseline reset, logs, secrets).
   - README: `tools.llm_escalation` documented under **Config** ([README.md](../../../README.md)).
   - _Requirements:_ [REQ-06.013](ep-requirements.md#nfr--security-testability-observability)
   - _Acceptance Criteria:_ [AC-06.010](ep-acceptance-criteria.md#ac-06-010)

@@ -21,6 +21,38 @@ func (p *testProvider) Complete(_ context.Context, _ []llm.Message, _ *llm.Compl
 	return p.result, p.err
 }
 
+// EP-006: transport fallback in Complete must not consume policy escalation budget (EscUsed).
+func TestComplete_transportRetry_doesNotIncrementEscUsed_withEscalationConfigured(t *testing.T) {
+	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
+	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
+	r, err := New(
+		[]llm.Provider{p0, p1},
+		[]string{"a/m0", "b/m1"},
+		Config{Escalation: &config.LLMEscalationConfig{Enabled: true, BaselineIndex: 0, MaxPerUserMessage: 3}},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	st := r.NewState()
+	if st.EscUsed != 0 {
+		t.Fatalf("initial EscUsed = %d, want 0", st.EscUsed)
+	}
+	result, err := r.Complete(context.Background(), st, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if result.Content != "ok" {
+		t.Errorf("content = %q", result.Content)
+	}
+	if st.ActiveIndex != 1 {
+		t.Errorf("ActiveIndex = %d, want 1 (switched for transport)", st.ActiveIndex)
+	}
+	if st.EscUsed != 0 {
+		t.Errorf("EscUsed = %d after transport switch, want 0 (policy budget untouched)", st.EscUsed)
+	}
+}
+
 func TestComplete_retryableFirst_switchesToNext(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}

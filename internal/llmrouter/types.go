@@ -44,14 +44,15 @@ type State struct {
 
 // Event is emitted for each routing transition.
 type Event struct {
-	Phase           Phase
-	FailureClass    string
-	Action          Action
-	FromIndex       int
-	ToIndex         int
-	Attempt         int
-	EscalationsUsed int
-	ProviderLabel   string
+	Phase             Phase
+	FailureClass      string
+	Action            Action
+	FromIndex         int
+	ToIndex           int
+	Attempt           int
+	EscalationsUsed   int
+	FromProviderLabel string // label at FromIndex (provider before transition)
+	ProviderLabel     string // label at ToIndex after transition (destination; kept name for backward compatibility)
 }
 
 // Config controls unified router behavior.
@@ -72,6 +73,7 @@ func (e Event) LogAttrs() []any {
 		"to_index", e.ToIndex,
 		"attempt", e.Attempt,
 		"escalations_used", e.EscalationsUsed,
+		"from_provider", e.FromProviderLabel,
 		"provider_label", e.ProviderLabel,
 	}
 }

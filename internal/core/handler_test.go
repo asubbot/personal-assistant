@@ -148,11 +148,16 @@ type mockNodeRunner struct {
 	lastCommand string
 	stdout      string
 	err         error
+	// runFunc optional per-call behavior (e.g. EP-006 multi-tool round tests). When set, stdout/err are ignored.
+	runFunc func(ctx context.Context, nodeID, command string) (string, error)
 }
 
-func (m *mockNodeRunner) RunOnNode(_ context.Context, nodeID, command string) (string, error) {
+func (m *mockNodeRunner) RunOnNode(ctx context.Context, nodeID, command string) (string, error) {
 	m.lastNodeID = nodeID
 	m.lastCommand = command
+	if m.runFunc != nil {
+		return m.runFunc(ctx, nodeID, command)
+	}
 	if m.err != nil {
 		return "", m.err
 	}

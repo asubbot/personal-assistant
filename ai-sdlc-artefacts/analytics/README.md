@@ -37,6 +37,7 @@ Reports are produced with the project skill [`ai-sdlc/specification/skills/proje
 | **IronClaw** | https://github.com/nearai/ironclaw | Hybrid search, persistent memory | WASM sandbox tools, multi-channel | Rust; OpenClaw-inspired, security-focused. Other `ironclaw` repos exist on GitHub. |
 | **ZeroClaw** | https://github.com/zeroclaw-labs/zeroclaw | Pluggable memory | Traits for tools, channels, runtime | Rust; “minimal” assistant infra. Prefer **zeroclaw-labs**; upstream has warned about impersonation forks. |
 | **MicroClaw** | https://github.com/microclaw/microclaw | As per project | Chat-oriented agent loop | Rust; inspired by NanoClaw / OpenClaw ecosystem. |
+| **NemoClaw** | https://github.com/NVIDIA/NemoClaw | OpenClaw instance in sandbox (onboarding) | OpenShell sandbox, declarative egress/FS/process/inference policies, `nemoclaw` CLI | NVIDIA reference stack for **secure** OpenClaw; **alpha**; [README](https://github.com/NVIDIA/NemoClaw?tab=readme-ov-file), [docs](https://docs.nvidia.com/nemoclaw/latest/). |
 | **NullClaw** | https://github.com/nullclaw/nullclaw | Per project | Tools, channels | Zig; very small static binary narrative. |
 | **GitClaw** | https://github.com/open-gitagent/gitclaw | Git-committed `memory/` etc. | Declarative YAML tools/skills in repo | Git-native agent layout (`agent.yaml`, hooks). |
 | **AstrBot** | https://github.com/AstrBotDevs/AstrBot | Knowledge base, multimodal | Plugins, MCP, agent sandbox | Python; Telegram, QQ, Discord, Slack, Feishu, … **AGPL-3.0**. |

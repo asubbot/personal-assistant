@@ -61,15 +61,17 @@ func (r *Router) Complete(ctx context.Context, st *State, messages []llm.Message
 	for {
 		attempt++
 		if attempt > r.maxAttempts() {
+			idx := st.ActiveIndex
 			e := Event{
-				Phase:           PhaseCompleteError,
-				FailureClass:    string(FailureClassOther),
-				Action:          ActionStop,
-				FromIndex:       st.ActiveIndex,
-				ToIndex:         st.ActiveIndex,
-				Attempt:         attempt,
-				EscalationsUsed: st.EscUsed,
-				ProviderLabel:   r.providerLabel(st.ActiveIndex),
+				Phase:             PhaseCompleteError,
+				FailureClass:      string(FailureClassOther),
+				Action:            ActionStop,
+				FromIndex:         idx,
+				ToIndex:           idx,
+				Attempt:           attempt,
+				EscalationsUsed:   st.EscUsed,
+				FromProviderLabel: r.providerLabel(idx),
+				ProviderLabel:     r.providerLabel(idx),
 			}
 			if onEvent != nil {
 				onEvent(e)
@@ -92,14 +94,15 @@ func (r *Router) Complete(ctx context.Context, st *State, messages []llm.Message
 			st.ActiveIndex = to
 		}
 		e := Event{
-			Phase:           PhaseCompleteError,
-			FailureClass:    string(class),
-			Action:          action,
-			FromIndex:       from,
-			ToIndex:         to,
-			Attempt:         attempt,
-			EscalationsUsed: st.EscUsed,
-			ProviderLabel:   r.providerLabel(to),
+			Phase:             PhaseCompleteError,
+			FailureClass:      string(class),
+			Action:            action,
+			FromIndex:         from,
+			ToIndex:           to,
+			Attempt:           attempt,
+			EscalationsUsed:   st.EscUsed,
+			FromProviderLabel: r.providerLabel(from),
+			ProviderLabel:     r.providerLabel(to),
 		}
 		if onEvent != nil {
 			onEvent(e)
@@ -129,13 +132,14 @@ func (r *Router) OnQualifyingFailure(st *State, phase Phase, failureClass string
 		to = st.ActiveIndex
 	}
 	e := Event{
-		Phase:           phase,
-		FailureClass:    failureClass,
-		Action:          action,
-		FromIndex:       from,
-		ToIndex:         to,
-		EscalationsUsed: st.EscUsed,
-		ProviderLabel:   r.providerLabel(to),
+		Phase:             phase,
+		FailureClass:      failureClass,
+		Action:            action,
+		FromIndex:         from,
+		ToIndex:           to,
+		EscalationsUsed:   st.EscUsed,
+		FromProviderLabel: r.providerLabel(from),
+		ProviderLabel:     r.providerLabel(to),
 	}
 	if onEvent != nil {
 		onEvent(e)

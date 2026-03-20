@@ -186,7 +186,8 @@ func TestHandleMessage_escalation_atLastProvider_noFurtherAdvance(t *testing.T) 
 	}
 }
 
-// Covers AC-06.008 (REQ-06.009): each new HandleMessage resets to configured baseline_index for the first Complete.
+// Covers AC-06.001 (REQ-06.001): first Complete for a new user message uses configured baseline (BaselineIndex=1, not first list entry).
+// Covers AC-06.008 (REQ-06.009): each new HandleMessage resets so the first Complete of that message uses baseline again.
 func TestHandleMessage_escalation_eachMessageStartsFromBaseline(t *testing.T) {
 	p0 := &mockProvider{}
 	p1 := &mockProvider{}
@@ -269,9 +270,198 @@ func TestHandleMessage_escalation_logContainsPolicyFields(t *testing.T) {
 		if r.attrs["from_index"] != "0" || r.attrs["to_index"] != "1" {
 			t.Errorf("provider indices before=%q after=%q", r.attrs["from_index"], r.attrs["to_index"])
 		}
+		if r.attrs["from_provider"] != "m0" || r.attrs["provider_label"] != "m1" {
+			t.Errorf("provider names from=%q to=%q, want m0 m1", r.attrs["from_provider"], r.attrs["provider_label"])
+		}
 	}
 	if !saw {
 		t.Fatal("expected llm tool escalation log record")
+	}
+	// REQ-06.011 optional tried_providers: not logged by product today — no assert.
+}
+
+// Covers EP-006 observability: Hermes parse escalation emits failure_class=hermes_parse on policy escalate (REQ-06.010).
+func TestHandleMessage_escalation_logContainsHermesParseClass(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	p0 := &mockProvider{}
+	p1 := &mockProvider{}
+	p0.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		return &llm.CompletionResult{Content: `<tool_call>broken`, Usage: llm.Usage{}}, nil
+	}
+	p1.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		return &llm.CompletionResult{Content: "Plain after hermes escalate.", Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	h := &conversationHandler{
+		router:                     testRouter(t, []llm.Provider{p0, p1}, []string{"weak", "strong"}, &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 2, BaselineIndex: 0}),
+		escalation:                 &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 2, BaselineIndex: 0},
+		catalog:                    catalog,
+		nodeRunner:                 &mockNodeRunner{},
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     logger,
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	if _, err := h.HandleMessage(context.Background(), 1, "hello"); err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var sawHermes bool
+	for _, r := range cap.records {
+		if r.msg != "llm tool escalation" {
+			continue
+		}
+		if r.attrs["failure_class"] != "hermes_parse" {
+			continue
+		}
+		sawHermes = true
+		if r.attrs["action"] != "escalate_policy" {
+			t.Errorf("action = %q, want escalate_policy", r.attrs["action"])
+		}
+		if r.attrs["from_provider"] != "weak" || r.attrs["provider_label"] != "strong" {
+			t.Errorf("provider names from=%q to=%q, want weak strong", r.attrs["from_provider"], r.attrs["provider_label"])
+		}
+	}
+	if !sawHermes {
+		t.Fatal("expected llm tool escalation with failure_class=hermes_parse")
+	}
+}
+
+// Covers EP-006: one turn — Hermes parse consumes escalation budget; qualifying tool_execution does not advance to third provider when max=1.
+func TestHandleMessage_mixedHermesThenTool_maxPerOne_secondToolStaysOnProvider(t *testing.T) {
+	const hermesTool = `<tool_call>
+{"name": "run_echo", "arguments": {"msg": "x1"}}
+</tool_call>`
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{err: toolfailure.MayEscalate(errors.New("node fail"))}
+	p0, p1, p2 := &mockProvider{}, &mockProvider{}, &mockProvider{}
+	var c0, c1, c2 int
+	p0.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c0++
+		return &llm.CompletionResult{Content: `<tool_call>broken`, Usage: llm.Usage{}}, nil
+	}
+	p1.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c1++
+		if c1 == 1 {
+			return &llm.CompletionResult{Content: hermesTool, Usage: llm.Usage{}}, nil
+		}
+		return &llm.CompletionResult{Content: "done after tool fail on same provider (budget exhausted)", Usage: llm.Usage{}}, nil
+	}
+	p2.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c2++
+		return &llm.CompletionResult{Content: "must not reach p2", Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		router:                     testRouter(t, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 1, BaselineIndex: 0}),
+		escalation:                 &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 1, BaselineIndex: 0},
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "hello")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if c2 != 0 {
+		t.Errorf("p2 Complete calls = %d, want 0 (max_per_user_message exhausted)", c2)
+	}
+	if c0 != 1 || c1 != 2 {
+		t.Errorf("Complete p0=%d p1=%d, want p0=1 p1=2", c0, c1)
+	}
+	if !strings.Contains(reply, "done after tool fail") {
+		t.Errorf("reply = %q", reply)
+	}
+}
+
+// Covers EP-006: two native tool calls in one round — first MayEscalate, second succeeds → one policy escalation, stable reply.
+func TestHandleMessage_twoToolCalls_oneMayEscalate_oneOk_singlePolicyEscalation(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+			"run_second": {
+				ID: "run_second", IndexText: "Echo2", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{
+		runFunc: func(_ context.Context, _ string, command string) (string, error) {
+			if command == "echo a" {
+				return "", toolfailure.MayEscalate(errors.New("fail first tool"))
+			}
+			return "ok-b", nil
+		},
+	}
+	p0, p1, p2 := &mockProvider{}, &mockProvider{}, &mockProvider{}
+	var c0, c1, c2 int
+	p0.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c0++
+		return &llm.CompletionResult{
+			ToolCalls: []llm.ToolCall{
+				{ID: "1", Name: "run_echo", Arguments: `{"msg":"a"}`},
+				{ID: "2", Name: "run_second", Arguments: `{"msg":"b"}`},
+			},
+		}, nil
+	}
+	p1.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c1++
+		return &llm.CompletionResult{Content: "reply after one policy escalation for two-tool round", Usage: llm.Usage{}}, nil
+	}
+	p2.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c2++
+		return &llm.CompletionResult{Content: "wrong", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:                     testRouter(t, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 3, BaselineIndex: 0}),
+		escalation:                 &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 3, BaselineIndex: 0},
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		logger:                     slog.Default(),
+		firstProviderSupportsTools: true,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "run tools")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if c0 != 1 || c1 != 1 || c2 != 0 {
+		t.Errorf("Complete p0=%d p1=%d p2=%d, want 1,1,0", c0, c1, c2)
+	}
+	if !strings.Contains(reply, "reply after one policy") {
+		t.Errorf("reply = %q", reply)
 	}
 }
 
@@ -369,6 +559,153 @@ func TestHandleMessage_textBasedHermes_parseFailure_escalatesToNextProvider(t *t
 		t.Errorf("Complete calls p0=%d p1=%d, want 1,1", c0, c1)
 	}
 	if !strings.Contains(reply, "Plain answer") {
+		t.Errorf("reply = %q", reply)
+	}
+}
+
+// Covers EP-006: invalid JSON for a known tool qualifies for escalation; second provider completes (REQ-06.018, handler E2E).
+func TestHandleMessage_invalidToolJSON_escalatesToSecondProvider(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	p0, p1 := &mockProvider{}, &mockProvider{}
+	var c0, c1 int
+	p0.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c0++
+		return &llm.CompletionResult{
+			ToolCalls: []llm.ToolCall{{ID: "t1", Name: "run_echo", Arguments: `{bad}`}},
+		}, nil
+	}
+	p1.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c1++
+		return &llm.CompletionResult{Content: "recovered after invalid tool JSON", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:                     testRouter(t, []llm.Provider{p0, p1}, []string{"m0", "m1"}, &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 3, BaselineIndex: 0}),
+		escalation:                 &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 3, BaselineIndex: 0},
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		logger:                     slog.Default(),
+		firstProviderSupportsTools: true,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "run echo")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if c0 != 1 || c1 != 1 {
+		t.Errorf("Complete p0=%d p1=%d, want 1,1", c0, c1)
+	}
+	if !strings.Contains(reply, "recovered after invalid") {
+		t.Errorf("reply = %q", reply)
+	}
+}
+
+// Covers EP-006 catalog path: unknown tool id maps to NoEscalate; no advance to second provider (AC-06.004, AC-06.005).
+func TestHandleMessage_unknownToolId_noEscalationSecondProvider(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	p0, p1 := &mockProvider{}, &mockProvider{}
+	var c0, c1 int
+	p0.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c0++
+		if c0 == 1 {
+			return &llm.CompletionResult{
+				ToolCalls: []llm.ToolCall{{ID: "x1", Name: "not_in_catalog", Arguments: `{}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "finished after unknown tool error on same provider", Usage: llm.Usage{}}, nil
+	}
+	p1.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c1++
+		return &llm.CompletionResult{Content: "wrong provider", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:                     testRouter(t, []llm.Provider{p0, p1}, []string{"m0", "m1"}, &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 3, BaselineIndex: 0}),
+		escalation:                 &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 3, BaselineIndex: 0},
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		logger:                     slog.Default(),
+		firstProviderSupportsTools: true,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if c1 != 0 {
+		t.Errorf("p1 Complete calls = %d, want 0 (unknown tool must not escalate)", c1)
+	}
+	if c0 < 2 {
+		t.Errorf("p0 Complete calls = %d, want >= 2", c0)
+	}
+	if !strings.Contains(reply, "finished after unknown") {
+		t.Errorf("reply = %q", reply)
+	}
+}
+
+// Covers EP-006: two qualifying tool failures in one message with max_escalations=1 — second failure does not advance to third provider (AC-06.007).
+func TestHandleMessage_twoQualifyingToolRounds_maxOne_secondFailureStaysOnProvider(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{err: toolfailure.MayEscalate(errors.New("exec fail"))}
+	p0, p1, p2 := &mockProvider{}, &mockProvider{}, &mockProvider{}
+	var c0, c1, c2 int
+	p0.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c0++
+		return &llm.CompletionResult{
+			ToolCalls: []llm.ToolCall{{ID: "a", Name: "run_echo", Arguments: `{"msg":"1"}`}},
+		}, nil
+	}
+	p1.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c1++
+		if c1 == 1 {
+			return &llm.CompletionResult{
+				ToolCalls: []llm.ToolCall{{ID: "b", Name: "run_echo", Arguments: `{"msg":"2"}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "done after second qualifying failure on same provider", Usage: llm.Usage{}}, nil
+	}
+	p2.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		c2++
+		return &llm.CompletionResult{Content: "must not reach p2", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:                     testRouter(t, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 1, BaselineIndex: 0}),
+		escalation:                 &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 1, BaselineIndex: 0},
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		logger:                     slog.Default(),
+		firstProviderSupportsTools: true,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if c2 != 0 {
+		t.Errorf("p2 Complete calls = %d, want 0 (budget exhausted after first escalation)", c2)
+	}
+	if c0 != 1 || c1 != 2 {
+		t.Errorf("Complete p0=%d p1=%d, want p0=1 p1=2", c0, c1)
+	}
+	if !strings.Contains(reply, "done after second qualifying") {
 		t.Errorf("reply = %q", reply)
 	}
 }
