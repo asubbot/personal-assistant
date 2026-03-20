@@ -6,4 +6,4 @@ This folder defines the **agent-driven development process**: pipeline stages an
 
 - **Specification:**
   - [specification/pipeline.spec.md](specification/pipeline.spec.md) — pipeline stages, inputs/outputs, stage→skill mapping.
-  - [specification/skills/](specification/skills/) — agent instructions (one skill per stage; optional cross-cutting skills). Each skill defines the required structure of its output artefact(s).
+  - [specification/skills/](specification/skills/) — agent instructions (one skill per numbered stage 1–9; optional cross-cutting skills). Each skill defines the required structure of its output artefact(s).

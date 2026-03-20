@@ -1,12 +1,12 @@
 # specification/skills — Agent instructions
 
-Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stage (1–10)**, plus **optional cross-cutting** skills (code review, C4 C3 diagram, project comparison). Paths in skills use **ai-sdlc-artefacts/** (project root: `scope.md`, `strategy.md`, optional `analytics/`) and **ai-sdlc-artefacts/epics/<epic-id>/** for epic artefacts: ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design, ep-implementation-plan, ep-audit-report. Story-level paths are not used by the pipeline.
+Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stage (1–9)**, plus **optional cross-cutting** skills (code review, C4 C3 diagram, project comparison). Paths in skills use **ai-sdlc-artefacts/** (project root: `scope.md`, `strategy.md`, optional `analytics/`) and **ai-sdlc-artefacts/epics/<epic-id>/** for epic artefacts: ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design, ep-implementation-plan, ep-audit-report. Story-level paths are not used by the pipeline.
 
 **Common behaviour:** The agent works in cooperation with the user. When several valid choices exist (output format, path, scope, or interpretation of the request), present them (e.g. A / B) and ask the user which they prefer. Do not proceed until the user has chosen. See [pipeline.spec.md](../pipeline.spec.md) (Human-in-the-loop).
 
 ---
 
-## Stage → skill (pipeline 1–10)
+## Stage → skill (pipeline 1–9)
 
 | Stage | Name | Skill file |
 |-------|------|------------|
@@ -19,13 +19,12 @@ Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stag
 | 7 | Implementation planning | [07-implementation-planning.skill.md](07-implementation-planning.skill.md) |
 | 8 | Task execution | [08-task-execution.skill.md](08-task-execution.skill.md) |
 | 9 | Audit | [09-audit.skill.md](09-audit.skill.md) |
-| 10 | Keep consistency | [10-keep-consistency.skill.md](10-keep-consistency.skill.md) |
 
 **Execution order**
 
-- **Full pipeline (stages 1–10):** 1 → 2 → 3 → … → 10 — see flowchart in [pipeline.spec.md](../pipeline.spec.md) §1.
+- **Full pipeline (stages 1–9):** 1 → 2 → 3 → … → 9 — see flowchart in [pipeline.spec.md](../pipeline.spec.md) §1.
 - **Epic elaboration only:** 3 → 4 → 5 → 6 → 7 (Epic planning → Requirements → Acceptance criteria → System design → Implementation planning).
-- **After plan approval:** 8 (task execution) → 9 (audit) → 10 (keep consistency).
+- **After plan approval:** 8 (task execution) → 9 (audit).
 
 ---
 
@@ -55,7 +54,6 @@ When a user request matches an intent below, use the corresponding skill.
 | **Implementation plan** (tasks, ordering, verification) | [07-implementation-planning.skill.md](07-implementation-planning.skill.md) |
 | **Execute** implementation plan (code tasks, commits) | [08-task-execution.skill.md](08-task-execution.skill.md) |
 | **Audit** / quality gate / status report (epic or project) | [09-audit.skill.md](09-audit.skill.md) |
-| **Keep artefacts consistent** after audit | [10-keep-consistency.skill.md](10-keep-consistency.skill.md) |
 | **Code review** / PR review | [code-review.skill.md](code-review.skill.md) |
 | **Analyse or compare** an external project with PA | [project-comparison-report.skill.md](project-comparison-report.skill.md) |
 
@@ -63,6 +61,6 @@ When a user request matches an intent below, use the corresponding skill.
 
 ## All skill files in this folder
 
-Numbered: `01`–`10` (table above). Cross-cutting: `code-review.skill.md`, `ep-C4-component.skill.md`, `project-comparison-report.skill.md`.
+Numbered: `01`–`09` (table above). Cross-cutting: `code-review.skill.md`, `ep-C4-component.skill.md`, `project-comparison-report.skill.md`.
 
 **Single source of stage I/O:** [pipeline.spec.md](../pipeline.spec.md) §2 (table of stages, inputs, outputs).

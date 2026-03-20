@@ -1,6 +1,6 @@
 # SDLC Pipeline — ai-sdlc
 
-**Purpose:** This document specifies the agentic SDLC process: 10 stages from scope analysis through strategy, epic planning, requirements, acceptance criteria, system design, implementation planning, task execution, audit, and keep consistency. Stages 3–7 run in execution order: 3 → 4 → 5 → 6 → 7. It is the single source of truth for how epics are elaborated with agent-driven workflows. Each stage maps to a **skill file** under [specification/skills/](skills/); agent instructions live only in skills (no separate roles or prompts).
+**Purpose:** This document specifies the agentic SDLC process: **9 stages** from scope analysis through strategy, epic planning, requirements, acceptance criteria, system design, implementation planning, task execution, and audit. Stages 3–7 run in execution order: 3 → 4 → 5 → 6 → 7. It is the single source of truth for how epics are elaborated with agent-driven workflows. Each stage maps to a **skill file** under [specification/skills/](skills/); agent instructions live only in skills (no separate roles or prompts).
 
 **Artefact paths:** Project-level artefacts (scope.md, strategy.md) live in the **ai-sdlc-artefacts/** root. Epic-level outputs live under **ai-sdlc-artefacts/epics/<epic-id>/** (e.g. `ai-sdlc-artefacts/epics/EP-104/`). Story-level paths are no longer used by the pipeline; existing content under `stories/<story-id>/` is not modified.
 Paths in this spec and in skills use that convention; no references to outside of that folders in links.
@@ -26,8 +26,7 @@ flowchart TB
   G[7. Implementation planning]
   H[8. Task execution]
   I[9. Audit]
-  J[10. Keep consistency]
-  A --> B --> C --> D --> E --> F --> G --> H --> I --> J
+  A --> B --> C --> D --> E --> F --> G --> H --> I
 ```
 
 ---
@@ -47,7 +46,6 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 | 7. Implementation planning | [07-implementation-planning.skill.md](skills/07-implementation-planning.skill.md) | Tasks, ordering, verification per epic | ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, ep-system-design.md | epics/<epic-id>/ep-implementation-plan.md |
 | 8. Task execution | [08-task-execution.skill.md](skills/08-task-execution.skill.md) | Execute plan → commits | ep-implementation-plan.md | repo (codebase) |
 | 9. Audit | [09-audit.skill.md](skills/09-audit.skill.md) | Status report from current branch | Current branch | epics/<epic-id>/ep-audit-report.md |
-| 10. Keep consistency | [10-keep-consistency.skill.md](skills/10-keep-consistency.skill.md) | Update artefacts from audit report | ep-audit-report | Updated artefacts (no single file) |
 
 ---
 
@@ -75,11 +73,11 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 ## 4. Traceability
 
-- **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-acceptance-criteria.md → ep-system-design.md → ep-implementation-plan.md → task execution (repo) → ep-audit-report.md → keep consistency (updated artefacts).
+- **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-acceptance-criteria.md → ep-system-design.md → ep-implementation-plan.md → task execution (repo) → ep-audit-report.md.
 
 **References:** Links in artefacts may point only to paths under `ai-sdlc-artefacts/`. Every linked document must exist (no broken links). Skills must enforce this rule.
 
-If an upstream artefact changes, downstream stages and artefacts must be reviewed and updated so traceability is preserved. The upstream artefacts are more importante for aligment process, if you have options what level change for reaching consistency - ask user. 
+If an upstream artefact changes, downstream stages and artefacts must be reviewed and updated so traceability is preserved (no dedicated pipeline stage—cooperate with the user on scope of updates). When multiple valid levels of change exist for alignment, ask the user.
 
 ---
 
@@ -100,7 +98,7 @@ flowchart LR
     ep_audit[ep-audit-report]
   end
   scope --> strategy --> ep_scope --> ep_req --> ep_ac --> ep_design --> ep_impl --> repo[Repo]
-  repo --> ep_audit --> consistency[Keep consistency]
+  repo --> ep_audit
 ```
 
 **Context for AI:** Each step's context is everything upstream in the chain. When building the implementation plan (stage 7), the agent's context includes ep-scope, ep-requirements, ep-acceptance-criteria, and ep-system-design.
