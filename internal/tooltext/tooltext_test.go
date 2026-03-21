@@ -105,3 +105,61 @@ func TestParseHermesToolCalls_multipleBlocks(t *testing.T) {
 		t.Errorf("args0 = %q", calls[0].Arguments)
 	}
 }
+
+func TestSuspectedBrokenHermesMarkup_pseudoBlock(t *testing.T) {
+	s := `-tool_call>{"name":"run_echo","arguments":{"msg":"x"}}</tool_call>`
+	calls, err := ParseHermesToolCalls(s)
+	if err != nil || len(calls) != 0 {
+		t.Fatalf("parse: err=%v len=%d", err, len(calls))
+	}
+	if !SuspectedBrokenHermesMarkup(s) {
+		t.Fatal("expected suspected true for -tool_call>…</tool_call>")
+	}
+}
+
+func TestSuspectedBrokenHermesMarkup_reversedMarkers(t *testing.T) {
+	s := `note </tool_call> then -tool_call>{}`
+	calls, err := ParseHermesToolCalls(s)
+	if err != nil || len(calls) != 0 {
+		t.Fatalf("parse: err=%v len=%d", err, len(calls))
+	}
+	if SuspectedBrokenHermesMarkup(s) {
+		t.Fatal("expected false when first tool_call> is not before first </tool_call>")
+	}
+}
+
+func TestSuspectedBrokenHermesMarkup_noCloseTag(t *testing.T) {
+	s := `-tool_call>{"name":"x"}`
+	calls, err := ParseHermesToolCalls(s)
+	if err != nil || len(calls) != 0 {
+		t.Fatalf("parse: err=%v len=%d", err, len(calls))
+	}
+	if SuspectedBrokenHermesMarkup(s) {
+		t.Fatal("expected false without </tool_call>")
+	}
+}
+
+func TestSuspectedBrokenHermesMarkup_plainText(t *testing.T) {
+	if SuspectedBrokenHermesMarkup("plain only") {
+		t.Fatal("expected false")
+	}
+}
+
+func TestSuspectedBrokenHermesMarkup_emptyTrim(t *testing.T) {
+	if SuspectedBrokenHermesMarkup("   \n\t  ") {
+		t.Fatal("expected false for whitespace-only")
+	}
+}
+
+func TestSuspectedBrokenHermesMarkup_validHermesNotUsedWithEmptyParse(t *testing.T) {
+	s := `<tool_call>
+{"name": "run_echo", "arguments": {"msg": "x"}}
+</tool_call>`
+	calls, err := ParseHermesToolCalls(s)
+	if err != nil || len(calls) != 1 {
+		t.Fatalf("parse: err=%v len=%d", err, len(calls))
+	}
+	if SuspectedBrokenHermesMarkup(s) {
+		t.Fatal("expected false when exact <tool_call> is present (valid path uses parsed calls)")
+	}
+}

@@ -342,6 +342,68 @@ func TestHandleMessage_escalation_logContainsHermesParseClass(t *testing.T) {
 	}
 }
 
+// Covers EP-006: pseudo Hermes (-tool_call>…</tool_call>) with empty parse triggers hermes_parse escalation (SuspectedBrokenHermesMarkup).
+func TestHandleMessage_escalation_suspectedBrokenHermesPseudoBlock(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	p0 := &mockProvider{}
+	p1 := &mockProvider{}
+	p0.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		return &llm.CompletionResult{Content: `-tool_call>{"name":"run_echo","arguments":{"msg":"x"}}</tool_call>`, Usage: llm.Usage{}}, nil
+	}
+	p1.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		return &llm.CompletionResult{Content: "Plain after suspected Hermes escalate.", Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	h := &conversationHandler{
+		router:                     testRouter(t, []llm.Provider{p0, p1}, []string{"weak", "strong"}, &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 2, BaselineIndex: 0}),
+		escalation:                 &config.LLMEscalationConfig{Enabled: true, MaxPerUserMessage: 2, BaselineIndex: 0},
+		catalog:                    catalog,
+		nodeRunner:                 &mockNodeRunner{},
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     logger,
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "hello")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if reply != "Plain after suspected Hermes escalate." {
+		t.Fatalf("reply = %q", reply)
+	}
+	var sawHermes bool
+	for _, r := range cap.records {
+		if r.msg != "llm tool escalation" {
+			continue
+		}
+		if r.attrs["failure_class"] != "hermes_parse" {
+			continue
+		}
+		sawHermes = true
+		if r.attrs["action"] != "escalate_policy" {
+			t.Errorf("action = %q, want escalate_policy", r.attrs["action"])
+		}
+	}
+	if !sawHermes {
+		t.Fatal("expected llm tool escalation with failure_class=hermes_parse")
+	}
+}
+
 // Covers EP-006: one turn — Hermes parse consumes escalation budget; qualifying tool_execution does not advance to third provider when max=1.
 func TestHandleMessage_mixedHermesThenTool_maxPerOne_secondToolStaysOnProvider(t *testing.T) {
 	const hermesTool = `<tool_call>

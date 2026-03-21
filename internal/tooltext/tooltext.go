@@ -112,6 +112,27 @@ func ParseHermesToolCalls(content string) ([]llm.ToolCall, error) {
 	return out, nil
 }
 
+const (
+	hermesOpenSuffix = "tool_call>"
+	hermesCloseTag   = "</tool_call>"
+)
+
+// SuspectedBrokenHermesMarkup reports whether content looks like Hermes-style tool markup
+// that ParseHermesToolCalls did not parse (no exact "<tool_call>" blocks). Intended for use
+// only when ParseHermesToolCalls returned (nil error, zero calls). Does not inspect or repair JSON.
+func SuspectedBrokenHermesMarkup(content string) bool {
+	s := strings.TrimSpace(content)
+	if s == "" || strings.Contains(s, "<tool_call>") {
+		return false
+	}
+	if strings.Count(s, hermesOpenSuffix) < 1 || strings.Count(s, hermesCloseTag) < 1 {
+		return false
+	}
+	i := strings.Index(s, hermesOpenSuffix)
+	j := strings.Index(s, hermesCloseTag)
+	return i >= 0 && j >= 0 && i < j
+}
+
 func syntheticID() string {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {

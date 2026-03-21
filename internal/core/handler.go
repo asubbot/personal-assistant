@@ -179,6 +179,9 @@ func textToolModeAfterFirstCompletion(textPath bool, result *llm.CompletionResul
 		return false, true, "Invalid tool call format in the assistant response. Please try again."
 	}
 	if len(calls) == 0 {
+		if tooltext.SuspectedBrokenHermesMarkup(result.Content) {
+			return false, true, "Invalid tool call format in the assistant response. Please try again."
+		}
 		return false, true, ""
 	}
 	result.ToolCalls = calls
@@ -274,6 +277,9 @@ func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Contex
 	cur := result
 	for {
 		calls, perr := tooltext.ParseHermesToolCalls(cur.Content)
+		if perr == nil && len(calls) == 0 && tooltext.SuspectedBrokenHermesMarkup(cur.Content) {
+			perr = fmt.Errorf("suspected broken Hermes markup")
+		}
 		if perr == nil {
 			cur.ToolCalls = calls
 			return cur, nil
