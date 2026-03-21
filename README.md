@@ -1,6 +1,7 @@
 # PersonalAssistant
 
 [![CI](https://github.com/asubbot/personal-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/asubbot/personal-assistant/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/asubbot/personal-assistant/graph/badge.svg)](https://codecov.io/gh/asubbot/personal-assistant)
 [![Go 1.26](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go)](https://go.dev/doc/go1.26)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
