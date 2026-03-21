@@ -1,4 +1,6 @@
-// Package cmdsafe provides pre-execution checks for commands run on nodes (REQ-04.031).
+// Package cmdsafe provides pre-execution checks for commands run on nodes (REQ-04.031):
+// allowed rune set and UTF-8 validation (RejectDisallowedRunes), shell metacharacter rejection (RejectShellMetacharacters),
+// and ValidateRemoteCommand as the single ordered gate for remote execution paths.
 package cmdsafe
 
 import (

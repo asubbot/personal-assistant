@@ -1,7 +1,12 @@
 # Copy to `.config/nas_allowlist` (gitignored) and adjust for your environment.
 # One pattern per line. Empty lines and lines starting with # are ignored.
 # Exact match: command must equal the pattern.
-# Prefix match: pattern ending with * matches any command that starts with the prefix (without the *).
+# Prefix wildcard: if a line contains *, it must be exactly one * as the last character; the command must start with the prefix before that *.
+# Invalid: bare *; more than one *; or * not at end (e.g. foo*bar) — load fails.
+#
+# Executed command strings (after substitution) may use Unicode letters, numbers, combining marks (Mn/Mc),
+# and this ASCII punctuation only: space (U+0020), . / - _ : @ = + ,
+# Tab, shell metacharacters (e.g. ; & | $ ` newline), and other symbols are rejected even if allowlisted.
 
 echo *
 systemctl status *

@@ -78,7 +78,7 @@
 | [AC-04.026](ep-acceptance-criteria.md#ac-04-026) | REQ-04.032 | ✓ | ✓ | — | **✓** | Handler test + [**LLM log**](ep-manual-tests.md#system_prompt-in-system-message) |
 | [AC-04.027](ep-acceptance-criteria.md#ac-04-027) | REQ-04.033 | ✓ | — | — | **✓** | [**Hermes tool list**](ep-manual-tests.md#hermes-tool-list-in-prompt) |
 | [AC-04.028](ep-acceptance-criteria.md#ac-04-028) | REQ-04.034 | ✓ | — | — | **✓** | [Optional: omit tools HTTP](ep-manual-tests.md#optional-manual-checks-strategy-23) |
-| [AC-04.029](ep-acceptance-criteria.md#ac-04-029) | REQ-04.031 | ✓ | ✓ | — | **✓** | cmdsafe, noderunner, core tests + [**Shell metacharacter**](ep-manual-tests.md#shell-metacharacter-rejection) |
+| [AC-04.029](ep-acceptance-criteria.md#ac-04-029) | REQ-04.031 | ✓ | ✓ | — | **✓** | internal/cmdsafe (runes, shellmeta, remote), internal/noderunner/runner_test.go, internal/core/handler_test.go + [**Shell metacharacter**](ep-manual-tests.md#shell-metacharacter-rejection) |
 
 ---
 

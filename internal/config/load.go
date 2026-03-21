@@ -132,7 +132,7 @@ func validateLLMEscalation(c *Config) error {
 		return errors.New("config: tools.llm_escalation.enabled requires at least two llm_providers")
 	}
 	if e.BaselineIndex < 0 || e.BaselineIndex >= n {
-		return fmt.Errorf("config: tools.llm_escalation.baseline_index must be in [0, %d)", n)
+		return fmt.Errorf("config: tools.llm_escalation.baseline_index must be in [0, %d] (0-based index into llm_providers, count=%d)", n-1, n)
 	}
 	if e.MaxPerUserMessage < 1 {
 		return errors.New("config: tools.llm_escalation.max_per_user_message must be >= 1 when enabled")

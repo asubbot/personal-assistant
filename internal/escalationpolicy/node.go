@@ -11,8 +11,10 @@ type NodeOutcome int
 const (
 	// NodeOutcomeEmptyCommand is a trimmed-empty command before allowlist (policy: no escalation).
 	NodeOutcomeEmptyCommand NodeOutcome = iota
-	// NodeOutcomeShellMetaRejected is cmdsafe rejection (policy: no escalation).
+	// NodeOutcomeShellMetaRejected is cmdsafe shell-metacharacter rejection (policy: no escalation).
 	NodeOutcomeShellMetaRejected
+	// NodeOutcomeDisallowedRunes is cmdsafe rune / UTF-8 policy rejection (policy: no escalation).
+	NodeOutcomeDisallowedRunes
 	// NodeOutcomeAllowlistNotConfigured is nil allowlist checker (policy: no escalation).
 	NodeOutcomeAllowlistNotConfigured
 	// NodeOutcomeAllowlistDenied is command not on allowlist (policy: no escalation).
@@ -30,7 +32,7 @@ func WrapNodeOutcome(outcome NodeOutcome, err error) error {
 	switch outcome {
 	case NodeOutcomeRemoteExecFailure:
 		return toolfailure.MayEscalate(err)
-	case NodeOutcomeEmptyCommand, NodeOutcomeShellMetaRejected, NodeOutcomeAllowlistNotConfigured, NodeOutcomeAllowlistDenied:
+	case NodeOutcomeEmptyCommand, NodeOutcomeShellMetaRejected, NodeOutcomeDisallowedRunes, NodeOutcomeAllowlistNotConfigured, NodeOutcomeAllowlistDenied:
 		return toolfailure.NoEscalate(err)
 	default:
 		return toolfailure.NoEscalate(err)

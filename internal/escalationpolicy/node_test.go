@@ -28,6 +28,7 @@ func TestWrapNodeOutcome_table(t *testing.T) {
 	}{
 		{"empty_command", NodeOutcomeEmptyCommand, false},
 		{"shell_meta", NodeOutcomeShellMetaRejected, false},
+		{"disallowed_runes", NodeOutcomeDisallowedRunes, false},
 		{"allowlist_nil", NodeOutcomeAllowlistNotConfigured, false},
 		{"allowlist_denied", NodeOutcomeAllowlistDenied, false},
 		{"remote_exec", NodeOutcomeRemoteExecFailure, true},

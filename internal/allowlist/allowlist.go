@@ -10,7 +10,8 @@ import (
 
 // Checker answers whether a command is allowed for a given node.
 // Patterns: one per line; leading/trailing whitespace and lines starting with # or empty are ignored.
-// Matching: pattern ending with * is prefix match (command must start with pattern without *); otherwise exact match.
+// Matching: if a line contains *, it must be exactly one * as the last character (prefix wildcard); otherwise exact match.
+// At load time: bare *, multiple *, or * not at end are rejected.
 type Checker struct {
 	nodePatterns map[string][]string // nodeID -> patterns (exact or prefix)
 }
@@ -55,12 +56,31 @@ func loadPatterns(path string) ([]string, error) {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+		if err := validateAllowlistPattern(line); err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
 		patterns = append(patterns, line)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
 	return patterns, nil
+}
+
+// validateAllowlistPattern allows * only as a single final character (prefix wildcard). Any other * in the line is invalid.
+func validateAllowlistPattern(line string) error {
+	n := strings.Count(line, "*")
+	if n == 0 {
+		return nil
+	}
+	if n != 1 || !strings.HasSuffix(line, "*") {
+		return fmt.Errorf("invalid allowlist pattern %q: * may appear only once, as the final character (prefix wildcard)", line)
+	}
+	prefix := strings.TrimSuffix(line, "*")
+	if prefix == "" {
+		return fmt.Errorf("invalid allowlist pattern %q: bare * matches any command", line)
+	}
+	return nil
 }
 
 // Allow returns true if command is allowed for the given node.
@@ -82,7 +102,7 @@ func (c *Checker) Allow(nodeID, command string) bool {
 func match(pattern, command string) bool {
 	if strings.HasSuffix(pattern, "*") {
 		prefix := strings.TrimSuffix(pattern, "*")
-		return prefix == "" || strings.HasPrefix(command, prefix)
+		return strings.HasPrefix(command, prefix)
 	}
 	return pattern == command
 }

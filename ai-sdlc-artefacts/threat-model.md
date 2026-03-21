@@ -97,7 +97,7 @@ flowchart TB
 | **Repudiation** | Deny having sent a message | Not a product goal; Telegram + logs may offer operator audit | No built-in non-repudiation |
 | **Information disclosure** | Secrets in logs, DEBUG dumps, tool errors | `logredact`, `BuildLogRedactor`, redacted tool invocation INFO (`handler.go`); LLM JSONL redaction (`llmlog`); noderunner **log** attrs redacted when `SetLogRedactor` set (`runner.go`) | `PA_LOG_LEVEL=debug` logs full LLM I/O ([configuration.md](../docs/configuration.md)); tool **returned** errors may embed raw truncated remote stdout/stderr for diagnostics |
 | **Denial of service** | Flood messages / LLM / SSH | No per-user rate limit in app | Mitigate via Telegram limits, reverse proxy, or external throttling |
-| **Elevation of privilege** | Arbitrary command on node | Allowlist (`allowlist` + `noderunner`), `cmdsafe.RejectShellMetacharacters` before SSH (`handler.go`, `runner.go`), catalog validation (`toolcatalog`) | **Misconfigured** wide allowlist or dangerous template remains the main risk |
+| **Elevation of privilege** | Arbitrary command on node | Allowlist (`allowlist` + `noderunner`; load rejects invalid `*` patterns), `cmdsafe.ValidateRemoteCommand` (rune set then REQ-04.031 shell sequences) in `noderunner.RunOnNode` and `core.executeOneToolCall` before SSH, catalog validation (`toolcatalog`) | **Misconfigured** wide allowlist or dangerous template remains the main risk |
 
 ---
 
@@ -107,7 +107,7 @@ flowchart TB
 - **Telegram gate:** `internal/telegram/adapter.go` — empty `users_path` → allow-none behaviour (tests document).  
 - **LLM transport:** `internal/llmrouter` — bounded completion attempts; retry only on classified transport failures (`classifier.go`, `policy.go`).  
 - **Tool path typing:** `internal/core/toolfailure`, `internal/escalationpolicy` — escalation decisions use typed errors, not string matching alone.  
-- **Remote exec:** `internal/noderunner/runner.go` — allowlist check, cmdsafe, truncated streams in logs/errors; optional log redactor from `cmd/pa` via `core.BuildLogRedactor`.  
+- **Remote exec:** `cmdsafe.ValidateRemoteCommand` in `internal/noderunner/runner.go` (before allowlist + SSH) and `internal/core/handler.go` `executeOneToolCall` (catalog-substituted commands before `RunOnNode`); allowlist check in runner; truncated streams in logs/errors; optional log redactor from `cmd/pa` via `core.BuildLogRedactor`.  
 - **SSH client:** `internal/ssh` — dedicated user model; startup handshake behaviour documented in [operations.md](../docs/operations.md).  
 - **Secrets layout:** [configuration.md](../docs/configuration.md), [docker.md](../docs/docker.md) — file-based secrets, Compose secret mounts.  
 - **Quality gate:** `Makefile` — `make check` (vet, golangci-lint, integration tests, module boundaries).

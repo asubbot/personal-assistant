@@ -24,7 +24,7 @@ Use **symptom → check → fix**. Prefer `./pa` with `PA_LOG_LEVEL=debug` only 
 |-------|--------|
 | Private key | `nodes.<id>.auth.private_key_path` resolved with `PA_SECRETS_DIR`; file readable. |
 | Docker: key “no such file” | Use a **bare filename** in config (e.g. `node_ssh_private_key`) and mount the key under **`PA_SECRETS_DIR`** with the **same basename** (see [docker.md](docker.md) secrets table). Host paths like `/Users/.../.ssh/...` do not exist inside the container unless you mount them explicitly. |
-| Allowlist | `command_allowlist_path` relative to `PA_CONFIG_DIR`; command exactly allowlisted (no shell metacharacters where forbidden). |
+| Allowlist | `command_allowlist_path` relative to `PA_CONFIG_DIR`; patterns may use `*` only once, as the last character (prefix wildcard). A lone `*`, `**`, `foo*bar`, etc. cause load failure. Remote commands must match the allowlist **and** the character set (letters, numbers, Mn/Mc, fixed ASCII punctuation including space — not tab); `;` and similar fail with “not in allowed command character set” before shell-specific wording. |
 | `known_hosts` | `paths.ssh_known_hosts_path` relative to config dir; host key must match. |
 | Probe | Run `./pa -verify-nodes` and optional `-verify-nodes-command` (must be allowlisted). |
 

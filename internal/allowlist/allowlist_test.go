@@ -1,10 +1,15 @@
 package allowlist
 
 import (
+	"os"
 	"pa/internal/config"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// REQ/AC trace: AC-01.007, AC-01.008 (REQ-01.005) — allowlist load, pattern rules, Allow/match.
+// Complemented by internal/noderunner/runner_test.go and cmdsafe tests for pre-exec command policy (REQ-04.031 / AC-04.029).
 
 // Covers AC-01.007 (US-04): Allow returns allowed for allowlisted commands.
 func TestChecker_Allow_allowlistedCommands(t *testing.T) {
@@ -119,4 +124,269 @@ func mustNewChecker(t *testing.T) *Checker {
 		t.Fatalf("NewChecker: %v", err)
 	}
 	return checker
+}
+
+func TestNewChecker_rejectsBareStarPattern(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(p, []byte("*\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	_, err := NewChecker(cfg)
+	if err == nil {
+		t.Fatal("expected error for bare * pattern")
+	}
+	if !strings.Contains(err.Error(), "bare *") {
+		t.Fatalf("error = %v, want bare * mentioned", err)
+	}
+}
+
+func TestNewChecker_rejectsLineThatTrimsToBareStar(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	// Line trims to "*" — same as bare star.
+	if err := os.WriteFile(p, []byte(" *\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	_, err := NewChecker(cfg)
+	if err == nil {
+		t.Fatal("expected error when trimmed line is *")
+	}
+}
+
+func TestNewChecker_rejectsMultipleTrailingStars(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(p, []byte("echo *\nfoo**\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	_, err := NewChecker(cfg)
+	if err == nil {
+		t.Fatal("expected error for foo** pattern")
+	}
+	if !strings.Contains(err.Error(), "only once") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestNewChecker_rejectsLineEndingWithTwoStarsOnly(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(p, []byte("**\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	_, err := NewChecker(cfg)
+	if err == nil {
+		t.Fatal("expected error for ** pattern")
+	}
+}
+
+// One invalid pattern causes the entire file to fail loading; no partial allowlist.
+func TestNewChecker_rejectsEntireFileWhenMixedWithInvalidPattern(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	content := "uptime\necho *\n*\n"
+	if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	_, err := NewChecker(cfg)
+	if err == nil {
+		t.Fatal("expected load error when file mixes valid lines with bare *")
+	}
+	if !strings.Contains(err.Error(), "bare *") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+// A single trailing * on a non-empty prefix loads and matches prefix semantics.
+func TestNewChecker_singleTrailingStarPatternLoadsAndMatches(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(p, []byte("foo*\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	c, err := NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	if !c.Allow("n1", "foo") || !c.Allow("n1", "foobar") {
+		t.Fatal("prefix foo* should allow foo and foobar")
+	}
+	if c.Allow("n1", "bar") {
+		t.Fatal("bar should not match foo*")
+	}
+}
+
+func TestNewChecker_rejectsTripleTrailingStars(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(p, []byte("a***\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	_, err := NewChecker(cfg)
+	if err == nil {
+		t.Fatal("expected error for a***")
+	}
+	if !strings.Contains(err.Error(), "only once") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestNewChecker_rejectsStarNotOnlyAtEnd(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(p, []byte("foo*bar\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: "/t", UsersPath: ""},
+		LLMProviders: []config.LLMProvider{
+			{Type: "ollama", Endpoint: "http://x", Model: "m"},
+		},
+		Paths: config.Paths{
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+		},
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "h",
+				DedicatedUser:        "u",
+				Auth:                 config.NodeAuth{PrivateKeyPath: "/k"},
+				CommandAllowlistPath: p,
+			},
+		},
+	}
+	_, err := NewChecker(cfg)
+	if err == nil {
+		t.Fatal("expected error for internal *")
+	}
+	if !strings.Contains(err.Error(), "only once") {
+		t.Fatalf("error = %v", err)
+	}
 }

@@ -423,7 +423,7 @@ func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, ar
 	if err != nil {
 		return "", toolfailure.MayEscalate(fmt.Errorf("tool %q: %w", toolID, err))
 	}
-	if err := cmdsafe.RejectShellMetacharacters(command); err != nil {
+	if err := cmdsafe.ValidateRemoteCommand(command); err != nil {
 		return "", toolfailure.NoEscalate(fmt.Errorf("tool %q: %w", toolID, err))
 	}
 	if h.nodeRunner == nil {

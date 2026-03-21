@@ -104,8 +104,18 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 	if cmd == "" {
 		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeEmptyCommand, fmt.Errorf("noderunner: command is empty"))
 	}
-	if err := cmdsafe.RejectShellMetacharacters(cmd); err != nil {
-		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeShellMetaRejected, fmt.Errorf("noderunner: %w", err))
+	if err := cmdsafe.ValidateRemoteCommand(cmd); err != nil {
+		kind, ok := cmdsafe.RejectKind(err)
+		if !ok {
+			// ValidateRemoteCommand returns *CommandValidationError today; if that invariant breaks, map to rune policy so escalation stays conservative.
+			return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: %w", err))
+		}
+		switch kind {
+		case cmdsafe.CommandRejectShellMeta:
+			return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeShellMetaRejected, fmt.Errorf("noderunner: %w", err))
+		default:
+			return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: %w", err))
+		}
 	}
 	if r.allowlist == nil {
 		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeAllowlistNotConfigured, fmt.Errorf("noderunner: allowlist not configured"))

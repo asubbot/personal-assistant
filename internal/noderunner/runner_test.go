@@ -14,6 +14,9 @@ import (
 	"testing"
 )
 
+// REQ/AC trace: AC-01.007, AC-01.008 (REQ-01.005) — RunOnNode + allowlist.
+// AC-04.029 / REQ-04.031 — cmdsafe.ValidateRemoteCommand before allowlist/exec (with internal/cmdsafe tests).
+
 // Covers AC-01.008 (US-04): RunOnNode does not execute empty/whitespace command; returns error.
 func TestRunOnNode_emptyCommand_returnsError(t *testing.T) {
 	dir := t.TempDir()
@@ -132,7 +135,7 @@ func TestRunOnNode_twoNodes_eachUsesCorrectNodeID(t *testing.T) {
 func TestRunOnNode_shellMetacharacters_rejected(t *testing.T) {
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
-	if err := os.WriteFile(allowlistPath, []byte("*\n"), 0o600); err != nil {
+	if err := os.WriteFile(allowlistPath, []byte("uptime\n"), 0o600); err != nil {
 		t.Fatalf("write allowlist: %v", err)
 	}
 	cfg := &config.Config{
@@ -165,6 +168,131 @@ func TestRunOnNode_shellMetacharacters_rejected(t *testing.T) {
 	}
 	if execCalls != 0 {
 		t.Errorf("executor must not run for rejected commands; calls=%d", execCalls)
+	}
+}
+
+// Command strings with disallowed runes (e.g. tab) are rejected before allowlist and executor.
+func TestRunOnNode_disallowedRunes_rejectedBeforeExec(t *testing.T) {
+	dir := t.TempDir()
+	allowlistPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowlistPath, []byte("uptime\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowlistPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	r := New(cfg, al, slog.Default())
+	var execCalls int
+	r.SetExecutor(&mockExecutor{
+		execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+			execCalls++
+			return nil, nil, nil
+		},
+	})
+	_, err = r.RunOnNode(context.Background(), "n1", "uptime\textra")
+	if err == nil {
+		t.Fatal("expected error for tab in command")
+	}
+	if execCalls != 0 {
+		t.Fatalf("executor must not run; calls=%d", execCalls)
+	}
+}
+
+// strings.TrimSpace strips ASCII tab at the ends, so the trimmed command can match the allowlist
+// (tab only inside the string is still rejected by RejectDisallowedRunes).
+func TestRunOnNode_trimSpaceStripsLeadingTrailingTab(t *testing.T) {
+	dir := t.TempDir()
+	allowlistPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowlistPath, []byte("uptime\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowlistPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	r := New(cfg, al, slog.Default())
+	var gotCmd string
+	r.SetExecutor(&mockExecutor{
+		execFunc: func(_ context.Context, _ string, command string) ([]byte, []byte, error) {
+			gotCmd = command
+			return []byte("ok"), nil, nil
+		},
+	})
+	for _, raw := range []string{"uptime\t", "\tuptime", "\tuptime\n", " \tuptime\t "} {
+		gotCmd = ""
+		_, err = r.RunOnNode(context.Background(), "n1", raw)
+		if err != nil {
+			t.Fatalf("RunOnNode(%q): %v", raw, err)
+		}
+		if gotCmd != "uptime" {
+			t.Fatalf("after trim want executor command %q, got %q (input %q)", "uptime", gotCmd, raw)
+		}
+	}
+}
+
+// RejectDisallowedRunes runs before allowlist: a tilde is rejected even if the exact string is listed.
+// Semicolon is not in the allowed rune set, so it is rejected as a disallowed rune (before shell-meta and allowlist).
+func TestRunOnNode_disallowedRuneRejectedBeforeAllowlistAndShellMetaLayer(t *testing.T) {
+	dir := t.TempDir()
+	allowlistPath := filepath.Join(dir, "allowlist.txt")
+	if err := os.WriteFile(allowlistPath, []byte("uptime~\nuptime;extra\n"), 0o600); err != nil {
+		t.Fatalf("write allowlist: %v", err)
+	}
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:                 "localhost",
+				DedicatedUser:        "pa",
+				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
+				CommandAllowlistPath: allowlistPath,
+			},
+		},
+	}
+	al, err := allowlist.NewChecker(cfg)
+	if err != nil {
+		t.Fatalf("NewChecker: %v", err)
+	}
+	r := New(cfg, al, slog.Default())
+	var execCalls int
+	r.SetExecutor(&mockExecutor{
+		execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+			execCalls++
+			return nil, nil, nil
+		},
+	})
+	_, err = r.RunOnNode(context.Background(), "n1", "uptime~")
+	if err == nil || !strings.Contains(err.Error(), "disallowed character") || !strings.Contains(err.Error(), "007E") ||
+		!strings.Contains(err.Error(), "not in allowed command character set") {
+		t.Fatalf("uptime~: want disallowed rune error with U+007E and hint, got %v", err)
+	}
+	_, err = r.RunOnNode(context.Background(), "n1", "uptime;extra")
+	if err == nil || !strings.Contains(err.Error(), "disallowed character") || !strings.Contains(err.Error(), "003B") ||
+		!strings.Contains(err.Error(), "not in allowed command character set") {
+		t.Fatalf("uptime;extra: want disallowed rune error with U+003B and hint, got %v", err)
+	}
+	if execCalls != 0 {
+		t.Fatalf("executor must not run; calls=%d", execCalls)
 	}
 }
 
@@ -259,6 +387,22 @@ func TestRunOnNode_escalationPolicy_smoke(t *testing.T) {
 		}
 		if toolfailure.QualifiesForEscalation(runErr) {
 			t.Fatal("expected NoEscalate for empty command")
+		}
+	})
+
+	t.Run("disallowed_runes_NoEscalate", func(t *testing.T) {
+		t.Parallel()
+		r := New(cfg, al, slog.Default())
+		r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+			t.Fatal("executor must not run")
+			return nil, nil, nil
+		}})
+		_, runErr := r.RunOnNode(context.Background(), "n1", "echo\thello")
+		if runErr == nil {
+			t.Fatal("expected error")
+		}
+		if toolfailure.QualifiesForEscalation(runErr) {
+			t.Fatal("expected NoEscalate for disallowed runes")
 		}
 	})
 

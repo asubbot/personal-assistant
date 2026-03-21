@@ -1217,7 +1217,7 @@ func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testin
 	}
 }
 
-// Covers AC-04.029 (REQ-04.031): substituted command with shell metacharacter must not reach RunOnNode.
+// Covers AC-04.029 (REQ-04.031): substituted command must pass cmdsafe.ValidateRemoteCommand before RunOnNode (e.g. `;` rejected as disallowed rune).
 func TestExecuteOneToolCall_substitutedCommandWithMetachar_noRunOnNode(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -1235,6 +1235,30 @@ func TestExecuteOneToolCall_substitutedCommandWithMetachar_noRunOnNode(t *testin
 	_, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "hi;rm -rf /"}`)
 	if err == nil {
 		t.Fatal("executeOneToolCall: expected error for metacharacter in substituted command")
+	}
+	if runner.lastCommand != "" {
+		t.Errorf("RunOnNode must not run; lastCommand=%q", runner.lastCommand)
+	}
+}
+
+// Substituted command with a disallowed rune (e.g. tab) must not reach RunOnNode.
+func TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID:        "run_echo",
+				IndexText: "Echo",
+				Template:  "echo {{msg}}",
+				NodeID:    "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+	_, err := h.executeOneToolCall(context.Background(), "run_echo", "{\"msg\": \"x\\ty\"}")
+	if err == nil {
+		t.Fatal("executeOneToolCall: expected error for tab in substituted command")
 	}
 	if runner.lastCommand != "" {
 		t.Errorf("RunOnNode must not run; lastCommand=%q", runner.lastCommand)
