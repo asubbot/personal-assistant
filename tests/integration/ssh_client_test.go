@@ -282,7 +282,7 @@ func startSSHContainer(t *testing.T, ctx context.Context, dir string) string {
 	}
 	runCmd := exec.CommandContext(ctx, "docker", "run", "-d",
 		"-p", fmt.Sprintf("%d:22", sshTestPort),
-		"-v", dir+":/home/test/.ssh:ro",
+		"-v", dir+":/auth:ro",
 		"pa-ssh-test",
 	)
 	runOut, err := runCmd.CombinedOutput()
