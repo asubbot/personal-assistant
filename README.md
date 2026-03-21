@@ -6,7 +6,7 @@ Go service: Telegram bot, conversation core, long-term memory (markdown), vector
 
 **Design and process:** [ai-sdlc/](ai-sdlc/) · epic artefacts [ai-sdlc-artefacts/epics/](ai-sdlc-artefacts/epics/) (e.g. EP-001 MVP, EP-004 tools, EP-006 escalation).
 
-**Requirements:** **Go 1.26+** with **CGO** (SQLite + sqlite-vec). Main config: **`config.json`** inside **`PA_CONFIG_DIR`** (default `./config`). Secrets are **files** referenced from JSON — never commit real tokens or keys.
+**Requirements:** **Go 1.26+** with **CGO** (SQLite + sqlite-vec). Main config: **`config.json`** inside **`PA_CONFIG_DIR`** (default `./.config`). Copy templates from **`config.examples/`** into **`.config/`** (gitignored). Secrets are **files** referenced from JSON — never commit real tokens or keys.
 
 ---
 
@@ -15,16 +15,18 @@ Go service: Telegram bot, conversation core, long-term memory (markdown), vector
 ```bash
 go mod tidy
 cp .env.example .env
-cp config/config.example.json config/config.json
-cp config/known_hosts.example config/known_hosts
-cp config/nas_allowlist.example config/nas_allowlist
-cp config/scheduled_tasks.example.json config/scheduled_tasks.json
-# Edit config.json; fill known_hosts (e.g. ssh-keyscan); place secrets under .secrets/ (or set PA_SECRETS_DIR)
+mkdir -p .config
+cp config.examples/config.example.json .config/config.json
+cp config.examples/known_hosts.example .config/known_hosts
+cp config.examples/nas_allowlist.example .config/nas_allowlist
+cp config.examples/scheduled_tasks.example.json .config/scheduled_tasks.json
+cp config.examples/tools.yaml .config/tools.yaml
+# Edit .config/config.json; fill known_hosts (e.g. ssh-keyscan); place secrets under .secrets/ (or set PA_SECRETS_DIR)
 ```
 
 ```bash
 go build -o pa ./cmd/pa
-PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./pa
+PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./pa
 ```
 
 More detail: [docs/installation.md](docs/installation.md), [docs/configuration.md](docs/configuration.md).
@@ -35,7 +37,7 @@ More detail: [docs/installation.md](docs/installation.md), [docs/configuration.m
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PA_CONFIG_DIR` | `./config` | Directory containing `config.json`; base for relative allowlist, scheduled tasks, `known_hosts`, tool catalog paths. |
+| `PA_CONFIG_DIR` | `./.config` | Directory containing `config.json`; base for relative allowlist, scheduled tasks, `known_hosts`, tool catalog paths. |
 | `PA_DATA_DIR` | `.` | Base for relative `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. |
 | `PA_SECRETS_DIR` | `.` | Base for relative secret file paths (Telegram, API keys, SSH keys). |
 | `PA_LOG_LEVEL` | `info` | `slog` level; **`debug`** logs full LLM request/response in the handler. |

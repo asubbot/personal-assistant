@@ -18,7 +18,7 @@
 
 **Prerequisites:**
 
-- Tool catalog includes a tool with id **`sonos`** (or equivalent) bound to a node where the Sonos control command exists and is allowlisted (see operator [config/tools.yaml](../../../config/tools.yaml) as an example).
+- Tool catalog includes a tool with id **`sonos`** (or equivalent) bound to a node where the Sonos control command exists and is allowlisted (see operator [config.examples/tools.yaml](../../../config.examples/tools.yaml) as an example).
 - Chat uses a provider with **supports_tools** true (native tool-calling) unless you run the Hermes variant under [AC-04.022](ep-acceptance-criteria.md#ac-04-022).
 
 **Steps:**

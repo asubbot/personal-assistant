@@ -9,13 +9,10 @@ data/
 .env
 .secrets/
 .vscode/
+.cursor
 
-# Operator-local copies (tracked templates: *.example / *.example.json)
-config/config.json
-config/known_hosts
-config/nas_allowlist
-config/nas_allowlist.txt
-config/scheduled_tasks.json
+# Operator-local config (templates live in config.examples/)
+.config/
 
 # OS
 .DS_Store

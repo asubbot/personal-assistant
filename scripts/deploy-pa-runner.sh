@@ -7,7 +7,7 @@
 #
 # Example:
 #   ./scripts/deploy-pa-runner.sh root nas.local pa-runner ~/.ssh/pa_nas.pub ./pa-runner
-#   ./scripts/deploy-pa-runner.sh admin myserver.local pa ~/.ssh/pa.pub ./pa-runner ./config/nas_allowlist
+#   ./scripts/deploy-pa-runner.sh admin myserver.local pa ~/.ssh/pa.pub ./pa-runner ./.config/nas_allowlist
 #
 # You will be prompted for ADMIN_USER password when connecting.
 # Requires: admin can sudo on the node; node is Linux (Debian/Ubuntu or Synology DSM).

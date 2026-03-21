@@ -1,4 +1,4 @@
-# Copy to `nas_allowlist` (gitignored) and adjust for your environment.
+# Copy to `.config/nas_allowlist` (gitignored) and adjust for your environment.
 # One pattern per line. Empty lines and lines starting with # are ignored.
 # Exact match: command must equal the pattern.
 # Prefix match: pattern ending with * matches any command that starts with the prefix (without the *).

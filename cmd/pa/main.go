@@ -68,11 +68,11 @@ func newLLMForConversation(cfg *config.Config) (providers []llm.Provider, labels
 	return buildLLMProviders(cfg)
 }
 
-// configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./config") joined with config.ConfigFileName.
+// configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./.config") joined with config.ConfigFileName.
 func configFilePath() string {
 	dir := os.Getenv("PA_CONFIG_DIR")
 	if dir == "" {
-		dir = "./config"
+		dir = "./.config"
 	}
 	return filepath.Join(dir, config.ConfigFileName)
 }

@@ -63,7 +63,7 @@ The branch delivers a **coherent** implementation: explicit failure typing (`int
 ## 6. Residual risks / follow-ups
 
 - **Returned tool errors** may still carry sensitive remote fragments (truncated but not redacted); logs mitigated via redactor when wired from `main`.
-- **Configuration migration:** operators use `config/config.example.json` / local `config.json`; keep [README.md](../../../README.md) explicit.
+- **Configuration migration:** operators copy `config.examples/*` into **`.config/`**; keep [README.md](../../../README.md) explicit.
 - **Artefact drift:** Re-align [ep-audit-report.md](ep-audit-report.md) after further handler/router/noderunner edits.
 - **Transport storms:** watch for `llmrouter: exceeded max attempts` in noisy provider environments.
 

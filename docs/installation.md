@@ -34,18 +34,20 @@ go build -o pa ./cmd/pa
 Copy the example and edit (never commit real secrets):
 
 ```bash
-cp config/config.example.json config/config.json
-cp config/known_hosts.example config/known_hosts
-cp config/nas_allowlist.example config/nas_allowlist
-cp config/scheduled_tasks.example.json config/scheduled_tasks.json
+mkdir -p .config
+cp config.examples/config.example.json .config/config.json
+cp config.examples/known_hosts.example .config/known_hosts
+cp config.examples/nas_allowlist.example .config/nas_allowlist
+cp config.examples/scheduled_tasks.example.json .config/scheduled_tasks.json
+cp config.examples/tools.yaml .config/tools.yaml
 ```
 
-`known_hosts`, `nas_allowlist`, and `scheduled_tasks.json` are **gitignored** so you can keep real host keys, allowlists, and schedules locally without scrubbing before push. Adjust paths and nodes; populate `known_hosts` (e.g. `ssh-keyscan`). See [configuration.md](configuration.md).
+The **`.config/`** directory is **gitignored**; committed templates live under **`config.examples/`**. Adjust paths and nodes; populate `known_hosts` (e.g. `ssh-keyscan`). See [configuration.md](configuration.md).
 
 ## First run
 
 ```bash
-PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./pa
+PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./pa
 ```
 
 Or set the same variables in `.env` and run `./pa` from a shell where they are exported.

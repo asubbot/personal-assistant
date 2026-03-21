@@ -33,7 +33,7 @@ func TestConfigFilePath_PAConfigDirUnsetOrEmpty(t *testing.T) {
 	t.Cleanup(func() { _ = os.Unsetenv("PA_CONFIG_DIR") })
 
 	got := configFilePath()
-	want := filepath.Join("./config", config.ConfigFileName)
+	want := filepath.Join("./.config", config.ConfigFileName)
 	if got != want {
 		t.Errorf("configFilePath() = %q, want %q", got, want)
 	}

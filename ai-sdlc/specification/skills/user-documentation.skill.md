@@ -26,11 +26,11 @@ description: >-
 
 **Goal:** Produce accurate, practical documentation derived from the **current codebase and checked-in examples**, with:
 
-- No invented flags, env vars, or config keys — verify against `cmd/pa`, `internal/config`, `docker-compose.yml`, `Makefile`, and **`config/config.example.json`**.
+- No invented flags, env vars, or config keys — verify against `cmd/pa`, `internal/config`, `docker-compose.yml`, `Makefile`, and **`config.examples/config.example.json`**.
 - **No secrets** in examples (placeholders and file-path patterns only; same discipline as project README and AGENTS.md).
 - **English** for all generated user-facing prose (titles, body, tables).
 
-**Traceability:** Prefer linking to paths in the repo (e.g. `config/config.example.json`) rather than duplicating large JSON blocks unless a short excerpt helps.
+**Traceability:** Prefer linking to paths in the repo (e.g. `config.examples/config.example.json`) rather than duplicating large JSON blocks unless a short excerpt helps.
 
 ---
 
@@ -39,7 +39,7 @@ description: >-
 Read and reconcile at least:
 
 - **Entrypoints:** `cmd/pa/main.go` (flags, subcommands or modes such as `-verify-nodes`).
-- **Configuration:** `config/config.example.json`, `internal/config/` (validation rules, required fields).
+- **Configuration:** `config.examples/config.example.json`, `internal/config/` (validation rules, required fields).
 - **Deployment:** `docker-compose.yml`, `Dockerfile`, any `scripts/` used in docs today.
 - **Existing user surface:** Current **`README.md`** (preserve good structure; fix drift).
 - **Optional context:** `ai-sdlc-artefacts/scope.md` for high-level product description (keep user doc solution-oriented, not process-heavy).
@@ -56,7 +56,7 @@ Create or update as needed (adjust titles if the user prefers a different split;
 |------|------------------|
 | **`docs/README.md`** | Index: one-line description of each doc; link back to repo `README.md`. |
 | **`docs/installation.md`** | Prerequisites (Go version, CGO/SQLite notes if applicable), clone, `go mod tidy`, build, first run. If `make check` is mentioned: **quality gate only** (fmt, vet, lint, tests, coverage, boundaries) — **not** installation or deployment. |
-| **`docs/configuration.md`** | `PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`, `PA_LOG_LEVEL`; how paths resolve; copy from `config.example.json` to `config.json`; secrets as files; optional nodes / tools / escalation overview with links to example keys. |
+| **`docs/configuration.md`** | `PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`, `PA_LOG_LEVEL`; how paths resolve; copy from `config.examples/` into **`.config/`**; secrets as files; optional nodes / tools / escalation overview with links to example keys. |
 | **`docs/docker.md`** | Compose services, volumes, env table, secrets layout, cron/summarization + timezone note if present in code/README. |
 | **`docs/operations.md`** | Running the binary, `-verify-nodes`, logs location, safe log levels, where to find LLM logs (if configured). |
 | **`docs/troubleshooting.md`** | Common failures (config load, SSH, allowlist, missing secrets) with **symptom → check → fix**; no internal stack traces unless they help the operator. |
@@ -102,6 +102,6 @@ Contributor / pipeline pointers may remain in README (e.g. link to `ai-sdlc/`) b
 
 - [ ] Audience is clearly **operator / end user**; prose is **English**.
 - [ ] Outputs are under **`docs/`** (with index) and **`README.md`** is updated as the entry point.
-- [ ] Content matches **current** code and **`config/config.example.json`**; no fabricated CLI/config.
+- [ ] Content matches **current** code and **`config.examples/config.example.json`**; no fabricated CLI/config.
 - [ ] No secrets in examples.
 - [ ] User explicitly approved **save** when following draft-then-save workflow.

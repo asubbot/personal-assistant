@@ -7,7 +7,7 @@ Use **symptom → check → fix**. Prefer `./pa` with `PA_LOG_LEVEL=debug` only 
 | Check | Action |
 |-------|--------|
 | `PA_CONFIG_DIR` wrong | Ensure the directory exists and contains **`config.json`**. |
-| JSON invalid | Validate JSON; compare with [config/config.example.json](../config/config.example.json). |
+| JSON invalid | Validate JSON; compare with [config.examples/config.example.json](../config.examples/config.example.json). |
 | Validation error message | Read the error: escalation rules, missing paths, `llm_log_retention_days` &lt; 1, duplicate scheduled task names, tool catalog errors, etc. Fix config per [configuration.md](configuration.md). |
 
 ## Telegram / bot does not respond

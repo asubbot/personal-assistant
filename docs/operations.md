@@ -11,7 +11,7 @@ After configuration and secrets are in place:
 With explicit env (example):
 
 ```bash
-PA_CONFIG_DIR=./config PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets PA_LOG_LEVEL=info ./pa
+PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets PA_LOG_LEVEL=info ./pa
 ```
 
 The process runs until stopped (SIGINT/SIGTERM).

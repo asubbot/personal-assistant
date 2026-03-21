@@ -1,3 +1,0 @@
-# Copy to `known_hosts` (gitignored) and populate with your node host keys, e.g.:
-#   ssh-keyscan -p PORT HOST >> config/known_hosts
-# The file must exist when `nodes` is configured in config.json (see paths.ssh_known_hosts_path).

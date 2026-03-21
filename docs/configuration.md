@@ -2,17 +2,16 @@
 
 ## Main config file
 
-- The application loads **`config.json`** from the directory set by **`PA_CONFIG_DIR`** (default `./config`).
+- The application loads **`config.json`** from the directory set by **`PA_CONFIG_DIR`** (default `./.config`).
 - The full path is always `<PA_CONFIG_DIR>/config.json`. The filename is fixed in code (`config.ConfigFileName`).
 
-Start from the checked-in templates:
+Start from the checked-in templates in **`config.examples/`** (copy into **`.config/`**, which is gitignored):
 
-- **[config/config.example.json](../config/config.example.json)** — copy to `config/config.json` (gitignored).
-- **[config/known_hosts.example](../config/known_hosts.example)** — copy to `config/known_hosts` (gitignored). Required when `nodes` is non-empty; populate with host keys (e.g. `ssh-keyscan`).
-- **[config/nas_allowlist.example](../config/nas_allowlist.example)** — copy to `config/nas_allowlist` (gitignored) when using node allowlists.
-- **[config/scheduled_tasks.example.json](../config/scheduled_tasks.example.json)** — copy to `config/scheduled_tasks.json` (gitignored) when using scheduled tasks.
-
-Keeping these operator files out of version control avoids scrubbing machine-specific paths and keys before every `git push`.
+- **[config.examples/config.example.json](../config.examples/config.example.json)** → `.config/config.json`
+- **[config.examples/known_hosts.example](../config.examples/known_hosts.example)** → `.config/known_hosts` (required when `nodes` is non-empty; populate with host keys, e.g. `ssh-keyscan`)
+- **[config.examples/nas_allowlist.example](../config.examples/nas_allowlist.example)** → `.config/nas_allowlist` when using node allowlists
+- **[config.examples/scheduled_tasks.example.json](../config.examples/scheduled_tasks.example.json)** → `.config/scheduled_tasks.json` when using scheduled tasks
+- **[config.examples/tools.yaml](../config.examples/tools.yaml)** → `.config/tools.yaml` (tool catalog path in JSON is relative to `PA_CONFIG_DIR`)
 
 ## Environment variables
 
@@ -20,7 +19,7 @@ These are read at process start; they control how **relative paths** in JSON are
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PA_CONFIG_DIR` | `./config` | Directory containing `config.json`. Also the base for **relative** `command_allowlist_path`, `scheduled_tasks_path`, `ssh_known_hosts_path`, `tool_catalog_path`. |
+| `PA_CONFIG_DIR` | `./.config` | Directory containing `config.json`. Also the base for **relative** `command_allowlist_path`, `scheduled_tasks_path`, `ssh_known_hosts_path`, `tool_catalog_path`. |
 | `PA_DATA_DIR` | `.` | Base for **relative** `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. |
 | `PA_SECRETS_DIR` | `.` | Base for **relative** `token_path`, `users_path`, LLM/embedding `api_key_path`, node `private_key_path`. |
 | `PA_LOG_LEVEL` | `info` | Log level for application output (`slog`). Invalid values fall back to `info`. At **`debug`**, the conversation handler logs full LLM request/response (sensitive — use only when needed). |

@@ -21,14 +21,14 @@ Config file format and related file formats: see [Config file (JSON)](#config-fi
   - Acceptance Criteria: —
   - **Execution:**
     - **Module:** `go mod init pa` in repo root; `go 1.26` in go.mod. Module name: `pa`.
-    - **Entrypoint:** Single binary `cmd/pa/main.go`. Thin main: init `slog` (TextHandler to stdout), load config via `config.Load(path)`, on error log and `os.Exit(1)`, then exit 0 (no Telegram/LLM yet). Config path from env `PA_CONFIG_DIR` (directory); config file is always `config.json` inside that directory. Default `PA_CONFIG_DIR=./config`, so default config file is `./config/config.json`. If unset or empty, `./config` is used.
+    - **Entrypoint:** Single binary `cmd/pa/main.go`. Thin main: init `slog` (TextHandler to stdout), load config via `config.Load(path)`, on error log and `os.Exit(1)`, then exit 0 (no Telegram/LLM yet). Config path from env `PA_CONFIG_DIR` (directory); config file is always `config.json` inside that directory. Default `PA_CONFIG_DIR=./.config`, so default config file is `./.config/config.json`. If unset or empty, `./.config` is used.
     - **internal/config:** Stub only in this task: e.g. `Load(path string) (*Config, error)` that returns an error (e.g. "config load not implemented") or empty struct until task 1.1. No JSON parsing yet.
     - **Other internal packages:** Create each listed directory; add a minimal `doc.go` per package (`// Package <name> ...` + `package <name>`) so directories are valid Go packages and `go build ./...` succeeds. No other code in telegram/core/memory/vector/llm/scheduler/tools/ssh/logging until later tasks.
     - **Verification:** `go build ./...` passes; `go run ./cmd/pa` exits (non-zero without config path or with missing file; zero if stub returns success; exact behaviour is decided in 1.1).
 
 - [x] 1.1 Implement config load and validation
   - Define config struct (version; telegram: token_path, users_path, notify_chat_id; nodes: host, dedicated_user, auth, command_allowlist_path; llm_providers: ordered list; paths: memory_dir, log_path, vector_index_path, scheduled_tasks_path). Validate version for backward compatibility; load and validate users file (user_id, role, optional name).
-  - Load JSON from path; validate required fields and node/LLM/path consistency. Config file format: [Config file (JSON)](#config-file-json). Resolve paths from environment ([REQ-01.030](ep-requirements.md#configuration-paths-and-environment)): config file from `PA_CONFIG_DIR` (directory; default `./config`); data paths (memory_dir, log_path, vector_index_path, llm_log_dir) from `PA_DATA_DIR` (relative → relative to base, absolute unchanged, unset/empty → default e.g. "."); secrets paths from `PA_SECRETS_DIR` when applicable.
+  - Load JSON from path; validate required fields and node/LLM/path consistency. Config file format: [Config file (JSON)](#config-file-json). Resolve paths from environment ([REQ-01.030](ep-requirements.md#configuration-paths-and-environment)): config file from `PA_CONFIG_DIR` (directory; default `./.config`); data paths (memory_dir, log_path, vector_index_path, llm_log_dir) from `PA_DATA_DIR` (relative → relative to base, absolute unchanged, unset/empty → default e.g. "."); secrets paths from `PA_SECRETS_DIR` when applicable.
   - On validation failure: log clear error and exit non-zero (do not start serving)
   - Requirements: [REQ-01.003](ep-requirements.md#nodes-and-ssh), [REQ-01.004](ep-requirements.md#nodes-and-ssh), [REQ-01.024](ep-requirements.md#nodes-and-ssh), [REQ-01.030](ep-requirements.md#configuration-paths-and-environment)
   - Acceptance Criteria: [AC-01.005](ep-acceptance-criteria.md#ac-01-005), [AC-01.033](ep-acceptance-criteria.md#ac-01-033), [AC-01.042](ep-acceptance-criteria.md#ac-01-042)
@@ -346,7 +346,7 @@ _Do this when most functionality is in place._
 
 ## Config file (JSON)
 
-_Reference material._ Application config is a single JSON file at `config.json` inside the config directory (from `PA_CONFIG_DIR`; default `./config`).
+_Reference material._ Application config is a single JSON file at `config.json` inside the config directory (from `PA_CONFIG_DIR`; default `./.config`).
 
 ### Policy — explicit keys (mandatory in reference configs)
 

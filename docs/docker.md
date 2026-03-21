@@ -5,7 +5,7 @@ The image targets **linux/amd64** and **linux/arm64** (Intel/AMD servers, Synolo
 ## Files
 
 - **[Dockerfile](../Dockerfile)** — multi-stage build (`golang:1.26-bookworm` → `debian:bookworm-slim`), installs `cron`, runs **[scripts/entrypoint.sh](../scripts/entrypoint.sh)**.
-- **[docker-compose.yml](../docker-compose.yml)** — base Compose: build context, mounts config and data, injects Docker secrets into `/run/secrets` (no fixed `platforms:`).
+- **[docker-compose.yml](../docker-compose.yml)** — base Compose: build context, mounts **`.config/`** (read-only) and data, injects Docker secrets into `/run/secrets` (no fixed `platforms:`).
 - **[docker-compose.arm64.yml](../docker-compose.arm64.yml)** — includes the base and sets **`build.platforms: [linux/arm64]`**.
 - **[docker-compose.amd64.yml](../docker-compose.amd64.yml)** — includes the base and sets **`build.platforms: [linux/amd64]`**.
 
@@ -47,7 +47,7 @@ If you see **checksum mismatch** after a failed build, run **`docker builder pru
 
 ## Compose layout
 
-- **Config (read-only):** host `./config` → container `/etc/pa` with `PA_CONFIG_DIR=/etc/pa`.
+- **Config (read-only):** host **`./.config`** → container `/etc/pa` with `PA_CONFIG_DIR=/etc/pa`.
 - **Data:** named volume `pa_data` → `/data` with `PA_DATA_DIR=/data`.
 - **Secrets:** Compose `secrets:` read from host `./.secrets/<file>` and are mounted under `/run/secrets` with **`PA_SECRETS_DIR=/run/secrets`**. Target filenames must match the **bare names** in `config.json` (e.g. `telegram_bot_token.txt`).
 
@@ -95,4 +95,4 @@ docker compose -f docker-compose.arm64.yml down
 
 Use **`docker-compose.amd64.yml`** instead of **`docker-compose.arm64.yml`** when you need **linux/amd64**. For host-native build without a platform pin, you can use the base file only: `docker compose up -d --build`.
 
-Ensure `config/config.json` exists and secret files are present under `.secrets/` as referenced by Compose.
+Ensure **`.config/config.json`** exists and secret files are present under **`.secrets/`** as referenced by Compose.

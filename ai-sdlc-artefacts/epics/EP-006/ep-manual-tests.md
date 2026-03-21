@@ -33,8 +33,8 @@ EP-006 escalation runs **after** a **`Complete`** returns (e.g. tool calls) and 
 
 What counts: SSH connect failure, remote command error, or similar node path → policy treats it as **qualifying** (see implementation: `escalationpolicy.WrapNodeOutcome` / `MayEscalate`).
 
-1. In [config](../../../config/config.json) (or your deploy config): **`tools.llm_escalation.enabled` true**, at least **two** `llm_providers`, valid `baseline_index` and `max_per_user_message`.
-2. Keep a tool that uses **`run_on_node`** (e.g. `node_time`, `run_echo`—whatever exists in your [tool catalog](../../../config/tools.yaml)).
+1. In **`.config/config.json`** (or your deploy config; copy from [config.examples/config.example.json](../../../config.examples/config.example.json)): **`tools.llm_escalation.enabled` true**, at least **two** `llm_providers`, valid `baseline_index` and `max_per_user_message`.
+2. Keep a tool that uses **`run_on_node`** (e.g. `node_time`, `run_echo`—whatever exists in your [tool catalog](../../../config.examples/tools.yaml)).
 3. **Break only execution** (not catalog validation):
    - **Easiest:** set the node’s **`host`** to an **unreachable** IP/hostname, **restart** the app, send a Telegram message that still causes the model to request that tool; or  
    - stop the SSH daemon / container on the target node while keeping config unchanged; or  
@@ -53,7 +53,7 @@ The handler can run **multiple tool rounds** in one user turn. You need **two** 
 
 ### C — Unknown tool / allowlist (non-qualifying)
 
-- **Unknown tool:** Use a chat model with **native tool calling**; ask in a way that sometimes emits a **fake** tool name not in [tools.yaml](../../../config/tools.yaml). If the model always behaves, this scenario is **hard to force manually**—rely on unit tests and spot-check when you see a bad tool name in the wild.
+- **Unknown tool:** Use a chat model with **native tool calling**; ask in a way that sometimes emits a **fake** tool name not in [tools.yaml](../../../config.examples/tools.yaml). If the model always behaves, this scenario is **hard to force manually**—rely on unit tests and spot-check when you see a bad tool name in the wild.
 - **Allowlist / cmdsafe:** Ask for an action that resolves to a command **not** on the node allowlist, or arguments that expand to **shell metacharacters** after substitution—should get validation / policy errors and **no** escalation for that reason alone.
 
 ### D — Hermes parse failure
