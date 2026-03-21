@@ -72,6 +72,15 @@ See [docs/operations.md](docs/operations.md) and [docs/docker.md](docs/docker.md
 make check
 ```
 
+**Coverage only** (summary table) or **HTML report** (opens in a browser):
+
+```bash
+make coverage
+make coverage-html   # writes coverage.html (gitignored)
+```
+
+On **GitHub Actions** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)), each successful run adds a **Coverage** section to the job summary and uploads **`coverage-out`** (`coverage.out`) as a workflow artifact.
+
 Integration tests need **Docker** and SSH tooling on `PATH`; see [docs/installation.md](docs/installation.md#contributors-full-code-quality-gate-not-installation).
 
 ---

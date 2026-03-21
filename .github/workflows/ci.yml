@@ -39,5 +39,22 @@ jobs:
           CGO_ENABLED: "1"
         run: make check
 
+      - name: Coverage summary
+        run: |
+          {
+            echo "### Test coverage (statements)"
+            echo ""
+            go tool cover -func=coverage.out | tail -1
+            echo ""
+            echo "Artifact **coverage-out** contains \`coverage.out\`. View HTML locally: \`go tool cover -html=coverage.out -o coverage.html\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-out
+          path: coverage.out
+          if-no-files-found: error
+
       - name: Verify working tree clean after fmt
         run: git diff --exit-code
