@@ -9,8 +9,10 @@ on:
   pull_request:
     branches: [main]
 
+# Explicit contents:read alone disables other defaults; upload-artifact needs actions:write.
 permissions:
   contents: read
+  actions: write
 
 jobs:
   check:
@@ -49,7 +51,9 @@ jobs:
             echo "Artifact **coverage-out** contains \`coverage.out\`. View HTML locally: \`go tool cover -html=coverage.out -o coverage.html\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # Fork PRs get a read-only token; artifact upload would fail without actions:write (not granted to forks).
       - name: Upload coverage profile
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/upload-artifact@v4
         with:
           name: coverage-out
