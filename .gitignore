@@ -1,7 +1,7 @@
 # Go
 *.out
 coverage.html
-data/
+
 # Binary / output named pa at repo root only (not cmd/pa)
 /pa
 
@@ -13,6 +13,7 @@ data/
 
 # Operator-local config (templates live in config.examples/)
 .config/
+.data/
 
 # OS
 .DS_Store
