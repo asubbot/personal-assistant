@@ -66,6 +66,9 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          # Go -coverprofile=coverage.out; explicit path avoids silent "no reports" uploads.
+          files: coverage.out
+          disable_search: true
 
       - name: Verify working tree clean after fmt
         run: git diff --exit-code
