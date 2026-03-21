@@ -5,9 +5,14 @@
 - The application loads **`config.json`** from the directory set by **`PA_CONFIG_DIR`** (default `./config`).
 - The full path is always `<PA_CONFIG_DIR>/config.json`. The filename is fixed in code (`config.ConfigFileName`).
 
-Start from the checked-in template:
+Start from the checked-in templates:
 
-- **[config/config.example.json](../config/config.example.json)** — copy to `config/config.json` (your copy is usually gitignored).
+- **[config/config.example.json](../config/config.example.json)** — copy to `config/config.json` (gitignored).
+- **[config/known_hosts.example](../config/known_hosts.example)** — copy to `config/known_hosts` (gitignored). Required when `nodes` is non-empty; populate with host keys (e.g. `ssh-keyscan`).
+- **[config/nas_allowlist.example](../config/nas_allowlist.example)** — copy to `config/nas_allowlist` (gitignored) when using node allowlists.
+- **[config/scheduled_tasks.example.json](../config/scheduled_tasks.example.json)** — copy to `config/scheduled_tasks.json` (gitignored) when using scheduled tasks.
+
+Keeping these operator files out of version control avoids scrubbing machine-specific paths and keys before every `git push`.
 
 ## Environment variables
 

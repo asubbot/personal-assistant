@@ -1,4 +1,4 @@
-# Allowlist for node "nas" (or copy to nas_allowlist.txt and reference in config).
+# Copy to `nas_allowlist` (gitignored) and adjust for your environment.
 # One pattern per line. Empty lines and lines starting with # are ignored.
 # Exact match: command must equal the pattern.
 # Prefix match: pattern ending with * matches any command that starts with the prefix (without the *).
@@ -7,4 +7,4 @@ echo *
 systemctl status *
 uptime
 date -Iseconds
-/volume1/homes/openclaw-runner/.local/bin/sonos *
+/opt/example/bin/my-tool *

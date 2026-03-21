@@ -35,9 +35,12 @@ Copy the example and edit (never commit real secrets):
 
 ```bash
 cp config/config.example.json config/config.json
+cp config/known_hosts.example config/known_hosts
+cp config/nas_allowlist.example config/nas_allowlist
+cp config/scheduled_tasks.example.json config/scheduled_tasks.json
 ```
 
-Adjust paths, nodes, and providers. See [configuration.md](configuration.md).
+`known_hosts`, `nas_allowlist`, and `scheduled_tasks.json` are **gitignored** so you can keep real host keys, allowlists, and schedules locally without scrubbing before push. Adjust paths and nodes; populate `known_hosts` (e.g. `ssh-keyscan`). See [configuration.md](configuration.md).
 
 ## First run
 

@@ -421,7 +421,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
       "auth": {
         "private_key_path": "/path/to/ssh/private_key"
       },
-      "command_allowlist_path": "nas_allowlist.txt"
+      "command_allowlist_path": "nas_allowlist"
     }
   },
   "log_redaction": {

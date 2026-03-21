@@ -7,7 +7,7 @@
 #
 # Example:
 #   ./scripts/deploy-pa-runner.sh root nas.local pa-runner ~/.ssh/pa_nas.pub ./pa-runner
-#   ./scripts/deploy-pa-runner.sh admin myserver.local pa ~/.ssh/pa.pub ./pa-runner ./config/nas_allowlist.txt
+#   ./scripts/deploy-pa-runner.sh admin myserver.local pa ~/.ssh/pa.pub ./pa-runner ./config/nas_allowlist
 #
 # You will be prompted for ADMIN_USER password when connecting.
 # Requires: admin can sudo on the node; node is Linux (Debian/Ubuntu or Synology DSM).
@@ -143,5 +143,5 @@ echo ""
 echo "Done. Next steps:"
 echo "  1. Ensure sshd was restarted (script may have run systemctl restart sshd)."
 echo "  2. In PA config (config.json): set nodes.<node_id>.host = $HOST, dedicated_user = $DEDICATED_USER, auth.private_key_path = path to key matching $PA_PUBKEY_PATH."
-echo "  3. Add the same node_id to config and allowlist (nas_allowlist.txt or node-specific) with the exact commands that appear in $ALLOWLIST_REMOTE."
+echo "  3. Add the same node_id to config and allowlist (nas_allowlist or node-specific) with the exact commands that appear in $ALLOWLIST_REMOTE."
 echo "  4. Test: ssh -i <private_key> $DEDICATED_USER@$HOST 'date -Iseconds'  (should run via pa-runner and return output)."

@@ -16,7 +16,10 @@ Go service: Telegram bot, conversation core, long-term memory (markdown), vector
 go mod tidy
 cp .env.example .env
 cp config/config.example.json config/config.json
-# Edit config.json; place secrets under .secrets/ (or set PA_SECRETS_DIR)
+cp config/known_hosts.example config/known_hosts
+cp config/nas_allowlist.example config/nas_allowlist
+cp config/scheduled_tasks.example.json config/scheduled_tasks.json
+# Edit config.json; fill known_hosts (e.g. ssh-keyscan); place secrets under .secrets/ (or set PA_SECRETS_DIR)
 ```
 
 ```bash
