@@ -13,8 +13,8 @@ secrets:
   openai_api_key:
     file: ./.secrets/openai_api_key.txt
   # Node SSH key: basename must match nodes.*.auth.private_key_path in config (resolves under PA_SECRETS_DIR).
-  openclaw_synology:
-    file: ./.secrets/openclaw_synology
+  node_ssh_private_key:
+    file: ./.secrets/node_ssh_private_key
 
 volumes:
   pa_data:
@@ -36,8 +36,8 @@ services:
         target: /run/secrets/telegram_users.json
       - source: openai_api_key
         target: /run/secrets/openai_api_key.txt
-      - source: openclaw_synology
-        target: /run/secrets/openclaw_synology
+      - source: node_ssh_private_key
+        target: /run/secrets/node_ssh_private_key
     volumes:
       - ./config:/etc/pa:ro
       - pa_data:/data

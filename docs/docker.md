@@ -56,7 +56,9 @@ Example secrets block (see repository `docker-compose.yml` and overlays for the 
 - `telegram_bot_token.txt`
 - `telegram_users.json`
 - `openai_api_key.txt`
-- `openclaw_synology` — SSH private key for a node when `private_key_path` is the bare name `openclaw_synology` (copy your key to `.secrets/openclaw_synology`; never commit it).
+- `node_ssh_private_key` — SSH private key for a node when `private_key_path` is the bare name `node_ssh_private_key` (copy your key to `.secrets/node_ssh_private_key`; never commit it).
+
+If you still have the old filename **`openclaw_synology`**, rename it to **`node_ssh_private_key`** on the host and set **`private_key_path`** in `config.json` to **`node_ssh_private_key`**.
 
 Add more secret files and `secrets:` entries for any other relative `*_path` values resolved via `PA_SECRETS_DIR` (e.g. additional node keys).
 
