@@ -59,9 +59,9 @@ func TestRun_toolMayEscalate_advancesToSecondProvider(t *testing.T) {
 	cfg := &config.Config{
 		Version: 1,
 		LLMProviders: []config.LLMProvider{
-			{Type: "a", Model: "m0", SupportsTools: boolAsPtr(true)},
-			{Type: "b", Model: "m1", SupportsTools: boolAsPtr(true)},
-			{Type: "c", Model: "m2", SupportsTools: boolAsPtr(true)},
+			{Type: "a", Model: "m0", SupportsTools: boolAsPtr(true), DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"},
+			{Type: "b", Model: "m1", SupportsTools: boolAsPtr(true), DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"},
+			{Type: "c", Model: "m2", SupportsTools: boolAsPtr(true), DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"},
 		},
 		Tools:               ep006EscalationConfig(true, 3, 0),
 		ToolCatalog:         catalog,
@@ -122,9 +122,9 @@ func TestRun_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 	cfg := &config.Config{
 		Version: 1,
 		LLMProviders: []config.LLMProvider{
-			{Type: "a", Model: "m0", SupportsTools: boolAsPtr(true)},
-			{Type: "b", Model: "m1", SupportsTools: boolAsPtr(true)},
-			{Type: "c", Model: "m2", SupportsTools: boolAsPtr(true)},
+			{Type: "a", Model: "m0", SupportsTools: boolAsPtr(true), DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"},
+			{Type: "b", Model: "m1", SupportsTools: boolAsPtr(true), DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"},
+			{Type: "c", Model: "m2", SupportsTools: boolAsPtr(true), DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"},
 		},
 		Tools:               ep006EscalationConfig(true, 3, 1),
 		ToolCatalog:         catalog,

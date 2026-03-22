@@ -1,0 +1,37 @@
+@startuml c4-container
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam ArrowColor #707070
+skinparam ComponentBorderColor #707070
+
+title PersonalAssistant — Containers (C2) — EP-008 LLM parameters
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(telegram, "Telegram", "Messaging / Bot API")
+System_Ext(llm_ext, "LLM API", "OpenAI-compatible endpoint")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Telegram Bot", "Go", "Inbound/outbound messages")
+    Container(core, "Core handler", "Go", "Builds CompletionOptions; tool loops")
+    ContainerDb(cfg, "Config", "JSON", "LLMProvider defaults: temperature, max_tokens, JSON mode, response format")
+    Container(llm, "LLM provider (OpenAI-compatible)", "Go", "Maps config + CompletionOptions to HTTP body")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "User messages / replies")
+Rel(core, cfg, "Load at startup")
+Rel(core, llm, "Complete(opts): model, temperature, max_tokens, response_format")
+Rel(llm, llm_ext, "HTTPS JSON (completions)")
+
+@enduml

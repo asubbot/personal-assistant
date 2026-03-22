@@ -19,20 +19,21 @@ const (
 
 // OpenAICompatible is an OpenAI-compatible HTTP chat completions provider (OpenAI, Ollama with /v1, etc.).
 type OpenAICompatible struct {
-	client        *http.Client
-	baseURL       string
-	apiKey        string
-	model         string
-	supportsTools bool // when false, tools are omitted from the request body
+	client                *http.Client
+	baseURL               string
+	apiKey                string
+	model                 string
+	supportsTools         bool // when false, tools are omitted from the request body
+	supportsJSONMode      bool // when true, provider supports response_format: json_object
+	defaultTemperature    float64
+	defaultMaxTokens      int
+	defaultResponseFormat string // "text" or "json_object"
 }
 
 // NewOpenAICompatible builds a provider from config. Reads API key from api_key_path when set (e.g. for openai/openai-compatible).
 func NewOpenAICompatible(cfg *config.LLMProvider) (*OpenAICompatible, error) {
 	baseURL := strings.TrimRight(cfg.Endpoint, "/")
 	model := strings.TrimSpace(cfg.Model)
-	if model == "" {
-		model = "gpt-3.5-turbo" // fallback for compatibility
-	}
 
 	var apiKey string
 	if strings.TrimSpace(cfg.APIKeyPath) != "" {
@@ -48,11 +49,15 @@ func NewOpenAICompatible(cfg *config.LLMProvider) (*OpenAICompatible, error) {
 		st = *cfg.SupportsTools
 	}
 	return &OpenAICompatible{
-		client:        &http.Client{Timeout: defaultTimeout},
-		baseURL:       baseURL,
-		apiKey:        apiKey,
-		model:         model,
-		supportsTools: st,
+		client:                &http.Client{Timeout: defaultTimeout},
+		baseURL:               baseURL,
+		apiKey:                apiKey,
+		model:                 model,
+		supportsTools:         st,
+		supportsJSONMode:      cfg.SupportsJSONMode,
+		defaultTemperature:    cfg.DefaultTemperature,
+		defaultMaxTokens:      cfg.DefaultMaxTokens,
+		defaultResponseFormat: cfg.DefaultResponseFormat,
 	}, nil
 }
 
@@ -79,6 +84,10 @@ func (p *OpenAICompatible) effectiveModelAndMaxTokens(opts *CompletionOptions) (
 		}
 		maxTokens = opts.MaxTokens
 	}
+	// Use defaultMaxTokens if not overridden by opts
+	if maxTokens == 0 && p.defaultMaxTokens > 0 {
+		maxTokens = p.defaultMaxTokens
+	}
 	return model, maxTokens
 }
 
@@ -91,6 +100,7 @@ func (p *OpenAICompatible) buildRequest(model string, messages []Message, maxTok
 	if maxTokens > 0 {
 		reqBody.MaxTokens = &maxTokens
 	}
+	reqBody.Temperature = p.resolveTemperature(opts)
 	if p.supportsTools && opts != nil && len(opts.Tools) > 0 {
 		reqBody.Tools = make([]openAITool, len(opts.Tools))
 		for i := range opts.Tools {
@@ -105,11 +115,47 @@ func (p *OpenAICompatible) buildRequest(model string, messages []Message, maxTok
 			}
 		}
 	}
+	reqBody.ResponseFormat = p.resolveResponseFormat(opts)
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("encode request: %w", err)
 	}
 	return body, nil
+}
+
+// resolveTemperature returns the effective temperature: opts.Temperature > defaultTemperature.
+// Since defaultTemperature is required in config, always returns a value.
+func (p *OpenAICompatible) resolveTemperature(opts *CompletionOptions) *float64 {
+	if opts != nil && opts.Temperature != nil {
+		return opts.Temperature
+	}
+	t := p.defaultTemperature
+	return &t
+}
+
+// resolveResponseFormat returns the effective response format: explicit ResponseFormat (when valid
+// for this provider) > ForceJSONOutput > defaultResponseFormat.
+// json_object is only emitted when supportsJSONMode is true. Empty or unknown explicit types are ignored.
+// Since defaultResponseFormat is required in config, always returns a value.
+func (p *OpenAICompatible) resolveResponseFormat(opts *CompletionOptions) *responseFormat {
+	if opts != nil && opts.ResponseFormat != nil {
+		t := strings.TrimSpace(opts.ResponseFormat.Type)
+		switch t {
+		case "text":
+			return &responseFormat{Type: "text"}
+		case "json_object":
+			if p.supportsJSONMode {
+				return &responseFormat{Type: "json_object"}
+			}
+			// Caller asked for JSON mode but provider does not support it — fall through.
+		default:
+			// Empty or unknown type — fall through.
+		}
+	}
+	if p.supportsJSONMode && opts != nil && opts.ForceJSONOutput {
+		return &responseFormat{Type: "json_object"}
+	}
+	return &responseFormat{Type: p.defaultResponseFormat}
 }
 
 func (p *OpenAICompatible) doRequest(ctx context.Context, body []byte) (*http.Response, error) {
@@ -208,10 +254,16 @@ func messageToOpenAI(m Message) openAIMessage {
 }
 
 type openAIRequest struct {
-	Model       string          `json:"model"`
-	OAIMessages []openAIMessage `json:"messages"`
-	MaxTokens   *int            `json:"max_tokens,omitempty"`
-	Tools       []openAITool    `json:"tools,omitempty"`
+	Model          string          `json:"model"`
+	OAIMessages    []openAIMessage `json:"messages"`
+	MaxTokens      *int            `json:"max_tokens,omitempty"`
+	Temperature    *float64        `json:"temperature,omitempty"`
+	Tools          []openAITool    `json:"tools,omitempty"`
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
+}
+
+type responseFormat struct {
+	Type string `json:"type"` // "text", "json_object"
 }
 
 type openAIToolCall struct {

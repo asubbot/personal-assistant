@@ -120,6 +120,13 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing pa_timezone", "missing_pa_timezone.json", "pa_timezone is required"},
 		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
 		{"conversation_context zero max chars", "conversation_context_zero.json", "injected_context_max_chars must be >= 1"},
+		// EP-008: reject invalid LLM default_* / supports_json_mode at load (prerequisite for REQ-08.001–008.007).
+		{"llm default_max_tokens zero", "llm_default_max_tokens_zero.json", "default_max_tokens must be >= 1"},
+		{"llm default_temperature negative", "llm_default_temperature_negative.json", "default_temperature must be in [0, 2]"},
+		{"llm default_temperature above 2", "llm_default_temperature_above_two.json", "default_temperature must be in [0, 2]"},
+		{"llm default_response_format invalid", "llm_default_response_format_invalid.json", "default_response_format must be \"text\" or \"json_object\""},
+		{"llm default_response_format empty", "llm_default_response_format_empty.json", "default_response_format is required"},
+		{"llm json_object without supports_json_mode", "llm_json_object_without_supports_json_mode.json", "supports_json_mode=true"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -130,6 +137,22 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 			}
 			if tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("Load: error = %v, want substring %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// EP-008 REQ-08.001: boundary default_temperature (0 and 2) loads successfully — within [0,2] validation.
+func TestLoad_LLMProviderDefaults_boundaryTemperature_loads(t *testing.T) {
+	for _, name := range []string{"llm_default_temperature_zero.json", "llm_default_temperature_two.json"} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join("testdata", name)
+			cfg, err := Load(path)
+			if err != nil {
+				t.Fatalf("Load(%s): %v", name, err)
+			}
+			if cfg == nil || len(cfg.LLMProviders) != 1 {
+				t.Fatalf("Load(%s): unexpected config", name)
 			}
 		})
 	}
@@ -203,7 +226,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	cfgJSON := `{
 	  "version": 1,
 	  "telegram": { "token_path": "/run/secrets/token", "users_path": "" },
-	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true } ],
+	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" } ],
 	  "paths": {
 	    "memory_dir": "/data/memory",
 	    "log_path": "/data/pa.log",
@@ -310,7 +333,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
   "nodes": {},
@@ -344,7 +367,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",

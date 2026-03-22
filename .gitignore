@@ -1,6 +1,11 @@
 # Go
 *.out
 coverage.html
+# Test binaries from `go test -c` (e.g. repo-root llm.test, package.test)
+*.test
+
+# Editor / scratch files (e.g. *.json.tmp next to testdata)
+*.tmp
 
 # Binary / output named pa at repo root only (not cmd/pa)
 /pa

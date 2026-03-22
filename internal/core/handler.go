@@ -256,6 +256,11 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	if err != nil {
 		return "", err
 	}
+	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
+	// Stage B: set ForceJSONOutput hint for text-based tool mode (Hermes)
+	if opts != nil && textPath {
+		opts.ForceJSONOutput = true
+	}
 	h.appendToolBlocksToSystem(&messages[0], toolIDs, opts)
 	requestID := genRequestID()
 	start := time.Now()
@@ -268,7 +273,6 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	if err != nil {
 		return "", err
 	}
-	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
 	return h.finishAfterFirstLLM(ctx, requestID, userText, start, messages, result, opts, textPath, st)
 }
 
@@ -333,9 +337,11 @@ func copyOptsNoTools(o *llm.CompletionOptions) *llm.CompletionOptions {
 		return nil
 	}
 	return &llm.CompletionOptions{
-		Model:       o.Model,
-		MaxTokens:   o.MaxTokens,
-		Temperature: o.Temperature,
+		Model:           o.Model,
+		MaxTokens:       o.MaxTokens,
+		Temperature:     o.Temperature,
+		ForceJSONOutput: o.ForceJSONOutput,
+		ResponseFormat:  o.ResponseFormat,
 	}
 }
 

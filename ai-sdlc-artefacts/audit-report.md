@@ -1,10 +1,12 @@
 # Project-level audit report
 
-**Date and time of creation:** 2026-03-20 13:03 UTC  
-**Purpose:** Project-level audit summary — status of all epics (stage 9, [09-audit.skill.md](../ai-sdlc/specification/skills/09-audit.skill.md), [pipeline.spec.md](../ai-sdlc/specification/pipeline.spec.md)).  
+**Date and time of creation:** 2026-03-22 (UTC)
+
+**Purpose:** Project-level audit summary — status of all epics (pipeline stage 9). Process: repository files `ai-sdlc/specification/skills/09-audit.skill.md`, `ai-sdlc/specification/pipeline.spec.md` (not linked; outside this folder).
+
 **Links:** [scope.md](scope.md), [strategy.md](strategy.md).
 
-**Note:** Coverage values come from each epic’s **ep-audit-report.md** (`make check` with `-coverpkg=./...` at report date — whole codebase, not per-epic isolation). Epics **NEW** without implementation have no audit report.
+**Note:** Coverage values come from each epic’s **ep-audit-report.md** (`make check` with `-coverpkg=./...` at report date — whole codebase, not per-epic isolation). Epics **NEW** without implementation have no audit report. No epic was **IN_PROGRESS** at this rollup; no project-wide `make check` was run solely for this file.
 
 ---
 
@@ -19,6 +21,7 @@
 | [EP-005](epics/EP-005/ep-scope.md) | SSH subsystem execution channel (pa-runner) | NEW | — | — |
 | [EP-006](epics/EP-006/ep-scope.md) | Tool-call reliability and model escalation | DONE | 78.6% | [ep-audit-report (2026-03-20)](epics/EP-006/ep-audit-report.md) |
 | [EP-007](epics/EP-007/ep-scope.md) | Observability: correlation, local analytics, and metrics | NEW | — | — |
+| [EP-008](epics/EP-008/ep-scope.md) | LLM Parameters Enhancement | DONE | 79.5% | [ep-audit-report (2026-03-22)](epics/EP-008/ep-audit-report.md) |
 
 ---
 
@@ -26,8 +29,8 @@
 
 | Category | Epics |
 |----------|--------|
-| **DONE** | EP-001, EP-004, EP-006 |
+| **DONE** | EP-001, EP-004, EP-006, EP-008 |
 | **NEW** (no ep-audit-report yet) | EP-002, EP-003, EP-005, EP-007 |
 | **IN_PROGRESS** / **CANCELED** | None |
 
-When an epic moves to **IN_PROGRESS**, run a full epic audit per [09-audit.skill.md](../ai-sdlc/specification/skills/09-audit.skill.md) and add or refresh its **ep-audit-report.md**, then update this table.
+When an epic moves to **IN_PROGRESS**, run a full epic audit per stage 9 and add or refresh its **ep-audit-report.md**, then update this table.

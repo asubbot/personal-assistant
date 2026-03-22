@@ -27,10 +27,17 @@ type ToolCall struct {
 
 // CompletionOptions are optional parameters for a completion call.
 type CompletionOptions struct {
-	Model       string    `json:"model,omitempty"`      // override config model
-	MaxTokens   int       `json:"max_tokens,omitempty"` // max tokens to generate (0 = provider default)
-	Temperature *float64  `json:"temperature,omitempty"`
-	Tools       []ToolDef `json:"tools,omitempty"` // optional; nil or empty = no tools (REQ-04.012)
+	Model           string          `json:"model,omitempty"`      // override config model
+	MaxTokens       int             `json:"max_tokens,omitempty"` // max tokens to generate; 0 means use configured default_max_tokens from llm_providers
+	Temperature     *float64        `json:"temperature,omitempty"`
+	Tools           []ToolDef       `json:"tools,omitempty"`             // optional; nil or empty = no tools (REQ-04.012)
+	ForceJSONOutput bool            `json:"force_json_output,omitempty"` // hint for providers with supports_json_mode to output JSON
+	ResponseFormat  *ResponseFormat `json:"response_format,omitempty"`   // explicit per-request response format (Stage C)
+}
+
+// ResponseFormat specifies the desired response format for completion requests.
+type ResponseFormat struct {
+	Type string `json:"type"` // "text", "json_object"
 }
 
 // Usage holds token usage returned by the provider.

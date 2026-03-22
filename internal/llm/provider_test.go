@@ -19,9 +19,13 @@ func TestNewProvider_supportedTypes(t *testing.T) {
 	for _, typ := range []string{"openai", "openai-compatible", "ollama"} {
 		t.Run(typ, func(t *testing.T) {
 			cfg := &config.LLMProvider{
-				Type:     typ,
-				Endpoint: "https://api.example.com/v1",
-				Model:    "gpt-4",
+				Type:                  typ,
+				Endpoint:              "https://api.example.com/v1",
+				Model:                 "gpt-4",
+				DefaultTemperature:    0.3,
+				DefaultMaxTokens:      1024,
+				SupportsJSONMode:      true,
+				DefaultResponseFormat: "text",
 			}
 			if typ != "ollama" {
 				cfg.APIKeyPath = keyPath
@@ -39,7 +43,7 @@ func TestNewProvider_supportedTypes(t *testing.T) {
 
 // Covers AC-01.033 (US-19): NewProvider(unsupported type) returns error (startup validation).
 func TestNewProvider_unsupportedType(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "unknown", Endpoint: "http://x", Model: "m"}
+	cfg := &config.LLMProvider{Type: "unknown", Endpoint: "http://x", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"}
 	_, err := NewProvider(cfg)
 	if err == nil {
 		t.Fatal("NewProvider(unknown): expected error, got nil")

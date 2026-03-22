@@ -9,7 +9,11 @@
       "type": "",
       "endpoint": "http://x",
       "model": "m",
-      "supports_tools": true
+      "supports_tools": true,
+      "default_temperature": 0.3,
+      "default_max_tokens": 1024,
+      "supports_json_mode": true,
+      "default_response_format": "text"
     }
   ],
   "paths": {

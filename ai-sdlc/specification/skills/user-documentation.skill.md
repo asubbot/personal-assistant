@@ -56,7 +56,7 @@ Create or update as needed (adjust titles if the user prefers a different split;
 |------|------------------|
 | **`docs/README.md`** | Index: one-line description of each doc; link back to repo `README.md`. |
 | **`docs/installation.md`** | Prerequisites (Go version, CGO/SQLite notes if applicable), clone, `go mod tidy`, build, first run. If `make check` is mentioned: **quality gate only** (fmt, vet, lint, tests, coverage, boundaries) — **not** installation or deployment. |
-| **`docs/configuration.md`** | `PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`, `PA_LOG_LEVEL`; how paths resolve; copy from `config.examples/` into **`.config/`**; secrets as files; optional nodes / tools / escalation overview with links to example keys. |
+| **`docs/configuration.md`** | `PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`, `PA_LOG_LEVEL`; how paths resolve; copy from `config.examples/` into **`.config/`**; secrets as files; optional nodes / tools / escalation overview with links to example keys. Document every parameter in the configuration file (aligned with `config.examples/` and the live schema). |
 | **`docs/docker.md`** | Compose services, volumes, env table, secrets layout, cron/summarization + timezone note if present in code/README. |
 | **`docs/operations.md`** | Running the binary, `-verify-nodes`, logs location, safe log levels, where to find LLM logs (if configured). |
 | **`docs/troubleshooting.md`** | Common failures (config load, SSH, allowlist, missing secrets) with **symptom → check → fix**; no internal stack traces unless they help the operator. |

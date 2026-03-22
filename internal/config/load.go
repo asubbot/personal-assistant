@@ -254,18 +254,55 @@ func validateLLMProviders(c *Config) error {
 		return errors.New("config: at least one llm_providers entry is required")
 	}
 	for i, p := range c.LLMProviders {
-		if p.SupportsTools == nil {
-			return fmt.Errorf("config: llm_providers[%d].supports_tools is required (boolean)", i)
+		if err := validateOneLLMProvider(i, &p); err != nil {
+			return err
 		}
-		if strings.TrimSpace(p.Type) == "" {
-			return fmt.Errorf("config: llm_providers[%d].type is required", i)
-		}
-		if strings.TrimSpace(p.Endpoint) == "" {
-			return fmt.Errorf("config: llm_providers[%d].endpoint is required", i)
-		}
-		if strings.TrimSpace(p.APIKeyPath) == "" && (p.Type == "openai" || p.Type == "openai-compatible") {
-			return fmt.Errorf("config: llm_providers[%d].api_key_path is required for type %q", i, p.Type)
-		}
+	}
+	return nil
+}
+
+func validateOneLLMProvider(idx int, p *LLMProvider) error {
+	if err := validateLLMProviderCore(idx, p); err != nil {
+		return err
+	}
+	return validateLLMProviderDefaults(idx, p)
+}
+
+func validateLLMProviderCore(idx int, p *LLMProvider) error {
+	if p.SupportsTools == nil {
+		return fmt.Errorf("config: llm_providers[%d].supports_tools is required (boolean)", idx)
+	}
+	if strings.TrimSpace(p.Type) == "" {
+		return fmt.Errorf("config: llm_providers[%d].type is required", idx)
+	}
+	if strings.TrimSpace(p.Endpoint) == "" {
+		return fmt.Errorf("config: llm_providers[%d].endpoint is required", idx)
+	}
+	if strings.TrimSpace(p.APIKeyPath) == "" && (p.Type == "openai" || p.Type == "openai-compatible") {
+		return fmt.Errorf("config: llm_providers[%d].api_key_path is required for type %q", idx, p.Type)
+	}
+	if strings.TrimSpace(p.Model) == "" {
+		return fmt.Errorf("config: llm_providers[%d].model is required", idx)
+	}
+	return nil
+}
+
+func validateLLMProviderDefaults(idx int, p *LLMProvider) error {
+	if p.DefaultTemperature < 0 || p.DefaultTemperature > 2 {
+		return fmt.Errorf("config: llm_providers[%d].default_temperature must be in [0, 2]", idx)
+	}
+	if p.DefaultMaxTokens < 1 {
+		return fmt.Errorf("config: llm_providers[%d].default_max_tokens must be >= 1", idx)
+	}
+	rf := strings.TrimSpace(p.DefaultResponseFormat)
+	if rf == "" {
+		return fmt.Errorf("config: llm_providers[%d].default_response_format is required (\"text\" or \"json_object\")", idx)
+	}
+	if rf != "text" && rf != "json_object" {
+		return fmt.Errorf("config: llm_providers[%d].default_response_format must be \"text\" or \"json_object\", got %q", idx, rf)
+	}
+	if rf == "json_object" && !p.SupportsJSONMode {
+		return fmt.Errorf("config: llm_providers[%d].default_response_format=\"json_object\" requires supports_json_mode=true", idx)
 	}
 	return nil
 }

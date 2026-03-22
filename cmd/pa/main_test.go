@@ -99,7 +99,7 @@ func runCLIWithConfig(t *testing.T, dir, configJSON string, args ...string) (out
 var validSummarizeConfig = `{
   "version": 1,
   "telegram": { "token_path": "t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "supports_tools": true }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
   "paths": {
     "memory_dir": "memory",
     "log_path": "pa.log",

@@ -1266,6 +1266,7 @@ func TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode(t *
 }
 
 // REQ-04.027–029: text_based + first provider without tools → Hermes in content → execute → follow-up without tools, tool results as user.
+// EP-008 AC-08.005 (integration): follow-up Complete keeps ForceJSONOutput so OpenAICompatible can apply REQ-08.005.
 //
 //nolint:gocyclo // Sequential scenario assertions; clarity over splitting.
 func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
@@ -1327,6 +1328,9 @@ func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 	if secondOpts != nil && len(secondOpts.Tools) > 0 {
 		t.Error("follow-up Complete must not pass tools in opts")
 	}
+	if secondOpts == nil || !secondOpts.ForceJSONOutput {
+		t.Errorf("follow-up Complete must keep ForceJSONOutput=true (Hermes JSON hint); opts=%+v", secondOpts)
+	}
 	var sawUserTool bool
 	for _, m := range secondMsgs {
 		if m.Role == "user" && strings.Contains(m.Content, "run_echo") && strings.Contains(m.Content, "hello from node") {
@@ -1346,6 +1350,76 @@ func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 	}
 	if !sawHermesLog {
 		t.Errorf("expected tool invocation with invoked_via=hermes; records=%+v", cap.records)
+	}
+}
+
+// EP-008 AC-08.005 (integration): multi-round Hermes path preserves ForceJSONOutput on every Complete (copyOptsNoTools).
+func TestHandleMessage_textBasedHermes_twoToolRounds_preservesForceJSONOnEachComplete(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{stdout: "ok"}
+	callCount := 0
+	var optsPerCall []*llm.CompletionOptions
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		optsPerCall = append(optsPerCall, opts)
+		switch callCount {
+		case 1:
+			return &llm.CompletionResult{
+				Content: `<tool_call>
+{"name": "run_echo", "arguments": {"msg": "first"}}
+</tool_call>`,
+				Usage: llm.Usage{},
+			}, nil
+		case 2:
+			return &llm.CompletionResult{
+				ToolCalls: []llm.ToolCall{{ID: "c2", Name: "run_echo", Arguments: `{"msg":"second"}`}},
+				Usage:     llm.Usage{},
+			}, nil
+		default:
+			return &llm.CompletionResult{Content: "All tools done.", Usage: llm.Usage{}}, nil
+		}
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		router:                     mustRouterSingle(t, provider),
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	reply, err := h.HandleMessage(context.Background(), 1, "run echo twice")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if reply != "All tools done." {
+		t.Errorf("reply = %q", reply)
+	}
+	if callCount != 3 {
+		t.Fatalf("Complete calls = %d, want 3", callCount)
+	}
+	for i, o := range optsPerCall {
+		if o == nil || !o.ForceJSONOutput {
+			t.Errorf("Complete #%d: want ForceJSONOutput=true, opts=%+v", i+1, o)
+		}
+		if i > 0 && len(o.Tools) > 0 {
+			t.Errorf("Complete #%d: follow-up must omit tools in opts", i+1)
+		}
 	}
 }
 

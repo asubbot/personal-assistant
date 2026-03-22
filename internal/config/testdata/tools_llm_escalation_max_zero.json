@@ -9,13 +9,21 @@
       "type": "ollama",
       "endpoint": "http://localhost:11434",
       "model": "a",
-      "supports_tools": true
+      "supports_tools": true,
+      "default_temperature": 0.3,
+      "default_max_tokens": 1024,
+      "supports_json_mode": true,
+      "default_response_format": "text"
     },
     {
       "type": "ollama",
       "endpoint": "http://localhost:11434",
       "model": "b",
-      "supports_tools": true
+      "supports_tools": true,
+      "default_temperature": 0.3,
+      "default_max_tokens": 1024,
+      "supports_json_mode": true,
+      "default_response_format": "text"
     }
   ],
   "tools": {

@@ -25,21 +25,33 @@
       "endpoint": "http://localhost:11434/v1",
       "api_key_path": "",
       "model": "llama3:8b",
-      "supports_tools": false
+      "supports_tools": false,
+      "default_temperature": 0.3,
+      "default_max_tokens": 1024,
+      "supports_json_mode": true,
+      "default_response_format": "text"
     },
     {
       "type": "ollama",
       "endpoint": "http://localhost:11434/v1",
       "api_key_path": "",
       "model": "qwen3:8b",
-      "supports_tools": false
+      "supports_tools": false,
+      "default_temperature": 0.3,
+      "default_max_tokens": 1024,
+      "supports_json_mode": true,
+      "default_response_format": "text"
     },
     {
       "type": "openai",
       "endpoint": "https://api.openai.com/v1",
       "api_key_path": "openai_api_key.txt",
       "model": "gpt-4o-mini",
-      "supports_tools": true
+      "supports_tools": true,
+      "default_temperature": 0.3,
+      "default_max_tokens": 4096,
+      "supports_json_mode": true,
+      "default_response_format": "text"
     }
   ],
   "paths": {

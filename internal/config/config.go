@@ -92,13 +92,20 @@ type Telegram struct {
 }
 
 // LLMProvider holds one LLM provider configuration (order = priority).
-// SupportsTools is required (fail fast if missing); when false, HTTP requests omit tools (REQ-04.026).
+// Model, endpoint, type, supports_tools, default_temperature, default_max_tokens (>= 1),
+// supports_json_mode, and default_response_format are required at load (fail fast; no runtime defaults for those).
+// api_key_path is required for openai / openai-compatible; optional for ollama.
+// SupportsTools: when false, HTTP requests omit tools (REQ-04.026).
 type LLMProvider struct {
-	Type          string `json:"type"`
-	Endpoint      string `json:"endpoint"`
-	APIKeyPath    string `json:"api_key_path"`
-	Model         string `json:"model"`
-	SupportsTools *bool  `json:"supports_tools"`
+	Type                  string  `json:"type"`
+	Endpoint              string  `json:"endpoint"`
+	APIKeyPath            string  `json:"api_key_path"`
+	Model                 string  `json:"model"`
+	SupportsTools         *bool   `json:"supports_tools"`
+	DefaultTemperature    float64 `json:"default_temperature"`     // required; provider default for completion requests
+	DefaultMaxTokens      int     `json:"default_max_tokens"`      // required; provider default for completion requests (>= 1)
+	SupportsJSONMode      bool    `json:"supports_json_mode"`      // required; when true, provider supports response_format: json_object
+	DefaultResponseFormat string  `json:"default_response_format"` // required; "text" or "json_object"
 }
 
 // Paths holds paths for memory, logs, vector index, scheduled tasks, and optional tool catalog.
