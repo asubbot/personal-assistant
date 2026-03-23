@@ -73,6 +73,9 @@ func TestRunOnNode_allowlistDenies_returnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "not allowed") {
 		t.Errorf("error = %v", err)
 	}
+	if !strings.Contains(err.Error(), "attempted:") || !strings.Contains(err.Error(), "rm -rf /") {
+		t.Errorf("error should embed attempted command for tool/LLM diagnostics: %v", err)
+	}
 }
 
 // Covers AC-01.010 (US-04): multiple nodes — runner uses correct node ID per call (dedicated user per node from config).

@@ -54,7 +54,7 @@
 
 - **2.1** Add pure functions (package `toolcatalog` or subpackage):
   - `ValidateCreateToolTemplatePrefix(template string) error` — must start with `docker run --rm --network bridge` or `docker run --rm --network none` — [REQ-09.009](ep-requirements.md#tool-creation), [AC-09.009](ep-acceptance-criteria.md#ac-09-009).
-  - Optional: `ValidateSandboxResourceSubstrings(template string) error` — require `--memory="256m"`, `--cpus="0.5"`, and a 30s bound (document exact substring rules in code comment) — [REQ-09.002](ep-requirements.md#docker-sandbox-execution)–[REQ-09.004](ep-requirements.md#docker-sandbox-execution), [AC-09.002](ep-acceptance-criteria.md#ac-09-002)–[AC-09.004](ep-acceptance-criteria.md#ac-09-004).
+  - Optional: `ValidateSandboxResourceSubstrings(template string) error` — require a 30s bound; memory/CPU flags are operator-recommended in templates, not substring-enforced in code — [REQ-09.004](ep-requirements.md#docker-sandbox-execution), [REQ-09.002](ep-requirements.md#docker-sandbox-execution)–[REQ-09.003](ep-requirements.md#docker-sandbox-execution) (operational SHOULD for templates).
   - **Verification:** Unit tests: accept/reject cases.
   - *Requirements:* [REQ-09.009](ep-requirements.md#tool-creation)
   - *Acceptance Criteria:* [AC-09.009](ep-acceptance-criteria.md#ac-09-009)

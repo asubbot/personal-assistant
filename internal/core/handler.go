@@ -376,10 +376,19 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 				src = "hermes"
 			}
 			argsLog := h.redactLogString(tc.Arguments)
+			remoteCmd := remoteCommandFromRunOnNodeArgs(tc.Name, tc.Arguments)
 			if execErr != nil {
-				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", argsLog, "invoked_via", src, "error", h.redactLogString(execErr.Error()))
+				attrs := []any{"tool_id", tc.Name, "arguments", argsLog, "invoked_via", src, "error", h.redactLogString(execErr.Error())}
+				if remoteCmd != "" {
+					attrs = append(attrs, "remote_command", h.redactLogString(remoteCmd))
+				}
+				h.logger.InfoContext(ctx, "tool invocation", attrs...)
 			} else {
-				h.logger.InfoContext(ctx, "tool invocation", "tool_id", tc.Name, "arguments", argsLog, "invoked_via", src, "result", h.redactLogString(stdout))
+				attrs := []any{"tool_id", tc.Name, "arguments", argsLog, "invoked_via", src, "result", h.redactLogString(stdout)}
+				if remoteCmd != "" {
+					attrs = append(attrs, "remote_command", h.redactLogString(remoteCmd))
+				}
+				h.logger.InfoContext(ctx, "tool invocation", attrs...)
 			}
 		}
 		if textToolMode {
@@ -511,6 +520,23 @@ func parseToolArgumentsJSON(argsJSON string) (map[string]any, error) {
 	return m, nil
 }
 
+// remoteCommandFromRunOnNodeArgs extracts the command field from native run_on_node tool JSON for INFO logs (correlate with noderunner remote_command).
+func remoteCommandFromRunOnNodeArgs(toolID, argsJSON string) string {
+	if toolID != "run_on_node" {
+		return ""
+	}
+	s := strings.TrimSpace(argsJSON)
+	if s == "" {
+		return ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(s), &m); err != nil {
+		return ""
+	}
+	c, _ := m["command"].(string)
+	return strings.TrimSpace(c)
+}
+
 func (h *conversationHandler) executeCatalogToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
 	tool, args, err := toolcatalog.ValidateToolCall(h.catalog, toolID, argsJSON)
 	if err != nil {
@@ -521,6 +547,9 @@ func (h *conversationHandler) executeCatalogToolCall(ctx context.Context, toolID
 		return "", toolfailure.MayEscalate(fmt.Errorf("tool %q: %w", toolID, err))
 	}
 	if err := cmdsafe.ValidateRemoteCommand(command); err != nil {
+		if h.logger != nil {
+			h.logger.InfoContext(ctx, "catalog tool remote command rejected", "tool_id", toolID, "node_id", tool.NodeID, "remote_command", h.redactLogString(command), "error", err)
+		}
 		return "", toolfailure.NoEscalate(fmt.Errorf("tool %q: %w", toolID, err))
 	}
 	if h.nodeRunner == nil {

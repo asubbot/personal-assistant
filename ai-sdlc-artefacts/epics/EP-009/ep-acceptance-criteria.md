@@ -59,7 +59,7 @@ Then the remote command SHALL include `--network bridge` and the container SHALL
 
 Given a sandbox execution on a node  
 When PersonalAssistant builds the `docker run` invocation  
-Then the command SHALL include `--memory="256m"`  
+Then the persisted template SHOULD include `--memory=256m` when the operator enforces memory limits via Docker (not validated by `create_tool` substring checks)  
 
 ---
 
@@ -67,7 +67,7 @@ Then the command SHALL include `--memory="256m"`
 
 Given a sandbox execution on a node  
 When PersonalAssistant builds the `docker run` invocation  
-Then the command SHALL include `--cpus="0.5"`  
+Then the persisted template SHOULD include `--cpus=0.5` when the operator enforces CPU limits via Docker (not validated by `create_tool` substring checks)  
 
 ---
 

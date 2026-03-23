@@ -690,6 +690,18 @@ func TestExecuteOneToolCall_nativeRunOnNode(t *testing.T) {
 	}
 }
 
+func TestRemoteCommandFromRunOnNodeArgs(t *testing.T) {
+	if got := remoteCommandFromRunOnNodeArgs("run_on_node", `{"node_id":"nas","command":"  docker ps  "}`); got != "docker ps" {
+		t.Errorf("got %q, want docker ps", got)
+	}
+	if got := remoteCommandFromRunOnNodeArgs("run_echo", `{"command":"x"}`); got != "" {
+		t.Errorf("non-native tool: got %q, want empty", got)
+	}
+	if got := remoteCommandFromRunOnNodeArgs("run_on_node", `not json`); got != "" {
+		t.Errorf("invalid json: got %q, want empty", got)
+	}
+}
+
 // Covers AC-04.006: unknown tool → error, no RunOnNode called.
 func TestExecuteOneToolCall_UnknownTool_ReturnsErrorNoRun(t *testing.T) {
 	catalog := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}

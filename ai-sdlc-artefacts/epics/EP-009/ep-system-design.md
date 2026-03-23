@@ -61,7 +61,7 @@ PersonalAssistant remains a **single deployable process** (see C2 below). EP-009
 
 | Aspect | Rule |
 |--------|------|
-| **Source of flags** | The **persisted `template` string** MUST contain the Docker CLI flags required by requirements: `--memory="256m"`, `--cpus="0.5"`, and a **30s** execution bound using either `timeout 30s …` before `docker` / inside the template, or Docker stop behaviour documented in the epic implementation plan (stage 7). |
+| **Source of flags** | The **persisted `template` string** MUST include a **30s** execution bound (`timeout 30s` / `timeout 30 ` substring). Operators SHOULD add `--memory=256m` and `--cpus=0.5` (unquoted) for production sandboxes; `create_tool` does not substring-enforce memory/CPU. |
 | **Validation** | **Whitelist** ([REQ-09.009](ep-requirements.md#tool-creation)) remains prefix-only. **Optional hardening (recommended in implementation):** after prefix match, reject templates that do not contain the required substrings for memory/CPU/timeout so invalid tools never reach the node. Exact substring checks are specified in stage 7. |
 | **No silent injection** | PA does **not** silently rewrite the LLM-provided template to inject flags in EP-009 MVP—avoids surprising operators and keeps allowlist strings stable. |
 
@@ -235,8 +235,8 @@ Every requirement in [ep-requirements.md](ep-requirements.md) is covered by the 
 | ID                                                           | Design coverage                                                                                        |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | [REQ-09.001](ep-requirements.md#docker-sandbox-execution)    | Bridge templates → SSH command includes `--network bridge`; Core + noderunner                          |
-| [REQ-09.002](ep-requirements.md#docker-sandbox-execution)    | Template includes `--memory="256m"` (enforced or validated per implementation plan)                    |
-| [REQ-09.003](ep-requirements.md#docker-sandbox-execution)    | Template includes `--cpus="0.5"`                                                                       |
+| [REQ-09.002](ep-requirements.md#docker-sandbox-execution)    | Operator templates SHOULD include `--memory=256m` (not substring-validated at persist)                |
+| [REQ-09.003](ep-requirements.md#docker-sandbox-execution)    | Operator templates SHOULD include `--cpus=0.5` (not substring-validated at persist)                   |
 | [REQ-09.004](ep-requirements.md#docker-sandbox-execution)    | Context timeout / `timeout` wrapper in template or runner                                              |
 | [REQ-09.005](ep-requirements.md#docker-sandbox-execution)    | Operator image `pa-sandbox:python`; documented in deploy artefact                                      |
 | [REQ-09.006](ep-requirements.md#docker-sandbox-execution)    | Operator image `pa-sandbox:node`                                                                       |

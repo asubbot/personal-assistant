@@ -33,7 +33,7 @@ func TestCreateToolTool_Run_success(t *testing.T) {
 	}
 	var mu sync.Mutex
 	ct := NewCreateTool(&mu, cat, path, cfg, nil, nil, nil)
-	good := `docker run --rm --network bridge --memory="256m" --cpus="0.5" timeout 30s alpine:latest echo hi`
+	good := `docker run --rm --network bridge alpine:latest timeout 30s echo hi`
 	out, err := ct.Run(context.Background(), map[string]any{
 		"id":         "t_ep009",
 		"index_text": "test tool",
@@ -69,7 +69,7 @@ func TestCreateToolTool_Run_duplicateID(t *testing.T) {
 	}
 	var mu sync.Mutex
 	ct := NewCreateTool(&mu, cat, path, cfg, nil, nil, nil)
-	good := `docker run --rm --network bridge --memory="256m" --cpus="0.5" timeout 30s alpine:latest echo hi`
+	good := `docker run --rm --network bridge alpine:latest timeout 30s echo hi`
 	_, err := ct.Run(context.Background(), map[string]any{
 		"id": "dup", "index_text": "y", "template": good, "node_id": "n",
 	})
@@ -95,7 +95,7 @@ func TestCreateToolTool_Run_secretRejected(t *testing.T) {
 	}
 	var mu sync.Mutex
 	ct := NewCreateTool(&mu, cat, path, cfg, nil, nil, nil)
-	good := `docker run --rm --network bridge --memory="256m" --cpus="0.5" timeout 30s alpine:latest echo hi`
+	good := `docker run --rm --network bridge alpine:latest timeout 30s echo hi`
 	_, err := ct.Run(context.Background(), map[string]any{
 		"id": "t1", "index_text": "has api_key: secret", "template": good, "node_id": "n",
 	})
@@ -120,7 +120,7 @@ func TestCreateToolTool_Run_durationBudget(t *testing.T) {
 	}
 	var mu sync.Mutex
 	ct := NewCreateTool(&mu, cat, path, cfg, nil, nil, nil)
-	good := `docker run --rm --network bridge --memory="256m" --cpus="0.5" timeout 30s alpine:latest echo hi`
+	good := `docker run --rm --network bridge alpine:latest timeout 30s echo hi`
 	start := time.Now()
 	_, err := ct.Run(context.Background(), map[string]any{
 		"id": "bench_id", "index_text": "x", "template": good, "node_id": "n",

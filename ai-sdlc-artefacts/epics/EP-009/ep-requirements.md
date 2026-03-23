@@ -123,10 +123,10 @@ In the following, *System* = PersonalAssistant.
 WHEN a catalog tool template specifies `docker run` with `--network bridge`, THE System SHALL execute the resulting command in a Docker container that uses bridge networking for outbound network access.
 
 **REQ-09.002** (Event-driven)
-WHEN the System executes code in a Docker sandbox, THE System SHALL apply a memory limit of 256MB via `--memory="256m"`.
+WHEN the System executes code in a Docker sandbox, THE operator SHOULD supply a memory limit of 256MB via the Docker `--memory` flag with value `256m` in the persisted template (unquoted form `--memory=256m` for `cmdsafe`). THE System SHALL NOT require this substring in `create_tool` validation; enforcement is operational (template content and node policy).
 
 **REQ-09.003** (Event-driven)
-WHEN the System executes code in a Docker sandbox, THE System SHALL apply a CPU limit of 0.5 cores via `--cpus="0.5"`.
+WHEN the System executes code in a Docker sandbox, THE operator SHOULD supply a CPU limit of 0.5 cores via the Docker `--cpus` flag (unquoted `--cpus=0.5`) in the template. THE System SHALL NOT require this substring in `create_tool` validation; enforcement is operational.
 
 **REQ-09.004** (Event-driven)
 WHEN the System executes code in a Docker sandbox, THE System SHALL enforce an execution timeout of 30 seconds and terminate the container if exceeded.

@@ -1,0 +1,26 @@
+# pa-sandbox:python — REQ-09.005 (EP-009)
+# Build: docker build -f Dockerfile.python -t pa-sandbox:python .
+
+# Override if your registry uses a different tag (see README).
+ARG PYTHON_IMAGE=python:3.14-slim
+FROM ${PYTHON_IMAGE}
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    requests \
+    httpx \
+    beautifulsoup4 \
+    lxml
+
+WORKDIR /work
+
+# Default command: idle; real entry is whatever the tool template passes to docker run.
+CMD ["python", "-c", "print('pa-sandbox:python ok')"]

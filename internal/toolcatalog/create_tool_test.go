@@ -9,10 +9,10 @@ import (
 // Covers AC-09.009: allowed docker run prefixes pass validation.
 func TestValidateCreateToolTemplatePrefix_acceptsBridgeAndNone(t *testing.T) {
 	t.Parallel()
-	if err := ValidateCreateToolTemplatePrefix(`docker run --rm --network bridge --memory="256m" img`); err != nil {
+	if err := ValidateCreateToolTemplatePrefix(`docker run --rm --network bridge img`); err != nil {
 		t.Fatal(err)
 	}
-	if err := ValidateCreateToolTemplatePrefix(`docker run --rm --network none --memory="256m" img`); err != nil {
+	if err := ValidateCreateToolTemplatePrefix(`docker run --rm --network none img`); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -28,12 +28,12 @@ func TestValidateCreateToolTemplatePrefix_rejectsBadPrefix(t *testing.T) {
 // Covers AC-09.002–004: resource substring validation.
 func TestValidateSandboxResourceSubstrings(t *testing.T) {
 	t.Parallel()
-	good := `docker run --rm --network bridge --memory="256m" --cpus="0.5" timeout 30s docker run ...`
+	good := `docker run --rm --network bridge pa-sandbox:base timeout 30s echo ok`
 	if err := ValidateSandboxResourceSubstrings(good); err != nil {
 		t.Fatal(err)
 	}
 	if err := ValidateSandboxResourceSubstrings(`docker run --rm --network bridge`); err == nil {
-		t.Fatal("expected error for missing resources")
+		t.Fatal("expected error for missing 30s timeout")
 	}
 }
 

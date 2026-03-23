@@ -12,7 +12,8 @@
       "enabled": true,
       "max_per_user_message": 2,
       "baseline_index": 0
-    }
+    },
+    "create_tool_secret_patterns": []
   },
   "tool_pre_selection": {
     "tool_search_top_k": 10,

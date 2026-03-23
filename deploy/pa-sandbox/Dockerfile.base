@@ -1,0 +1,10 @@
+# pa-sandbox:base — REQ-09.007 (EP-009)
+# Build: docker build -f Dockerfile.base -t pa-sandbox:base .
+
+FROM alpine:3.20
+
+RUN apk add --no-cache curl jq bash ca-certificates
+
+WORKDIR /work
+
+CMD ["sh", "-c", "echo pa-sandbox:base ok && curl --version && jq --version"]

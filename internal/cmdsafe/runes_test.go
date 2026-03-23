@@ -18,6 +18,8 @@ func TestRejectDisallowedRunes_allowed(t *testing.T) {
 		"Кириллица команда",
 		"cafe\u0301",
 		"a-z_A-Z0-9./:@=+, ",
+		`docker run --rm --network bridge pa-sandbox:python timeout 30s echo ok`,
+		`echo "hello world"`,
 	}
 	for _, cmd := range cases {
 		if err := RejectDisallowedRunes(cmd); err != nil {

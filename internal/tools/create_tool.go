@@ -47,9 +47,34 @@ func NewCreateTool(mu sync.Locker, catalog *toolcatalog.Catalog, catalogPath str
 // Name implements Tool.
 func (c *CreateToolTool) Name() string { return "create_tool" }
 
+// createToolLLMDescription is the OpenAI/Hermes tool description: rules + one canonical JSON example (quick-win for model adherence).
+const createToolLLMDescription = `Create a new catalog tool that runs a Docker sandbox command on a node (SSH). Persists to tools.yaml and updates the runtime catalog.
+
+TEMPLATE (must be ONE physical line — no newline U+000A or carriage return U+000D inside the template string; multi-line Python/shell scripts will be rejected):
+- Prefix: docker run --rm --network bridge  OR  docker run --rm --network none
+- Include a 30s bound (e.g. timeout 30s before docker, or inside the container command per validation)
+- Reference an image on the node (e.g. pa-sandbox:base)
+- For non-trivial logic: use a one-liner (semicolons in python -c), or curl/rss in a single line, or a small script file already on the node plus an allowlisted exec line — do not embed multiline source in the template.
+
+Remote command policy: letters, digits, space, and limited ASCII punctuation (including " for quoting); no tab; no ; & | $() backtick; no newlines. ? is not allowed — avoid raw URLs with query strings in the template (use path-only endpoints or placeholders if the node allowlist permits).
+
+ARGUMENTS (optional): omit the key or use "" if there are no {{placeholder}} segments in the template. If there are placeholders, pass arguments as a JSON-encoded string of an array of objects. Each object may include: name, type (string or integer), required, allowed_values, pattern, min, max.
+
+Canonical example — pass a single JSON object like this for the function arguments (replace id, index_text, template, node_id as needed):
+{
+  "id": "weather_wttr",
+  "index_text": "Weather for a city via wttr.in",
+  "template": "docker run --rm --network bridge pa-sandbox:base timeout 30s curl -fsS wttr.in/{{city}}",
+  "node_id": "nas",
+  "arguments": "[{\"name\":\"city\",\"type\":\"string\",\"required\":true}]",
+  "system_prompt": ""
+}
+If there are no placeholders, omit "arguments" or set "arguments": "".
+`
+
 // Description implements Tool.
 func (c *CreateToolTool) Description() string {
-	return "Create a new catalog tool backed by a Docker sandbox template on a node. Persists to tools.yaml and updates the runtime catalog."
+	return createToolLLMDescription
 }
 
 // ParamsSchema implements Tool.

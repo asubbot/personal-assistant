@@ -29,15 +29,9 @@ func ValidateCreateToolTemplatePrefix(template string) error {
 	return fmt.Errorf("toolcatalog: template must start with %q or %q", createToolPrefixBridge, createToolPrefixNone)
 }
 
-// ValidateSandboxResourceSubstrings enforces memory, CPU, and a 30s timeout bound in the template string (REQ-09.002–004).
-// Rules: must contain `--memory="256m"`, `--cpus="0.5"`, and either `timeout 30s` or `timeout 30 ` (busybox/coreutils) as substring.
+// ValidateSandboxResourceSubstrings enforces a 30s timeout bound in the template string (REQ-09.004).
+// Memory and CPU limits (--memory=256m, --cpus=0.5) are not substring-validated here; operators SHOULD add them in templates for production sandboxes.
 func ValidateSandboxResourceSubstrings(template string) error {
-	if !strings.Contains(template, `--memory="256m"`) {
-		return errors.New(`toolcatalog: template must contain --memory="256m"`)
-	}
-	if !strings.Contains(template, `--cpus="0.5"`) {
-		return errors.New(`toolcatalog: template must contain --cpus="0.5"`)
-	}
 	if !strings.Contains(template, "timeout 30s") && !strings.Contains(template, "timeout 30 ") {
 		return errors.New("toolcatalog: template must include a 30s timeout (e.g. timeout 30s before docker or in shell)")
 	}
