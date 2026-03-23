@@ -1,0 +1,45 @@
+@startuml C4 Container - PersonalAssistant (EP-009)
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 60
+skinparam ranksep 50
+skinparam ArrowColor #707070
+skinparam ComponentBorderColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-009 Dynamic Tool Creation with Docker Sandbox
+
+Person_Ext(user, "User", "Telegram user")
+System_Ext(llm_ext, "LLM API", "Tool calls including create_tool")
+System_Ext(node, "Remote node", "SSH; Docker Engine; pa-sandbox images")
+
+Container_Boundary(pa, "PersonalAssistant (single process)") {
+    Container(core, "Core", "Go", "Conversation handler; tool execution loop; passes catalog to LLM")
+    Container(create, "CreateTool & validation", "Go", "Whitelist templates; secret patterns; append YAML; update runtime catalog")
+    Container(tools, "Tools registry", "Go", "Native tools: create_tool, run_on_node")
+    Container(nrunner, "Node runner", "Go", "Allowlist; cmdsafe; SSH session.Run for docker CLI")
+    Container(ssh, "SSH client", "Go", "Dedicated user; known_hosts")
+    ContainerDb(cat, "Tool catalog file", "YAML", "tools.yaml — load at startup; append on create_tool")
+    ContainerDb(cfg, "Config", "JSON", "Paths; optional secret pattern list for REQ-09.017")
+}
+
+Rel(user, core, "Chat")
+Rel(core, llm_ext, "Completions; tool_calls")
+Rel(core, tools, "Invoke by name")
+Rel(tools, create, "create_tool implementation uses")
+Rel(tools, nrunner, "run_on_node")
+Rel(create, cat, "Read / append atomic write")
+Rel(create, cfg, "Secret patterns")
+Rel(nrunner, ssh, "Exec remote command")
+Rel(ssh, node, "docker run ...")
+Rel(core, cat, "Pre-selected tools; reload in-memory tool after create")
+
+@enduml
