@@ -26,7 +26,7 @@
   - CPU limits (e.g., 0.5 cores)
   - Execution timeout (e.g., 30 seconds)
 - **Pre-built sandbox images**: Docker images maintained on the node:
-  - `pa-sandbox:python` — Python 3.13 with requests, httpx, beautifulsoup4, lxml, json, re, datetime, math
+  - `pa-sandbox:python` — Python 3.14 with requests, httpx, beautifulsoup4, lxml, json, re, datetime, math
   - `pa-sandbox:node` — Node.js 22 LTS with axios, node-fetch, cheerio
   - `pa-sandbox:base` — Minimal Alpine with curl, jq for simple HTTP/shell tasks
 - **Native create_tool tool**: New tool registered in the tools registry that:
