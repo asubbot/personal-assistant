@@ -27,6 +27,12 @@
 - **Behaviour of this repo:** prefer **`ai-sdlc-artefacts`** and the current codebase over external sources.
 - **Third-party libraries, APIs, and platforms:** search **official documentation** using the USER's keywords (preserve the user's wording). Prefer official docs over GitHub issues or blog posts; fall back only if official docs lack the answer.
 
+## Optional tooling (Cursor): Sourcerer MCP
+- **What it is:** an optional MCP server for **semantic search** over the workspace (code and Markdown chunks), to navigate faster and reduce reading whole files. It is **not** part of the SDLC pipeline.
+- **Pipeline rule:** Stages and skills use files under **`ai-sdlc-artefacts/`** and **`ai-sdlc/specification/`** as the source of truth in git. Do not treat Sourcerer as a substitute for reading skills or approved artefacts.
+- **When it helps:** large repos, exploratory “where is X?” questions across code and docs. For small epic files, normal **read** / **grep** is often enough.
+- **Operator note:** typical setup needs an **embeddings API** (e.g. OpenAI), local index data (often under `.sourcerer/`—**gitignore** it), and respects **`.gitignore`**. Follow the upstream package docs for install and env.
+
 ## Quality checks
 - After non-trivial code changes, run **`make check`** (fmt, vet, lint, tests with coverage) when you are allowed to execute commands, and fix failures before handing off—unless I say otherwise.
 

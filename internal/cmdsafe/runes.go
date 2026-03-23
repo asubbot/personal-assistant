@@ -13,6 +13,8 @@ const maxCommandRunes = 8192
 // numbers, and combining marks (Mn, Mc). Space is U+0020 only; tab is not allowed.
 var allowedASCIIPunct = map[rune]struct{}{
 	' ': {}, '.': {}, '/': {}, '-': {}, '_': {}, ':': {}, '@': {}, '=': {}, '+': {}, ',': {},
+	// U+0022: optional in remote commands when operators need quoted args; shell metacharacters remain rejected separately.
+	'"': {},
 }
 
 func isBidiOverride(r rune) bool {

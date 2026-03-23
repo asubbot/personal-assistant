@@ -68,7 +68,7 @@ func TestTelegramFlow_OneMessage_ReplyWithinTimeout(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 		close(done)
 	}()
 
@@ -102,7 +102,7 @@ func TestTelegramFlow_EmptyMessage_RejectionNoLLMCall(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 		close(done)
 	}()
 
@@ -140,7 +140,7 @@ func TestTelegramFlow_OverMaxLength_RejectionNoLLMCall(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 		close(done)
 	}()
 
@@ -178,7 +178,7 @@ func TestTelegramFlow_DifferentProviderUsedPerRun(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	done1 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx1, cfg, logger, adapterA, []llm.Provider{providerA}, []string{"test/default"}, nil, nil, nil, nil, nil)
+		_ = core.Run(ctx1, cfg, logger, adapterA, []llm.Provider{providerA}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 		close(done1)
 	}()
 
@@ -204,7 +204,7 @@ func TestTelegramFlow_DifferentProviderUsedPerRun(t *testing.T) {
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	done2 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx2, cfg, logger, adapterB, []llm.Provider{providerB}, []string{"test/default"}, nil, nil, nil, nil, nil)
+		_ = core.Run(ctx2, cfg, logger, adapterB, []llm.Provider{providerB}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 		close(done2)
 	}()
 

@@ -9,6 +9,7 @@ import (
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
 	"pa/internal/toolcatalog"
+	"pa/internal/tools"
 	"pa/internal/tooltext"
 	"pa/internal/vector"
 	"strings"
@@ -669,6 +670,38 @@ func TestExecuteOneToolCall_ValidCall_RunsViaRunOnNode(t *testing.T) {
 	}
 }
 
+// Covers AC-09.008: native run_on_node dispatch when id not in catalog.
+func TestExecuteOneToolCall_nativeRunOnNode(t *testing.T) {
+	runner := &mockNodeRunner{stdout: "up"}
+	reg := tools.NewRegistry()
+	reg.Register(tools.NewRunOnNode(runner))
+	h := &conversationHandler{
+		catalog:        &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
+		nativeRegistry: reg,
+		nodeRunner:     runner,
+		logger:         slog.Default(),
+	}
+	out, err := h.executeOneToolCall(context.Background(), "run_on_node", `{"node_id":"nas","command":"uptime"}`)
+	if err != nil {
+		t.Fatalf("executeOneToolCall: %v", err)
+	}
+	if out != "up" {
+		t.Errorf("got %q", out)
+	}
+}
+
+func TestRemoteCommandFromRunOnNodeArgs(t *testing.T) {
+	if got := remoteCommandFromRunOnNodeArgs("run_on_node", `{"node_id":"nas","command":"  docker ps  "}`); got != "docker ps" {
+		t.Errorf("got %q, want docker ps", got)
+	}
+	if got := remoteCommandFromRunOnNodeArgs("run_echo", `{"command":"x"}`); got != "" {
+		t.Errorf("non-native tool: got %q, want empty", got)
+	}
+	if got := remoteCommandFromRunOnNodeArgs("run_on_node", `not json`); got != "" {
+		t.Errorf("invalid json: got %q, want empty", got)
+	}
+}
+
 // Covers AC-04.006: unknown tool → error, no RunOnNode called.
 func TestExecuteOneToolCall_UnknownTool_ReturnsErrorNoRun(t *testing.T) {
 	catalog := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
@@ -1262,6 +1295,49 @@ func TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode(t *
 	}
 	if runner.lastCommand != "" {
 		t.Errorf("RunOnNode must not run; lastCommand=%q", runner.lastCommand)
+	}
+}
+
+// Catalog substitution passes cmdsafe gate in handler: INFO log includes tool_id, node_id, remote_command.
+func TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID:        "run_echo",
+				IndexText: "Echo",
+				Template:  "echo {{msg}}",
+				NodeID:    "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: logger}
+	_, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "bad;cmd"}`)
+	if err == nil {
+		t.Fatal("executeOneToolCall: expected cmdsafe error")
+	}
+	if runner.lastCommand != "" {
+		t.Errorf("RunOnNode must not run; lastCommand=%q", runner.lastCommand)
+	}
+	var found bool
+	for _, rec := range cap.records {
+		if rec.msg != "catalog tool remote command rejected" {
+			continue
+		}
+		found = true
+		if rec.attrs["tool_id"] != "run_echo" || rec.attrs["node_id"] != "nas" {
+			t.Errorf("attrs = %v", rec.attrs)
+		}
+		if !strings.Contains(rec.attrs["remote_command"], "bad") {
+			t.Errorf("remote_command = %q", rec.attrs["remote_command"])
+		}
+		break
+	}
+	if !found {
+		t.Fatalf("expected catalog tool remote command rejected log; records=%+v", cap.records)
 	}
 }
 

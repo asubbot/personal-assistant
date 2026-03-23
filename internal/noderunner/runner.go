@@ -13,6 +13,9 @@ import (
 	"unicode/utf8"
 )
 
+// maxCommandRunesInError caps the command fragment embedded in returned errors (tool/LLM diagnostics, DEBUG logs).
+const maxCommandRunesInError = 400
+
 // maxRemoteStreamBytes caps stdout/stderr fragments embedded in errors and logs (per stream).
 const maxRemoteStreamBytes = 4096
 
@@ -72,7 +75,7 @@ type Runner struct {
 	allowlist *allowlist.Checker
 	logger    *slog.Logger
 	executor  Executor            // optional; when set (e.g. in tests) used instead of real SSH
-	logRedact func(string) string // optional; remote stdout/stderr fragments in app logs only (not returned errors)
+	logRedact func(string) string // optional; remote_command and stream fragments in app logs only (not returned errors)
 }
 
 // New returns a Runner that uses the given config and allowlist. Paths in config are relative to project root (CWD).
@@ -85,7 +88,7 @@ func (r *Runner) SetExecutor(e Executor) {
 	r.executor = e
 }
 
-// SetLogRedactor sets optional redaction for remote stdout/stderr fragments in Error/Debug logs. Errors returned from RunOnNode are not redacted so tool/LLM diagnostics stay intact.
+// SetLogRedactor sets optional redaction for remote_command and remote stdout/stderr fragments in app logs. Errors returned from RunOnNode are not redacted so tool/LLM diagnostics stay intact.
 func (r *Runner) SetLogRedactor(fn func(string) string) {
 	r.logRedact = fn
 }
@@ -97,33 +100,88 @@ func (r *Runner) redactLogString(s string) string {
 	return r.logRedact(s)
 }
 
+// ellipsisCommandForError returns cmd truncated to maxCommandRunesInError runes for inclusion in returned errors.
+func ellipsisCommandForError(cmd string) string {
+	if cmd == "" {
+		return ""
+	}
+	n := 0
+	for i := range cmd {
+		if n == maxCommandRunesInError {
+			return cmd[:i] + "…"
+		}
+		n++
+	}
+	return cmd
+}
+
+func wrapValidateRemoteCommandOutcome(nodeID, cmd string, err error) error {
+	kind, ok := cmdsafe.RejectKind(err)
+	q := ellipsisCommandForError(cmd)
+	if !ok {
+		// ValidateRemoteCommand returns *CommandValidationError today; if that invariant breaks, map to rune policy so escalation stays conservative.
+		return escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: command validation failed for node %q (attempted: %q): %w", nodeID, q, err))
+	}
+	switch kind {
+	case cmdsafe.CommandRejectShellMeta:
+		return escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeShellMetaRejected, fmt.Errorf("noderunner: command validation failed for node %q (attempted: %q): %w", nodeID, q, err))
+	default:
+		return escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: command validation failed for node %q (attempted: %q): %w", nodeID, q, err))
+	}
+}
+
+func (r *Runner) logRemoteRejectedEmpty(nodeID string) {
+	if r.logger != nil {
+		r.logger.Info("remote command rejected: empty", "node_id", nodeID)
+	}
+}
+
+func (r *Runner) logRemoteRejectedValidation(nodeID, cmdRedacted string, err error) {
+	if r.logger != nil {
+		r.logger.Info("remote command rejected: validation", "node_id", nodeID, "remote_command", cmdRedacted, "error", err)
+	}
+}
+
+func (r *Runner) logRemoteRejectedAllowlistMissing(nodeID, cmdRedacted string) {
+	if r.logger != nil {
+		r.logger.Info("remote command rejected: allowlist not configured", "node_id", nodeID, "remote_command", cmdRedacted)
+	}
+}
+
+func (r *Runner) logRemoteRejectedAllowlist(nodeID, cmdRedacted string) {
+	if r.logger != nil {
+		r.logger.Warn("remote command rejected: allowlist", "node_id", nodeID, "remote_command", cmdRedacted)
+	}
+}
+
+func (r *Runner) logRemoteExecStarting(ctx context.Context, nodeID, cmdRedacted string) {
+	if r.logger != nil && r.logger.Enabled(ctx, slog.LevelDebug) {
+		r.logger.DebugContext(ctx, "remote exec starting", "node_id", nodeID, "remote_command", cmdRedacted)
+	}
+}
+
 // RunOnNode runs the command on the node only if it is allowlisted (AC-01.007, AC-01.008). Uses SSH with the node's dedicated user only (AC-01.006, AC-01.009, AC-01.010).
 // On connection or exec failure logs and returns error; no fallback to other users (REQ-01.013).
 func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout string, err error) {
 	cmd := strings.TrimSpace(command)
 	if cmd == "" {
+		r.logRemoteRejectedEmpty(nodeID)
 		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeEmptyCommand, fmt.Errorf("noderunner: command is empty"))
 	}
+	cmdLog := r.redactLogString(cmd)
 	if err := cmdsafe.ValidateRemoteCommand(cmd); err != nil {
-		kind, ok := cmdsafe.RejectKind(err)
-		if !ok {
-			// ValidateRemoteCommand returns *CommandValidationError today; if that invariant breaks, map to rune policy so escalation stays conservative.
-			return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: %w", err))
-		}
-		switch kind {
-		case cmdsafe.CommandRejectShellMeta:
-			return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeShellMetaRejected, fmt.Errorf("noderunner: %w", err))
-		default:
-			return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: %w", err))
-		}
+		r.logRemoteRejectedValidation(nodeID, cmdLog, err)
+		return "", wrapValidateRemoteCommandOutcome(nodeID, cmd, err)
 	}
 	if r.allowlist == nil {
-		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeAllowlistNotConfigured, fmt.Errorf("noderunner: allowlist not configured"))
+		r.logRemoteRejectedAllowlistMissing(nodeID, cmdLog)
+		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeAllowlistNotConfigured, fmt.Errorf("noderunner: allowlist not configured for node %q (attempted: %q)", nodeID, ellipsisCommandForError(cmd)))
 	}
 	if !r.allowlist.Allow(nodeID, cmd) {
-		r.logger.Warn("command not on allowlist", "node_id", nodeID, "command", cmd)
-		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeAllowlistDenied, fmt.Errorf("noderunner: command not allowed for node %q", nodeID))
+		r.logRemoteRejectedAllowlist(nodeID, cmdLog)
+		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeAllowlistDenied, fmt.Errorf("noderunner: command not allowed for node %q (attempted: %q)", nodeID, ellipsisCommandForError(cmd)))
 	}
+	r.logRemoteExecStarting(ctx, nodeID, cmdLog)
 	var out, stderr []byte
 	if r.executor != nil {
 		out, stderr, err = r.executor.Exec(ctx, nodeID, cmd)
@@ -148,7 +206,7 @@ func (r *Runner) finishRemoteExec(nodeID, cmd string, out, stderr []byte, execEr
 	if execErr != nil {
 		outTrunc := truncateRemoteStream(out)
 		errTrunc := truncateRemoteStream(stderr)
-		logAttrs := appendRemoteStreamAttrs([]any{"node_id", nodeID, "command", cmd, "error", execErr}, r.redactLogString(outTrunc), r.redactLogString(errTrunc))
+		logAttrs := appendRemoteStreamAttrs([]any{"node_id", nodeID, "remote_command", r.redactLogString(cmd), "error", execErr}, r.redactLogString(outTrunc), r.redactLogString(errTrunc))
 		r.logger.Error("ssh exec", logAttrs...)
 		detail := remoteStreamsSuffix(outTrunc, errTrunc)
 		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeRemoteExecFailure, fmt.Errorf("noderunner: exec: %w%s", execErr, detail))
@@ -157,7 +215,7 @@ func (r *Runner) finishRemoteExec(nodeID, cmd string, out, stderr []byte, execEr
 		outTrunc := truncateRemoteStream(out)
 		errTrunc := truncateRemoteStream(stderr)
 		if outTrunc != "" || errTrunc != "" {
-			dbgAttrs := appendRemoteStreamAttrs([]any{"node_id", nodeID, "command", cmd}, r.redactLogString(outTrunc), r.redactLogString(errTrunc))
+			dbgAttrs := appendRemoteStreamAttrs([]any{"node_id", nodeID, "remote_command", r.redactLogString(cmd)}, r.redactLogString(outTrunc), r.redactLogString(errTrunc))
 			r.logger.Debug("ssh exec output", dbgAttrs...)
 		}
 	}

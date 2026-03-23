@@ -1,11 +1,11 @@
 # Copy to `.config/nas_allowlist` (gitignored) and adjust for your environment.
 # One pattern per line. Empty lines and lines starting with # are ignored.
 # Exact match: command must equal the pattern.
-# Prefix wildcard: if a line contains *, it must be exactly one * as the last character; the command must start with the prefix before that *.
+# Prefix wildcard: if a line contains *, it must be exactly one * as the last character; the command must start with the prefix before that * (spaces are part of the prefix — `docker images *` does not match bare `docker images`; use `docker images*`).
 # Invalid: bare *; more than one *; or * not at end (e.g. foo*bar) — load fails.
 #
 # Executed command strings (after substitution) may use Unicode letters, numbers, combining marks (Mn/Mc),
-# and this ASCII punctuation only: space (U+0020), . / - _ : @ = + ,
+# and this ASCII punctuation only: space (U+0020), . / - _ : @ = + , "
 # Tab, shell metacharacters (e.g. ; & | $ ` newline), and other symbols are rejected even if allowlisted.
 
 echo *
@@ -13,3 +13,13 @@ systemctl status *
 uptime
 date -Iseconds
 /opt/example/bin/my-tool *
+
+# EP-009: Docker sandbox (create_tool / catalog). Prefix * = command must start with this prefix.
+docker run --rm --network bridge *
+docker run --rm --network none *
+timeout 30s docker run --rm --network bridge *
+timeout 30s docker run --rm --network none *
+
+# Docker: list images (read-only). Use `docker images*` / `docker image ls*` (no space before *) so bare commands match; Docker CLI uses `ls`, not `list`.
+docker image ls*
+docker images*
