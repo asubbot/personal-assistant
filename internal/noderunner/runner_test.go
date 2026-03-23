@@ -78,6 +78,40 @@ func TestRunOnNode_allowlistDenies_returnsError(t *testing.T) {
 	}
 }
 
+// Covers allowlist checker nil: no SSH/exec; error includes attempted command for diagnostics.
+func TestRunOnNode_nilAllowlist_returnsErrorWithAttempted(t *testing.T) {
+	cfg := &config.Config{
+		Nodes: map[string]config.Node{
+			"n1": {
+				Host:          "localhost",
+				DedicatedUser: "pa",
+				Auth:          config.NodeAuth{PrivateKeyPath: "/tmp/key"},
+			},
+		},
+	}
+	r := New(cfg, nil, slog.Default())
+	var execCalls int
+	r.SetExecutor(&mockExecutor{
+		execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
+			execCalls++
+			return nil, nil, nil
+		},
+	})
+	_, err := r.RunOnNode(context.Background(), "n1", "uptime")
+	if err == nil {
+		t.Fatal("expected error when allowlist checker is nil")
+	}
+	if execCalls != 0 {
+		t.Fatalf("executor must not run; calls=%d", execCalls)
+	}
+	if !strings.Contains(err.Error(), "allowlist not configured") {
+		t.Errorf("error = %v", err)
+	}
+	if !strings.Contains(err.Error(), "attempted:") || !strings.Contains(err.Error(), "uptime") {
+		t.Errorf("error should embed attempted command: %v", err)
+	}
+}
+
 // Covers AC-01.010 (US-04): multiple nodes — runner uses correct node ID per call (dedicated user per node from config).
 func TestRunOnNode_twoNodes_eachUsesCorrectNodeID(t *testing.T) {
 	dir := t.TempDir()
@@ -168,6 +202,9 @@ func TestRunOnNode_shellMetacharacters_rejected(t *testing.T) {
 		if err == nil {
 			t.Fatalf("RunOnNode(%q): want error", cmd)
 		}
+		if !strings.Contains(err.Error(), "attempted:") {
+			t.Errorf("RunOnNode(%q): error should embed attempted command: %v", cmd, err)
+		}
 	}
 	if execCalls != 0 {
 		t.Errorf("executor must not run for rejected commands; calls=%d", execCalls)
@@ -207,8 +244,34 @@ func TestRunOnNode_disallowedRunes_rejectedBeforeExec(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for tab in command")
 	}
+	if !strings.Contains(err.Error(), "attempted:") {
+		t.Errorf("error should embed attempted command: %v", err)
+	}
 	if execCalls != 0 {
 		t.Fatalf("executor must not run; calls=%d", execCalls)
+	}
+}
+
+func TestEllipsisCommandForError(t *testing.T) {
+	if got := ellipsisCommandForError(""); got != "" {
+		t.Errorf("empty: got %q", got)
+	}
+	short := "docker ps"
+	if got := ellipsisCommandForError(short); got != short {
+		t.Errorf("short: got %q want %q", got, short)
+	}
+	var b strings.Builder
+	for range maxCommandRunesInError + 5 {
+		b.WriteRune('a')
+	}
+	long := b.String()
+	got := ellipsisCommandForError(long)
+	if !strings.HasSuffix(got, "…") {
+		t.Fatalf("long command should end with ellipsis: len=%d", len(got))
+	}
+	core := strings.TrimSuffix(got, "…")
+	if len([]rune(core)) != maxCommandRunesInError {
+		t.Fatalf("truncated prefix rune count = %d, want %d", len([]rune(core)), maxCommandRunesInError)
 	}
 }
 

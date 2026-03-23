@@ -1298,6 +1298,49 @@ func TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode(t *
 	}
 }
 
+// Catalog substitution passes cmdsafe gate in handler: INFO log includes tool_id, node_id, remote_command.
+func TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID:        "run_echo",
+				IndexText: "Echo",
+				Template:  "echo {{msg}}",
+				NodeID:    "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: logger}
+	_, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "bad;cmd"}`)
+	if err == nil {
+		t.Fatal("executeOneToolCall: expected cmdsafe error")
+	}
+	if runner.lastCommand != "" {
+		t.Errorf("RunOnNode must not run; lastCommand=%q", runner.lastCommand)
+	}
+	var found bool
+	for _, rec := range cap.records {
+		if rec.msg != "catalog tool remote command rejected" {
+			continue
+		}
+		found = true
+		if rec.attrs["tool_id"] != "run_echo" || rec.attrs["node_id"] != "nas" {
+			t.Errorf("attrs = %v", rec.attrs)
+		}
+		if !strings.Contains(rec.attrs["remote_command"], "bad") {
+			t.Errorf("remote_command = %q", rec.attrs["remote_command"])
+		}
+		break
+	}
+	if !found {
+		t.Fatalf("expected catalog tool remote command rejected log; records=%+v", cap.records)
+	}
+}
+
 // REQ-04.027–029: text_based + first provider without tools → Hermes in content → execute → follow-up without tools, tool results as user.
 // EP-008 AC-08.005 (integration): follow-up Complete keeps ForceJSONOutput so OpenAICompatible can apply REQ-08.005.
 //

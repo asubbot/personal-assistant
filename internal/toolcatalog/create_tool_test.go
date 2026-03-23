@@ -35,6 +35,10 @@ func TestValidateSandboxResourceSubstrings(t *testing.T) {
 	if err := ValidateSandboxResourceSubstrings(`docker run --rm --network bridge`); err == nil {
 		t.Fatal("expected error for missing 30s timeout")
 	}
+	// Alternative accepted form: "timeout 30 " (space after 30).
+	if err := ValidateSandboxResourceSubstrings(`docker run --rm --network bridge pa-sandbox:base timeout 30 curl -fsS example.com`); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // Covers AC-09.011: append twice yields valid YAML with two tools.
