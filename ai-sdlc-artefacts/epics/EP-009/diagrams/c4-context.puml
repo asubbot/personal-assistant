@@ -1,0 +1,16 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title System Context - EP-009 Dynamic Tool Creation
+
+Person(user, "User", "Telegram user interacting with PA")
+System(pa, "PersonalAssistant", "Go core with tool catalog and SSH node access")
+System_Ext(llm, "LLM Provider", "Language model generating tool definitions")
+System_Ext(node, "Node", "Remote host with Docker sandbox")
+
+Rel(user, pa, "Sends messages via", "Telegram Bot API")
+Rel(pa, llm, "Generates tool definitions via", "HTTP API")
+Rel(pa, node, "Executes sandbox via", "SSH")
+Rel(node, pa, "Returns execution results", "SSH")
+
+@enduml
