@@ -43,8 +43,8 @@ Follow this order:
 3. **Check existing ep-scope** — If ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md exists, treat it as the baseline; propose changes as edits.
 4. **Draft in chat** — Draft ep-scope in chat (section by section or as a whole). Show the full draft (or each section) to the user; after each part, ask if anything needs clarification or change. Apply all requested changes to the draft in chat only; do not write to ep-scope.md yet.
 5. **Resolve choices** — When multiple valid options exist, present them (e.g. A/B) and ask the user to choose.
-6. **Write after approval** — Create or update ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md only when the user explicitly approves (e.g. "lgtm", "save", "approve", or equivalent in the user's language such as "да", "сохраняй", "одобряю").
-7. **Legacy** — Do not modify content under `legacy` folders; use as reference only.
+6. **Create branch after approval** — When the user approves the draft (e.g. "lgtm", "save", "approve"), create a git branch named `epic/<epic-id>-<short-title>` (e.g. `epic/EP-009-dynamic-tool-creation`) before writing the file. If already on a feature branch for this epic, skip this step.
+7. **Write after approval** — Create or update ai-sdlc-artefacts/epics/<epic-id>/ep-scope.md only when the user explicitly approves (e.g. "lgtm", "save", "approve", or equivalent in the user's language such as "да", "сохраняй", "одобряю"). Write the approved draft to the file with the current date as **First version date**.
 
 ## 3. Output structure (ep-scope.md)
 
