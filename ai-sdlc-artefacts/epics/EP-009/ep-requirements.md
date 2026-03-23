@@ -2,7 +2,7 @@
 
 This document contains the product requirements for EP-009 in EARS form, aligned with INCOSE semantic quality rules (active voice, one thought per requirement, explicit and measurable criteria, defined terminology, solution-free where applicable).
 
-> **17 requirements** · 13 FR · 4 NFR · 3 theme groups
+> **18 requirements** · 14 FR · 4 NFR · 3 theme groups
 
 **Contents**
 
@@ -47,6 +47,7 @@ EP-009 enables the LLM to create new tools at runtime by generating code (Python
 | **Tool definition** | Structured data describing a tool: id, index_text, template, node_id, arguments, system_prompt. |
 | **tools.yaml** | File path configured as the tool catalog; holds invocable tool definitions loaded at startup and appended when tools are created. |
 | **Secret detection pattern** | Operator-configured rule (e.g. regular expression) used to detect credential-like content in tool definitions before persistence. |
+| **Public internet endpoint** | A routable address on the public internet used in integration tests to verify whether a container has outbound connectivity (e.g. documented HTTPS URL or TCP host and port). |
 
 ---
 
@@ -91,13 +92,14 @@ In the following, *System* = PersonalAssistant.
 
 | Id | Type | Section | Summary |
 |----|------|---------|---------|
-| REQ-09.001 | FR | Docker Sandbox Execution | Execute code in Docker with network bridge |
+| REQ-09.001 | FR | Docker Sandbox Execution | Use bridge network when template specifies bridge |
 | REQ-09.002 | FR | Docker Sandbox Execution | Apply 256MB memory limit |
 | REQ-09.003 | FR | Docker Sandbox Execution | Apply 0.5 CPU limit |
 | REQ-09.004 | FR | Docker Sandbox Execution | Enforce 30s execution timeout |
 | REQ-09.005 | FR | Docker Sandbox Execution | Support Python 3.14 sandbox image |
 | REQ-09.006 | FR | Docker Sandbox Execution | Support Node.js 22 sandbox image |
 | REQ-09.007 | FR | Docker Sandbox Execution | Support Alpine base sandbox image |
+| REQ-09.018 | FR | Docker Sandbox Execution | Enforce network isolation when none |
 | REQ-09.008 | FR | Tool Creation | Accept tool definition parameters |
 | REQ-09.009 | FR | Tool Creation | Validate template whitelist; reject invalid |
 | REQ-09.010 | FR | Tool Creation | Reject duplicate tool IDs |
@@ -115,10 +117,10 @@ In the following, *System* = PersonalAssistant.
 
 ### Docker Sandbox Execution
 
-*REQ-09.001, REQ-09.002, REQ-09.003, REQ-09.004, REQ-09.005, REQ-09.006, REQ-09.007*
+*REQ-09.001, REQ-09.002, REQ-09.003, REQ-09.004, REQ-09.005, REQ-09.006, REQ-09.007, REQ-09.018*
 
 **REQ-09.001** (Event-driven)
-WHEN the LLM invokes a catalog tool that runs sandboxed code on a configured node, THE System SHALL execute the resulting command in a Docker container with `--network bridge` for outbound network access.
+WHEN a catalog tool template specifies `docker run` with `--network bridge`, THE System SHALL execute the resulting command in a Docker container that uses bridge networking for outbound network access.
 
 **REQ-09.002** (Event-driven)
 WHEN the System executes code in a Docker sandbox, THE System SHALL apply a memory limit of 256MB via `--memory="256m"`.
@@ -137,6 +139,9 @@ THE System SHALL support the `pa-sandbox:node` Docker image containing Node.js 2
 
 **REQ-09.007** (Ubiquitous)
 THE System SHALL support the `pa-sandbox:base` Docker image based on Alpine Linux with curl and jq for simple HTTP and shell tasks.
+
+**REQ-09.018** (Event-driven)
+WHEN a catalog tool template specifies `docker run` with `--network none`, THE System SHALL execute the container such that outbound connectivity from inside the container to a public internet endpoint is not available, verifiable by a failed connection attempt in the integration test environment.
 
 ---
 

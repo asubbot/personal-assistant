@@ -12,31 +12,34 @@ This document defines testable acceptance criteria for [EP-009](ep-scope.md) in 
 
 ## Introduction
 
-EP-009 adds dynamic tool creation with Docker-based sandbox execution on configured nodes and persistence to the tool catalog. This document states **when the epic is done** from a testing perspective: each AC is verifiable and maps to one or more requirements.
+EP-009 adds dynamic tool creation with Docker-based sandbox execution on configured nodes and persistence to the tool catalog. This document states **when the epic is done** from a testing perspective: **18** acceptance criteria are verifiable and map to [ep-requirements.md](ep-requirements.md).
 
 ---
 
 ## Acceptance criteria index
 
-| AC ID | REQ (trace) | Summary |
-|-------|-------------|---------|
-| [AC-09.001](#ac-09-001) | [REQ-09.001](ep-requirements.md#docker-sandbox-execution) | Sandbox execution uses Docker network bridge |
-| [AC-09.002](#ac-09-002) | [REQ-09.002](ep-requirements.md#docker-sandbox-execution) | Sandbox applies 256MB memory limit |
-| [AC-09.003](#ac-09-003) | [REQ-09.003](ep-requirements.md#docker-sandbox-execution) | Sandbox applies 0.5 CPU limit |
-| [AC-09.004](#ac-09-004) | [REQ-09.004](ep-requirements.md#docker-sandbox-execution) | Sandbox enforces 30s timeout |
-| [AC-09.005](#ac-09-005) | [REQ-09.005](ep-requirements.md#docker-sandbox-execution) | Python 3.14 pa-sandbox image available |
-| [AC-09.006](#ac-09-006) | [REQ-09.006](ep-requirements.md#docker-sandbox-execution) | Node.js 22 pa-sandbox image available |
-| [AC-09.007](#ac-09-007) | [REQ-09.007](ep-requirements.md#docker-sandbox-execution) | Alpine base pa-sandbox image available |
-| [AC-09.008](#ac-09-008) | [REQ-09.008](ep-requirements.md#tool-creation) | create_tool accepts required and optional parameters |
-| [AC-09.009](#ac-09-009) | [REQ-09.009](ep-requirements.md#tool-creation) | Whitelist validation; invalid template rejected |
-| [AC-09.010](#ac-09-010) | [REQ-09.010](ep-requirements.md#tool-creation) | Duplicate tool ID rejected |
-| [AC-09.011](#ac-09-011) | [REQ-09.011](ep-requirements.md#tool-creation) | Valid tool appended to tools.yaml |
-| [AC-09.012](#ac-09-012) | [REQ-09.012](ep-requirements.md#tool-creation) | New tool in runtime catalog without restart |
-| [AC-09.013](#ac-09-013) | [REQ-09.013](ep-requirements.md#tool-creation) | Success response includes tool id |
-| [AC-09.014](#ac-09-014) | [REQ-09.014](ep-requirements.md#non-functional-requirements) | Cached image: start within 5s |
-| [AC-09.015](#ac-09-015) | [REQ-09.015](ep-requirements.md#non-functional-requirements) | create_tool completes within 1s |
-| [AC-09.016](#ac-09-016) | [REQ-09.016](ep-requirements.md#non-functional-requirements) | Unit coverage ≥70% for create_tool and validation |
-| [AC-09.017](#ac-09-017) | [REQ-09.017](ep-requirements.md#non-functional-requirements) | Secret-like content rejected on persist |
+
+| AC ID                   | REQ (trace)                                                  | Summary                                              |
+| ----------------------- | ------------------------------------------------------------ | ---------------------------------------------------- |
+| [AC-09.001](#ac-09-001) | [REQ-09.001](ep-requirements.md#docker-sandbox-execution)    | Sandbox execution uses Docker network bridge         |
+| [AC-09.002](#ac-09-002) | [REQ-09.002](ep-requirements.md#docker-sandbox-execution)    | Sandbox applies 256MB memory limit                   |
+| [AC-09.003](#ac-09-003) | [REQ-09.003](ep-requirements.md#docker-sandbox-execution)    | Sandbox applies 0.5 CPU limit                        |
+| [AC-09.004](#ac-09-004) | [REQ-09.004](ep-requirements.md#docker-sandbox-execution)    | Sandbox enforces 30s timeout                         |
+| [AC-09.005](#ac-09-005) | [REQ-09.005](ep-requirements.md#docker-sandbox-execution)    | Python 3.14 pa-sandbox image available               |
+| [AC-09.006](#ac-09-006) | [REQ-09.006](ep-requirements.md#docker-sandbox-execution)    | Node.js 22 pa-sandbox image available                |
+| [AC-09.007](#ac-09-007) | [REQ-09.007](ep-requirements.md#docker-sandbox-execution)    | Alpine base pa-sandbox image available               |
+| [AC-09.018](#ac-09-018) | [REQ-09.018](ep-requirements.md#docker-sandbox-execution)    | Network none: no outbound internet from container   |
+| [AC-09.008](#ac-09-008) | [REQ-09.008](ep-requirements.md#tool-creation)               | create_tool accepts required and optional parameters |
+| [AC-09.009](#ac-09-009) | [REQ-09.009](ep-requirements.md#tool-creation)               | Whitelist validation; invalid template rejected      |
+| [AC-09.010](#ac-09-010) | [REQ-09.010](ep-requirements.md#tool-creation)               | Duplicate tool ID rejected                           |
+| [AC-09.011](#ac-09-011) | [REQ-09.011](ep-requirements.md#tool-creation)               | Valid tool appended to tools.yaml                    |
+| [AC-09.012](#ac-09-012) | [REQ-09.012](ep-requirements.md#tool-creation)               | New tool in runtime catalog without restart          |
+| [AC-09.013](#ac-09-013) | [REQ-09.013](ep-requirements.md#tool-creation)               | Success response includes tool id                    |
+| [AC-09.014](#ac-09-014) | [REQ-09.014](ep-requirements.md#non-functional-requirements) | Cached image: start within 5s                        |
+| [AC-09.015](#ac-09-015) | [REQ-09.015](ep-requirements.md#non-functional-requirements) | create_tool completes within 1s                      |
+| [AC-09.016](#ac-09-016) | [REQ-09.016](ep-requirements.md#non-functional-requirements) | Unit coverage ≥70% for create_tool and validation    |
+| [AC-09.017](#ac-09-017) | [REQ-09.017](ep-requirements.md#non-functional-requirements) | Secret-like content rejected on persist              |
+
 
 ---
 
@@ -46,9 +49,9 @@ EP-009 adds dynamic tool creation with Docker-based sandbox execution on configu
 
 **AC-09.001** (Trace: [REQ-09.001](ep-requirements.md#docker-sandbox-execution))
 
-Given a catalog tool whose substituted command runs sandboxed code on a configured node  
+Given a catalog tool whose template includes `docker run` with `--network bridge`  
 When PersonalAssistant executes that tool through the node runner  
-Then the remote command SHALL include Docker `--network bridge` for outbound network access  
+Then the remote command SHALL include `--network bridge` and the container SHALL have outbound network access for API-style workloads  
 
 ---
 
@@ -97,6 +100,14 @@ Then execution SHALL use an image that provides Node.js 22 LTS and the packages 
 Given the operator has built and tagged `pa-sandbox:base` on the node per epic documentation  
 When a tool template references `pa-sandbox:base`  
 Then execution SHALL use an Alpine-based image with `curl` and `jq`  
+
+---
+
+**AC-09.018** (Trace: [REQ-09.018](ep-requirements.md#docker-sandbox-execution))
+
+Given a catalog tool whose template includes `docker run` with `--network none`  
+When PersonalAssistant executes that tool on the node  
+Then a probe executed inside the container that attempts outbound connectivity to a public internet endpoint (for example HTTPS to `https://example.com` or TCP to a documented well-known address and port) SHALL fail  
 
 ---
 
@@ -188,3 +199,4 @@ Then PersonalAssistant SHALL reject persistence with an error
 
 - **Requirements:** [ep-requirements.md](ep-requirements.md)
 - **Scope:** [ep-scope.md](ep-scope.md)
+
