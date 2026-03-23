@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"pa/internal/cmdsafe"
@@ -16,8 +17,10 @@ import (
 	"pa/internal/llmrouter"
 	"pa/internal/toolcatalog"
 	"pa/internal/toolindex"
+	"pa/internal/tools"
 	"pa/internal/tooltext"
 	"pa/internal/vector"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -52,8 +55,9 @@ type conversationHandler struct {
 	escalation       *config.LLMEscalationConfig
 	vectorStore      vector.Store // optional; for semantic search and indexing
 	embedder         embedding.Embedder
-	nodeRunner       NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
-	toolIndex        ToolIndex  // optional; for tool pre-selection when Ready() (step 3.1)
+	nodeRunner       NodeRunner      // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
+	toolIndex        ToolIndex       // optional; for tool pre-selection when Ready() (step 3.1)
+	nativeRegistry   *tools.Registry // optional; native tools (run_on_node, create_tool) when not overridden by catalog id
 	catalog          *toolcatalog.Catalog
 	toolSearchTopK   int
 	toolMinCount     int
@@ -196,15 +200,20 @@ func (h *conversationHandler) buildSystemContent(ctx context.Context, userText s
 }
 
 func (h *conversationHandler) appendToolBlocksToSystem(sys *llm.Message, toolIDs []string, opts *llm.CompletionOptions) {
-	if len(toolIDs) == 0 || h.catalog == nil {
+	if h.catalog == nil {
 		return
 	}
-	if block := toolcatalog.AggregateSystemPrompts(h.catalog, toolIDs); block != "" {
-		sys.Content += block
+	if len(toolIDs) == 0 && len(h.nativeToolDefs()) == 0 {
+		return
+	}
+	if len(toolIDs) > 0 {
+		if block := toolcatalog.AggregateSystemPrompts(h.catalog, toolIDs); block != "" {
+			sys.Content += block
+		}
 	}
 	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
 	if textPath {
-		sys.Content += tooltext.InstructionsForCatalogTools(h.catalog, toolIDs)
+		sys.Content += tooltext.InstructionsForCatalogToolsPlusNative(h.catalog, toolIDs, h.nativeToolDefs())
 	}
 }
 
@@ -385,8 +394,15 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 
 // buildToolOptions returns completion options with pre-selected tools and the selected tool ids in stable order.
 func (h *conversationHandler) buildToolOptions(ctx context.Context, userText string) (*llm.CompletionOptions, []string, error) {
-	if h.toolIndex == nil || h.catalog == nil {
+	if h.catalog == nil {
 		return nil, nil, nil
+	}
+	if h.toolIndex == nil {
+		defs := h.nativeToolDefs()
+		if len(defs) == 0 {
+			return nil, nil, nil
+		}
+		return &llm.CompletionOptions{Tools: defs}, nil, nil
 	}
 	ids, err := toolindex.SelectToolIDs(ctx, h.embedder, h.toolIndex.Store(), h.toolIndex.Ready(), h.catalog, userText, h.toolSearchTopK, h.toolMinCount, h.toolFallbackCap, h.logger)
 	if err != nil {
@@ -394,33 +410,108 @@ func (h *conversationHandler) buildToolOptions(ctx context.Context, userText str
 		return nil, nil, err
 	}
 	if len(ids) == 0 {
-		return nil, nil, nil
+		native := h.nativeToolDefs()
+		if len(native) == 0 {
+			return nil, nil, nil
+		}
+		return &llm.CompletionOptions{Tools: native}, nil, nil
 	}
-	toolDefsForLLM, err := toolcatalog.BuildToolDefs(h.catalog, ids)
+	opts, err := h.completionOptionsMergedCatalogNative(ids)
 	if err != nil {
 		h.logger.Error("build tool list", "error", err)
 		return nil, nil, err
 	}
-	if len(toolDefsForLLM) == 0 {
+	if opts == nil {
 		return nil, nil, nil
 	}
-	toolDefs := make([]llm.ToolDef, len(toolDefsForLLM))
+	return opts, ids, nil
+}
+
+func (h *conversationHandler) completionOptionsMergedCatalogNative(ids []string) (*llm.CompletionOptions, error) {
+	toolDefsForLLM, err := toolcatalog.BuildToolDefs(h.catalog, ids)
+	if err != nil {
+		return nil, err
+	}
+	if len(toolDefsForLLM) == 0 && h.nativeRegistry == nil {
+		return nil, nil
+	}
+	toolDefs := make([]llm.ToolDef, 0, len(toolDefsForLLM)+4)
 	for i := range toolDefsForLLM {
-		toolDefs[i] = llm.ToolDef{
+		toolDefs = append(toolDefs, llm.ToolDef{
 			Name:        toolDefsForLLM[i].Name,
 			Description: toolDefsForLLM[i].Description,
 			Parameters:  toolDefsForLLM[i].Parameters,
-		}
+		})
 	}
-	return &llm.CompletionOptions{Tools: toolDefs}, ids, nil
+	toolDefs = append(toolDefs, h.nativeToolDefs()...)
+	if len(toolDefs) == 0 {
+		return nil, nil
+	}
+	return &llm.CompletionOptions{Tools: toolDefs}, nil
 }
 
-// executeOneToolCall validates the tool call, substitutes args into the tool template, and runs the command via nodeRunner (REQ-04.009, REQ-04.010).
+// nativeToolDefs returns LLM defs for registered native tools whose names are not already in the catalog.
+func (h *conversationHandler) nativeToolDefs() []llm.ToolDef {
+	if h.nativeRegistry == nil || h.catalog == nil {
+		return nil
+	}
+	names := h.nativeRegistry.List()
+	sort.Strings(names)
+	var out []llm.ToolDef
+	for _, name := range names {
+		if _, inCat := h.catalog.Tools[name]; inCat {
+			continue
+		}
+		nt, ok := h.nativeRegistry.Get(name)
+		if !ok {
+			continue
+		}
+		out = append(out, tools.LLMDefFromTool(nt))
+	}
+	return out
+}
+
+// executeOneToolCall dispatches catalog tools or native registry tools (REQ-04.009, REQ-04.010, EP-009).
 // Returns stdout or an error message string (deterministic) for validation/execution failures.
 func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
-	if h.catalog == nil {
-		return "", toolfailure.NoEscalate(fmt.Errorf("tool catalog: unknown tool %q", toolID))
+	if h.catalog != nil {
+		if _, ok := h.catalog.Tools[toolID]; ok {
+			return h.executeCatalogToolCall(ctx, toolID, argsJSON)
+		}
 	}
+	if h.nativeRegistry != nil {
+		if nt, ok := h.nativeRegistry.Get(toolID); ok {
+			params, err := parseToolArgumentsJSON(argsJSON)
+			if err != nil {
+				return "", toolfailure.NoEscalate(err)
+			}
+			out, err := nt.Run(ctx, params)
+			if err != nil {
+				wrapped := fmt.Errorf("tool %q: %w", toolID, err)
+				if toolID == "create_tool" {
+					return "", toolfailure.NoEscalate(wrapped)
+				}
+				return "", toolfailure.MayEscalate(wrapped)
+			}
+			return out, nil
+		}
+	}
+	return "", toolfailure.NoEscalate(fmt.Errorf("tool catalog: unknown tool %q", toolID))
+}
+
+func parseToolArgumentsJSON(argsJSON string) (map[string]any, error) {
+	s := strings.TrimSpace(argsJSON)
+	if s == "" {
+		return map[string]any{}, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(s), &m); err != nil {
+		return nil, fmt.Errorf("tool arguments JSON: %w", err)
+	}
+	return m, nil
+}
+
+func (h *conversationHandler) executeCatalogToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
 	tool, args, err := toolcatalog.ValidateToolCall(h.catalog, toolID, argsJSON)
 	if err != nil {
 		return "", escalationpolicy.WrapCatalogValidateError(err)

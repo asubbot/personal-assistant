@@ -41,7 +41,7 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 - **`embedding`** — separate provider for memory embeddings (vector index).
 - **`paths`** — `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, **`llm_log_retention_days`** (required, ≥ 1), `scheduled_tasks_path`, `ssh_known_hosts_path`, `tool_catalog_path`.
 - **`nodes`** — named nodes with `host`, `port`, `dedicated_user`, `auth.private_key_path`, `command_allowlist_path`. The allowlist file is one pattern per line: exact command string, or a line whose **only** `*` is the **final** character (prefix wildcard). Lines with bare `*`, multiple `*`, or `*` not at the end fail load. Executed commands must also satisfy the remote command character policy (letters, numbers, Mn/Mc, fixed ASCII punctuation including space — see [nas_allowlist.example](../config.examples/nas_allowlist.example) header); tab and shell metacharacters are rejected before SSH.
-- **`tools`** — **required** object (use `{}` minimum). Optional `text_based_enabled`; optional **`llm_escalation`** (`enabled`, `max_per_user_message`, `baseline_index`). When `enabled` is true: at least two `llm_providers`, valid `baseline_index`, and **`max_per_user_message` ≥ 1**.
+- **`tools`** — **required** object (use `{}` minimum). Optional `text_based_enabled`; optional **`llm_escalation`** (`enabled`, `max_per_user_message`, `baseline_index`). When `enabled` is true: at least two `llm_providers`, valid `baseline_index`, and **`max_per_user_message` ≥ 1**. Optional **`create_tool_secret_patterns`**: array of Go `regexp` strings (RE2). If present, each pattern must compile at config load (fail fast on invalid regex). When non-empty, the native **`create_tool`** tool rejects persisted tool definitions whose concatenated fields match any pattern (see EP-009).
 - **`tool_pre_selection`** — **required**; `tool_search_top_k`, `tool_min_count`, and `tool_fallback_cap` must each be **≥ 1** (with documented upper caps to catch typos). No implicit defaults.
 - **`conversation_context`** — **required**; `injected_context_max_chars` and `vector_search_top_k` must each be **≥ 1**.
 - **`pa_timezone`** — **required**; non-empty IANA name (e.g. `UTC`, `Europe/Moscow`) for assistant day boundaries / summarization.
@@ -54,6 +54,8 @@ If `paths.scheduled_tasks_path` is non-empty, the file must exist and contain a 
 ## Tool catalog
 
 When `paths.tool_catalog_path` is set, the YAML catalog is loaded at startup; a missing or invalid catalog prevents startup.
+
+The assistant can define new catalog tools at runtime via the native **`create_tool`** tool (EP-009): templates must use a whitelisted `docker run` prefix and include sandbox resource flags as enforced by the product. Operators must extend each node’s **allowlist** so the resulting `docker run …` line is permitted (see [ep-scope.md](../ai-sdlc-artefacts/epics/EP-009/ep-scope.md) and `config.examples/`). Sandbox images (`pa-sandbox:*`) are built and tagged separately from this repo’s config.
 
 ## Log redaction
 

@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -168,14 +169,24 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	defer stop()
 
 	toolRegistry := tools.NewRegistry()
-	toolRegistry.Register(tools.NewRunOnNode(nodeRunner))
+	if nodeRunner != nil {
+		toolRegistry.Register(tools.NewRunOnNode(nodeRunner))
+	}
+	absCatalog, err := filepath.Abs(cfg.Paths.ToolCatalogPath)
+	if err != nil {
+		return fmt.Errorf("tool catalog path: %w", err)
+	}
+	var createToolMu sync.Mutex
+	if cfg.ToolCatalog != nil {
+		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
+	}
 	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
 		defer cleanup()
 	}
 
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
-	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti)
+	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti, toolRegistry)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second

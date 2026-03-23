@@ -407,3 +407,15 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 		t.Errorf("Load: error = %v (expect ssh_known_hosts_path or no such file)", err)
 	}
 }
+
+// Covers AC-09.017: invalid create_tool_secret_patterns fails config load.
+func TestLoad_CreateToolSecretPatterns_InvalidRegex(t *testing.T) {
+	path := filepath.Join("testdata", "create_tool_bad_regex.json")
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error for invalid regexp in create_tool_secret_patterns")
+	}
+	if !strings.Contains(err.Error(), "create_tool_secret_patterns") {
+		t.Errorf("Load: error = %v", err)
+	}
+}

@@ -2,6 +2,7 @@ package config
 
 import (
 	"pa/internal/toolcatalog"
+	"regexp"
 )
 
 // ConfigFileName is the name of the main config file inside the config directory (PA_CONFIG_DIR).
@@ -24,6 +25,8 @@ type Config struct {
 	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
 	// Tools is required; use {"tools":{}} minimum; text_based_enabled defaults to false when the key is omitted inside the object.
 	Tools *ToolsConfig `json:"tools"`
+	// CreateToolSecretRegex is compiled at Load from tools.create_tool_secret_patterns (REQ-09.017). Nil when absent or empty.
+	CreateToolSecretRegex []*regexp.Regexp `json:"-"`
 }
 
 // LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002). JSON: tools.llm_escalation.
@@ -36,8 +39,10 @@ type LLMEscalationConfig struct {
 
 // ToolsConfig holds optional tool-invocation settings (REQ-04.030) and tools.llm_escalation (EP-006).
 type ToolsConfig struct {
-	TextBasedEnabled bool                 `json:"text_based_enabled"`
-	LLMEscalation    *LLMEscalationConfig `json:"llm_escalation,omitempty"`
+	TextBasedEnabled bool `json:"text_based_enabled"`
+	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
+	CreateToolSecretPatterns []string             `json:"create_tool_secret_patterns,omitempty"`
+	LLMEscalation            *LLMEscalationConfig `json:"llm_escalation,omitempty"`
 }
 
 // ToolsLLMEscalation returns tools.llm_escalation for EP-006 (nil if tools section or escalation block absent).

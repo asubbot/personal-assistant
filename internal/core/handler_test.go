@@ -9,6 +9,7 @@ import (
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
 	"pa/internal/toolcatalog"
+	"pa/internal/tools"
 	"pa/internal/tooltext"
 	"pa/internal/vector"
 	"strings"
@@ -666,6 +667,26 @@ func TestExecuteOneToolCall_ValidCall_RunsViaRunOnNode(t *testing.T) {
 	}
 	if runner.lastNodeID != "nas" || runner.lastCommand != "echo hello" {
 		t.Errorf("executeOneToolCall: RunOnNode called with (%q, %q), want (nas, echo hello)", runner.lastNodeID, runner.lastCommand)
+	}
+}
+
+// Covers AC-09.008: native run_on_node dispatch when id not in catalog.
+func TestExecuteOneToolCall_nativeRunOnNode(t *testing.T) {
+	runner := &mockNodeRunner{stdout: "up"}
+	reg := tools.NewRegistry()
+	reg.Register(tools.NewRunOnNode(runner))
+	h := &conversationHandler{
+		catalog:        &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
+		nativeRegistry: reg,
+		nodeRunner:     runner,
+		logger:         slog.Default(),
+	}
+	out, err := h.executeOneToolCall(context.Background(), "run_on_node", `{"node_id":"nas","command":"uptime"}`)
+	if err != nil {
+		t.Fatalf("executeOneToolCall: %v", err)
+	}
+	if out != "up" {
+		t.Errorf("got %q", out)
 	}
 }
 

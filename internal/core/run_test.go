@@ -28,7 +28,7 @@ func TestRun_nilAdapter_returnsError(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
 
-	err := Run(context.Background(), cfg, logger, nil, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, nil, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error when adapter is nil")
 	}
@@ -43,7 +43,7 @@ func TestRun_nilProvider_returnsError(t *testing.T) {
 	logger := slog.Default()
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, nil, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error when providers are empty")
 	}
@@ -69,7 +69,7 @@ func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), nil, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), nil, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run(cfg=nil): %v", err)
 	}
@@ -135,7 +135,7 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	adapter := &capturingAdapter{}
 
-	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestRun_labelsLengthMismatch_returnsError(t *testing.T) {
 	logger := slog.Default()
 	p := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
 	adapter := &capturingAdapter{}
-	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{p}, nil, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{p}, nil, nil, nil, nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error when labels length mismatches providers")
 	}
@@ -173,7 +173,7 @@ func TestRun_providerChain_wiresHandler(t *testing.T) {
 	logger := slog.Default()
 	p := &mockProvider{result: &llm.CompletionResult{Content: "from-chain"}}
 	adapter := &capturingAdapter{}
-	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{p}, []string{"openai/gpt"}, nil, nil, nil, nil, nil)
+	err := Run(context.Background(), cfg, logger, adapter, []llm.Provider{p}, []string{"openai/gpt"}, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}

@@ -44,7 +44,14 @@ func InstructionsForTools(defs []llm.ToolDef) string {
 
 // InstructionsForCatalogTools builds the Hermes tool block using hermes_prompt per tool (fallback index_text).
 func InstructionsForCatalogTools(cat *toolcatalog.Catalog, ids []string) string {
-	if cat == nil || len(ids) == 0 {
+	return InstructionsForCatalogToolsPlusNative(cat, ids, nil)
+}
+
+// InstructionsForCatalogToolsPlusNative appends Hermes instructions for catalog tools and optional native tools (same FormatDescription once).
+func InstructionsForCatalogToolsPlusNative(cat *toolcatalog.Catalog, ids []string, nativeDefs []llm.ToolDef) string {
+	hasCatalog := cat != nil && len(ids) > 0
+	hasNative := len(nativeDefs) > 0
+	if !hasCatalog && !hasNative {
 		return ""
 	}
 	var b strings.Builder
@@ -61,6 +68,17 @@ func InstructionsForCatalogTools(cat *toolcatalog.Catalog, ids []string) string 
 		if params := toolcatalog.ParametersJSONForTool(t); params != "" {
 			b.WriteString("\n  Parameters (JSON schema): ")
 			b.WriteString(params)
+		}
+		b.WriteByte('\n')
+	}
+	for _, d := range nativeDefs {
+		b.WriteString("- ")
+		b.WriteString(d.Name)
+		b.WriteString(": ")
+		b.WriteString(d.Description)
+		if d.Parameters != "" {
+			b.WriteString("\n  Parameters (JSON schema): ")
+			b.WriteString(d.Parameters)
 		}
 		b.WriteByte('\n')
 	}

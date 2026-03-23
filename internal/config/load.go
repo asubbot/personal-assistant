@@ -7,6 +7,7 @@ import (
 	"os"
 	"pa/internal/logredact"
 	"pa/internal/toolcatalog"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -35,6 +36,9 @@ func Load(path string) (*Config, error) {
 	}
 
 	if err := validate(&raw); err != nil {
+		return nil, err
+	}
+	if err := compileCreateToolSecretPatterns(&raw); err != nil {
 		return nil, err
 	}
 	raw.PATimezone = strings.TrimSpace(raw.PATimezone)
@@ -119,6 +123,27 @@ func validateTools(c *Config) error {
 	if c.Tools == nil {
 		return errors.New("config: tools is required (use {\"tools\": {}} with explicit text_based_enabled if needed)")
 	}
+	return nil
+}
+
+// compileCreateToolSecretPatterns compiles tools.create_tool_secret_patterns; invalid regex fails load (REQ-09.017).
+func compileCreateToolSecretPatterns(c *Config) error {
+	if c == nil || c.Tools == nil || len(c.Tools.CreateToolSecretPatterns) == 0 {
+		return nil
+	}
+	out := make([]*regexp.Regexp, 0, len(c.Tools.CreateToolSecretPatterns))
+	for i, s := range c.Tools.CreateToolSecretPatterns {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return fmt.Errorf("config: tools.create_tool_secret_patterns[%d] is empty", i)
+		}
+		re, err := regexp.Compile(s)
+		if err != nil {
+			return fmt.Errorf("config: tools.create_tool_secret_patterns[%d]: %w", i, err)
+		}
+		out = append(out, re)
+	}
+	c.CreateToolSecretRegex = out
 	return nil
 }
 
