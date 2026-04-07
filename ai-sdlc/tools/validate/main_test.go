@@ -84,9 +84,9 @@ func TestGenerateReport(t *testing.T) {
 	}
 	deferred := map[ACCode]bool{}
 
-	coverage := map[ACCode][]TestRef{
-		"AC-09.001": {TestRef("tests/test.go::TestFunc1")},
-		"AC-09.002": {TestRef("tests/test.go::TestFunc2")},
+	coverage := map[ACCode][]CoverageRef{
+		"AC-09.001": {{Ref: "tests/test.go::TestFunc1", Manual: false}},
+		"AC-09.002": {{Ref: "tests/test.go::TestFunc2", Manual: false}},
 		// AC-09.003 has no coverage
 	}
 
@@ -100,8 +100,16 @@ func TestGenerateReport(t *testing.T) {
 		t.Errorf("TotalACs = %d, want 3", r.TotalACs)
 	}
 
-	if r.CoveredACs != 2 {
-		t.Errorf("CoveredACs = %d, want 2", r.CoveredACs)
+	if r.InScopeACs != 3 {
+		t.Errorf("InScopeACs = %d, want 3", r.InScopeACs)
+	}
+
+	if r.AutomatedCoveredACs != 2 {
+		t.Errorf("AutomatedCoveredACs = %d, want 2", r.AutomatedCoveredACs)
+	}
+
+	if r.ManualOnlyTracedACs != 0 {
+		t.Errorf("ManualOnlyTracedACs = %d, want 0", r.ManualOnlyTracedACs)
 	}
 
 	if len(r.Gaps) != 1 {
@@ -113,8 +121,8 @@ func TestGenerateReport(t *testing.T) {
 	}
 
 	expectedRatio := 2.0 / 3.0
-	if r.CoverageRatio != expectedRatio {
-		t.Errorf("CoverageRatio = %f, want %f", r.CoverageRatio, expectedRatio)
+	if r.TraceabilityRatio != expectedRatio {
+		t.Errorf("TraceabilityRatio = %f, want %f", r.TraceabilityRatio, expectedRatio)
 	}
 }
 
@@ -125,19 +133,19 @@ func TestGenerateReport_FullCoverage(t *testing.T) {
 	}
 	deferred := map[ACCode]bool{}
 
-	coverage := map[ACCode][]TestRef{
-		"AC-09.001": {TestRef("tests/test.go::TestFunc1")},
-		"AC-09.002": {TestRef("tests/test.go::TestFunc2")},
+	coverage := map[ACCode][]CoverageRef{
+		"AC-09.001": {{Ref: "tests/test.go::TestFunc1", Manual: false}},
+		"AC-09.002": {{Ref: "tests/test.go::TestFunc2", Manual: false}},
 	}
 
 	r := generateReport("EP-009", acs, deferred, coverage)
 
-	if r.CoveredACs != r.TotalACs {
-		t.Errorf("CoveredACs = %d, want %d (full coverage)", r.CoveredACs, r.TotalACs)
+	if r.AutomatedCoveredACs+r.ManualOnlyTracedACs != r.InScopeACs {
+		t.Errorf("traced = %d, want in-scope %d (full coverage)", r.AutomatedCoveredACs+r.ManualOnlyTracedACs, r.InScopeACs)
 	}
 
-	if r.CoverageRatio != 1.0 {
-		t.Errorf("CoverageRatio = %f, want 1.0", r.CoverageRatio)
+	if r.TraceabilityRatio != 1.0 {
+		t.Errorf("TraceabilityRatio = %f, want 1.0", r.TraceabilityRatio)
 	}
 
 	if len(r.Gaps) != 0 {
@@ -155,9 +163,9 @@ func TestGenerateReport_DeferredAC(t *testing.T) {
 		"AC-09.003": true,
 	}
 
-	coverage := map[ACCode][]TestRef{
-		"AC-09.001": {TestRef("tests/test.go::TestFunc1")},
-		"AC-09.002": {TestRef("tests/test.go::TestFunc2")},
+	coverage := map[ACCode][]CoverageRef{
+		"AC-09.001": {{Ref: "tests/test.go::TestFunc1", Manual: false}},
+		"AC-09.002": {{Ref: "tests/test.go::TestFunc2", Manual: false}},
 	}
 
 	r := generateReport("EP-009", acs, deferred, coverage)
@@ -165,8 +173,11 @@ func TestGenerateReport_DeferredAC(t *testing.T) {
 	if r.DeferredACs != 1 {
 		t.Errorf("DeferredACs = %d, want 1", r.DeferredACs)
 	}
-	if r.CoverageRatio != 1.0 {
-		t.Errorf("CoverageRatio = %f, want 1.0", r.CoverageRatio)
+	if r.InScopeACs != 2 {
+		t.Errorf("InScopeACs = %d, want 2", r.InScopeACs)
+	}
+	if r.TraceabilityRatio != 1.0 {
+		t.Errorf("TraceabilityRatio = %f, want 1.0", r.TraceabilityRatio)
 	}
 	if hasBlockingGaps(r) {
 		t.Error("Expected no blocking gaps when uncovered AC is deferred")
@@ -207,9 +218,12 @@ func TestFunc2(t *testing.T) {
 	}
 
 	// Find coverage
-	coverage, err := findCoverageInCodebase(tmpDir)
+	coverage, skipCount, err := findCoverageInCodebase(tmpDir)
 	if err != nil {
 		t.Fatalf("findCoverageInCodebase failed: %v", err)
+	}
+	if skipCount != 0 {
+		t.Errorf("skipCount = %d, want 0", skipCount)
 	}
 
 	// Check that we found coverage for AC-09.001
@@ -217,6 +231,8 @@ func TestFunc2(t *testing.T) {
 		t.Error("Expected AC-09.001 to be found in coverage")
 	} else if len(tests) == 0 {
 		t.Error("Expected AC-09.001 to have at least one test")
+	} else if tests[0].Manual {
+		t.Error("Expected non-manual trace for AC-09.001")
 	}
 
 	t.Logf("Coverage: %v", coverage)
@@ -348,7 +364,7 @@ func TestFoo(t *testing.T) {}
 		t.Fatal(err)
 	}
 
-	cov, err := findCoverageInCodebase(tmpDir)
+	cov, _, err := findCoverageInCodebase(tmpDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -378,5 +394,103 @@ func TestJsonOutputRequested(t *testing.T) {
 	}
 	if jsonOutputRequested(false, []string{"EP-009"}) {
 		t.Error("no --json should not request JSON")
+	}
+}
+
+func TestLineDeclaresManualTrace(t *testing.T) {
+	tests := []struct {
+		line string
+		want bool
+	}{
+		{"// manual Covers AC-09.001", true},
+		{"// Covers manual AC-01.004", true},
+		{"// MANUAL only", true},
+		{"// Covers AC-09.001", false},
+	}
+	for _, tt := range tests {
+		if got := lineDeclaresManualTrace(tt.line); got != tt.want {
+			t.Errorf("lineDeclaresManualTrace(%q) = %v, want %v", tt.line, got, tt.want)
+		}
+	}
+}
+
+func TestGenerateReport_ManualOnly(t *testing.T) {
+	acs := map[ACCode]string{"AC-09.001": "c1"}
+	deferred := map[ACCode]bool{}
+	coverage := map[ACCode][]CoverageRef{
+		"AC-09.001": {{Ref: "t.go::TestX", Manual: true}},
+	}
+	r := generateReport("EP-009", acs, deferred, coverage)
+	if r.ManualOnlyTracedACs != 1 || r.AutomatedCoveredACs != 0 {
+		t.Fatalf("manual-only AC: got auto=%d manual=%d", r.AutomatedCoveredACs, r.ManualOnlyTracedACs)
+	}
+	if r.AutomatedRatio != 0 {
+		t.Errorf("AutomatedRatio = %f, want 0", r.AutomatedRatio)
+	}
+}
+
+func TestFindCoverageInCodebase_ManualAndSkip(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "cov-manual-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	testsDir := filepath.Join(tmpDir, "tests")
+	if err := os.Mkdir(testsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := `package tests
+
+import "testing"
+
+// manual Covers AC-09.010
+func TestManualLine(t *testing.T) {}
+
+// Covers AC-09.011
+func TestWithSkip(t *testing.T) {
+	t.Skip("integration")
+}
+`
+	f := filepath.Join(testsDir, "m_test.go")
+	if err := os.WriteFile(f, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cov, skipCnt, err := findCoverageInCodebase(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if skipCnt != 1 {
+		t.Errorf("Test functions with t.Skip: got %d want 1", skipCnt)
+	}
+	refs10 := cov[ACCode("AC-09.010")]
+	if len(refs10) != 1 || !refs10[0].Manual {
+		t.Errorf("AC-09.010: want one manual ref, got %+v", refs10)
+	}
+	refs11 := cov[ACCode("AC-09.011")]
+	if len(refs11) != 1 || !refs11[0].Manual {
+		t.Errorf("AC-09.011: want manual via t.Skip, got %+v", refs11)
+	}
+}
+
+func TestParseTestFuncsWithTSkip(t *testing.T) {
+	src := []byte(`package p
+
+import "testing"
+
+func TestNoSkip(t *testing.T) {}
+
+func TestHasSkip(t *testing.T) {
+	t.Skip("x")
+}
+`)
+	m, err := parseTestFuncsWithTSkip(src, "x_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m["TestNoSkip"] {
+		t.Error("TestNoSkip should not have skip")
+	}
+	if !m["TestHasSkip"] {
+		t.Error("TestHasSkip should have skip")
 	}
 }

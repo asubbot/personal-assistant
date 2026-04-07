@@ -88,6 +88,7 @@ func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 }
 
 // TestLoad_InvalidOrMissingFields covers AC-01.005: config validator with invalid/missing fields (test-strategy.md §3).
+// Covers AC-04.020: embedding.batch_size required and between 1 and 1000 (invalid_embedding_batch_size, missing_embedding_batch_size cases below).
 func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	tests := []struct {
 		name       string

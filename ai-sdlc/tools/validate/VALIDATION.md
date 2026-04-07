@@ -9,9 +9,9 @@ The `validate` tool automatically validates that all Acceptance Criteria (AC) fr
 ### Purpose
 
 Before completing an epic's audit, use this tool to ensure:
-- ✅ Every AC-EE.NNN code has at least one test covering it
-- ✅ Tests explicitly declare coverage with `// Covers AC-EE.NNN` comments
-- ✅ No AC is silently missed without test coverage
+- ✅ Every non-deferred AC-EE.NNN has traceability from a test comment (see [Test coverage declaration](#test-coverage-declaration)) or is explicitly **deferred** in `ep-acceptance-criteria.md`
+- ✅ AC codes in tests are found via the supported comment shapes (`covers` / `supporting`, EP-N AC-, label form, REQ+AC on the same line, etc.)
+- ✅ No AC is silently missed without traceability or documented deferral
 
 ### Usage
 
@@ -39,25 +39,27 @@ Output:
 
 📋 Epic Validation Summary
 
-Epic       Coverage     Status
+Epic       Trace%       Status
 ────────────────────────────────────
-✓ EP-001        95%
-✓ EP-004        88%
-✗ EP-006        82%
-✗ EP-009        61%
+✓ EP-001        93%
+✗ EP-004        82%
+...
+
 ────────────────────────────────────
 
-❌ OVERALL: 84 covered, 2 deferred, 113 total (76.1%)
+❌ OVERALL: in-scope 96/111 traced (86.5%), automated 96 (86.5%), manual-only 0 | deferred 2 | total ACs 113
+   Project-wide: Test functions with t.Skip: 0
 
-❌ AC not covered by tests (project-wide): 27
+❌ AC not covered by tests (project-wide): 15
 
 EP-009
   • AC-09.001
-  • AC-09.005
   ...
 
 Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.
 ```
+
+**Trace%** is traceability **in scope** (non-deferred ACs only): `(automated + manual-only) / in_scope`. Deferred ACs are **not** counted in the numerator; they reduce `in_scope` instead of inflating the percentage.
 
 When a one-line criterion is parsed from `ep-acceptance-criteria.md` (not a markdown table row), it may appear after `—` on each bullet.
 
@@ -70,7 +72,7 @@ Use this for:
 
 #### Single Epic (Detailed View)
 
-Output (table format):
+Output (table format; human mode prints the banner — JSON mode prints JSON only):
 ```
 🔍 Validating AC coverage for EP-009...
 
@@ -81,14 +83,15 @@ AC Code         Criterion                                          Coverage
 ✓ AC-09.008                                                        5 tests
 ✓ AC-09.009                                                        3 tests
 ✗ AC-09.001                                                        NOT COVERED
-✗ AC-09.005                                                        NOT COVERED
+↷ AC-09.005                                                        DEFERRED
+✎ AC-09.007                                                        MANUAL …
 ...
 
-❌ RESULT: 11/18 AC covered (61.1%)
+⚠️ RESULT: in-scope 15/16 traced (93.8%), automated 14 (87.5%), manual-only 1 | deferred 1 | total ACs 18
+   Project-wide: Test functions with t.Skip: 3
 
 ❌ Missing coverage for:
   • AC-09.001
-  • AC-09.005
   • AC-09.006
   ...
 
@@ -107,22 +110,53 @@ Action: Add tests for missing ACs or defer them in ep-acceptance-criteria.md
 {
   "epic": "EP-009",
   "total_acs": 18,
-  "covered_acs": 11,
-  "coverage_ratio": 0.6111,
+  "deferred_acs": 1,
+  "in_scope_acs": 17,
+  "automated_covered_acs": 14,
+  "manual_only_traced_acs": 1,
+  "traceability_ratio": 0.8824,
+  "automated_ratio": 0.8235,
+  "test_funcs_with_skip": 3,
   "gaps": [
-    {"code": "AC-09.001", "status": "not_covered"},
+    {"code": "AC-09.001", "criterion": "", "status": "not_covered"},
+    {"code": "AC-09.005", "criterion": "", "status": "deferred", "reason": "Deferred in ep-acceptance-criteria.md"},
     ...
   ],
   "ac_to_tests": {
-    "AC-09.008": ["internal/tools/create_tool_test.go::TestFunc1", ...],
-    ...
+    "AC-09.008": [
+      {"ref": "internal/tools/create_tool_test.go::TestFunc1", "manual": false}
+    ]
   }
 }
 ```
 
-**All epics** (`./bin/validate --json`) additionally includes `not_covered_acs` (flat list with `epic`, `code`, optional `criterion`) and `not_covered_count`.
+**All epics** (`./bin/validate --json`) includes the same aggregate fields (`in_scope_acs`, `traceability_ratio`, `automated_ratio`, `test_funcs_with_skip`, …), plus `not_covered_acs` (flat list with `epic`, `code`, optional `criterion`) and `not_covered_count`.
+
+## Metrics
+
+For each epic (and for the all-epics JSON aggregate):
+
+| Field | Meaning |
+|-------|---------|
+| `in_scope_acs` | `total_acs - deferred_acs` — ACs that still require test traceability (deferred ACs are excluded from this count). |
+| `automated_covered_acs` | In-scope ACs with at least one **non-manual** test reference. |
+| `manual_only_traced_acs` | In-scope ACs where **only** manual references exist (see below). |
+| `traceability_ratio` | `(automated_covered_acs + manual_only_traced_acs) / in_scope_acs` — deferred are **not** in the numerator. |
+| `automated_ratio` | `automated_covered_acs / in_scope_acs`. |
+| `test_funcs_with_skip` | Project-wide count of `Test*` functions whose body contains `t.Skip` (direct call on `t`); scanned under `tests/`, `internal/`, `cmd/`. |
 
 ## Test Coverage Declaration
+
+### Automatic vs manual traceability
+
+A test reference is **manual** if either:
+
+- The traceability line contains the whole word `manual` (case-insensitive), e.g. `// manual Covers AC-01.004`, or
+- The `Test*` function that owns the trace line contains a direct **`t.Skip(...)`** call (parsed via Go AST). If both apply, manual wins for that reference.
+
+If an AC has **only** manual references, it counts toward `manual_only_traced_acs` and `traceability_ratio`, but **not** toward `automated_ratio`. If an AC has **any** non-manual reference, it counts as **automated** for `automated_ratio`.
+
+Trace lines are attributed to a `Test*` function by resolving the **next** `func Test…` after the line (comment-above style), or else the **most recent** `func Test…` at or before the line (comment inside the function body).
 
 ### Format: Comment before test function
 
@@ -167,6 +201,14 @@ Mixed:
 func TestMixed(t *testing.T) { }
 ```
 
+### Epic-prefixed manual test files
+
+Operator scenarios live in `ai-sdlc-artefacts/epics/EP-XXX/ep-manual-tests.md` (or `ep-manual-test-scenarios.md` for EP-001). To anchor those ACs in code **without** mixing with automated tests, use dedicated files under `tests/integration/`:
+
+- [`ep001_manual_test.go`](../../../tests/integration/ep001_manual_test.go), [`ep004_manual_test.go`](../../../tests/integration/ep004_manual_test.go), [`ep006_manual_test.go`](../../../tests/integration/ep006_manual_test.go), [`ep009_manual_test.go`](../../../tests/integration/ep009_manual_test.go)
+
+Conventions: `//go:build integration`, `package integration_test`, `// manual Covers AC-…` on the trace line, `t.Skip("manual: …")` with a pointer to the epic manual doc (and optional anchor). `./bin/validate` reads these files like any other `*_test.go` under `tests/`.
+
 ## Integration Points
 
 ### Before Git Commit (Optional)
@@ -193,7 +235,7 @@ Example GitHub Actions:
 - name: Validate AC coverage
   run: |
     ./bin/validate --json EP-009 > /tmp/report.json
-    coverage=$(jq '.coverage_ratio' /tmp/report.json)
+    coverage=$(jq '.traceability_ratio' /tmp/report.json)
     if (( $(echo "$coverage < 1.0" | bc -l) )); then
       echo "❌ Not all ACs covered"
       exit 1
@@ -208,21 +250,17 @@ See [Stage 8 (Task Execution)](../specification/skills/08-task-execution.skill.m
 
 **Location:** `ai-sdlc/tools/validate/` (multi-purpose validation tool)
 
-**Binary:** `ai-sdlc/tools/validate/main.go` (~350 lines)
+**Sources:** `main.go` (CLI, parsing, reports), `ast_skip.go` (`parseTestFuncsWithTSkip`, `t.Skip` detection), `output.go` (stdout helpers for `fmt.Fprintf` / forbidigo), `main_test.go`.
 
 **Core functions:**
-- `parseACsFromFile()` — Extract AC-EE.NNN codes from markdown
-- `findCoverageInCodebase()` — Scan tests/ and internal/ for "Covers AC-" comments
-- `extractACsFromLine()` — Parse AC codes including ranges (AC-09.001–005)
-- `generateReport()` — Build coverage report
-- `validateAllEpics()` — Validate all epics in project
-- `printTable()` — Format human-readable output
+- `parseACsFromFile()` — Extract AC-EE.NNN from markdown (multiple heading/link shapes)
+- `findCoverageInCodebase()` — Walk `tests/`, `internal/`, and `cmd/` for `*_test.go`; use `lineDeclaresACCoverage()` + `extractACsFromLine()` + `lineDeclaresManualTrace()` + `testFuncForTraceLine()` + `parseTestFuncsWithTSkip()`
+- `filterCoverageForEpicNum()` — Filter global map per epic
+- `generateReport()` — Build coverage report (deferred gaps; metrics use `in_scope_acs` without inflating deferred into the traceability numerator)
+- `validateAllEpics()` / `scanEpicsAgainstCoverage()` — one codebase scan for all epics
+- `printTable()` / `printAllEpicsHuman()` — Human-readable output
 
-**Tests:** `ai-sdlc/tools/validate/main_test.go` (~190 lines)
-- Parses AC markdown
-- Detects coverage in temp test files
-- Validates report generation
-- Tests range handling (AC-09.008–013)
+**Tests:** `main_test.go` — parses AC markdown, coverage detection, report shape, `lineDeclaresACCoverage`, range extraction, etc.
 
 ## Building
 
@@ -277,21 +315,9 @@ make build
 
 ### 4. Deferring ACs
 
-If an AC cannot be reasonably tested (e.g., "Docker image available"), document in `ep-acceptance-criteria.md`:
+If an AC cannot be reasonably tested (e.g., "Docker image available"), document in `ep-acceptance-criteria.md` near the AC (e.g. `DEFERRED`, `MANUAL ONLY`, or `**Status:** … Deferred …`). The tool marks that AC as **deferred** in the report; it does **not** require a `Covers AC-…` line in tests for that AC.
 
-```markdown
-## AC-09.005 (DEFERRED)
-Python 3.14 pa-sandbox image available
-**Status:** Deferred to operations team; verified by deployment only.
-```
-
-Then update the test to acknowledge the deferral:
-```go
-// Deferred AC-09.005: sandbox image availability (ops manual verification)
-func TestSandboxSetup(t *testing.T) {
-    // ...basic setup test without full image verification...
-}
-```
+Optional: add a normal test comment if you still want traceability for partial automation, e.g. `// Covers AC-09.005` only if the test actually contributes — the validator does **not** treat `// Deferred AC-…` as a coverage marker (use markdown deferral for the defer).
 
 ## Troubleshooting
 
@@ -308,13 +334,7 @@ func TestSandboxSetup(t *testing.T) {
 
 ### AC code not found in markdown
 
-Ensure format in `ep-acceptance-criteria.md` is:
-```markdown
-**AC-09.001** (Trace: [REQ-09.001])
-Description of criterion...
-```
-
-The parser looks for `**AC-XX.YYY**` pattern.
+The parser matches `AC-EE.NNN` in many line shapes, including `**AC-09.001**`, `### AC-09.001`, and `[AC-09.001](...)`. Prefer the same bold form as in your epic template for consistency.
 
 ### JSON output is invalid or mixed with log lines
 
@@ -325,10 +345,3 @@ In JSON mode, **stdout** is only the JSON document (no banner lines). Use `--jso
 ```
 Diagnostics and usage errors go to **stderr**.
 
-## Future Enhancements
-
-- [ ] REQ code traceability (REQ-EE.NNN coverage)
-- [ ] Design spec consistency checks
-- [ ] Coverage trend reporting (epic-to-epic)
-- [ ] HTML report generation
-- [ ] Slack integration for automated reports

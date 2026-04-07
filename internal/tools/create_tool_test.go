@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Covers AC-09.008–013, AC-09.017: create_tool persists and updates runtime catalog.
+// Covers AC-09.008–013, AC-09.017, AC-09.016: create_tool persists and updates runtime catalog; AC-09.016 is the combined coverage gate (make cover-ep009, ep-implementation-plan.md §6.1).
 func TestCreateToolTool_Run_success(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

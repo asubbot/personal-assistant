@@ -6,7 +6,7 @@ Multi-purpose validation tool for the PersonalAssistant SDLC pipeline.
 
 ### AC (Acceptance Criteria) Validation
 
-Validates that all Acceptance Criteria from an epic's `ep-acceptance-criteria.md` are covered by tests.
+Validates that all Acceptance Criteria from an epic's `ep-acceptance-criteria.md` are covered by tests (with separate metrics for **automated** vs **manual-only** traceability; deferred ACs do not inflate the traceability percentage).
 
 **All Epics (Default):**
 ```bash
@@ -25,33 +25,33 @@ make build
 ./bin/validate --json EP-009
 ```
 
-Output:
+Output (human mode) includes **Trace%** per epic (in-scope traceability), an **OVERALL** line with `in-scope … traced`, **automated** / **manual-only** counts, **deferred**, and **Project-wide: Test functions with t.Skip** (count of `Test*` bodies with `t.Skip` in scanned trees).
+
 ```
 🔍 Validating AC coverage for all 9 epics...
 
 📋 Epic Validation Summary
 
-Epic       Coverage     Status
+Epic       Trace%       Status
 ────────────────────────────────────
-✓ EP-001        95%
-✓ EP-004        88%
+✓ EP-001        93%
 ✗ EP-009        61%
 ────────────────────────────────────
 
-❌ OVERALL: 84 covered, 2 deferred, 113 total (76.1%)
+❌ OVERALL: in-scope 96/111 traced (86.5%), automated 96 (86.5%), manual-only 0 | deferred 2 | total ACs 113
+   Project-wide: Test functions with t.Skip: 0
 
-❌ AC not covered by tests (project-wide): 27
-
-EP-009
-  • AC-09.001
-  ...
-
-Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.
+❌ AC not covered by tests (project-wide): 15
+...
 ```
 
-**Coverage Declaration:**
+**Coverage declaration (traceability):**
 
-Mark tests with `// Covers AC-XX.YYY` comment:
+The scanner looks for AC codes on lines that match project conventions — not only `// Covers AC-…` (see [VALIDATION.md](./VALIDATION.md#test-coverage-declaration)): case-insensitive `covers` / `supporting`, `// EP-NNN AC-EE.NNN`, `// AC-EE.NNN:`, lines with `REQ-` and AC codes, etc.
+
+Use the whole word **`manual`** on the line to mark **manual-only** traceability, or put **`t.Skip`** in the `Test*` function body (then all AC refs from that function are treated as manual). Epic operator scenarios may be grouped in **`tests/integration/epXXX_manual_test.go`** (see [VALIDATION.md](./VALIDATION.md#epic-prefixed-manual-test-files)).
+
+Example:
 
 ```go
 // Covers AC-09.008: create_tool accepts parameters
@@ -60,13 +60,9 @@ func TestCreateToolTool_Run(t *testing.T) {
 }
 ```
 
-Supports:
-- Single: `// Covers AC-09.001`
-- Multiple: `// Covers AC-09.001, AC-09.002`
-- Range: `// Covers AC-09.008–013`
-- Mixed: `// Covers AC-09.001, AC-09.003–005, AC-09.010`
+Also supported: ranges (`// Covers AC-09.008–013`), comma-separated ACs, and `Supporting AC-…`.
 
-See [VALIDATION.md](./VALIDATION.md) for full documentation.
+See [VALIDATION.md](./VALIDATION.md) for full documentation (metrics JSON schema, `t.Skip` behavior, comment-to-function resolution).
 
 ## Exit Codes
 

@@ -32,7 +32,7 @@ bin/pa: cmd/pa/main.go
 	@mkdir -p bin
 	go build -o ./bin/pa ./cmd/pa
 
-bin/validate: ai-sdlc/tools/validate/main.go ai-sdlc/tools/validate/output.go ai-sdlc/tools/validate/main_test.go
+bin/validate: ai-sdlc/tools/validate/main.go ai-sdlc/tools/validate/output.go ai-sdlc/tools/validate/ast_skip.go ai-sdlc/tools/validate/main_test.go
 	@mkdir -p bin
 	go build -o ./bin/validate ./ai-sdlc/tools/validate
 
