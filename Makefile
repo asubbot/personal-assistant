@@ -1,7 +1,12 @@
-.PHONY: help fmt test test-race test-integration vet lint coverage coverage-html check check-boundaries cover-ep009
+.PHONY: help fmt test test-race test-integration vet lint coverage coverage-html check check-boundaries cover-ep009 build validate
 
 help:
 	@echo "Available commands:"
+	@echo ""
+	@echo "Build:"
+	@echo "  make build  - Build all binaries (pa + validate)"
+	@echo ""
+	@echo "Testing & Quality:"
 	@echo "  make fmt    - Format Go code"
 	@echo "  make test   - Run all tests (unit + integration; integration tests require Docker)"
 	@echo "  make test-race - Same as test but with -race (slower; no coverage)"
@@ -12,7 +17,27 @@ help:
 	@echo "  make coverage-html - Build HTML coverage report"
 	@echo "  make check-boundaries - Verify module boundaries (no cycles, forbidden edges)"
 	@echo "  make cover-ep009 - Coverage report line for internal/tools + internal/toolcatalog (EP-009)"
+	@echo ""
+	@echo "Validation:"
+	@echo "  make validate            - Validate all epics (default)"
+	@echo "  make validate EPIC=EP-009 - Validate single epic"
+	@echo ""
 	@echo "  make check  - Run fmt + vet + lint + test-race + coverage + check-boundaries"
+
+# Build targets
+build: bin/pa bin/validate
+	@echo "✅ All binaries built successfully"
+
+bin/pa: cmd/pa/main.go
+	@mkdir -p bin
+	go build -o ./bin/pa ./cmd/pa
+
+bin/validate: ai-sdlc/tools/validate/main.go ai-sdlc/tools/validate/main_test.go
+	@mkdir -p bin
+	go build -o ./bin/validate ./ai-sdlc/tools/validate
+
+validate: bin/validate
+	./bin/validate $(EPIC)
 
 fmt:
 	go fmt ./...

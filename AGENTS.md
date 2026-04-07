@@ -35,6 +35,8 @@
 
 ## Quality checks
 - After non-trivial code changes, run **`make check`** (fmt, vet, lint, tests with coverage) when you are allowed to execute commands, and fix failures before handing off—unless I say otherwise.
+- Before epic completion: run **`./bin/validate EP-XXX`** to ensure all Acceptance Criteria have test coverage.
+- For project health check: run **`./bin/validate`** (no args) to see AC coverage across all epics (see [ai-sdlc/tools/validate/VALIDATION.md](ai-sdlc/tools/validate/VALIDATION.md) and [ai-sdlc/tools/validate/README.md](ai-sdlc/tools/validate/README.md)).
 
 ## Security (basics)
 - Treat config paths, SSH, Telegram, and LLM logs as sensitive contexts; follow requirements in epics (e.g. redaction, allowlists) when touching related code.

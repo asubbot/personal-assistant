@@ -22,6 +22,7 @@ You are the QA and delivery lead. Your task is to produce an audit (status) repo
 - **Epic artefacts:** ai-sdlc-artefacts/epics/<epic-id>/ep-implementation-plan.md, ep-acceptance-criteria.md; optionally ep-requirements.md, ep-system-design.md, ep-manual-test-scenarios.md.
 - **Test strategy:** e.g. ai-sdlc-artefacts/strategy.md or project-defined test/coverage commands.
 - **Test and coverage outputs:** Run **`make check`** (or the project’s equivalent). This single command is sufficient, as it runs all defined checks (e.g. fmt, vet, lint, tests with coverage, module boundaries). Use its terminal output for pass/fail and for the **total** test coverage figure.
+- **AC Coverage (RECOMMENDED):** Before audit, optionally run `./bin/validate EP-XXX` to verify all Acceptance Criteria have test coverage. This avoids token-expensive manual inspection. Exit code 0 = all ACs covered. See [VALIDATION.md](../../tools/validate/VALIDATION.md).
 
 **Note:** The REQ/AC test coverage matrix is **generated inside the audit report**, not read from a separate file. The file ep-req-ac-test-coverage.md is not part of the pipeline; if it exists in the epic folder, do not use it as input—produce the matrix from ep-acceptance-criteria, ep-requirements, and codebase (e.g. `Covers AC-EE.NNN` comments).
 

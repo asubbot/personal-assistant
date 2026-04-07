@@ -44,7 +44,16 @@ You are the implementation (coding) agent for this epic. Your task is to execute
 
 **Before treating a task group or the plan as complete:**
 
-3. **Cross-check:** Enumerate all **AC-EE.NNN** ids from ep-acceptance-criteria.md (non-deferred only). Search the codebase (tests and manual docs) for each id. **Fail fast:** if any AC has zero coverage, add the missing test(s) or manual scenario—or stop and ask the user to defer or clarify.
+3. **AC Coverage Validation (REQUIRED):** Run the validation tool to verify all AC coverage automatically:
+   ```bash
+   make build
+   ./bin/validate EP-XXX
+   ```
+   - **Exit code 0 ✅** — All ACs covered, ready for audit
+   - **Exit code 1 ❌** — Some ACs not covered, add tests or defer them in ep-acceptance-criteria.md
+
+   This tool performs an automated cross-check (enumerates AC-EE.NNN ids, searches codebase for `Covers AC-` comments) and saves significant token usage vs. manual inspection. See [VALIDATION.md](../../tools/validate/VALIDATION.md).
+
 4. **Deferred AC:** If an AC is explicitly deferred in ep-acceptance-criteria.md, document that in the task report; do not silently skip.
 
 **Constraints:** Get right to the point. Be practical above all. Be short and specific. Do not commit without explicit user instruction. Do not change task order without explicit instruction.

@@ -9,6 +9,7 @@ coverage.html
 
 # Binary / output named pa at repo root only (not cmd/pa)
 /pa
+bin/
 
 # Environment and secrets
 .env
