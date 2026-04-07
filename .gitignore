@@ -11,6 +11,9 @@ coverage.html
 /pa
 bin/
 
+# Built CLI binaries (e.g. make validate → bin/validate)
+/bin/
+
 # Environment and secrets
 .env
 .secrets/

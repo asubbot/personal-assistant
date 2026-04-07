@@ -5,6 +5,12 @@ FROM alpine:3.20
 
 RUN apk add --no-cache curl jq bash ca-certificates
 
+# Runtime as non-root (packages above are installed at build time as root, which is normal).
+RUN adduser -D -u 1000 app
+
 WORKDIR /work
+RUN chown -R app:app /work
+
+USER app
 
 CMD ["sh", "-c", "echo pa-sandbox:base ok && curl --version && jq --version"]

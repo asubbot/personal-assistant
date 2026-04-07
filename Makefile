@@ -1,4 +1,4 @@
-.PHONY: help fmt test test-race test-integration vet vuln lint coverage coverage-html check check-boundaries cover-ep009 build validate
+.PHONY: help fmt test test-race test-integration vet vuln lint coverage coverage-html check check-boundaries build validate
 
 help:
 	@echo "Available commands:"
@@ -17,11 +17,10 @@ help:
 	@echo "  make coverage     - Print coverage summary (all tests)"
 	@echo "  make coverage-html - Build HTML coverage report"
 	@echo "  make check-boundaries - Verify module boundaries (no cycles, forbidden edges)"
-	@echo "  make cover-ep009 - Coverage report line for internal/tools + internal/toolcatalog (EP-009)"
 	@echo ""
 	@echo "Validation:"
-	@echo "  make validate            - Validate all epics (default)"
-	@echo "  make validate EPIC=EP-009 - Validate single epic"
+	@echo "  make validate - Run AC coverage validator for all epics"
+	@echo "  make validate EP-009 - Validate a single epic"
 	@echo ""
 	@echo "  make check  - Run fmt + vet + vuln + lint + test-race + coverage + check-boundaries"
 
@@ -38,7 +37,7 @@ bin/validate: ai-sdlc/tools/validate/main.go ai-sdlc/tools/validate/output.go ai
 	go build -o ./bin/validate ./ai-sdlc/tools/validate
 
 validate: bin/validate
-	./bin/validate $(EPIC)
+	@./bin/validate $(filter-out validate,$(MAKECMDGOALS))
 
 fmt:
 	go fmt ./...
@@ -82,9 +81,8 @@ coverage-html:
 check-boundaries:
 	@./scripts/check-module-boundaries.sh
 
-# EP-009: combined coverage for create_tool and catalog helpers (target ≥70% per ep-implementation-plan).
-cover-ep009:
-	@go test -count=1 ./internal/tools/... ./internal/toolcatalog/... -covermode=atomic -coverpkg=./internal/tools/...,./internal/toolcatalog/... -coverprofile=coverage-ep009.out
-	@go tool cover -func=coverage-ep009.out | tail -n 1
-
 check: fmt vet vuln lint test-race coverage check-boundaries
+
+# Allow `make validate EP-XXX` without "No rule to make target EP-XXX".
+%:
+	@:

@@ -14,13 +14,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Install into image site-packages as root (readable by all users); runtime user is non-root.
 RUN pip install --no-cache-dir \
     requests \
     httpx \
     beautifulsoup4 \
     lxml
 
+RUN useradd --create-home --shell /bin/bash --uid 1000 app
+
 WORKDIR /work
+RUN chown -R app:app /work
+
+USER app
 
 # Default command: idle; real entry is whatever the tool template passes to docker run.
 CMD ["python", "-c", "print('pa-sandbox:python ok')"]
