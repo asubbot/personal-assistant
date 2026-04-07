@@ -1,4 +1,4 @@
-.PHONY: help fmt test test-race test-integration vet lint coverage coverage-html check check-boundaries cover-ep009 build validate
+.PHONY: help fmt test test-race test-integration vet vuln lint coverage coverage-html check check-boundaries cover-ep009 build validate
 
 help:
 	@echo "Available commands:"
@@ -12,6 +12,7 @@ help:
 	@echo "  make test-race - Same as test but with -race (slower; no coverage)"
 	@echo "  make test-integration - Run only integration tests (requires Docker; two-user SSH uses Debian image)"
 	@echo "  make vet    - Run go vet"
+	@echo "  make vuln   - Run govulncheck on modules (known CVEs in dependencies)"
 	@echo "  make lint   - Run golangci-lint (if installed)"
 	@echo "  make coverage     - Print coverage summary (all tests)"
 	@echo "  make coverage-html - Build HTML coverage report"
@@ -22,7 +23,7 @@ help:
 	@echo "  make validate            - Validate all epics (default)"
 	@echo "  make validate EPIC=EP-009 - Validate single epic"
 	@echo ""
-	@echo "  make check  - Run fmt + vet + lint + test-race + coverage + check-boundaries"
+	@echo "  make check  - Run fmt + vet + vuln + lint + test-race + coverage + check-boundaries"
 
 # Build targets
 build: bin/pa bin/validate
@@ -54,6 +55,11 @@ test-integration:
 vet:
 	go vet ./...
 
+# Scans module dependencies for known vulnerabilities (not redundant with vet/lint).
+# Uses go run so no separate install; https://go.dev/doc/security/vuln
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@latest -tags=integration ./...
+
 lint:
 	@command -v golangci-lint >/dev/null 2>&1 || { \
 		echo "golangci-lint is not installed."; \
@@ -81,4 +87,4 @@ cover-ep009:
 	@go test -count=1 ./internal/tools/... ./internal/toolcatalog/... -covermode=atomic -coverpkg=./internal/tools/...,./internal/toolcatalog/... -coverprofile=coverage-ep009.out
 	@go tool cover -func=coverage-ep009.out | tail -n 1
 
-check: fmt vet lint test-race coverage check-boundaries
+check: fmt vet vuln lint test-race coverage check-boundaries
