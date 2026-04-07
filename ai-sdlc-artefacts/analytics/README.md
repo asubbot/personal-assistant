@@ -14,6 +14,7 @@ Reports are produced with the project skill [`ai-sdlc/specification/skills/proje
 | Spacebot | [spacebot/spacebot-analysis.md](spacebot/spacebot-analysis.md) |
 | Topsha | [topsha/topsha-analysis.md](topsha/topsha-analysis.md) |
 | GoClaw | [goclaw/goclaw-analysis.md](goclaw/goclaw-analysis.md), [goclaw/threat-model.md](goclaw/threat-model.md) |
+| PA distributed tooling vision | [pa-distributed-tooling-vision/pa-distributed-tooling-vision.md](pa-distributed-tooling-vision/pa-distributed-tooling-vision.md) |
 
 ## Similar projects on GitHub (for further research)
 
