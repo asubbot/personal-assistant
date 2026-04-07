@@ -1,4 +1,4 @@
-.PHONY: help fmt test test-race test-integration vet lint coverage coverage-html check check-boundaries cover-ep009
+.PHONY: help fmt test test-race test-integration vet lint coverage coverage-html check check-boundaries validate
 
 help:
 	@echo "Available commands:"
@@ -11,7 +11,8 @@ help:
 	@echo "  make coverage     - Print coverage summary (all tests)"
 	@echo "  make coverage-html - Build HTML coverage report"
 	@echo "  make check-boundaries - Verify module boundaries (no cycles, forbidden edges)"
-	@echo "  make cover-ep009 - Coverage report line for internal/tools + internal/toolcatalog (EP-009)"
+	@echo "  make validate - Build (if needed) and run AC coverage validator (see ai-sdlc/tools/validate)"
+	@echo "  make validate EP-009 - Validate a single epic"
 	@echo "  make check  - Run fmt + vet + lint + test-race + coverage + check-boundaries"
 
 fmt:
@@ -51,9 +52,16 @@ coverage-html:
 check-boundaries:
 	@./scripts/check-module-boundaries.sh
 
-# EP-009: combined coverage for create_tool and catalog helpers (target ≥70% per ep-implementation-plan).
-cover-ep009:
-	@go test -count=1 ./internal/tools/... ./internal/toolcatalog/... -covermode=atomic -coverpkg=./internal/tools/...,./internal/toolcatalog/... -coverprofile=coverage-ep009.out
-	@go tool cover -func=coverage-ep009.out | tail -n 1
+# SDLC: acceptance-criteria test traceability vs codebase (VALIDATION.md in validate package).
+bin/validate:
+	@mkdir -p bin
+	go build -o bin/validate ./ai-sdlc/tools/validate
+
+validate: bin/validate
+	@./bin/validate $(filter-out validate,$(MAKECMDGOALS))
 
 check: fmt vet lint test-race coverage check-boundaries
+
+# Allow `make validate EP-XXX` without "No rule to make target EP-XXX".
+%:
+	@:

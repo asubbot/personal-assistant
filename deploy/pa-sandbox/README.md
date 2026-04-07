@@ -39,9 +39,10 @@ Each new `docker run …` shape must be allowed in the node **command allowlist*
 
 REQ-09.005 specifies **Python 3.14**. If `python:3.14-slim` is unavailable on your registry, pin a nearby tag (e.g. `3.13-slim`) until 3.14 is published, and align with your compliance policy.
 
-The Dockerfile installs packages as **root** (normal for minimal service images). `PIP_ROOT_USER_ACTION=ignore` is set so pip does not print the “running as root” warning on every build.
+Build steps install OS/pip/npm packages as **root** where required (standard for Dockerfiles). All three images run the default process **non-root**: **`app` (UID 1000)** in `base` and `python`, built-in **`node` (UID 1000)** in `node`. `PIP_ROOT_USER_ACTION=ignore` is set in the Python Dockerfile so pip does not print the “running as root” warning during the build-time `pip install`.
 
 ## Security
 
 - Treat these images as **trusted supply chain**: pin digests or tags in production.  
 - Sandboxes still rely on Docker limits (`--memory`, `--cpus`, timeout) and network mode from the **tool template** (`bridge` vs `none`).
+- Prefer **non-root** default users in images where feasible; override with `docker run --user …` only when required.
