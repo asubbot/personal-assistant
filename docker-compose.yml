@@ -11,7 +11,9 @@ secrets:
   telegram_users:
     file: ./.secrets/telegram_users.json
   openai_api_key:
-    file: ./.secrets/openai_api_key.txt
+    file: ./.secrets/openai_api_key
+  zai_api_key:
+    file: ./.secrets/zai_api_key
   # Node SSH key: basename must match nodes.*.auth.private_key_path in config (resolves under PA_SECRETS_DIR).
   node_ssh_private_key:
     file: ./.secrets/node_ssh_private_key
@@ -35,7 +37,9 @@ services:
       - source: telegram_users
         target: /run/secrets/telegram_users.json
       - source: openai_api_key
-        target: /run/secrets/openai_api_key.txt
+        target: /run/secrets/openai_api_key
+      - source: zai_api_key
+        target: /run/secrets/zai_api_key
       - source: node_ssh_private_key
         target: /run/secrets/node_ssh_private_key
     volumes:
