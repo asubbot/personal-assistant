@@ -12,7 +12,7 @@ func TestParseACsFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	content := `# EP-009 Acceptance Criteria
 
@@ -179,11 +179,11 @@ func TestFindCoverageInCodebase(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Create tests subdirectory
 	testsDir := filepath.Join(tmpDir, "tests")
-	if err := os.Mkdir(testsDir, 0755); err != nil {
+	if err := os.Mkdir(testsDir, 0o755); err != nil {
 		t.Fatalf("Failed to create tests dir: %v", err)
 	}
 
@@ -202,7 +202,7 @@ func TestFunc2(t *testing.T) {
 }
 `
 
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -227,7 +227,7 @@ func TestParseACsFromFile_Deferred(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	content := `# EP-009 Acceptance Criteria
 
@@ -314,37 +314,37 @@ func TestFindCoverageInCodebase_CmdAndFormats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	for _, sub := range []string{"tests", "internal", "cmd"} {
-		if err := os.Mkdir(filepath.Join(tmpDir, sub), 0755); err != nil {
+		if err := os.Mkdir(filepath.Join(tmpDir, sub), 0o755); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	// cmd/pa — EP-008 style
 	cmdTest := filepath.Join(tmpDir, "cmd", "pa", "x_test.go")
-	if err := os.MkdirAll(filepath.Join(tmpDir, "cmd", "pa"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmpDir, "cmd", "pa"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(cmdTest, []byte(`package pa
 
 // EP-008 AC-08.001 / REQ-08.001: body
 func TestA(t *testing.T) {}
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	// internal — lowercase covers
 	intTest := filepath.Join(tmpDir, "internal", "pkg", "y_test.go")
-	if err := os.MkdirAll(filepath.Join(tmpDir, "internal", "pkg"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmpDir, "internal", "pkg"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(intTest, []byte(`package pkg
 
 // TestFoo covers AC-01.029
 func TestFoo(t *testing.T) {}
-`), 0644); err != nil {
+`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

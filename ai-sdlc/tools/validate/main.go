@@ -12,8 +12,10 @@ import (
 	"strings"
 )
 
-type ACCode string
-type TestRef string
+type (
+	ACCode  string
+	TestRef string
+)
 
 type Report struct {
 	Epic          string              `json:"epic"`
@@ -195,7 +197,8 @@ func findCoverageInCodebase(codebasePath string) (map[ACCode][]TestRef, error) {
 
 		err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return nil // skip errors, continue walking
+				// Skip entries we cannot stat; continue the walk.
+				return nil //nolint:nilerr // skip path-level walk errors; continue scanning other files
 			}
 
 			if !strings.HasSuffix(path, "_test.go") {
@@ -204,7 +207,7 @@ func findCoverageInCodebase(codebasePath string) (map[ACCode][]TestRef, error) {
 
 			content, err := os.ReadFile(path)
 			if err != nil {
-				return nil
+				return nil //nolint:nilerr // skip unreadable test file and continue walk
 			}
 
 			fileContent := string(content)
@@ -235,13 +238,22 @@ func findCoverageInCodebase(codebasePath string) (map[ACCode][]TestRef, error) {
 
 			return nil
 		})
-
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return coverage, nil
+}
+
+func filterCoverageForEpicNum(coverage map[ACCode][]TestRef, epicNum string) map[ACCode][]TestRef {
+	out := make(map[ACCode][]TestRef)
+	for ac, tests := range coverage {
+		if strings.Contains(string(ac), "-"+epicNum+".") {
+			out[ac] = tests
+		}
+	}
+	return out
 }
 
 // extractACsFromLine extracts all AC codes from a traceability line
@@ -352,11 +364,24 @@ func hasBlockingGaps(r *Report) bool {
 	return false
 }
 
+func acCoverageCell(tests []string, deferred bool) (status, testStr string) {
+	switch {
+	case len(tests) == 0 && deferred:
+		return "↷", "DEFERRED"
+	case len(tests) == 0:
+		return "✗", "NOT COVERED"
+	case len(tests) == 1:
+		return "✓", tests[0]
+	default:
+		return "✓", fmt.Sprintf("%d tests", len(tests))
+	}
+}
+
 // printTable prints a formatted table report
 func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool) {
-	fmt.Printf("\n📋 AC Coverage Report for %s\n\n", r.Epic)
-	fmt.Printf("%-15s %-50s %-30s\n", "AC Code", "Criterion", "Coverage")
-	fmt.Println(strings.Repeat("─", 95))
+	writeStdout("\n📋 AC Coverage Report for %s\n\n", r.Epic)
+	writeStdout("%-15s %-50s %-30s\n", "AC Code", "Criterion", "Coverage")
+	writelnStdout(strings.Repeat("─", 95))
 
 	keys := make([]ACCode, 0, len(acs))
 	for ac := range acs {
@@ -373,31 +398,16 @@ func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool) {
 		}
 
 		tests := r.Coverage[string(ac)]
-		status := "✓"
-		testStr := ""
-
-		if len(tests) == 0 {
-			if deferred[ac] {
-				status = "↷"
-				testStr = "DEFERRED"
-			} else {
-				status = "✗"
-				testStr = "NOT COVERED"
-			}
-		} else if len(tests) == 1 {
-			testStr = tests[0]
-		} else {
-			testStr = fmt.Sprintf("%d tests", len(tests))
-		}
+		status, testStr := acCoverageCell(tests, deferred[ac])
 
 		if len(testStr) > 27 {
 			testStr = testStr[:24] + "..."
 		}
 
-		fmt.Printf("%s %-15s %-50s %-30s\n", status, string(ac), criterion, testStr)
+		writeStdout("%s %-15s %-50s %-30s\n", status, string(ac), criterion, testStr)
 	}
 
-	fmt.Println(strings.Repeat("─", 95))
+	writelnStdout(strings.Repeat("─", 95))
 
 	coverageStr := "❌"
 	if r.CoverageRatio == 1.0 {
@@ -406,20 +416,148 @@ func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool) {
 		coverageStr = "⚠️"
 	}
 
-	fmt.Printf("\n%s RESULT: %d covered, %d deferred, %d total (%.1f%%)\n", coverageStr, r.CoveredACs, r.DeferredACs, r.TotalACs, r.CoverageRatio*100)
+	writeStdout("\n%s RESULT: %d covered, %d deferred, %d total (%.1f%%)\n", coverageStr, r.CoveredACs, r.DeferredACs, r.TotalACs, r.CoverageRatio*100)
 
 	if hasBlockingGaps(r) {
-		fmt.Printf("\n❌ Missing coverage for:\n")
+		writeStdout("\n❌ Missing coverage for:\n")
 		for _, gap := range r.Gaps {
 			if gap.Status == "not_covered" {
-				fmt.Printf("  • %s\n", gap.Code)
+				writeStdout("  • %s\n", gap.Code)
 			}
 		}
-		fmt.Printf("\nAction: Add tests for missing ACs or defer them in ep-acceptance-criteria.md\n")
+		writeStdout("\nAction: Add tests for missing ACs or defer them in ep-acceptance-criteria.md\n")
 	} else {
-		fmt.Printf("\n✅ All ACs covered — epic is ready for audit\n")
+		writeStdout("\n✅ All ACs covered — epic is ready for audit\n")
 	}
-	fmt.Println()
+	writelnStdout("")
+}
+
+func scanEpicsAgainstCoverage(cwd string, epics []string, globalCoverage map[ACCode][]TestRef) ([]EpicSummary, []ProjectNotCoveredAC, bool) {
+	var results []EpicSummary
+	var projectNotCovered []ProjectNotCoveredAC
+	hasGaps := false
+
+	for _, epic := range epics {
+		epicNum := getEpicNumber(epic)
+		acPath := filepath.Join(cwd, "ai-sdlc-artefacts", "epics", epic, "ep-acceptance-criteria.md")
+		if _, err := os.Stat(acPath); os.IsNotExist(err) {
+			continue
+		}
+		acs, deferred, err := parseACsFromFile(acPath)
+		if err != nil {
+			continue
+		}
+		epicCoverage := filterCoverageForEpicNum(globalCoverage, epicNum)
+		r := generateReport(epic, acs, deferred, epicCoverage)
+		results = append(results, EpicSummary{
+			Epic:          epic,
+			TotalACs:      r.TotalACs,
+			CoveredACs:    r.CoveredACs,
+			DeferredACs:   r.DeferredACs,
+			CoverageRatio: r.CoverageRatio,
+		})
+		if hasBlockingGaps(r) {
+			hasGaps = true
+		}
+		for _, gap := range r.Gaps {
+			if gap.Status != "not_covered" {
+				continue
+			}
+			crit := gap.Criterion
+			if crit == "" {
+				crit = acs[ACCode(gap.Code)]
+			}
+			crit = normalizeCriterionPreview(crit)
+			projectNotCovered = append(projectNotCovered, ProjectNotCoveredAC{
+				Epic:      epic,
+				Code:      gap.Code,
+				Criterion: crit,
+			})
+		}
+	}
+	return results, projectNotCovered, hasGaps
+}
+
+func printAllEpicsHuman(
+	results []EpicSummary,
+	projectNotCovered []ProjectNotCoveredAC,
+	totalCovered, totalDeferred, totalACs int,
+	overallRatio float64,
+	hasGaps bool,
+) {
+	writelnStdout("📋 Epic Validation Summary")
+	writelnStdout("")
+	writeStdout("%-10s %-12s %-12s\n", "Epic", "Coverage", "Status")
+	writelnStdout(strings.Repeat("─", 36))
+
+	for _, res := range results {
+		status := "✓"
+		if res.CoveredACs+res.DeferredACs < res.TotalACs {
+			status = "✗"
+		}
+		pct := int(res.CoverageRatio * 100)
+		writeStdout("%s %-12s %3d%% %s\n", status, res.Epic, pct, "")
+	}
+
+	writelnStdout(strings.Repeat("─", 36))
+
+	statusEmoji := "✅"
+	if hasGaps {
+		statusEmoji = "❌"
+	}
+
+	writeStdout("\n%s OVERALL: %d covered, %d deferred, %d total (%.1f%%)\n", statusEmoji, totalCovered, totalDeferred, totalACs, overallRatio*100)
+
+	if !hasGaps {
+		return
+	}
+
+	writelnStdout("")
+	writeStdout("❌ AC not covered by tests (project-wide): %d\n", len(projectNotCovered))
+	if len(projectNotCovered) > 0 {
+		currentEpic := ""
+		for _, item := range projectNotCovered {
+			if item.Epic != currentEpic {
+				currentEpic = item.Epic
+				writeStdout("\n%s\n", currentEpic)
+			}
+			line := fmt.Sprintf("  • %s", item.Code)
+			if c := strings.TrimSpace(item.Criterion); c != "" {
+				if len(c) > 72 {
+					c = c[:69] + "..."
+				}
+				line += " — " + c
+			}
+			writelnStdout(line)
+		}
+		writelnStdout("")
+	}
+	writelnStdout("Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.")
+	os.Exit(1)
+}
+
+func aggregateEpicTotals(results []EpicSummary) (totalACs, totalCovered, totalDeferred int, overallRatio float64) {
+	for _, res := range results {
+		totalACs += res.TotalACs
+		totalCovered += res.CoveredACs
+		totalDeferred += res.DeferredACs
+	}
+	if totalACs > 0 {
+		overallRatio = float64(totalCovered+totalDeferred) / float64(totalACs)
+	}
+	return totalACs, totalCovered, totalDeferred, overallRatio
+}
+
+func writeAllEpicsJSON(allReport AllEpicsReport, hasGaps bool) {
+	data, err := json.MarshalIndent(allReport, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
+		os.Exit(1)
+	}
+	writelnStdout(string(data))
+	if hasGaps {
+		os.Exit(1)
+	}
 }
 
 // validateAllEpics finds and validates all epics in ai-sdlc-artefacts/epics/
@@ -452,66 +590,16 @@ func validateAllEpics(jsonOutput bool) {
 	sort.Strings(epics)
 
 	if !jsonOutput {
-		fmt.Printf("🔍 Validating AC coverage for all %d epics...\n\n", len(epics))
+		writeStdout("🔍 Validating AC coverage for all %d epics...\n\n", len(epics))
 	}
 
-	var results []EpicSummary
-	var projectNotCovered []ProjectNotCoveredAC
-	hasGaps := false
-
-	for _, epic := range epics {
-		epicNum := getEpicNumber(epic)
-
-		acPath := filepath.Join(cwd, "ai-sdlc-artefacts", "epics", epic, "ep-acceptance-criteria.md")
-		if _, err := os.Stat(acPath); os.IsNotExist(err) {
-			continue // Skip if AC file doesn't exist
-		}
-
-		acs, deferred, err := parseACsFromFile(acPath)
-		if err != nil {
-			continue
-		}
-
-		coverage, err := findCoverageInCodebase(cwd)
-		if err != nil {
-			continue
-		}
-
-		epicCoverage := make(map[ACCode][]TestRef)
-		for ac, tests := range coverage {
-			if strings.Contains(string(ac), "-"+epicNum+".") {
-				epicCoverage[ac] = tests
-			}
-		}
-
-		r := generateReport(epic, acs, deferred, epicCoverage)
-		results = append(results, EpicSummary{
-			Epic:          epic,
-			TotalACs:      r.TotalACs,
-			CoveredACs:    r.CoveredACs,
-			DeferredACs:   r.DeferredACs,
-			CoverageRatio: r.CoverageRatio,
-		})
-
-		if hasBlockingGaps(r) {
-			hasGaps = true
-		}
-		for _, gap := range r.Gaps {
-			if gap.Status != "not_covered" {
-				continue
-			}
-			crit := gap.Criterion
-			if crit == "" {
-				crit = acs[ACCode(gap.Code)]
-			}
-			crit = normalizeCriterionPreview(crit)
-			projectNotCovered = append(projectNotCovered, ProjectNotCoveredAC{
-				Epic:      epic,
-				Code:      gap.Code,
-				Criterion: crit,
-			})
-		}
+	globalCoverage, err := findCoverageInCodebase(cwd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error scanning codebase: %v\n", err)
+		os.Exit(1)
 	}
+
+	results, projectNotCovered, hasGaps := scanEpicsAgainstCoverage(cwd, epics, globalCoverage)
 
 	sort.Slice(projectNotCovered, func(i, j int) bool {
 		if projectNotCovered[i].Epic != projectNotCovered[j].Epic {
@@ -520,19 +608,7 @@ func validateAllEpics(jsonOutput bool) {
 		return projectNotCovered[i].Code < projectNotCovered[j].Code
 	})
 
-	totalACs := 0
-	totalCovered := 0
-	totalDeferred := 0
-	for _, res := range results {
-		totalACs += res.TotalACs
-		totalCovered += res.CoveredACs
-		totalDeferred += res.DeferredACs
-	}
-
-	overallRatio := 0.0
-	if totalACs > 0 {
-		overallRatio = float64(totalCovered+totalDeferred) / float64(totalACs)
-	}
+	totalACs, totalCovered, totalDeferred, overallRatio := aggregateEpicTotals(results)
 
 	allReport := AllEpicsReport{
 		Epics:           results,
@@ -546,66 +622,11 @@ func validateAllEpics(jsonOutput bool) {
 	}
 
 	if jsonOutput {
-		data, err := json.MarshalIndent(allReport, "", "  ")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println(string(data))
-		if hasGaps {
-			os.Exit(1)
-		}
+		writeAllEpicsJSON(allReport, hasGaps)
 		return
 	}
 
-	// Print summary table
-	fmt.Println("📋 Epic Validation Summary")
-	fmt.Println()
-	fmt.Printf("%-10s %-12s %-12s\n", "Epic", "Coverage", "Status")
-	fmt.Println(strings.Repeat("─", 36))
-
-	for _, res := range results {
-		status := "✓"
-		if res.CoveredACs+res.DeferredACs < res.TotalACs {
-			status = "✗"
-		}
-		pct := int(res.CoverageRatio * 100)
-		fmt.Printf("%s %-12s %3d%% %s\n", status, res.Epic, pct, "")
-	}
-
-	fmt.Println(strings.Repeat("─", 36))
-
-	statusEmoji := "✅"
-	if hasGaps {
-		statusEmoji = "❌"
-	}
-
-	fmt.Printf("\n%s OVERALL: %d covered, %d deferred, %d total (%.1f%%)\n", statusEmoji, totalCovered, totalDeferred, totalACs, overallRatio*100)
-
-	if hasGaps {
-		fmt.Println()
-		fmt.Printf("❌ AC not covered by tests (project-wide): %d\n", len(projectNotCovered))
-		if len(projectNotCovered) > 0 {
-			currentEpic := ""
-			for _, item := range projectNotCovered {
-				if item.Epic != currentEpic {
-					currentEpic = item.Epic
-					fmt.Printf("\n%s\n", currentEpic)
-				}
-				line := fmt.Sprintf("  • %s", item.Code)
-				if c := strings.TrimSpace(item.Criterion); c != "" {
-					if len(c) > 72 {
-						c = c[:69] + "..."
-					}
-					line += " — " + c
-				}
-				fmt.Println(line)
-			}
-			fmt.Println()
-		}
-		fmt.Println("Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.")
-		os.Exit(1)
-	}
+	printAllEpicsHuman(results, projectNotCovered, totalCovered, totalDeferred, totalACs, overallRatio, hasGaps)
 }
 
 // getEpicNumber extracts the numeric part from "EP-009" → "09" (2 digits, not 3)
@@ -670,7 +691,7 @@ func main() {
 
 	// Print what we're validating (human mode only; JSON must be stdout-clean for CI)
 	if !jsonOut {
-		fmt.Printf("🔍 Validating AC coverage for %s...\n\n", epic)
+		writeStdout("🔍 Validating AC coverage for %s...\n\n", epic)
 	}
 
 	// Locate ep-acceptance-criteria.md
@@ -698,13 +719,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Filter coverage to only ACs from this epic
-	epicCoverage := make(map[ACCode][]TestRef)
-	for ac, tests := range coverage {
-		if strings.Contains(string(ac), "-"+epicNum+".") {
-			epicCoverage[ac] = tests
-		}
-	}
+	epicCoverage := filterCoverageForEpicNum(coverage, epicNum)
 
 	// Generate report
 	r := generateReport(epic, acs, deferred, epicCoverage)
@@ -716,7 +731,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(string(data))
+		writelnStdout(string(data))
 	} else {
 		// Output table
 		printTable(r, acs, deferred)

@@ -83,15 +83,6 @@ linters:
       ignore-missing: true
   exclusions:
     generated: lax
-    rules:
-      # validate is a CLI that prints human-readable reports to stdout (fmt), not a server.
-      - path: ai-sdlc/tools/validate/
-        linters:
-          - forbidigo
-          - gocyclo
-          - nilerr
-          - gocritic
-          - errcheck
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
@@ -101,5 +92,3 @@ formatters:
     - gofumpt
   exclusions:
     generated: lax
-    paths:
-      - ai-sdlc/tools/validate/
