@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -210,68 +211,86 @@ func findCoverageInCodebase(codebasePath string) (map[ACCode][]CoverageRef, int,
 	coverage := make(map[ACCode][]CoverageRef)
 	testFuncsWithSkip := 0
 
-	// Walk tests/, internal/, and cmd/ (main packages may hold *_test.go with AC comments).
+	root, err := os.OpenRoot(codebasePath)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer func() { _ = root.Close() }()
+
+	fsys := root.FS()
+
 	for _, dir := range []string{"tests", "internal", "cmd"} {
-		dirPath := filepath.Join(codebasePath, dir)
-		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-			continue
+		n, werr := appendCoverageFromTestDir(root, fsys, dir, coverage)
+		if werr != nil {
+			return nil, 0, werr
 		}
-
-		err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				// Skip entries we cannot stat; continue the walk.
-				return nil //nolint:nilerr // skip path-level walk errors; continue scanning other files
-			}
-
-			if !strings.HasSuffix(path, "_test.go") {
-				return nil
-			}
-
-			content, err := os.ReadFile(path)
-			if err != nil {
-				return nil //nolint:nilerr // skip unreadable test file and continue walk
-			}
-
-			skipMap, errParse := parseTestFuncsWithTSkip(content, path)
-			if errParse != nil {
-				skipMap = map[string]bool{}
-			} else {
-				testFuncsWithSkip += countTestFuncsWithSkip(skipMap)
-			}
-
-			fileContent := string(content)
-			relPath := strings.TrimPrefix(path, codebasePath)
-			relPath = strings.TrimPrefix(relPath, "/")
-
-			lines := strings.Split(fileContent, "\n")
-
-			for i, line := range lines {
-				if !lineDeclaresACCoverage(line) {
-					continue
-				}
-				testName := testFuncForTraceLine(lines, i)
-				manual := lineDeclaresManualTrace(line) || skipMap[testName]
-				ref := CoverageRef{
-					Ref:    fmt.Sprintf("%s::%s", relPath, testName),
-					Manual: manual,
-				}
-
-				// Extract ACs using more sophisticated parsing
-				// Handles: AC-09.001, AC-09.001–003, AC-09.001, AC-09.002
-				acs := extractACsFromLine(line)
-				for _, ac := range acs {
-					coverage[ac] = append(coverage[ac], ref)
-				}
-			}
-
-			return nil
-		})
-		if err != nil {
-			return nil, 0, err
-		}
+		testFuncsWithSkip += n
 	}
 
 	return coverage, testFuncsWithSkip, nil
+}
+
+// appendCoverageFromTestDir walks dir under root (tests, internal, or cmd) and merges AC coverage into coverage.
+func appendCoverageFromTestDir(root *os.Root, fsys fs.FS, dir string, coverage map[ACCode][]CoverageRef) (int, error) {
+	if _, err := root.Stat(dir); os.IsNotExist(err) {
+		return 0, nil
+	} else if err != nil {
+		return 0, err
+	}
+
+	var testFuncsWithSkip int
+	err := fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// Skip entries we cannot stat; continue the walk.
+			return nil //nolint:nilerr // skip path-level walk errors; continue scanning other files
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+
+		content, err := root.ReadFile(path)
+		if err != nil {
+			return nil //nolint:nilerr // skip unreadable test file and continue walk
+		}
+
+		skipMap, errParse := parseTestFuncsWithTSkip(content, path)
+		if errParse != nil {
+			skipMap = map[string]bool{}
+		} else {
+			testFuncsWithSkip += countTestFuncsWithSkip(skipMap)
+		}
+
+		fileContent := string(content)
+		// path from fs.WalkDir is relative to codebasePath with '/' separators.
+		relPath := path
+
+		lines := strings.Split(fileContent, "\n")
+
+		for i, line := range lines {
+			if !lineDeclaresACCoverage(line) {
+				continue
+			}
+			testName := testFuncForTraceLine(lines, i)
+			manual := lineDeclaresManualTrace(line) || skipMap[testName]
+			ref := CoverageRef{
+				Ref:    fmt.Sprintf("%s::%s", relPath, testName),
+				Manual: manual,
+			}
+
+			// Extract ACs using more sophisticated parsing
+			// Handles: AC-09.001, AC-09.001–003, AC-09.001, AC-09.002
+			acs := extractACsFromLine(line)
+			for _, ac := range acs {
+				coverage[ac] = append(coverage[ac], ref)
+			}
+		}
+
+		return nil
+	})
+	return testFuncsWithSkip, err
 }
 
 func filterCoverageForEpicNum(coverage map[ACCode][]CoverageRef, epicNum string) map[ACCode][]CoverageRef {
