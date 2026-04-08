@@ -42,6 +42,10 @@ func ResolvePaths(cfg *Config, configFilePath string) {
 		n.CommandAllowlistPath = resolve(configDir, n.CommandAllowlistPath)
 		cfg.Nodes[id] = n
 	}
+
+	if cfg.WebTools != nil && cfg.WebTools.Enabled {
+		cfg.WebTools.Search.BraveAPIKeyPath = resolve(secretsDir, cfg.WebTools.Search.BraveAPIKeyPath)
+	}
 }
 
 func envDefault(key, def string) string {

@@ -1,0 +1,56 @@
+@startuml c4-container
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam ArrowColor #707070
+skinparam ComponentBorderColor #707070
+
+title PersonalAssistant — Containers (C2) — EP-011 Native web search and HTTPS fetch
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(telegram, "Telegram", "Messaging / Bot API")
+System_Ext(llm_ext, "LLM", "OpenAI-compatible completions; tool calls")
+System_Ext(brave, "Brave Search API", "Web search over HTTPS")
+System_Ext(ddg, "DuckDuckGo", "Web search over HTTPS")
+System_Ext(httpsweb, "HTTPS origins", "Public HTTPS content")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(core, "Core conversation handler", "Go", "Message flow, LLM tool loop, dispatches native tools")
+    Container(registry, "Native tool registry", "Go", "Registers web_search and web_fetch from configuration")
+    Container(ws, "WebSearch tool", "Go", "Query validation; provider routing; ranked results")
+    Container(wf, "WebFetch tool", "Go", "HTTPS-only fetch; redirects; body size limits")
+    ContainerDb(cache, "In-memory search cache", "Go", "TTL + max entries; keyed lookup for web_search")
+    Container(httpc, "HTTP client", "Go", "Shared timeouts; TLS; upstream HTTPS calls")
+    Container(ssrf, "SSRF/URL validator", "Go", "Scheme, host, resolved IP class checks for web_fetch")
+}
+
+Rel(user, telegram, "Uses")
+Rel(telegram, core, "Bot API")
+Rel(core, llm_ext, "Completions; tool results")
+Rel(llm_ext, core, "Tool calls")
+
+Rel(core, registry, "Resolve and invoke tools")
+Rel(registry, ws, "web_search")
+Rel(registry, wf, "web_fetch")
+
+Rel(ws, cache, "Get / put results")
+Rel(ws, httpc, "Upstream search request")
+
+Rel(wf, ssrf, "Validate URL and destination")
+Rel(wf, httpc, "GET after validation")
+
+Rel(httpc, brave, "HTTPS (Brave provider)")
+Rel(httpc, ddg, "HTTPS (DuckDuckGo provider)")
+Rel(httpc, httpsweb, "HTTPS (web_fetch)")
+
+@enduml

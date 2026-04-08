@@ -7,12 +7,42 @@ import (
 	"os/exec"
 	"pa/internal/config"
 	"pa/internal/toolcatalog"
+	patools "pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+// Covers AC-11.001 — web_search and web_fetch register when web_tools.enabled.
+func TestRegisterWebToolsIfEnabled_RegistersBothTools(t *testing.T) {
+	cfg := &config.Config{
+		WebTools: &config.WebToolsConfig{
+			Enabled: true,
+			Search: config.WebSearchConfig{
+				Provider:        "duckduckgo",
+				TimeoutSeconds:  10,
+				CacheTTLSeconds: 60,
+				CacheMaxEntries: 10,
+			},
+			Fetch: config.WebFetchConfig{
+				TimeoutSeconds: 30,
+				MaxBodyBytes:   1024,
+				MaxRedirects:   3,
+			},
+		},
+	}
+	reg := patools.NewRegistry()
+	logger := slog.New(slog.DiscardHandler)
+	registerWebToolsIfEnabled(cfg, reg, logger)
+	if _, ok := reg.Get("web_search"); !ok {
+		t.Fatal("expected web_search in registry")
+	}
+	if _, ok := reg.Get("web_fetch"); !ok {
+		t.Fatal("expected web_fetch in registry")
+	}
+}
 
 // Covers AC-01.042 (US-20): config path resolved from PA_CONFIG_DIR when set.
 func TestConfigFilePath_PAConfigDirSet(t *testing.T) {

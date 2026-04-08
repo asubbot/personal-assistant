@@ -116,6 +116,9 @@ func validateMandatoryJSONSections(c *Config) error {
 	if err := validateLLMEscalation(c); err != nil {
 		return err
 	}
+	if err := validateWebTools(c); err != nil {
+		return err
+	}
 	return nil
 }
 

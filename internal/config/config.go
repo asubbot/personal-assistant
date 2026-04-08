@@ -27,6 +27,8 @@ type Config struct {
 	Tools *ToolsConfig `json:"tools"`
 	// CreateToolSecretRegex is compiled at Load from tools.create_tool_secret_patterns (REQ-09.017). Nil when absent or empty.
 	CreateToolSecretRegex []*regexp.Regexp `json:"-"`
+	// WebTools is optional; when non-nil and enabled, registers web_search and web_fetch (EP-011, REQ-11.001, REQ-11.002).
+	WebTools *WebToolsConfig `json:"web_tools,omitempty"`
 }
 
 // LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002). JSON: tools.llm_escalation.

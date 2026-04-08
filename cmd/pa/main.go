@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"pa/internal/allowlist"
@@ -180,6 +181,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	if cfg.ToolCatalog != nil {
 		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
 	}
+	registerWebToolsIfEnabled(cfg, toolRegistry, logger)
 	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
 		defer cleanup()
 	}
@@ -528,6 +530,21 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	}
 
 	return adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, nil
+}
+
+func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) {
+	if cfg == nil || cfg.WebTools == nil || !cfg.WebTools.Enabled {
+		return
+	}
+	webHTTP := &http.Client{
+		Timeout: 0,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	reg.Register(tools.NewWebSearchTool(cfg.WebTools, webHTTP, nil))
+	reg.Register(tools.NewWebFetchTool(&cfg.WebTools.Fetch, webHTTP))
+	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider)
 }
 
 // clearConversationContext deletes all rows from vec_items (semantic context for the LLM). vec_tools and memory/ files are unchanged.
