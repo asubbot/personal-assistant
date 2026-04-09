@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-011 |
-| **Status** | IN_PROGRESS |
+| **Status** | DONE |
 | **Title** | Native web search and HTTPS content fetch (tools) |
 | **Description** | Add first-class **native** (non-browser) tools for **web search** and **HTTPS-only** fetching of public page content, with **two search providers** from the start—**Brave Search** and **DuckDuckGo**—selectable in configuration, a **simple in-process search result cache** with configurable **TTL** (no database), plus SSRF-safe URL handling, limits, and observability aligned with the existing tool contract. |
 | **First version date** | 2026-04-08 |

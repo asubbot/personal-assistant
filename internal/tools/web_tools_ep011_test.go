@@ -350,6 +350,142 @@ func TestWebSearch_BraveError_NoKeyLeak(t *testing.T) {
 	}
 }
 
+// Covers AC-11.010, AC-11.015 — successful HTTPS redirect chain with production ValidateFetchURL (public IP literals, mock transport).
+func TestWebFetch_HTTPSRedirectChain_Success(t *testing.T) {
+	cfg := &config.WebFetchConfig{TimeoutSeconds: 10, MaxBodyBytes: 100, MaxRedirects: 5}
+	var n atomic.Int32
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch n.Add(1) {
+		case 1:
+			if req.URL.Host != "1.1.1.1" {
+				t.Errorf("first request host = %q, want 1.1.1.1", req.URL.Host)
+			}
+			return &http.Response{
+				StatusCode: http.StatusFound,
+				Header:     http.Header{"Location": []string{"https://9.9.9.9/final"}},
+				Body:       io.NopCloser(strings.NewReader("")),
+			}, nil
+		case 2:
+			if req.URL.Host != "9.9.9.9" {
+				t.Errorf("second request host = %q, want 9.9.9.9", req.URL.Host)
+			}
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("ok-chain"))}, nil
+		default:
+			t.Fatalf("unexpected third request to %s", req.URL.String())
+			return nil, io.EOF
+		}
+	}), CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	w := NewWebFetchTool(cfg, client)
+	out, err := w.runFetch(context.Background(), "https://1.1.1.1/start", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "ok-chain") {
+		t.Fatalf("out=%q", out)
+	}
+	if n.Load() != 2 {
+		t.Fatalf("upstream calls = %d, want 2", n.Load())
+	}
+}
+
+// Covers AC-11.015 — web_fetch with production ValidateFetchURL and mock transport (no SSRF bypass).
+func TestWebFetch_RealValidate_AllowedPublicIP_200(t *testing.T) {
+	cfg := &config.WebFetchConfig{TimeoutSeconds: 10, MaxBodyBytes: 100, MaxRedirects: 0}
+	var calls atomic.Int32
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls.Add(1)
+		if req.URL.Host != "1.1.1.1" {
+			t.Errorf("host = %q, want 1.1.1.1", req.URL.Host)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("direct-ok"))}, nil
+	}), CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	w := NewWebFetchTool(cfg, client)
+	out, err := w.runFetch(context.Background(), "https://1.1.1.1/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "direct-ok") {
+		t.Fatalf("out=%q", out)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("calls=%d", calls.Load())
+	}
+}
+
+// Covers AC-11.003 — Brave upstream returns non-JSON body.
+func TestWebSearch_BraveInvalidJSON(t *testing.T) {
+	cfg := ep011WebTools(t, "brave")
+	if err := os.WriteFile(cfg.Search.BraveAPIKeyPath, []byte("k"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{`))}, nil
+	}), CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	w := NewWebSearchTool(cfg, client, nil)
+	_, err := w.Run(context.Background(), map[string]any{"query": "q"})
+	if err == nil || !strings.Contains(err.Error(), "invalid brave") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+// Covers AC-11.003 — Brave JSON with empty results array.
+func TestWebSearch_BraveEmptyResults(t *testing.T) {
+	cfg := ep011WebTools(t, "brave")
+	if err := os.WriteFile(cfg.Search.BraveAPIKeyPath, []byte("k"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return jsonResp(`{"web":{"results":[]}}`), nil
+	}), CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	w := NewWebSearchTool(cfg, client, nil)
+	_, err := w.Run(context.Background(), map[string]any{"query": "q"})
+	if err == nil || !strings.Contains(err.Error(), "no results") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+// Covers AC-11.004 — DuckDuckGo HTML without result markup.
+func TestWebSearch_DDGEhtmlNoResults(t *testing.T) {
+	cfg := ep011WebTools(t, "duckduckgo")
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return htmlResp("<html><body>no hits</body></html>"), nil
+	}), CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	w := NewWebSearchTool(cfg, client, nil)
+	_, err := w.Run(context.Background(), map[string]any{"query": "q"})
+	if err == nil || !strings.Contains(err.Error(), "no results") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+// Covers AC-11.016 — primary and fallback both fail; error from last upstream attempt.
+func TestWebSearch_FallbackBothFail(t *testing.T) {
+	cfg := ep011WebTools(t, "brave")
+	if err := os.WriteFile(cfg.Search.BraveAPIKeyPath, []byte("k"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg.Search.FallbackProvider = "duckduckgo"
+	var calls atomic.Int32
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls.Add(1)
+		switch req.URL.Host {
+		case "api.search.brave.com":
+			return &http.Response{StatusCode: 503, Body: io.NopCloser(strings.NewReader("{}"))}, nil
+		case "html.duckduckgo.com":
+			return htmlResp("<html></html>"), nil
+		default:
+			return nil, fmt.Errorf("unexpected host %q", req.URL.Host)
+		}
+	}), CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	w := NewWebSearchTool(cfg, client, nil)
+	_, err := w.Run(context.Background(), map[string]any{"query": "q"})
+	if err == nil || !strings.Contains(err.Error(), "no results") {
+		t.Fatalf("got %v", err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("upstream calls=%d, want 2", calls.Load())
+	}
+}
+
 // Covers AC-11.010 — redirect to http rejected (no SSRF validate on loopback; exercise redirect policy).
 func TestWebFetch_RedirectToHTTPRejected(t *testing.T) {
 	cfg := &config.WebFetchConfig{TimeoutSeconds: 10, MaxBodyBytes: 100, MaxRedirects: 5}
