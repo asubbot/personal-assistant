@@ -2,12 +2,16 @@ package telegram
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"pa/internal/config"
 	"pa/internal/core"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -338,16 +342,70 @@ func TestRun_nilHandler(t *testing.T) {
 
 // --- handleUpdate (message handling logic) ---
 
+type sentRecord struct {
+	text      string
+	parseMode models.ParseMode
+}
+
 type mockSender struct {
-	sent []string
+	mu              sync.Mutex
+	sent            []sentRecord
+	chatActionCalls int
+	chatActionErr   error
+	failEntityOnce  bool // first HTML send returns entity parse bad request, then succeeds plain
 }
 
 func (m *mockSender) SendMessage(_ context.Context, params *bot.SendMessageParams) (*models.Message, error) {
-	if m.sent == nil {
-		m.sent = []string{}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.failEntityOnce && params.ParseMode == models.ParseModeHTML {
+		m.failEntityOnce = false
+		return nil, fmt.Errorf("%w: can't parse entities", bot.ErrorBadRequest)
 	}
-	m.sent = append(m.sent, params.Text)
+	if m.sent == nil {
+		m.sent = []sentRecord{}
+	}
+	m.sent = append(m.sent, sentRecord{text: params.Text, parseMode: params.ParseMode})
 	return nil, nil
+}
+
+func (m *mockSender) SendChatAction(_ context.Context, _ *bot.SendChatActionParams) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.chatActionCalls++
+	if m.chatActionErr != nil {
+		return false, m.chatActionErr
+	}
+	return true, nil
+}
+
+func (m *mockSender) sentTexts() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]string, len(m.sent))
+	for i, r := range m.sent {
+		out[i] = r.text
+	}
+	return out
+}
+
+func (m *mockSender) lastParseModes() []models.ParseMode {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]models.ParseMode, len(m.sent))
+	for i, r := range m.sent {
+		out[i] = r.parseMode
+	}
+	return out
+}
+
+func (m *mockSender) reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.sent = nil
+	m.chatActionCalls = 0
+	m.failEntityOnce = false
+	m.chatActionErr = nil
 }
 
 type mockHandler struct {
@@ -356,12 +414,16 @@ type mockHandler struct {
 	text     string
 	reply    string
 	errReply error
+	delay    time.Duration
 }
 
 func (m *mockHandler) HandleMessage(_ context.Context, userID int64, text string) (string, error) {
 	m.called = true
 	m.userID = userID
 	m.text = text
+	if m.delay > 0 {
+		time.Sleep(m.delay)
+	}
 	return m.reply, m.errReply
 }
 
@@ -374,8 +436,8 @@ func TestHandleUpdate_nilMessage(t *testing.T) {
 	if handler.called {
 		t.Error("handler should not be called when Message is nil")
 	}
-	if len(sender.sent) != 0 {
-		t.Errorf("no message should be sent, got %d", len(sender.sent))
+	if len(sender.sentTexts()) != 0 {
+		t.Errorf("no message should be sent, got %d", len(sender.sentTexts()))
 	}
 }
 
@@ -390,8 +452,8 @@ func TestHandleUpdate_nilFrom(t *testing.T) {
 	if handler.called {
 		t.Error("handler should not be called when From is nil")
 	}
-	if len(sender.sent) != 0 {
-		t.Errorf("no message should be sent, got %d", len(sender.sent))
+	if len(sender.sentTexts()) != 0 {
+		t.Errorf("no message should be sent, got %d", len(sender.sentTexts()))
 	}
 }
 
@@ -410,10 +472,13 @@ func TestHandleUpdate_emptyText_sendsRejectionMessage(t *testing.T) {
 	if handler.text != "" {
 		t.Errorf("handler.text = %q", handler.text)
 	}
-	if len(sender.sent) != 1 || sender.sent[0] != "Please send a non-empty message." {
-		t.Errorf("expected rejection message sent, got: %v", sender.sent)
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "Please send a non-empty message." {
+		t.Errorf("expected rejection message sent, got: %v", sender.sentTexts())
 	}
-	sender.sent = nil
+	if sender.lastParseModes()[0] != models.ParseModeHTML {
+		t.Errorf("expected ParseModeHTML, got %q", sender.lastParseModes()[0])
+	}
+	sender.reset()
 	handler.called = false
 	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
 		Message: &models.Message{Text: "  \t\n  ", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
@@ -421,8 +486,8 @@ func TestHandleUpdate_emptyText_sendsRejectionMessage(t *testing.T) {
 	if !handler.called {
 		t.Error("handler should be called for whitespace-only text")
 	}
-	if len(sender.sent) != 1 || sender.sent[0] != "Please send a non-empty message." {
-		t.Errorf("expected rejection message sent, got: %v", sender.sent)
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "Please send a non-empty message." {
+		t.Errorf("expected rejection message sent, got: %v", sender.sentTexts())
 	}
 }
 
@@ -438,12 +503,13 @@ func TestHandleUpdate_disallowedUser(t *testing.T) {
 	if handler.called {
 		t.Error("handler should not be called for disallowed user")
 	}
-	if len(sender.sent) != 1 || sender.sent[0] != "You are not allowed to use this bot." {
-		t.Errorf("expected 'not allowed' message, got: %v", sender.sent)
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "You are not allowed to use this bot." {
+		t.Errorf("expected 'not allowed' message, got: %v", sender.sentTexts())
 	}
 }
 
 // Covers AC-01.001 (US-01): allowed user message → handler called → reply sent to user.
+// Covers AC-12.003 (EP-012): outbound reply uses ParseModeHTML.
 func TestHandleUpdate_allowedUser_callsHandlerAndSendsReply(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
@@ -457,8 +523,11 @@ func TestHandleUpdate_allowedUser_callsHandlerAndSendsReply(t *testing.T) {
 	if handler.userID != 123 || handler.text != "hello" {
 		t.Errorf("handler called with userID=%d text=%q, want 123 \"hello\"", handler.userID, handler.text)
 	}
-	if len(sender.sent) != 1 || sender.sent[0] != "hello back" {
-		t.Errorf("expected reply \"hello back\", got: %v", sender.sent)
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "hello back" {
+		t.Errorf("expected reply \"hello back\", got: %v", sender.sentTexts())
+	}
+	if sender.lastParseModes()[0] != models.ParseModeHTML {
+		t.Errorf("expected ParseModeHTML, got %q", sender.lastParseModes()[0])
 	}
 }
 
@@ -473,8 +542,8 @@ func TestHandleUpdate_allowedUser_handlerErrorSendsGenericMessage(t *testing.T) 
 	if !handler.called {
 		t.Fatal("handler should be called")
 	}
-	if len(sender.sent) != 1 || sender.sent[0] != "Sorry, an error occurred. Please try again." {
-		t.Errorf("expected error message to user, got: %v", sender.sent)
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "Sorry, an error occurred. Please try again." {
+		t.Errorf("expected error message to user, got: %v", sender.sentTexts())
 	}
 }
 
@@ -489,8 +558,79 @@ func TestHandleUpdate_allowedUser_emptyReplySendsNothing(t *testing.T) {
 	if !handler.called {
 		t.Fatal("handler should be called")
 	}
-	if len(sender.sent) != 0 {
-		t.Errorf("empty reply should not send a message, got: %v", sender.sent)
+	if len(sender.sentTexts()) != 0 {
+		t.Errorf("empty reply should not send a message, got: %v", sender.sentTexts())
+	}
+}
+
+// Covers AC-12.004 (EP-012): entity parse error → retry plain text without parse mode.
+func TestSendOutboundText_entityErrorRetriesPlain(t *testing.T) {
+	m := &mockSender{failEntityOnce: true}
+	source := "plain **fallback**"
+	err := sendOutboundText(context.Background(), m, 1, source)
+	if err != nil {
+		t.Fatalf("sendOutboundText: %v", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.sent) != 1 {
+		t.Fatalf("want 1 successful send after retry, got %d records", len(m.sent))
+	}
+	if m.sent[0].text != source {
+		t.Errorf("fallback text = %q, want %q", m.sent[0].text, source)
+	}
+	if m.sent[0].parseMode != "" {
+		t.Errorf("fallback parse mode = %q, want empty", m.sent[0].parseMode)
+	}
+}
+
+// Covers AC-12.005 (EP-012): notifier path uses same HTML conversion (sendOutboundText).
+func TestSendOutboundText_schedulerStyle_usesHTMLParseMode(t *testing.T) {
+	m := &mockSender{}
+	err := sendOutboundText(context.Background(), m, 99, "task **done**")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.sent) != 1 || m.sent[0].parseMode != models.ParseModeHTML {
+		t.Fatalf("got %+v", m.sent)
+	}
+	if !strings.Contains(m.sent[0].text, "<b>") {
+		t.Errorf("expected converted HTML, got %q", m.sent[0].text)
+	}
+}
+
+// Covers AC-12.006 (EP-012): typing refreshed while handler runs.
+func TestHandleUpdate_typingRefreshedDuringSlowHandler(t *testing.T) {
+	saved := atomic.LoadInt64(&typingRefreshNs)
+	atomic.StoreInt64(&typingRefreshNs, int64(45*time.Millisecond))
+	defer atomic.StoreInt64(&typingRefreshNs, saved)
+
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{reply: "done", delay: 120 * time.Millisecond}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	sender.mu.Lock()
+	n := sender.chatActionCalls
+	sender.mu.Unlock()
+	if n < 2 {
+		t.Errorf("expected at least 2 typing actions, got %d", n)
+	}
+}
+
+// Covers AC-12.007 (EP-012): SendChatAction errors do not block handler or reply.
+func TestHandleUpdate_chatActionErrorStillSendsReply(t *testing.T) {
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{chatActionErr: os.ErrClosed}
+	handler := &mockHandler{reply: "ok"}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "ok" {
+		t.Errorf("expected reply ok, got %v", sender.sentTexts())
 	}
 }
 

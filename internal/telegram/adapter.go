@@ -2,15 +2,25 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"pa/internal/config"
 	"pa/internal/core"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 )
+
+// typingRefreshNs is the typing refresh interval in nanoseconds (atomic; default 4s). Tests may store a shorter duration.
+var typingRefreshNs int64 = int64(4 * time.Second)
+
+func typingRefreshDuration() time.Duration {
+	return time.Duration(atomic.LoadInt64(&typingRefreshNs))
+}
 
 // Adapter runs the Telegram bot with long polling; filters by allowed users and forwards text to the handler.
 // Implements scheduler.Notifier when bot is set (SendMessage sends to notifyChatID).
@@ -65,11 +75,7 @@ func (a *Adapter) SendMessage(ctx context.Context, text string) error {
 	if a.bot == nil || a.notifyChatID == 0 {
 		return fmt.Errorf("telegram: cannot notify (bot not started or no chat id)")
 	}
-	_, err := a.bot.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: a.notifyChatID,
-		Text:   text,
-	})
-	return err
+	return sendOutboundText(ctx, a.bot, a.notifyChatID, text)
 }
 
 // Run starts long polling and blocks until ctx is cancelled. Incoming text messages from allowed users are passed to handler; replies are sent back.
@@ -90,9 +96,54 @@ func (a *Adapter) Run(ctx context.Context, handler core.MessageHandler) error {
 	return nil
 }
 
-// messageSender sends a message to a chat (used so update handling can be tested with a mock).
-type messageSender interface {
+// telegramOutbound is implemented by *bot.Bot and test mocks.
+type telegramOutbound interface {
 	SendMessage(ctx context.Context, params *bot.SendMessageParams) (*models.Message, error)
+	SendChatAction(ctx context.Context, params *bot.SendChatActionParams) (bool, error)
+}
+
+func isEntityParseError(err error) bool {
+	if err == nil || !errors.Is(err, bot.ErrorBadRequest) {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "parse") || strings.Contains(msg, "entity")
+}
+
+func sendOutboundText(ctx context.Context, tg telegramOutbound, chatID int64, source string) error {
+	htmlText := MarkdownToTelegramHTML(source)
+	_, err := tg.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    chatID,
+		Text:      htmlText,
+		ParseMode: models.ParseModeHTML,
+	})
+	if err != nil && isEntityParseError(err) {
+		_, err = tg.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: chatID,
+			Text:   source,
+		})
+	}
+	return err
+}
+
+func runTypingRefresh(ctx context.Context, tg telegramOutbound, chatID int64) {
+	send := func() {
+		_, _ = tg.SendChatAction(ctx, &bot.SendChatActionParams{
+			ChatID: chatID,
+			Action: models.ChatActionTyping,
+		})
+	}
+	send()
+	t := time.NewTicker(typingRefreshDuration())
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			send()
+		}
+	}
 }
 
 func (a *Adapter) makeUpdateHandler(handler core.MessageHandler) bot.HandlerFunc {
@@ -102,7 +153,7 @@ func (a *Adapter) makeUpdateHandler(handler core.MessageHandler) bot.HandlerFunc
 }
 
 // handleUpdate processes one update; sender is used to send replies (allows tests to use a mock).
-func (a *Adapter) handleUpdate(ctx context.Context, sender messageSender, handler core.MessageHandler, update *models.Update) {
+func (a *Adapter) handleUpdate(ctx context.Context, sender telegramOutbound, handler core.MessageHandler, update *models.Update) {
 	msg := update.Message
 	if msg == nil || msg.From == nil {
 		return
@@ -110,25 +161,20 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender messageSender, handle
 	text := strings.TrimSpace(msg.Text)
 	userID := msg.From.ID
 	if _, ok := a.allowedUserIDs[userID]; !ok {
-		_, _ = sender.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
-			Text:   "You are not allowed to use this bot.",
-		})
+		_ = sendOutboundText(ctx, sender, msg.Chat.ID, "You are not allowed to use this bot.")
 		return
 	}
 
+	typingCtx, typingCancel := context.WithCancel(ctx)
+	go runTypingRefresh(typingCtx, sender, msg.Chat.ID)
 	reply, err := handler.HandleMessage(ctx, userID, text)
+	typingCancel()
+
 	if err != nil {
-		_, _ = sender.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
-			Text:   "Sorry, an error occurred. Please try again.",
-		})
+		_ = sendOutboundText(ctx, sender, msg.Chat.ID, "Sorry, an error occurred. Please try again.")
 		return
 	}
 	if reply != "" {
-		_, _ = sender.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
-			Text:   reply,
-		})
+		_ = sendOutboundText(ctx, sender, msg.Chat.ID, reply)
 	}
 }

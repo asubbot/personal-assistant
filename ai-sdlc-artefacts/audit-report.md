@@ -1,12 +1,12 @@
 # Project-level audit report
 
-**Date and time of creation:** 2026-04-09 16:36 UTC
+**Date and time of creation:** 2026-04-09 (UTC)
 
 **Purpose:** Project-level audit summary — status of all epics (pipeline stage 9). Process: [09-audit.skill.md](../ai-sdlc/specification/skills/09-audit.skill.md), [pipeline.spec.md](../ai-sdlc/specification/pipeline.spec.md).
 
 **Links:** [scope.md](scope.md), [strategy.md](strategy.md).
 
-**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, this rollup does **not** include a dedicated project-wide `make check` or aggregate coverage line. **EP-011** closure audit on this date: `make check` passed; `./bin/validate EP-011` 16/16 AC; total statements **72.8%** (see [ep-audit-report](epics/EP-011/ep-audit-report.md)).
+**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, the rollup table does **not** require a duplicate project-wide coverage line; the **current** codebase total from the latest `make check` is **73.4%** statements (`total:` line from `go tool cover -func=coverage.out`, 2026-04-09).
 
 ---
 
@@ -24,7 +24,8 @@
 | [EP-008](epics/EP-008/ep-scope.md) | LLM Parameters Enhancement | DONE | 79.5% | [ep-audit-report (2026-03-22)](epics/EP-008/ep-audit-report.md) |
 | [EP-009](epics/EP-009/ep-scope.md) | Dynamic Tool Creation with Docker Sandbox | DONE | 77.4% total; 73.3% EP-009 slice | [ep-audit-report (2026-03-23)](epics/EP-009/ep-audit-report.md) |
 | [EP-010](epics/EP-010/ep-scope.md) | Distributed remote Go tool pipeline | CANCELED | — | — |
-| [EP-011](epics/EP-011/ep-scope.md) | Native web search and HTTPS content fetch (tools) | DONE | 72.8% | [ep-audit-report (2026-04-09)](epics/EP-011/ep-audit-report.md) |
+| [EP-011](epics/EP-011/ep-scope.md) | Native web search and HTTPS content fetch (tools) | DONE | 72.9% | [ep-audit-report (2026-04-09)](epics/EP-011/ep-audit-report.md) |
+| [EP-012](epics/EP-012/ep-scope.md) | Telegram HTML formatting and typing indicator | DONE | ~73.4% | [ep-audit-report (2026-04-09)](epics/EP-012/ep-audit-report.md) |
 
 **EP-010:** The epic folder contains [ep-scope.md](epics/EP-010/ep-scope.md) only (canceled; implementation snapshot on feature branch `epic/EP-010-distributed-remote-tool-pipeline`, tag `Canceled`). No **ep-audit-report.md** in this folder.
 
@@ -34,7 +35,7 @@
 
 | Category | Epics |
 |----------|-------|
-| **DONE** (ep-scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011 |
+| **DONE** (ep-scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012 |
 | **NEW** | EP-002, EP-003, EP-005, EP-007 |
 | **CANCELED** | EP-010 |
 | **IN_PROGRESS** | None |
@@ -47,15 +48,16 @@ When an epic moves to **IN_PROGRESS**, run a full epic audit per stage 9 and add
 
 ## Project-wide acceptance criteria check (validator)
 
-Command: `./bin/validate` (no arguments), run 2026-04-09 after epic closure.
+Command: `./bin/validate` (no arguments), run 2026-04-09.
 
 | Result | Detail |
 |--------|--------|
-| **In-scope traced** | 127/127 (100%) |
-| **Automated** | 114 (89.8%) |
+| **In-scope traced** | 134/134 (100%) |
+| **Automated** | 121 (90.3%) |
 | **Manual-only** | 13 |
 | **Deferred** | 2 |
-| **Total ACs** | 129 |
-| **Epics at 100% trace** (in validator scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011 |
+| **Total ACs** | 136 |
+| **Epics at 100% trace** (in validator scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012 |
+| **Test functions with t.Skip** (project-wide) | 25 |
 
-See [VALIDATION.md](../ai-sdlc/tools/validate/VALIDATION.md) for rules. Epics **NEW**, **CANCELED**, or without validator mapping may not appear in the epic summary table above.
+See [VALIDATION.md](../ai-sdlc/tools/validate/VALIDATION.md) for rules. Epics **NEW**, **CANCELED**, or without validator mapping may not appear in the validator epic list.
