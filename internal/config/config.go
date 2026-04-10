@@ -36,6 +36,14 @@ type Config struct {
 	RuntimeSkillPackages []*runtimeskills.Package `json:"-"`
 	// ConversationSession is optional; when enabled, keeps a sliding window of exchanges per session key (EP-014).
 	ConversationSession *ConversationSessionConfig `json:"conversation_session,omitempty"`
+	// ReadMemory is optional JSON; limits only. Native read_memory is registered whenever memory_dir is available (EP-002).
+	ReadMemory *ReadMemoryConfig `json:"read_memory,omitempty"`
+}
+
+// ReadMemoryConfig limits the native read_memory tool (EP-002). The tool is always registered when memory is configured.
+type ReadMemoryConfig struct {
+	MaxSpanDays    int `json:"max_span_days"`
+	MaxOutputBytes int `json:"max_output_bytes"`
 }
 
 // ConversationSessionConfig enables in-process sliding session memory (EP-014, REQ-14.001).

@@ -17,6 +17,7 @@ import (
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
 	"pa/internal/memory"
+	"pa/internal/memoryjob"
 	"pa/internal/noderunner"
 	"pa/internal/scheduler"
 	"pa/internal/skillindex"
@@ -63,7 +64,7 @@ func newLLMProvider(cfg *config.Config, logger *slog.Logger) (llm.Provider, erro
 	if err != nil {
 		return nil, err
 	}
-	return llmrouter.NewProviderAdapter(providers, labels, logger)
+	return llmrouter.NewProviderAdapter(providers, labels, llmrouter.SummarizeRouterConfig(cfg), logger)
 }
 
 // newLLMForConversation returns the ordered providers and labels for the unified router in core.
@@ -177,6 +178,29 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	var memJob *memoryjob.Runner
+	if memoryStore != nil && strings.TrimSpace(cfg.Paths.LLMLogDir) != "" &&
+		embedder != nil && vectorStore != nil {
+		summLLM, perr := newLLMProvider(cfg, logger)
+		if perr != nil {
+			return fmt.Errorf("memory summarization llm: %w", perr)
+		}
+		paLoc, locErr := config.PALocation(cfg)
+		if locErr != nil {
+			return fmt.Errorf("memory summarization pa_timezone: %w", locErr)
+		}
+		memJob = memoryjob.Start(ctx, memoryjob.Deps{
+			Cfg:         cfg,
+			Loc:         paLoc,
+			Memory:      memoryStore,
+			Vector:      vectorStore,
+			Embedder:    embedder,
+			LLMProvider: summLLM,
+			Logger:      logger,
+		})
+		logger.Info("memory summarization worker started")
+	}
+
 	toolRegistry := tools.NewRegistry()
 	if nodeRunner != nil {
 		toolRegistry.Register(tools.NewRunOnNode(nodeRunner))
@@ -190,9 +214,28 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
 	}
 	registerWebToolsIfEnabled(cfg, toolRegistry, logger)
+	if memoryStore != nil {
+		span, outBytes := 31, 256*1024
+		if rm := cfg.ReadMemory; rm != nil {
+			if rm.MaxSpanDays != 0 {
+				span = rm.MaxSpanDays
+			}
+			if rm.MaxOutputBytes != 0 {
+				outBytes = rm.MaxOutputBytes
+			}
+		}
+		toolRegistry.Register(tools.NewReadMemoryTool(memoryStore, span, outBytes))
+	}
 	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
 		defer cleanup()
 	}
+
+	defer func() {
+		if memJob != nil {
+			memJob.Stop()
+			<-memJob.Done()
+		}
+	}()
 
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
@@ -286,10 +329,14 @@ func runSummarize(cfg *config.Config, value string, logger *slog.Logger) error {
 	}
 	switch scope.Kind {
 	case "day":
+		d := scope.Day.UTC().Format("2006-01-02")
+		logger.Info("summarize: starting", "scope", "day", "day", d)
 		return runSummarizeDay(cfg, scope.Day, logger)
 	case "month":
+		logger.Info("summarize: starting", "scope", "month", "year", scope.Year, "month", scope.Month)
 		return runSummarizeMonth(cfg, scope.Year, scope.Month, logger)
 	case "year":
+		logger.Info("summarize: starting", "scope", "year", "year", scope.Year)
 		return runSummarizeYear(cfg, scope.Year, logger)
 	default:
 		return fmt.Errorf("summarize: unknown scope %q", scope.Kind)
@@ -301,16 +348,23 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir memory: %w", err)
 	}
-	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
+	loc, err := config.PALocation(cfg)
+	if err != nil {
+		return fmt.Errorf("summarize: pa_timezone: %w", err)
+	}
+	logger.Info("summarize: opening memory store", "memory_dir", cfg.Paths.MemoryDir)
+	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir, loc)
 	if err != nil {
 		return fmt.Errorf("summarize: memory store: %w", err)
 	}
 
+	logger.Info("summarize: building llm provider")
 	llmProvider, err := newLLMProvider(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
 
+	logger.Info("summarize: building embedder")
 	embedder, err := embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
 		return fmt.Errorf("summarize: embedder: %w", err)
@@ -320,6 +374,7 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
+	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
 	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
@@ -330,14 +385,18 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 		}
 	}()
 
+	dayCal := time.Date(day.Year(), day.Month(), day.Day(), 12, 0, 0, 0, loc)
+	dayStr := dayCal.In(loc).Format("2006-01-02")
+	logger.Info("summarize: running day pipeline", "day", dayStr, "llm_log_dir", cfg.Paths.LLMLogDir)
 	ctx := context.Background()
-	if err := summarize.Day(ctx, day, summarize.DayConfig{
+	if err := summarize.Day(ctx, dayCal, summarize.DayConfig{
 		LLMLogDir:   cfg.Paths.LLMLogDir,
 		LLMProvider: llmProvider,
 		MemoryStore: memoryStore,
 		Embedder:    embedder,
 		VectorStore: vectorStore,
 		Logger:      logger,
+		Loc:         loc,
 	}); err != nil {
 		return fmt.Errorf("summarize: %w", err)
 	}
@@ -349,16 +408,23 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir memory: %w", err)
 	}
-	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
+	loc, err := config.PALocation(cfg)
+	if err != nil {
+		return fmt.Errorf("summarize: pa_timezone: %w", err)
+	}
+	logger.Info("summarize: opening memory store", "memory_dir", cfg.Paths.MemoryDir)
+	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir, loc)
 	if err != nil {
 		return fmt.Errorf("summarize: memory store: %w", err)
 	}
 
+	logger.Info("summarize: building llm provider")
 	llmProvider, err := newLLMProvider(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
 
+	logger.Info("summarize: building embedder")
 	embedder, err := embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
 		return fmt.Errorf("summarize: embedder: %w", err)
@@ -368,6 +434,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
+	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
 	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
@@ -378,6 +445,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 		}
 	}()
 
+	logger.Info("summarize: running month pipeline", "year", year, "month", month)
 	ctx := context.Background()
 	if err := summarize.Month(ctx, year, month, summarize.MonthConfig{
 		LLMProvider: llmProvider,
@@ -396,16 +464,23 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 	if err := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir memory: %w", err)
 	}
-	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir)
+	loc, err := config.PALocation(cfg)
+	if err != nil {
+		return fmt.Errorf("summarize: pa_timezone: %w", err)
+	}
+	logger.Info("summarize: opening memory store", "memory_dir", cfg.Paths.MemoryDir)
+	memoryStore, err := memory.NewStore(cfg.Paths.MemoryDir, loc)
 	if err != nil {
 		return fmt.Errorf("summarize: memory store: %w", err)
 	}
 
+	logger.Info("summarize: building llm provider")
 	llmProvider, err := newLLMProvider(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
 
+	logger.Info("summarize: building embedder")
 	embedder, err := embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
 		return fmt.Errorf("summarize: embedder: %w", err)
@@ -415,6 +490,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
+	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
 	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
@@ -425,6 +501,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 		}
 	}()
 
+	logger.Info("summarize: running year pipeline", "year", year)
 	ctx := context.Background()
 	if err := summarize.Year(ctx, year, summarize.YearConfig{
 		LLMProvider: llmProvider,
@@ -524,7 +601,8 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 		if mkErr := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); mkErr != nil {
 			return nil, nil, nil, nil, nil, nil, nil, mkErr
 		}
-		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir)
+		loc, _ := time.LoadLocation(strings.TrimSpace(cfg.PATimezone))
+		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir, loc)
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, nil, err
 		}

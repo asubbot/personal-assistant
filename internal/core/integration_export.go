@@ -77,6 +77,8 @@ func (m *IntegrationMockVectorStore) Search(_ context.Context, _ []float32, _ in
 	return nil, nil
 }
 
+func (m *IntegrationMockVectorStore) Exists(context.Context, string) (bool, error) { return false, nil }
+
 func (m *IntegrationMockVectorStore) Close() error { return nil }
 
 // IntegrationMockToolIndex implements ToolIndex for handler tests.

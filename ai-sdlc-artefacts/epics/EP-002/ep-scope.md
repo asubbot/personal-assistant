@@ -40,8 +40,8 @@ Terms from the project [scope.md](../../scope.md) glossary apply (Long-term memo
 
 ## Success criteria
 
-- **Automatic day run:** When the server is running, day summarization for the previous day runs at the configured time (e.g. 01:00 in pa_timezone) without manual or external cron intervention.
-- **Automatic month/year run:** Month summarization for the previous month and year summarization for the previous year run on schedule (e.g. first day of month/year in pa_timezone) without manual or external cron intervention.
+- **Automatic day run:** When the server is running, day summarization for the previous day runs at a fixed built-in local time (**01:00** in **pa_timezone**) without manual or external cron intervention.
+- **Automatic month/year run:** Month summarization for the previous month and year summarization for the previous year run on a fixed built-in schedule (first day of month/year in **pa_timezone** at **01:00** local) without manual or external cron intervention.
 - **Catch-up:** After a cold start, if yesterday has LLM logs and no day summary, one summarization run for yesterday is performed (e.g. on startup or shortly after). Missed month or year summaries are similarly caught up when applicable.
 - **Date in context:** Vector search results and stored summary/turn texts include the date (or month/year) in the text visible to the model (e.g. "Date: YYYY-MM-DD" or equivalent).
 - **Calendar-bound questions via skill + native tool:** A user can ask in natural language about past periods (e.g. a specific day, "last week", or equivalent in another language). When day summaries exist for the requested period, the assistant obtains them through **native memory retrieval tool call(s)** with **ISO date arguments**, following the **memory retrieval skill**; answers are consistent with `pa_timezone` semantics defined in the skill. Vector retrieval may supplement semantic context.

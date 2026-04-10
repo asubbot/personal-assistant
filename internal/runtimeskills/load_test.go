@@ -69,3 +69,13 @@ func TestValidateToolRefs_native(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Covers AC-02.012: memory retrieval skill may list read_memory in frontmatter; EP-013 validation accepts it when id is on native allowlist.
+func TestValidateToolRefs_readMemoryNative(t *testing.T) {
+	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
+	pkgs := []*Package{{ID: "memory-retrieval", Tools: []string{"read_memory"}}}
+	allow := []string{"run_on_node", "create_tool", "read_memory"}
+	if err := ValidateToolRefs(pkgs, cat, allow); err != nil {
+		t.Fatal(err)
+	}
+}

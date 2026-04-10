@@ -278,7 +278,7 @@ func TestNewWithTable_validation(t *testing.T) {
 	if err == nil {
 		t.Fatal("NewWithTable(empty table): expected error")
 	}
-	if err != nil && !strings.Contains(err.Error(), "table name is required") {
+	if !strings.Contains(err.Error(), "table name is required") {
 		t.Errorf("NewWithTable(empty table): error = %v", err)
 	}
 
@@ -286,7 +286,7 @@ func TestNewWithTable_validation(t *testing.T) {
 	if err == nil {
 		t.Fatal("NewWithTable(invalid table name with hyphen): expected error")
 	}
-	if err != nil && !strings.Contains(err.Error(), "alphanumeric") {
+	if !strings.Contains(err.Error(), "alphanumeric") {
 		t.Errorf("NewWithTable(invalid table): error = %v", err)
 	}
 

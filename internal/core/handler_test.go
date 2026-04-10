@@ -16,6 +16,7 @@ import (
 	"pa/internal/vector"
 	"strings"
 	"testing"
+	"time"
 )
 
 // captureHandler records log records for assertion (AC-01.031, REQ-01.021).
@@ -133,6 +134,8 @@ func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vecto
 	}
 	return nil, nil
 }
+
+func (m *mockVectorStore) Exists(context.Context, string) (bool, error) { return false, nil }
 
 func (m *mockVectorStore) Close() error { return nil }
 
@@ -439,7 +442,7 @@ func TestHandleMessage_llmLogEntryUsesDefaultModelWhenResultModelEmpty(t *testin
 	}
 }
 
-// Covers AC-01.014, REQ-01.007: semantic search results are injected into the system message as relevant past context.
+// Covers AC-01.014, REQ-01.007, AC-02.013: semantic search injects relevant past context without invoking read_memory (baseline vector path).
 func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
@@ -469,7 +472,7 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 	}
 }
 
-// Covers AC-01.013, REQ-01.007: after successful LLM reply, handler indexes the turn (calls vectorStore.Add with user and assistant text).
+// Covers AC-01.013, REQ-01.007, AC-02.008, AC-02.009: indexTurn stores Date line and [turn] label in vector chunk text.
 func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "reply text", Usage: llm.Usage{}}}
@@ -491,7 +494,8 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	if len(vs.addChunks) != 1 {
 		t.Fatalf("Add calls = %d, want 1", len(vs.addChunks))
 	}
-	wantChunk := "User: user said this\nAssistant: reply text"
+	dateStr := time.Now().UTC().Format("2006-01-02")
+	wantChunk := "Date: " + dateStr + "\n[turn]\nUser: user said this\nAssistant: reply text"
 	if vs.addChunks[0] != wantChunk {
 		t.Errorf("Add chunk = %q, want %q", vs.addChunks[0], wantChunk)
 	}
@@ -570,6 +574,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 
 	// Two chunks: tail fit drops the oversized second chunk; first remains (no mid-chunk truncation).
 	shortChunk := "User: hi\nAssistant: hello"
+	shortChunkLabeled := "[turn]\n" + shortChunk
 	longY := strings.Repeat("y", defaultMaxDynamicSystemRunes)
 	vs2 := &mockVectorStore{
 		searchResults: []vector.SearchResult{
@@ -593,11 +598,56 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 	if !strings.Contains(sysContent2, "Relevant past context") {
 		t.Errorf("system message must contain 'Relevant past context' when the first chunk remains after tail fit")
 	}
-	if !strings.Contains(sysContent2, shortChunk) {
+	if !strings.Contains(sysContent2, shortChunkLabeled) && !strings.Contains(sysContent2, shortChunk) {
 		t.Errorf("system message must contain the first chunk")
 	}
 	if strings.Contains(sysContent2, longY[:200]) {
 		t.Errorf("system message must not contain the dropped second chunk")
+	}
+}
+
+// Covers AC-02.009: vector search prefixes retrieved summary chunks with [summary:day] from stable id prefix.
+func TestHandleMessage_vectorSearchPrefixesSummaryDayLabel(t *testing.T) {
+	logger := slog.Default()
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
+	stored := "Date: 2026-03-01\n[summary:day]\nRemembered fact."
+	vs := &mockVectorStore{
+		searchResults: []vector.SearchResult{{ID: "summary:day:2026-03-01", Text: stored}},
+	}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, provider),
+		vectorStore:           vs,
+		embedder:              emb,
+		logger:                logger,
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+		vectorSearchTopK:      defaultVectorSearchTopK,
+	}
+	_, err := h.HandleMessage(context.Background(), 1, "", "what did we save?")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	sys := provider.lastMessages[0].Content
+	if !strings.Contains(sys, "[summary:day]") || !strings.Contains(sys, "Remembered fact.") {
+		t.Errorf("system message should include labeled summary chunk; got:\n%s", sys)
+	}
+	if c := strings.Count(sys, "[summary:day]"); c != 1 {
+		t.Errorf("want exactly one [summary:day] marker (no duplicate retrieval prefix), got %d in:\n%s", c, sys)
+	}
+}
+
+// Covers AC-02.009: retrievalChunkWithLabel avoids duplicating an embedded type line already present in stored vector text.
+func TestRetrievalChunkWithLabel_noDuplicateWhenBodyHasMarker(t *testing.T) {
+	stored := "Date: 2026-03-01\n[summary:day]\nBody"
+	got := retrievalChunkWithLabel("summary:day", stored)
+	if got != stored {
+		t.Fatalf("got %q, want unchanged body", got)
+	}
+	raw := "plain snippet without marker"
+	got2 := retrievalChunkWithLabel("turn", raw)
+	want2 := "[turn]\n" + raw
+	if got2 != want2 {
+		t.Fatalf("got %q, want %q", got2, want2)
 	}
 }
 

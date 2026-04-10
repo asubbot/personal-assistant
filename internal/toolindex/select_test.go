@@ -29,6 +29,8 @@ func (m *mockSearchStore) Search(_ context.Context, _ []float32, topK int) ([]ve
 	return m.searchResults[:topK], nil
 }
 
+func (m *mockSearchStore) Exists(context.Context, string) (bool, error) { return false, nil }
+
 func catalogWithIDs(ids ...string) *toolcatalog.Catalog {
 	tools := make(map[string]*toolcatalog.Tool)
 	for _, id := range ids {

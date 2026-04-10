@@ -1,0 +1,49 @@
+@startuml c4-container
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 70
+skinparam ranksep 70
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-002 Automatic memory summarization
+
+Person_Ext(user, "User", "Messaging user")
+System_Ext(llm_ext, "LLM API", "Completion + embeddings")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Channel adapter", "Go", "Telegram / others")
+    Container(core, "Go Core", "Go", "Handler, tool loop, vector inject, native memory tool")
+    Container(memjob, "Memory jobs", "Go", "Queue, schedule, catch-up; calls summarize")
+    Container(summ, "Summarize", "Go", "Day / month / year pipeline")
+    Container(skills, "Runtime skills", "FS + index", "EP-013; memory retrieval skill")
+    ContainerDb(memfs, "memory_dir", "FS", "YYYY/MM/DD/summary.md")
+    ContainerDb(vec, "Vector stores", "SQLite+vec", "Turns + summaries")
+    Container(logs, "LLM logs", "JSONL", "Per-day logs for summarization")
+    Container(cfg, "Config", "JSON", "pa_timezone, paths")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "User text")
+Rel(core, tg, "Replies")
+Rel(core, cfg, "Load")
+Rel(core, vec, "Search + index turns")
+Rel(core, skills, "Select skill packages")
+Rel(core, llm_ext, "Completion + tools")
+Rel(core, memfs, "read_memory reads")
+Rel(memjob, cfg, "Schedule TZ")
+Rel(memjob, summ, "Run scope")
+Rel(memjob, logs, "Read day input")
+Rel(summ, memfs, "Write summaries")
+Rel(summ, vec, "Upsert summary embeddings")
+Rel(summ, llm_ext, "Summarization LLM")
+
+@enduml

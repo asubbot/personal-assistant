@@ -18,6 +18,7 @@ import (
 	"pa/internal/promptmarkers"
 	"pa/internal/runtimeskills"
 	"pa/internal/skillindex"
+	"pa/internal/summarize"
 	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/toolindex"
@@ -83,6 +84,8 @@ type conversationHandler struct {
 	// EP-014 sliding session memory (optional).
 	sessionCfg   *config.ConversationSessionConfig
 	sessionStore *sessionWindowStore
+	// paLoc is pa_timezone for vector turn dates (EP-002); nil means UTC.
+	paLoc *time.Location
 }
 
 // checkUserMessage returns trimmed text, or earlyReply when the message must not reach the LLM.
@@ -248,6 +251,17 @@ func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID
 	}
 }
 
+func paLocationFromConfig(cfg *config.Config) *time.Location {
+	if cfg == nil {
+		return time.UTC
+	}
+	l, err := config.PALocation(cfg)
+	if err != nil {
+		return time.UTC
+	}
+	return l
+}
+
 func (h *conversationHandler) sessionMemoryEnabled() bool {
 	return h != nil && h.sessionCfg != nil && h.sessionCfg.Enabled && h.sessionStore != nil
 }
@@ -272,6 +286,8 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 	if stop {
 		return early, nil
 	}
+	EnterUserTurn()
+	defer LeaveUserTurn()
 	sk := strings.TrimSpace(sessionKey)
 	if sk == "" {
 		sk = fmt.Sprintf("uid:%d", userID)
@@ -647,6 +663,16 @@ func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID st
 	}
 }
 
+// retrievalChunkWithLabel prepends a type line for the LLM when stored vector text does not already carry it
+// (summaries and indexed turns embed `[summary:*]` / `[turn]` after the Date line — avoid duplicating the label).
+func retrievalChunkWithLabel(label, body string) string {
+	marker := "\n[" + label + "]\n"
+	if strings.Contains(body, marker) || strings.HasPrefix(strings.TrimSpace(body), "["+label+"]\n") {
+		return body
+	}
+	return "[" + label + "]\n" + body
+}
+
 // gatherRetrievedChunkTexts returns non-empty vector memory chunk texts in search order (REQ-01.006, REQ-01.007).
 // The dynamic system tail fitter may drop trailing chunks to satisfy max_dynamic_system_runes.
 func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, userText string) []string {
@@ -672,7 +698,8 @@ func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, use
 		if strings.TrimSpace(r.Text) == "" {
 			continue
 		}
-		chunks = append(chunks, r.Text)
+		label := summarize.VectorChunkLabel(r.ID)
+		chunks = append(chunks, retrievalChunkWithLabel(label, r.Text))
 	}
 	h.logger.DebugContext(ctx, "context chunks", "non_empty", len(chunks), "total", len(results))
 	return chunks
@@ -711,7 +738,12 @@ func (h *conversationHandler) logLLMResponse(ctx context.Context, result *llm.Co
 
 // indexTurn adds the user message and assistant reply to the vector store for future semantic search (REQ-01.007).
 func (h *conversationHandler) indexTurn(ctx context.Context, userText, reply string) error {
-	chunk := "User: " + userText + "\nAssistant: " + reply
+	loc := time.UTC
+	if h != nil && h.paLoc != nil {
+		loc = h.paLoc
+	}
+	dateStr := time.Now().In(loc).Format("2006-01-02")
+	chunk := "Date: " + dateStr + "\n[turn]\nUser: " + userText + "\nAssistant: " + reply
 	if promptmarkers.TextContainsForbiddenMarkerLine(chunk) {
 		return fmt.Errorf("indexTurn: chunk contains forbidden PA marker line")
 	}

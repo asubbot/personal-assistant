@@ -8,7 +8,7 @@ import (
 
 // Covers AC-01.011, AC-01.012 (US-06): NewStore rejects empty rootDir (memory in designated dir, single store, calendar structure).
 func TestNewStore_emptyRootDir(t *testing.T) {
-	_, err := NewStore("")
+	_, err := NewStore("", nil)
 	if err == nil {
 		t.Fatal("expected error for empty rootDir")
 	}
@@ -22,7 +22,7 @@ func TestWriteDaySummary_ReadDaySummary_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
-	store, err := NewStore(dir)
+	store, err := NewStore(dir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestReadDaySummary_missingFile_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
-	store, err := NewStore(dir)
+	store, err := NewStore(dir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestWriteMonthSummary_ReadMonthSummary_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
-	store, err := NewStore(dir)
+	store, err := NewStore(dir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestReadMonthSummary_missing_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
-	store, err := NewStore(dir)
+	store, err := NewStore(dir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestWriteYearSummary_ReadYearSummary_roundtrip(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
-	store, err := NewStore(dir)
+	store, err := NewStore(dir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestReadYearSummary_missing_returnsEmpty(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 
-	store, err := NewStore(dir)
+	store, err := NewStore(dir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}

@@ -45,8 +45,15 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 - **`tool_pre_selection`** — **required**; `tool_search_top_k`, `tool_min_count`, and `tool_fallback_cap` must each be **≥ 1** (with documented upper caps to catch typos). No implicit defaults.
 - **`conversation_context`** — **required**; `max_dynamic_system_runes` (UTF-8 rune budget for the dynamic system tail: tool instructions, optional Hermes block, retrieved memory, runtime skills) and `vector_search_top_k` must each be **≥ 1**.
 - **`conversation_session`** — **optional** (EP-014); sliding **in-memory** window of recent user/assistant **exchanges** per session key. When present and **`enabled`** is true: **`max_session_exchanges`** must be **≥ 1** (fail fast at load otherwise). Each exchange is one user message plus the final assistant reply for that turn. Session keys come from the inbound adapter (Telegram uses **chat id** as a decimal string). When disabled or omitted, the LLM request is built as before (**system** then a single **user** message). The window is **not persisted**; a process restart clears it.
-- **`pa_timezone`** — **required**; non-empty IANA name (e.g. `UTC`, `Europe/Moscow`) for assistant day boundaries / summarization.
+- **`pa_timezone`** — **required**; non-empty IANA name (e.g. `UTC`, `Europe/Moscow`) for assistant day boundaries, LLM log daily filenames, `memory_dir` day paths, automatic summarization, and **`read_memory`** date interpretation.
+- **`read_memory`** — **optional** (EP-002). If omitted, defaults apply: **`max_span_days`** **31**, **`max_output_bytes`** **262144**. The native **`read_memory`** tool is **always registered** when **`paths.memory_dir`** is configured and the memory store initializes (baseline product). **`max_span_days`** must be **1–3660** and **`max_output_bytes`** **1024–52428800** when the object is present or after defaults apply.
 - **`log_redaction`** — **required**; `additional_patterns` may be an empty array. Each pattern has `id`, `regex`, `replacement`; IDs must not collide with built-in redactor IDs.
+
+## Automatic memory summarization and read_memory (EP-002)
+
+- In **bot mode**, when **`paths.memory_dir`**, **`paths.llm_log_dir`**, embedding, and the vector index are available, a background worker always runs automatic day/month/year summarization (previous calendar day at **01:00** local `pa_timezone`, month/year rollups on the first local day of the month/year at **01:00**, tick **60s**, job timeout **1800s**, reconciliation scan **90** days; not configurable) and startup catch-up (see epic **EP-002**). Interactive Telegram turns take precedence over background jobs when both are pending.
+- LLM JSONL logs use one file per **calendar day in `pa_timezone`** (`llm-YYYY-MM-DD.jsonl`), aligned with day summaries under `memory_dir`.
+- A sample runtime skill that references **`read_memory`** is in **[config.examples/skills/memory-retrieval/SKILL.md](../config.examples/skills/memory-retrieval/SKILL.md)** — copy the package under your configured **`paths.skills_dir`** when **`runtime_skills.enabled`** is true.
 
 ## Scheduled tasks
 

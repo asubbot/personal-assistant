@@ -15,6 +15,8 @@ type Store interface {
 	// Search returns the top-k nearest neighbors for the query embedding.
 	// Score is distance (lower is closer). Order is by distance ascending.
 	Search(ctx context.Context, queryEmbedding []float32, topK int) ([]SearchResult, error)
+	// Exists reports whether a document with the given id is present (EP-002 reconciliation).
+	Exists(ctx context.Context, id string) (bool, error)
 	Close() error
 }
 

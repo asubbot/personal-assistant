@@ -12,24 +12,50 @@ import (
 // a calendar directory structure year/month/day. Not subdivided by interlocutor.
 type Store struct {
 	rootDir string
+	loc     *time.Location // calendar interpretation for day paths; nil means UTC
 }
 
 // NewStore creates a memory store rooted at rootDir (e.g. cfg.Paths.MemoryDir).
 // rootDir must be non-empty. Directories are created on first write (e.g. WriteDaySummary).
-func NewStore(rootDir string) (*Store, error) {
+// loc is the assistant calendar timezone (pa_timezone); nil defaults to UTC.
+func NewStore(rootDir string, loc *time.Location) (*Store, error) {
 	if rootDir == "" {
 		return nil, fmt.Errorf("memory: rootDir is required")
 	}
-	return &Store{rootDir: filepath.Clean(rootDir)}, nil
+	return &Store{rootDir: filepath.Clean(rootDir), loc: loc}, nil
+}
+
+// RootDir returns the cleaned memory root directory.
+func (s *Store) RootDir() string {
+	if s == nil {
+		return ""
+	}
+	return s.rootDir
+}
+
+// Location returns the calendar timezone used for day paths, or UTC if unset.
+func (s *Store) Location() *time.Location {
+	if s == nil || s.loc == nil {
+		return time.UTC
+	}
+	return s.loc
+}
+
+func (s *Store) calendarOf(day time.Time) (y int, m time.Month, d int) {
+	loc := time.UTC
+	if s != nil && s.loc != nil {
+		loc = s.loc
+	}
+	return day.In(loc).Date()
 }
 
 // pathForDaySummary returns the path for the day summary: rootDir/YYYY/MM/DD/summary.md.
 func (s *Store) pathForDaySummary(day time.Time) string {
-	y, m, d := day.UTC().Date()
+	y, m, d := s.calendarOf(day)
 	return filepath.Join(s.rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", int(m)), fmt.Sprintf("%02d", d), "summary.md")
 }
 
-// WriteDaySummary writes the day summary markdown for the given calendar day (UTC).
+// WriteDaySummary writes the day summary markdown for the given calendar day in pa_timezone.
 // Path: rootDir/YYYY/MM/DD/summary.md. Creates parent directories as needed. Overwrites existing file.
 func (s *Store) WriteDaySummary(ctx context.Context, day time.Time, content string) error {
 	path := s.pathForDaySummary(day)
@@ -43,7 +69,7 @@ func (s *Store) WriteDaySummary(ctx context.Context, day time.Time, content stri
 	return nil
 }
 
-// ReadDaySummary reads the day summary for the given calendar day (UTC).
+// ReadDaySummary reads the day summary for the given calendar day in pa_timezone.
 // Returns empty string and nil error if the file does not exist.
 func (s *Store) ReadDaySummary(ctx context.Context, day time.Time) (string, error) {
 	path := s.pathForDaySummary(day)

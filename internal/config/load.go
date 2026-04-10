@@ -105,6 +105,7 @@ func validateCore(c *Config) error {
 }
 
 func validateMandatoryJSONSections(c *Config) error {
+	finalizeReadMemoryDefaults(c)
 	if err := validateTools(c); err != nil {
 		return err
 	}
@@ -129,7 +130,41 @@ func validateMandatoryJSONSections(c *Config) error {
 	if err := validateWebTools(c); err != nil {
 		return err
 	}
+	if err := validateReadMemory(c); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateReadMemory(c *Config) error {
+	if c == nil || c.ReadMemory == nil {
+		return nil
+	}
+	rm := c.ReadMemory
+	if rm.MaxSpanDays < 1 || rm.MaxSpanDays > 3660 {
+		return errors.New("config: read_memory.max_span_days must be in 1..3660")
+	}
+	if rm.MaxOutputBytes < 1024 || rm.MaxOutputBytes > 50*1024*1024 {
+		return errors.New("config: read_memory.max_output_bytes must be in 1024..52428800")
+	}
+	return nil
+}
+
+func finalizeReadMemoryDefaults(c *Config) {
+	if c == nil {
+		return
+	}
+	if c.ReadMemory == nil {
+		c.ReadMemory = &ReadMemoryConfig{MaxSpanDays: 31, MaxOutputBytes: 256 * 1024}
+		return
+	}
+	rm := c.ReadMemory
+	if rm.MaxSpanDays == 0 {
+		rm.MaxSpanDays = 31
+	}
+	if rm.MaxOutputBytes == 0 {
+		rm.MaxOutputBytes = 256 * 1024
+	}
 }
 
 func validateTools(c *Config) error {
@@ -280,6 +315,14 @@ func validateEmbedding(c *Config) error {
 		return errors.New("config: embedding.batch_size is required and must be between 1 and 1000")
 	}
 	return nil
+}
+
+// PALocation returns the IANA location for cfg.pa_timezone. Use after successful Load.
+func PALocation(c *Config) (*time.Location, error) {
+	if c == nil {
+		return time.UTC, nil
+	}
+	return time.LoadLocation(strings.TrimSpace(c.PATimezone))
 }
 
 func validateVersion(c *Config) error {

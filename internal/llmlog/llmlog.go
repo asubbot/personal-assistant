@@ -44,13 +44,15 @@ type fileWriter struct {
 	mu       sync.Mutex
 	log      *slog.Logger
 	redactor Redactor // applied to message contents and response_content before marshal
+	calLoc   *time.Location
 }
 
 // NewWriter creates a Writer that writes one file per day under dir (llm-YYYY-MM-DD.jsonl).
 // If dir is empty, NewWriter returns (nil, nil); callers should skip logging.
 // redactor is applied to all string fields that may contain secrets (message contents, response_content) before writing; may be nil to skip redaction.
 // Logger may be nil; when non-nil, write errors are logged to it. See package doc for startup and write-time behaviour.
-func NewWriter(dir string, logger *slog.Logger, redactor Redactor) (Writer, error) {
+// calLoc selects the calendar date for the daily filename (pa_timezone); nil means UTC.
+func NewWriter(dir string, logger *slog.Logger, redactor Redactor, calLoc *time.Location) (Writer, error) {
 	if dir == "" {
 		return nil, nil
 	}
@@ -68,7 +70,7 @@ func NewWriter(dir string, logger *slog.Logger, redactor Redactor) (Writer, erro
 	if err := checkWritable(dir); err != nil {
 		return nil, err
 	}
-	w := &fileWriter{dir: dir, log: logger, redactor: redactor}
+	w := &fileWriter{dir: dir, log: logger, redactor: redactor, calLoc: calLoc}
 	return w, nil
 }
 
@@ -84,7 +86,11 @@ func checkWritable(dir string) error {
 func (w *fileWriter) Log(entry *Entry) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	today := time.Now().UTC().Format("2006-01-02")
+	loc := w.calLoc
+	if loc == nil {
+		loc = time.UTC
+	}
+	today := time.Now().In(loc).Format("2006-01-02")
 	if w.f == nil || w.date != today {
 		if w.f != nil {
 			_ = w.f.Close()
@@ -137,11 +143,20 @@ func (w *fileWriter) logWriteError(op string, err error) {
 	}
 }
 
-// ReadEntriesForDay reads all LLM log entries for the given calendar day (UTC).
-// File name is llm-YYYY-MM-DD.jsonl under dir. Returns empty slice and nil error if the file does not exist.
-func ReadEntriesForDay(dir string, day time.Time) ([]Entry, error) {
+// readEntriesScannerMaxToken is the maximum JSONL line length ReadEntriesForDay accepts.
+// bufio.Scanner defaults to 64 KiB per token; LLM log lines can exceed that (large messages/tools).
+const readEntriesScannerMaxToken = 16 << 20 // 16 MiB
+
+// ReadEntriesForDay reads all LLM log entries for the given calendar day in calLoc (pa_timezone).
+// File name is llm-YYYY-MM-DD.jsonl under dir. calLoc nil means UTC.
+// Returns empty slice and nil error if the file does not exist.
+func ReadEntriesForDay(dir string, day time.Time, calLoc *time.Location) ([]Entry, error) {
 	dir = filepath.Clean(dir)
-	dateStr := day.UTC().Format("2006-01-02")
+	loc := calLoc
+	if loc == nil {
+		loc = time.UTC
+	}
+	dateStr := day.In(loc).Format("2006-01-02")
 	name := "llm-" + dateStr + ".jsonl"
 	path := filepath.Join(dir, name)
 	f, err := os.Open(path)
@@ -155,6 +170,7 @@ func ReadEntriesForDay(dir string, day time.Time) ([]Entry, error) {
 
 	var entries []Entry
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, 64*1024), readEntriesScannerMaxToken)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {

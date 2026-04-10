@@ -90,6 +90,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	var tc *config.ToolsConfig
 	var sessCfg *config.ConversationSessionConfig
 	var sessStore *sessionWindowStore
+	paLoc := paLocationFromConfig(cfg)
 	if cfg != nil {
 		rs = cfg.RuntimeSkills
 		tc = cfg.Tools
@@ -124,6 +125,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		firstProviderSupportsTools: firstSupportsTools,
 		sessionCfg:                 sessCfg,
 		sessionStore:               sessStore,
+		paLoc:                      paLoc,
 	}
 	if cfg != nil && cfg.ToolCatalog != nil {
 		h.catalog = cfg.ToolCatalog
@@ -139,7 +141,8 @@ func openLLMLogIfConfigured(cfg *config.Config, logger *slog.Logger, redactor fu
 	if cfg == nil || cfg.Paths.LLMLogDir == "" {
 		return nil, "", nil
 	}
-	w, err := llmlog.NewWriter(cfg.Paths.LLMLogDir, logger, llmlog.Redactor(redactor))
+	calLoc, _ := config.PALocation(cfg)
+	w, err := llmlog.NewWriter(cfg.Paths.LLMLogDir, logger, llmlog.Redactor(redactor), calLoc)
 	if err != nil {
 		return nil, "", fmt.Errorf("core: llm log writer: %w", err)
 	}

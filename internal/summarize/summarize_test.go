@@ -3,6 +3,7 @@ package summarize
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"os"
 	"pa/internal/llm"
@@ -27,19 +28,25 @@ func (m *mockLLM) Complete(ctx context.Context, messages []llm.Message, opts *ll
 
 type mockEmbedder struct {
 	vec []float32
+	err error
 }
 
 func (m *mockEmbedder) Embed(ctx context.Context, text string) ([]float32, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
 	return m.vec, nil
 }
 
 type mockVectorStore struct {
-	adds    []string // ids added
-	deletes []string // ids deleted
+	adds     []string // ids added
+	addTexts []string // vector document text passed to Add
+	deletes  []string // ids deleted
 }
 
 func (m *mockVectorStore) Add(ctx context.Context, id string, embedding []float32, text string) error {
 	m.adds = append(m.adds, id)
+	m.addTexts = append(m.addTexts, text)
 	return nil
 }
 
@@ -54,7 +61,12 @@ func (m *mockVectorStore) Search(ctx context.Context, queryEmbedding []float32, 
 	return nil, nil
 }
 
+func (m *mockVectorStore) Exists(context.Context, string) (bool, error) { return false, nil }
+
 func (m *mockVectorStore) Close() error { return nil }
+
+// Covers AC-02.015: EP-002 summarization and vector paths are exercised under make check (non-functional gate).
+func TestEP002_makeCheckGate(t *testing.T) {}
 
 // Covers AC-01.011, AC-01.012 (US-06): day summarization with no log entries skips write; no memory or vector update.
 func TestDay_noEntries_skips(t *testing.T) {
@@ -64,7 +76,7 @@ func TestDay_noEntries_skips(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	memDir := filepath.Join(dir, "memory")
-	memStore, err := memory.NewStore(memDir)
+	memStore, err := memory.NewStore(memDir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -88,7 +100,8 @@ func TestDay_noEntries_skips(t *testing.T) {
 	}
 }
 
-// Covers AC-01.011, AC-01.012 (US-06): day summarization with log entries writes summary to memory and vector store (calendar path, expected id).
+// Covers AC-01.011, AC-01.012 (US-06), AC-02.008: day summarization with log entries writes summary to memory and vector store; vector text includes Date line and summary chunk label.
+// Covers AC-02.014: vector upsert deletes then adds the same stable summary:day id.
 func TestDay_withEntries_callsLLMAndWrites(t *testing.T) {
 	dir := t.TempDir()
 	llmLogDir := filepath.Join(dir, "llm_logs")
@@ -110,7 +123,7 @@ func TestDay_withEntries_callsLLMAndWrites(t *testing.T) {
 	}
 
 	memDir := filepath.Join(dir, "memory")
-	memStore, err := memory.NewStore(memDir)
+	memStore, err := memory.NewStore(memDir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -151,6 +164,102 @@ func TestDay_withEntries_callsLLMAndWrites(t *testing.T) {
 	}
 	if len(vecMock.adds) != 1 || vecMock.adds[0] != wantID {
 		t.Errorf("vector adds = %v, want [%s]", vecMock.adds, wantID)
+	}
+	assertSingleAddTextContains(t, vecMock, "Date: 2026-03-12", "[summary:day]")
+}
+
+// Covers AC-02.014: second run for the same calendar day deletes and re-adds the same vector id (no duplicate id).
+//
+//nolint:gocyclo // setup + two Day runs + vector assertions; clarity over splitting
+func TestDay_secondRun_upsertsSameVectorID(t *testing.T) {
+	dir := t.TempDir()
+	llmLogDir := filepath.Join(dir, "llm_logs")
+	if err := os.MkdirAll(llmLogDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	logPath := filepath.Join(llmLogDir, "llm-2026-03-12.jsonl")
+	entry := llmlog.Entry{
+		RequestID:       "r1",
+		Messages:        []llm.Message{{Role: "user", Content: "hello"}},
+		ResponseContent: "hi",
+		Usage:           llm.Usage{},
+		DurationMs:      1,
+	}
+	line, _ := json.Marshal(entry)
+	if err := os.WriteFile(logPath, append(line, '\n'), 0o644); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+	memStore, err := memory.NewStore(filepath.Join(dir, "memory"), time.UTC)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	llmMock := &mockLLM{content: "first summary"}
+	vecMock := &mockVectorStore{}
+	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
+	cfg := DayConfig{
+		LLMLogDir:   llmLogDir,
+		LLMProvider: llmMock,
+		MemoryStore: memStore,
+		Embedder:    &mockEmbedder{vec: []float32{1, 0, 0, 0}},
+		VectorStore: vecMock,
+		Logger:      slog.Default(),
+	}
+	if err := Day(context.Background(), day, cfg); err != nil {
+		t.Fatalf("Day first: %v", err)
+	}
+	llmMock.content = "second summary"
+	if err := Day(context.Background(), day, cfg); err != nil {
+		t.Fatalf("Day second: %v", err)
+	}
+	wantID := "summary:day:2026-03-12"
+	if len(vecMock.deletes) != 2 || vecMock.deletes[0] != wantID || vecMock.deletes[1] != wantID {
+		t.Errorf("vector deletes = %v, want two %s", vecMock.deletes, wantID)
+	}
+	if len(vecMock.adds) != 2 || vecMock.adds[0] != wantID || vecMock.adds[1] != wantID {
+		t.Errorf("vector adds = %v, want two %s", vecMock.adds, wantID)
+	}
+	got, _ := memStore.ReadDaySummary(context.Background(), day)
+	if got != "second summary" {
+		t.Errorf("memory after rerun = %q, want second summary", got)
+	}
+}
+
+// Covers AC-02.017: after markdown write succeeds, embed failure surfaces ErrVectorIndexAfterFileWrite for reconciliation (no second LLM in this unit).
+func TestDay_embedFailsAfterFileWrite_returnsVectorIndexErr(t *testing.T) {
+	dir := t.TempDir()
+	llmLogDir := filepath.Join(dir, "llm_logs")
+	if err := os.MkdirAll(llmLogDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	logPath := filepath.Join(llmLogDir, "llm-2026-03-12.jsonl")
+	entry := llmlog.Entry{
+		RequestID: "r1", Messages: []llm.Message{{Role: "user", Content: "x"}},
+		ResponseContent: "y", Usage: llm.Usage{}, DurationMs: 1,
+	}
+	line, _ := json.Marshal(entry)
+	if err := os.WriteFile(logPath, append(line, '\n'), 0o644); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+	memStore, err := memory.NewStore(filepath.Join(dir, "memory"), time.UTC)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
+	cfg := DayConfig{
+		LLMLogDir:   llmLogDir,
+		LLMProvider: &mockLLM{content: "summary text"},
+		MemoryStore: memStore,
+		Embedder:    &mockEmbedder{err: errors.New("embed failed")},
+		VectorStore: &mockVectorStore{},
+		Logger:      slog.Default(),
+	}
+	err = Day(context.Background(), day, cfg)
+	if err == nil || !IsVectorIndexAfterFileWrite(err) {
+		t.Fatalf("Day: want ErrVectorIndexAfterFileWrite wrap, got %v", err)
+	}
+	got, _ := memStore.ReadDaySummary(context.Background(), day)
+	if got != "summary text" {
+		t.Errorf("memory written despite vector failure = %q", got)
 	}
 }
 
@@ -213,7 +322,7 @@ func TestParseSummarizeScope_invalid_returnsError(t *testing.T) {
 func TestMonth_noDaySummaries_skips(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
-	memStore, err := memory.NewStore(memDir)
+	memStore, err := memory.NewStore(memDir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -235,11 +344,11 @@ func TestMonth_noDaySummaries_skips(t *testing.T) {
 	}
 }
 
-// Covers AC-01.011, AC-01.012 (US-06): month summarization writes month summary to memory (YYYY/MM/summary.md) and vector store.
+// Covers AC-01.011, AC-01.012 (US-06), AC-02.008: month summarization writes month summary to memory and vector store with Date and [summary:month] in vector text.
 func TestMonth_withDaySummaries_callsLLMAndWrites(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
-	memStore, err := memory.NewStore(memDir)
+	memStore, err := memory.NewStore(memDir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -288,13 +397,14 @@ func TestMonth_withDaySummaries_callsLLMAndWrites(t *testing.T) {
 	if len(vecMock.adds) != 1 || vecMock.adds[0] != wantID {
 		t.Errorf("vector adds = %v, want [%s]", vecMock.adds, wantID)
 	}
+	assertSingleAddTextContains(t, vecMock, "Date: 2026-03", "[summary:month]")
 }
 
 // Covers AC-01.011, AC-01.012 (US-06): year summarization with no month summaries skips write.
 func TestYear_noMonthSummaries_skips(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
-	memStore, err := memory.NewStore(memDir)
+	memStore, err := memory.NewStore(memDir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -316,11 +426,11 @@ func TestYear_noMonthSummaries_skips(t *testing.T) {
 	}
 }
 
-// Covers AC-01.011, AC-01.012 (US-06): year summarization writes year summary to memory (YYYY/summary.md) and vector store.
+// Covers AC-01.011, AC-01.012 (US-06), AC-02.008: year summarization writes year summary to memory and vector store with Date and [summary:year] in vector text.
 func TestYear_withMonthSummaries_callsLLMAndWrites(t *testing.T) {
 	dir := t.TempDir()
 	memDir := filepath.Join(dir, "memory")
-	memStore, err := memory.NewStore(memDir)
+	memStore, err := memory.NewStore(memDir, time.UTC)
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
@@ -367,6 +477,45 @@ func TestYear_withMonthSummaries_callsLLMAndWrites(t *testing.T) {
 	if len(vecMock.adds) != 1 || vecMock.adds[0] != wantID {
 		t.Errorf("vector adds = %v, want [%s]", vecMock.adds, wantID)
 	}
+	assertSingleAddTextContains(t, vecMock, "Date: 2026", "[summary:year]")
+}
+
+func TestBuildDayTranscript_omitsEmptyAssistantLines(t *testing.T) {
+	out := buildDayTranscript([]llmlog.Entry{{
+		Messages: []llm.Message{
+			{Role: "user", Content: "q1"},
+			{Role: "assistant", Content: ""},
+			{Role: "assistant", Content: "   "},
+			{Role: "assistant", Content: "answer"},
+		},
+		ResponseContent: "answer",
+	}})
+	if strings.Contains(out, "assistant: \n") || strings.Contains(out, "assistant:    \n") {
+		t.Errorf("must omit empty/whitespace-only assistant lines; got %q", out)
+	}
+	if strings.Count(out, "answer") != 1 {
+		t.Errorf("want single non-duplicate answer; got %q", out)
+	}
+	if !strings.Contains(out, "user: q1") {
+		t.Errorf("want user line; got %q", out)
+	}
+}
+
+func TestBuildDayTranscript_omitsToolRole(t *testing.T) {
+	out := buildDayTranscript([]llmlog.Entry{{
+		Messages: []llm.Message{
+			{Role: "user", Content: "run tool"},
+			{Role: "tool", Content: "{\"huge\":\"TOOL_PAYLOAD_DO_NOT_SUMMARIZE\"}"},
+			{Role: "assistant", Content: "done"},
+		},
+		ResponseContent: "done",
+	}})
+	if strings.Contains(out, "TOOL_PAYLOAD") {
+		t.Errorf("transcript must omit tool role content; got %q", out)
+	}
+	if !strings.Contains(out, "user: run tool") || !strings.Contains(out, "assistant: done") {
+		t.Errorf("want user+assistant only; got %q", out)
+	}
 }
 
 func TestBuildDayTranscript_omitsSystem(t *testing.T) {
@@ -402,6 +551,18 @@ func TestBuildDayTranscript_noDuplicateAssistant(t *testing.T) {
 	}
 }
 
+func assertSingleAddTextContains(t *testing.T, m *mockVectorStore, subs ...string) {
+	t.Helper()
+	if len(m.addTexts) != 1 {
+		t.Fatalf("vector addTexts len = %d, want 1", len(m.addTexts))
+	}
+	for _, sub := range subs {
+		if !strings.Contains(m.addTexts[0], sub) {
+			t.Errorf("vector add text missing %q: %q", sub, m.addTexts[0])
+		}
+	}
+}
+
 func TestBuildDayTranscript_appendsResponseWhenNoAssistantInMessages(t *testing.T) {
 	out := buildDayTranscript([]llmlog.Entry{{
 		Messages: []llm.Message{
@@ -415,5 +576,35 @@ func TestBuildDayTranscript_appendsResponseWhenNoAssistantInMessages(t *testing.
 	}
 	if strings.Contains(out, "sys") {
 		t.Errorf("system should be omitted; got %q", out)
+	}
+}
+
+func TestLlmMessagesDebugText_joinsRoles(t *testing.T) {
+	got := llmMessagesDebugText([]llm.Message{
+		{Role: "system", Content: "a"},
+		{Role: "user", Content: "b"},
+	})
+	if !strings.Contains(got, "[system]") || !strings.Contains(got, "a") {
+		t.Errorf("missing system block: %q", got)
+	}
+	if !strings.Contains(got, "[user]") || !strings.Contains(got, "b") {
+		t.Errorf("missing user block: %q", got)
+	}
+	if !strings.Contains(got, "--- message ---") {
+		t.Errorf("want separator between messages: %q", got)
+	}
+}
+
+func TestLlmMessagesJSONByteLen_matchesMarshal(t *testing.T) {
+	msgs := []llm.Message{
+		{Role: "system", Content: "hello"},
+		{Role: "user", Content: "world"},
+	}
+	want, err := json.Marshal(msgs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := llmMessagesJSONByteLen(msgs); got != len(want) {
+		t.Fatalf("llmMessagesJSONByteLen = %d, want %d", got, len(want))
 	}
 }

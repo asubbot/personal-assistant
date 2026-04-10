@@ -15,7 +15,7 @@ import (
 // Covers AC-01.017, AC-01.018 (US-09, US-10): Log writes parseable JSONL with required fields (request_id, messages, response_content, usage, duration_ms).
 func TestLog_writesParseableJSONLWithRequiredFields(t *testing.T) {
 	dir := t.TempDir()
-	w, err := NewWriter(dir, nil, nil)
+	w, err := NewWriter(dir, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("NewWriter: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestNewWriter_rejectsPathThatIsFile(t *testing.T) {
 	}
 	defer func() { _ = os.Remove(path) }()
 
-	_, err = NewWriter(path, nil, nil)
+	_, err = NewWriter(path, nil, nil, nil)
 	if err == nil {
 		t.Fatal("NewWriter with file path: expected error, got nil")
 	}
@@ -145,7 +145,7 @@ func TestNewWriter_rejectsReadOnlyDirectory(t *testing.T) {
 	}
 	defer func() { _ = os.Chmod(dir, 0o755) }() // restore so TempDir cleanup can remove it
 
-	_, err := NewWriter(dir, nil, nil)
+	_, err := NewWriter(dir, nil, nil, nil)
 	if err == nil {
 		t.Fatal("NewWriter with read-only dir: expected error, got nil")
 	}
@@ -155,7 +155,7 @@ func TestNewWriter_rejectsReadOnlyDirectory(t *testing.T) {
 func TestLog_redactsSecretInWrittenFile(t *testing.T) {
 	dir := t.TempDir()
 	redactor := logredact.NewRedactor(nil)
-	w, err := NewWriter(dir, nil, Redactor(redactor))
+	w, err := NewWriter(dir, nil, Redactor(redactor), nil)
 	if err != nil {
 		t.Fatalf("NewWriter: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestLog_redactsSecretInWrittenFile(t *testing.T) {
 func TestReadEntriesForDay_missingFile_returnsEmptySlice(t *testing.T) {
 	dir := t.TempDir()
 	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
-	entries, err := ReadEntriesForDay(dir, day)
+	entries, err := ReadEntriesForDay(dir, day, nil)
 	if err != nil {
 		t.Fatalf("ReadEntriesForDay: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestReadEntriesForDay_oneEntry_parsed(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	entries, err := ReadEntriesForDay(dir, day)
+	entries, err := ReadEntriesForDay(dir, day, nil)
 	if err != nil {
 		t.Fatalf("ReadEntriesForDay: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestReadEntriesForDay_twoEntries_parsed(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	entries, err := ReadEntriesForDay(dir, day)
+	entries, err := ReadEntriesForDay(dir, day, nil)
 	if err != nil {
 		t.Fatalf("ReadEntriesForDay: %v", err)
 	}
@@ -259,6 +259,39 @@ func TestReadEntriesForDay_twoEntries_parsed(t *testing.T) {
 	}
 	if entries[0].ResponseContent != "reply-first" || entries[1].ResponseContent != "reply-second" {
 		t.Errorf("entries: got %q, %q", entries[0].ResponseContent, entries[1].ResponseContent)
+	}
+}
+
+// ReadEntriesForDay accepts a single JSONL line longer than bufio.Scanner default (64 KiB).
+func TestReadEntriesForDay_lineExceedsDefaultScannerLimit_parsed(t *testing.T) {
+	dir := t.TempDir()
+	day := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
+	path := filepath.Join(dir, "llm-2026-04-10.jsonl")
+	large := strings.Repeat("x", 70*1024) // > bufio.MaxScanTokenSize
+	entry := &Entry{
+		RequestID:       "big",
+		Messages:        []llm.Message{{Role: "user", Content: "u"}},
+		ResponseContent: large,
+		Usage:           llm.Usage{},
+		DurationMs:      1,
+	}
+	line, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	if err := os.WriteFile(path, append(line, '\n'), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	entries, err := ReadEntriesForDay(dir, day, nil)
+	if err != nil {
+		t.Fatalf("ReadEntriesForDay: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("got %d entries, want 1", len(entries))
+	}
+	if len(entries[0].ResponseContent) != len(large) {
+		t.Fatalf("response len: got %d, want %d", len(entries[0].ResponseContent), len(large))
 	}
 }
 

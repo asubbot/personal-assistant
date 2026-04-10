@@ -125,6 +125,24 @@ func (s *Store) Clear(ctx context.Context) error {
 	return nil
 }
 
+// Exists implements vector.Store.
+func (s *Store) Exists(ctx context.Context, id string) (bool, error) {
+	if id == "" {
+		return false, nil
+	}
+	var one int
+	//nolint:gosec // G201: table identifier validated in NewWithTable
+	q := fmt.Sprintf("SELECT 1 FROM %s WHERE id = ? LIMIT 1", s.table)
+	err := s.db.QueryRowContext(ctx, q, id).Scan(&one)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("vector/sqlite: exists: %w", err)
+	}
+	return true, nil
+}
+
 // Search implements vector.Store.
 func (s *Store) Search(ctx context.Context, queryEmbedding []float32, topK int) ([]vector.SearchResult, error) {
 	if len(queryEmbedding) != s.dimensions {

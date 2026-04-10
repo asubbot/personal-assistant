@@ -175,6 +175,36 @@ func (p *OpenAICompatible) doRequest(ctx context.Context, body []byte) (*http.Re
 	return resp, nil
 }
 
+// decodeAssistantMessageContent parses choices[].message.content from OpenAI-compatible APIs.
+// Some providers return a JSON string, others a JSON array of {type,text} parts, or null.
+func decodeAssistantMessageContent(raw json.RawMessage) (string, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return "", nil
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return s, nil
+	}
+	var parts []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(raw, &parts); err == nil {
+		if len(parts) == 0 {
+			return "", nil
+		}
+		var b strings.Builder
+		for _, p := range parts {
+			if p.Type != "" && p.Type != "text" {
+				continue
+			}
+			b.WriteString(p.Text)
+		}
+		return b.String(), nil
+	}
+	return "", fmt.Errorf("assistant message content: unsupported JSON shape")
+}
+
 func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult, error) {
 	if resp.StatusCode != http.StatusOK {
 		var errBody struct {
@@ -197,7 +227,13 @@ func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult
 		return nil, fmt.Errorf("api: empty choices")
 	}
 	msg := &out.Choices[0].Message
-	content := msg.Content
+	content, err := decodeAssistantMessageContent(msg.Content)
+	if err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+	if strings.TrimSpace(content) == "" && strings.TrimSpace(msg.ReasoningContent) != "" {
+		content = msg.ReasoningContent
+	}
 	usage := Usage{}
 	if out.Usage != nil {
 		usage.PromptTokens = out.Usage.PromptTokens
@@ -275,12 +311,15 @@ type openAIToolCall struct {
 	} `json:"function"`
 }
 
+type openAIChoiceMessage struct {
+	Content          json.RawMessage  `json:"content"`
+	ReasoningContent string           `json:"reasoning_content,omitempty"`
+	ToolCalls        []openAIToolCall `json:"tool_calls,omitempty"`
+}
+
 type openAIResponse struct {
 	Choices []struct {
-		Message struct {
-			Content   string           `json:"content"`
-			ToolCalls []openAIToolCall `json:"tool_calls,omitempty"`
-		} `json:"message"`
+		Message openAIChoiceMessage `json:"message"`
 	} `json:"choices"`
 	Usage *struct {
 		PromptTokens     int `json:"prompt_tokens"`
