@@ -1,13 +1,13 @@
 # Project-level audit report
 
 **Date and time of creation:** 2026-04-09 (UTC)  
-**Last updated:** 2026-04-10 (UTC) — EP-013 audit and project table row
+**Last updated:** 2026-04-10 (UTC) — full project rollup, EP-014 row, validator and coverage refresh
 
 **Purpose:** Project-level audit summary — status of all epics (pipeline stage 11). Process: [11-audit.skill.md](../ai-sdlc/specification/skills/11-audit.skill.md), [pipeline.spec.md](../ai-sdlc/specification/pipeline.spec.md).
 
 **Links:** [scope.md](scope.md), [strategy.md](strategy.md).
 
-**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, the rollup table does **not** require a duplicate project-wide coverage line; the **current** codebase total from the latest `make check` is **73.8%** statements (`total:` line from `go tool cover -func=coverage.out`, 2026-04-10).
+**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, the rollup table does **not** require a duplicate project-wide coverage line; the **current** codebase total from the latest `make check` is **74.1%** statements (`total:` line from `go tool cover -func=coverage.out`, 2026-04-10).
 
 ---
 
@@ -28,7 +28,7 @@
 | [EP-011](epics/EP-011/ep-scope.md) | Native web search and HTTPS content fetch (tools) | DONE | 72.9% | [ep-audit-report (2026-04-09)](epics/EP-011/ep-audit-report.md) |
 | [EP-012](epics/EP-012/ep-scope.md) | Telegram HTML formatting and typing indicator | DONE | ~73.4% | [ep-audit-report (2026-04-09)](epics/EP-012/ep-audit-report.md) |
 | [EP-013](epics/EP-013/ep-scope.md) | Runtime skills and consolidated system prompt | DONE | 73.8% | [ep-audit-report (2026-04-10)](epics/EP-013/ep-audit-report.md) |
-
+| [EP-014](epics/EP-014/ep-scope.md) | Sliding session memory window | DONE | 74.1% | [ep-audit-report (2026-04-10)](epics/EP-014/ep-audit-report.md) |
 
 ---
 
@@ -36,7 +36,7 @@
 
 | Category | Epics |
 |----------|-------|
-| **DONE** (ep-scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013 |
+| **DONE** (ep-scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013, EP-014 |
 | **NEW** | EP-002, EP-003, EP-005, EP-007 |
 | **CANCELED** | EP-010 |
 | **IN_PROGRESS** | None |
@@ -53,12 +53,18 @@ Command: `./bin/validate` (no arguments), run 2026-04-10.
 
 | Result | Detail |
 |--------|--------|
-| **In-scope traced** | 148/148 (100%) |
-| **Automated** | 135 (91.2%) |
+| **In-scope traced** | 161/161 (100%) |
+| **Automated** | 148 (91.9%) |
 | **Manual-only** | 13 |
-| **Deferred** | 2 |
-| **Total ACs** | 150 |
-| **Epics at 100% trace** (in validator scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013 |
+| **Deferred** | 3 |
+| **Total ACs** | 164 |
+| **Epics at 100% trace** (in validator summary) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013, EP-014 |
 | **Test functions with t.Skip** (project-wide) | 25 |
 
 See [VALIDATION.md](../ai-sdlc/tools/validate/VALIDATION.md) for rules. Epics **NEW**, **CANCELED**, or without validator mapping may not appear in the validator epic list.
+
+---
+
+## Quality gate (latest `make check`)
+
+Run **2026-04-10**: **PASS** (fmt, vet, govulncheck, golangci-lint, `go test -race -tags=integration ./...`, coverage with `-coverpkg=./...`, module boundaries). **Total statement coverage:** **74.1%**.
