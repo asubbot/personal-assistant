@@ -88,9 +88,15 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	}
 	var rs *config.RuntimeSkillsConfig
 	var tc *config.ToolsConfig
+	var sessCfg *config.ConversationSessionConfig
+	var sessStore *sessionWindowStore
 	if cfg != nil {
 		rs = cfg.RuntimeSkills
 		tc = cfg.Tools
+		if cfg.ConversationSession != nil && cfg.ConversationSession.Enabled {
+			sessCfg = cfg.ConversationSession
+			sessStore = newSessionWindowStore()
+		}
 	}
 	h := &conversationHandler{
 		router:                     router,
@@ -116,6 +122,8 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		logRedactor:                redactor,
 		textBasedEnabled:           textBased,
 		firstProviderSupportsTools: firstSupportsTools,
+		sessionCfg:                 sessCfg,
+		sessionStore:               sessStore,
 	}
 	if cfg != nil && cfg.ToolCatalog != nil {
 		h.catalog = cfg.ToolCatalog

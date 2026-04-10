@@ -3,8 +3,9 @@ package core
 import "context"
 
 // MessageHandler is the interface the core implements: one text message in, one text reply out.
+// sessionKey identifies the conversation thread (e.g. Telegram chat id as decimal string); may be empty to fall back to uid:<userID> when session memory is enabled (EP-014).
 type MessageHandler interface {
-	HandleMessage(ctx context.Context, userID int64, text string) (reply string, err error)
+	HandleMessage(ctx context.Context, userID int64, sessionKey string, text string) (reply string, err error)
 }
 
 // Adapter is the abstraction for a message source (Telegram, Matrix, etc.).

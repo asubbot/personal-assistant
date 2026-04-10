@@ -61,7 +61,7 @@ type fakeAdapterSequential struct {
 
 func (a *fakeAdapterSequential) Run(ctx context.Context, handler core.MessageHandler) error {
 	for _, text := range a.messages {
-		reply, err := handler.HandleMessage(ctx, a.userID, text)
+		reply, err := handler.HandleMessage(ctx, a.userID, "", text)
 		a.results <- result{reply: reply, err: err}
 	}
 	return nil

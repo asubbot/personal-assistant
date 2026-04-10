@@ -77,7 +77,7 @@ func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 		t.Fatal("adapter.handler was not set")
 	}
 
-	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "test")
+	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "", "test")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestRun_cfgNil_noPanic_handlerGetsZeroMaxLength(t *testing.T) {
 	}
 	// Handler should have maxMessageLength 0 (no limit); long message goes through
 	longText := strings.Repeat("x", 5000)
-	reply, err := adapter.handler.HandleMessage(context.Background(), 1, longText)
+	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "", longText)
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 		t.Fatal("adapter.handler was not set")
 	}
 
-	_, _ = adapter.handler.HandleMessage(context.Background(), 1, "hello")
+	_, _ = adapter.handler.HandleMessage(context.Background(), 1, "", "hello")
 
 	for i, m := range provider.lastMessages {
 		if strings.Contains(m.Content, fakeSecret) {
@@ -177,7 +177,7 @@ func TestRun_providerChain_wiresHandler(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "hi")
+	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}

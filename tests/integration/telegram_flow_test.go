@@ -45,7 +45,7 @@ type result struct {
 }
 
 func (a *fakeAdapter) Run(ctx context.Context, handler core.MessageHandler) error {
-	reply, err := handler.HandleMessage(ctx, a.userID, a.text)
+	reply, err := handler.HandleMessage(ctx, a.userID, "", a.text)
 	a.done <- result{reply: reply, err: err}
 	return nil
 }

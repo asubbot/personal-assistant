@@ -117,6 +117,9 @@ func validateMandatoryJSONSections(c *Config) error {
 	if err := validateConversationContext(c); err != nil {
 		return err
 	}
+	if err := validateConversationSession(c); err != nil {
+		return err
+	}
 	if err := validateToolPreSelection(c); err != nil {
 		return err
 	}
@@ -217,6 +220,16 @@ func validateConversationContext(c *Config) error {
 	}
 	if cc.VectorSearchTopK > maxVectorSearchTopK {
 		return fmt.Errorf("config: conversation_context.vector_search_top_k must be <= %d", maxVectorSearchTopK)
+	}
+	return nil
+}
+
+func validateConversationSession(c *Config) error {
+	if c == nil || c.ConversationSession == nil || !c.ConversationSession.Enabled {
+		return nil
+	}
+	if c.ConversationSession.MaxSessionExchanges < 1 {
+		return errors.New("config: conversation_session.max_session_exchanges must be >= 1 when conversation_session.enabled is true")
 	}
 	return nil
 }

@@ -135,6 +135,7 @@ type IntegrationConversationParams struct {
 	LogRedactor                func(string) string
 	TextBasedEnabled           bool
 	FirstProviderSupportsTools bool
+	ConversationSession        *config.ConversationSessionConfig
 }
 
 // NewIntegrationConversationHandler returns a MessageHandler for integration tests.
@@ -156,6 +157,12 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 	}
 	if p.VectorSearchTopK == 0 {
 		p.VectorSearchTopK = 10
+	}
+	var sessCfg *config.ConversationSessionConfig
+	var sessStore *sessionWindowStore
+	if p.ConversationSession != nil && p.ConversationSession.Enabled {
+		sessCfg = p.ConversationSession
+		sessStore = newSessionWindowStore()
 	}
 	return &conversationHandler{
 		router:                     p.Router,
@@ -182,6 +189,8 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 		logRedactor:                p.LogRedactor,
 		textBasedEnabled:           p.TextBasedEnabled,
 		firstProviderSupportsTools: p.FirstProviderSupportsTools,
+		sessionCfg:                 sessCfg,
+		sessionStore:               sessStore,
 	}
 }
 

@@ -409,6 +409,62 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-14.014: operator docs mention conversation_session (see docs/configuration.md).
+func TestDocs_configuration_mentionsConversationSession(t *testing.T) {
+	repoRoot := findRepoRootFromConfigPackage(t)
+	p := filepath.Join(repoRoot, "docs", "configuration.md")
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatalf("read %s: %v", p, err)
+	}
+	s := string(b)
+	if !strings.Contains(s, "conversation_session") || !strings.Contains(s, "max_session_exchanges") {
+		t.Errorf("%s must document conversation_session and max_session_exchanges", p)
+	}
+}
+
+func findRepoRootFromConfigPackage(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("go.mod not found")
+		}
+		dir = parent
+	}
+}
+
+// Covers AC-14.001: conversation_session with enabled and positive max loads.
+func TestLoad_ConversationSession_enabled_OK(t *testing.T) {
+	path := filepath.Join("testdata", "conversation_session_ok.json")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.ConversationSession == nil || !cfg.ConversationSession.Enabled || cfg.ConversationSession.MaxSessionExchanges != 5 {
+		t.Fatalf("ConversationSession = %+v", cfg.ConversationSession)
+	}
+}
+
+// Covers AC-14.002: enabled session with max < 1 fails load.
+func TestLoad_ConversationSession_enabled_badMax(t *testing.T) {
+	path := filepath.Join("testdata", "conversation_session_bad_max.json")
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error for max_session_exchanges < 1 when enabled")
+	}
+	if !strings.Contains(err.Error(), "conversation_session.max_session_exchanges") {
+		t.Errorf("Load: error = %v", err)
+	}
+}
+
 // Covers AC-09.017: invalid create_tool_secret_patterns fails config load.
 func TestLoad_CreateToolSecretPatterns_InvalidRegex(t *testing.T) {
 	path := filepath.Join("testdata", "create_tool_bad_regex.json")

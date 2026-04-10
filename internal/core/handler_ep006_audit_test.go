@@ -82,7 +82,7 @@ func TestHandleMessage_escalation_threeProviders_secondReceivesNextComplete(t *t
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "run echo")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestHandleMessage_escalation_maxZero_noAdvance(t *testing.T) {
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "x")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestHandleMessage_escalation_atLastProvider_noFurtherAdvance(t *testing.T) 
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "x")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -209,10 +209,10 @@ func TestHandleMessage_escalation_eachMessageStartsFromBaseline(t *testing.T) {
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	if _, err := h.HandleMessage(context.Background(), 1, "a"); err != nil {
+	if _, err := h.HandleMessage(context.Background(), 1, "", "a"); err != nil {
 		t.Fatalf("first: %v", err)
 	}
-	if _, err := h.HandleMessage(context.Background(), 1, "b"); err != nil {
+	if _, err := h.HandleMessage(context.Background(), 1, "", "b"); err != nil {
 		t.Fatalf("second: %v", err)
 	}
 	// First call of each message should hit provider at baseline index 1 only.
@@ -253,7 +253,7 @@ func TestHandleMessage_escalation_logContainsPolicyFields(t *testing.T) {
 		logger:                     logger,
 		firstProviderSupportsTools: true,
 	}
-	if _, err := h.HandleMessage(context.Background(), 1, "x"); err != nil {
+	if _, err := h.HandleMessage(context.Background(), 1, "", "x"); err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
 	var saw bool
@@ -318,7 +318,7 @@ func TestHandleMessage_escalation_logContainsHermesParseClass(t *testing.T) {
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	if _, err := h.HandleMessage(context.Background(), 1, "hello"); err != nil {
+	if _, err := h.HandleMessage(context.Background(), 1, "", "hello"); err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
 	var sawHermes bool
@@ -379,7 +379,7 @@ func TestHandleMessage_escalation_suspectedBrokenHermesPseudoBlock(t *testing.T)
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "hello")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -452,7 +452,7 @@ func TestHandleMessage_mixedHermesThenTool_maxPerOne_secondToolStaysOnProvider(t
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "hello")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -516,7 +516,7 @@ func TestHandleMessage_twoToolCalls_oneMayEscalate_oneOk_singlePolicyEscalation(
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "run tools")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run tools")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -561,7 +561,7 @@ func TestHandleMessage_escalationDisabled_qualifyingToolFailure_staysOnFirstProv
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "x")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -614,7 +614,7 @@ func TestHandleMessage_textBasedHermes_parseFailure_escalatesToNextProvider(t *t
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "hello")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -657,7 +657,7 @@ func TestHandleMessage_invalidToolJSON_escalatesToSecondProvider(t *testing.T) {
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "run echo")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -703,7 +703,7 @@ func TestHandleMessage_unknownToolId_noEscalationSecondProvider(t *testing.T) {
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "x")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -758,7 +758,7 @@ func TestHandleMessage_twoQualifyingToolRounds_maxOne_secondFailureStaysOnProvid
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "x")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}

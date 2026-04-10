@@ -80,6 +80,9 @@ type conversationHandler struct {
 	// textBasedEnabled + firstProviderSupportsTools: when true + false, Hermes text tool path (REQ-04.027–029).
 	textBasedEnabled           bool
 	firstProviderSupportsTools bool // true if first LLM provider sends tools in HTTP (supports_tools)
+	// EP-014 sliding session memory (optional).
+	sessionCfg   *config.ConversationSessionConfig
+	sessionStore *sessionWindowStore
 }
 
 // checkUserMessage returns trimmed text, or earlyReply when the message must not reach the LLM.
@@ -210,7 +213,7 @@ func (h *conversationHandler) systemStaticHead(hasRetrieved bool) string {
 	return systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + personality + "\n\n"
 }
 
-func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool, st *llmTurnState) (string, error) {
+func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, sessionKey, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool, st *llmTurnState) (string, error) {
 	for {
 		textToolMode, plainDone, invalidReply := textToolModeAfterFirstCompletion(textPath, result, opts)
 		if invalidReply != "" {
@@ -231,6 +234,7 @@ func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID
 		}
 		if plainDone {
 			h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
+			h.appendSessionIfEnabled(sessionKey, userText, result.Content)
 			return result.Content, nil
 		}
 		var err error
@@ -239,26 +243,51 @@ func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID
 			return "", err
 		}
 		h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
+		h.appendSessionIfEnabled(sessionKey, userText, result.Content)
 		return result.Content, nil
 	}
+}
+
+func (h *conversationHandler) sessionMemoryEnabled() bool {
+	return h != nil && h.sessionCfg != nil && h.sessionCfg.Enabled && h.sessionStore != nil
+}
+
+func (h *conversationHandler) appendSessionIfEnabled(sessionKey, userText, reply string) {
+	if !h.sessionMemoryEnabled() {
+		return
+	}
+	k := strings.TrimSpace(sessionKey)
+	if k == "" {
+		return
+	}
+	h.sessionStore.appendExchange(k, userText, reply, h.sessionCfg.MaxSessionExchanges)
 }
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.
 // Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-01.006, REQ-01.007, REQ-01.018).
 //
 //nolint:gocyclo // tail assembly, tool merge, options, and first completion share one linear flow
-func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text string) (string, error) {
+func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, sessionKey string, text string) (string, error) {
 	userText, early, stop := h.checkUserMessage(text)
 	if stop {
 		return early, nil
+	}
+	sk := strings.TrimSpace(sessionKey)
+	if sk == "" {
+		sk = fmt.Sprintf("uid:%d", userID)
 	}
 	chunks := h.gatherRetrievedChunkTexts(ctx, userText)
 	hasRet := len(chunks) > 0
 	sysHead := h.systemStaticHead(hasRet)
 	messages := []llm.Message{
 		{Role: "system", Content: sysHead},
-		{Role: "user", Content: userText},
 	}
+	if h.sessionMemoryEnabled() {
+		for _, ex := range h.sessionStore.snapshot(sk) {
+			messages = append(messages, llm.Message{Role: "user", Content: ex.user}, llm.Message{Role: "assistant", Content: ex.assistant})
+		}
+	}
+	messages = append(messages, llm.Message{Role: "user", Content: userText})
 	skills, err := h.selectSkillPackages(ctx, userText)
 	if err != nil {
 		return "", err
@@ -310,7 +339,7 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text s
 	if err != nil {
 		return "", err
 	}
-	return h.finishAfterFirstLLM(ctx, requestID, userText, start, messages, result, opts, textPath, st)
+	return h.finishAfterFirstLLM(ctx, requestID, sk, userText, start, messages, result, opts, textPath, st)
 }
 
 // resolveHermesFollowUpCompletion parses result.Content into tool calls for text-tool follow-ups; may escalate and re-Complete (REQ-06.016).

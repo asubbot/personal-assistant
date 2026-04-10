@@ -83,7 +83,7 @@ func TestRun_toolMayEscalate_advancesToSecondProvider(t *testing.T) {
 		t.Fatal("handler not wired")
 	}
 
-	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "run echo")
+	reply, err := adapter.handler.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -141,11 +141,11 @@ func TestRun_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 
-	_, err = adapter.handler.HandleMessage(context.Background(), 1, "one")
+	_, err = adapter.handler.HandleMessage(context.Background(), 1, "", "one")
 	if err != nil {
 		t.Fatalf("HandleMessage 1: %v", err)
 	}
-	reply2, err := adapter.handler.HandleMessage(context.Background(), 1, "two")
+	reply2, err := adapter.handler.HandleMessage(context.Background(), 1, "", "two")
 	if err != nil {
 		t.Fatalf("HandleMessage 2: %v", err)
 	}
