@@ -417,7 +417,7 @@ type mockHandler struct {
 	delay    time.Duration
 }
 
-func (m *mockHandler) HandleMessage(_ context.Context, userID int64, text string) (string, error) {
+func (m *mockHandler) HandleMessage(_ context.Context, userID int64, _ string, text string) (string, error) {
 	m.called = true
 	m.userID = userID
 	m.text = text

@@ -34,6 +34,14 @@ type Config struct {
 	RuntimeSkills *RuntimeSkillsConfig `json:"runtime_skills,omitempty"`
 	// RuntimeSkillPackages is populated at Load when runtime_skills.enabled (json "-").
 	RuntimeSkillPackages []*runtimeskills.Package `json:"-"`
+	// ConversationSession is optional; when enabled, keeps a sliding window of exchanges per session key (EP-014).
+	ConversationSession *ConversationSessionConfig `json:"conversation_session,omitempty"`
+}
+
+// ConversationSessionConfig enables in-process sliding session memory (EP-014, REQ-14.001).
+type ConversationSessionConfig struct {
+	Enabled             bool `json:"enabled"`
+	MaxSessionExchanges int  `json:"max_session_exchanges"`
 }
 
 // LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002). JSON: tools.llm_escalation.

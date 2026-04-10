@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-014 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Sliding session memory window |
 | **Description** | Keep a bounded, ordered list of recent user and assistant **text** exchanges per conversation session and pass it to the LLM on each inbound message so multi-turn clarifications (e.g. room name after “turn on music”) retain intent without relying on vector similarity alone. Complements existing vector memory (conversation turns in `vec_items`) and future EP-002 long-term summarization; does not replace them. |
 | **First version date** | 2026-04-10 |

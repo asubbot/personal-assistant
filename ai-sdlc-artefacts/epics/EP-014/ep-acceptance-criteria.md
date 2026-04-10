@@ -81,7 +81,8 @@ Feature: Telegram session threading
 
 ## AC-14.004 — In-memory store per session
 
-**Maps to:** REQ-14.004
+**Maps to:** REQ-14.004  
+**AC-14.004 DEFERRED:** Manual verification — confirm session window is empty after process restart (no disk persistence in MVP).
 
 ```gherkin
 Feature: Session store lifecycle

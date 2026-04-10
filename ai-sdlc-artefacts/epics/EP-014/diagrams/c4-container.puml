@@ -1,0 +1,42 @@
+@startuml C4 Container - PersonalAssistant EP-014
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-014 Sliding session memory
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(nodes, "Nodes", "Remote hosts")
+System_Ext(llm_ext, "LLM API", "OpenAI, Ollama, etc.")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Telegram Bot", "Go", "Adapter; session key = chat id")
+    Container(core, "Go Core", "Go", "Prompt assembly, tool loop, session window")
+    Container(session, "Session window", "Go", "In-memory exchanges per session key")
+    ContainerDb(cfg, "Config", "JSON", "conversation_session optional")
+    ContainerDb(vec, "Vector DB", "SQLite+vec", "vec_items, vec_tools, vec_skills")
+    Container(llm, "LLM Provider", "Go", "Model calls")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "HandleMessage(userId, sessionKey, text)")
+Rel(core, tg, "Replies")
+Rel(core, cfg, "Load")
+Rel(core, session, "Snapshot / append")
+Rel(core, vec, "Memory + tool search")
+Rel(core, llm, "Completion")
+Rel(llm, llm_ext, "HTTP")
+Rel(core, nodes, "SSH (tools)")
+
+@enduml

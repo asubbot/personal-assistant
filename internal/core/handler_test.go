@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"pa/internal/config"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
@@ -172,7 +173,7 @@ func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello back"}}
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
 
-	reply, err := h.HandleMessage(context.Background(), 99, "hi")
+	reply, err := h.HandleMessage(context.Background(), 99, "", "hi")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -188,7 +189,7 @@ func TestHandleMessage_returnsProviderError(t *testing.T) {
 	provider := &mockProvider{err: wantErr}
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "hi")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if !errors.Is(err, wantErr) {
 		t.Errorf("err = %v, want %v", err, wantErr)
 	}
@@ -204,7 +205,7 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
 
 	userText := "what is 2+2?"
-	_, _ = h.HandleMessage(context.Background(), 42, userText)
+	_, _ = h.HandleMessage(context.Background(), 42, "", userText)
 
 	if len(provider.lastMessages) != 2 {
 		t.Fatalf("len(messages) = %d, want 2", len(provider.lastMessages))
@@ -231,7 +232,7 @@ func TestHandleMessage_emptyReturnsRejectionMessage(t *testing.T) {
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
 
 	for _, text := range []string{"", "  ", "\t\n"} {
-		reply, err := h.HandleMessage(context.Background(), 1, text)
+		reply, err := h.HandleMessage(context.Background(), 1, "", text)
 		if err != nil {
 			t.Errorf("text %q: err = %v", text, err)
 		}
@@ -251,7 +252,7 @@ func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 5}
 
 	// at limit: 5 runes — goes through
-	reply, err := h.HandleMessage(context.Background(), 1, "12345")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "12345")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +265,7 @@ func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 
 	// over limit: 7 runes — rejected, no LLM call
 	provider.lastMessages = nil
-	reply, err = h.HandleMessage(context.Background(), 1, "1234567")
+	reply, err = h.HandleMessage(context.Background(), 1, "", "1234567")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +284,7 @@ func TestHandleMessage_noLimit_longMessageGoesToProvider(t *testing.T) {
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 0}
 
 	longText := strings.Repeat("a", 10000)
-	reply, err := h.HandleMessage(context.Background(), 1, longText)
+	reply, err := h.HandleMessage(context.Background(), 1, "", longText)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +303,7 @@ func TestHandleMessage_logsMetadataAtInfo(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{PromptTokens: 1, CompletionTokens: 2, TotalTokens: 3}}}
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
 
-	_, _ = h.HandleMessage(context.Background(), 1, "hi")
+	_, _ = h.HandleMessage(context.Background(), 1, "", "hi")
 
 	var hasLLMCall bool
 	for _, r := range cap.records {
@@ -329,7 +330,7 @@ func TestHandleMessage_logsFullRequestResponseAtDebug(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello", Usage: llm.Usage{}}}
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
 
-	_, _ = h.HandleMessage(context.Background(), 1, "hi")
+	_, _ = h.HandleMessage(context.Background(), 1, "", "hi")
 
 	var hasRequest, hasCall, hasResponse bool
 	for _, r := range cap.records {
@@ -361,7 +362,7 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	cyrillic6 := "привет"
 
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 6}
-	reply, err := h.HandleMessage(context.Background(), 1, cyrillic6)
+	reply, err := h.HandleMessage(context.Background(), 1, "", cyrillic6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +376,7 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	// limit 5: 6 runes → rejected
 	provider.lastMessages = nil
 	h5 := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 5}
-	reply, err = h5.HandleMessage(context.Background(), 1, cyrillic6)
+	reply, err = h5.HandleMessage(context.Background(), 1, "", cyrillic6)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +409,7 @@ func TestHandleMessage_llmLogEntryRecordsResultModel(t *testing.T) {
 		model:  "openai/gpt-4o", // default from first provider
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "hello")
+	_, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -429,7 +430,7 @@ func TestHandleMessage_llmLogEntryUsesDefaultModelWhenResultModelEmpty(t *testin
 		model:  "openai/gpt-4o",
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "hello")
+	_, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -455,7 +456,7 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "what did I say about fruit?")
+	_, err := h.HandleMessage(context.Background(), 1, "", "what did I say about fruit?")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -483,7 +484,7 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "user said this")
+	_, err := h.HandleMessage(context.Background(), 1, "", "user said this")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -508,7 +509,7 @@ func TestHandleMessage_logRedactorAppliedInDebugLogs(t *testing.T) {
 		logRedactor: redactor,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "user said secret")
+	_, err := h.HandleMessage(context.Background(), 1, "", "user said secret")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -530,7 +531,7 @@ func TestHandleMessage_llmLogNil_succeedsWithoutWrite(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
 	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, llmLog: nil}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "hi")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -558,7 +559,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "query")
+	_, err := h.HandleMessage(context.Background(), 1, "", "query")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -584,7 +585,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
-	_, err = h2.HandleMessage(context.Background(), 1, "query")
+	_, err = h2.HandleMessage(context.Background(), 1, "", "query")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -618,7 +619,7 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "hi")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
 		t.Fatalf("HandleMessage err = %v, want nil (caller must not see index error)", err)
 	}
@@ -744,7 +745,7 @@ func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
 		logger:     slog.Default(),
 	}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "run echo hi")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo hi")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -793,7 +794,7 @@ func TestHandleMessage_toolResultLoop_invalidArgs_noRunOnNode_errorInChat(t *tes
 		logger:     slog.Default(),
 	}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "do something")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "do something")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -847,7 +848,7 @@ func TestHandleMessage_toolResultLoop_executionError_surfacedInChat(t *testing.T
 		logger:     slog.Default(),
 	}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "run echo")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -895,7 +896,7 @@ func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {
 		logger:     slog.Default(),
 	}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "run")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -938,7 +939,7 @@ func TestHandleMessage_toolInvocation_loggedWithIdArgumentsAndResult(t *testing.
 		logger:     logger,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "run echo hi")
+	_, err := h.HandleMessage(context.Background(), 1, "", "run echo hi")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1002,7 +1003,7 @@ func TestHandleMessage_toolInvocation_redactsInfoLogAttrs(t *testing.T) {
 		logRedactor: redactor,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "run echo")
+	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1060,7 +1061,7 @@ func TestHandleMessage_toolInvocation_redactsErrorAttr(t *testing.T) {
 		logRedactor: redactor,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "run echo")
+	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1112,7 +1113,7 @@ func TestHandleMessage_toolInvocation_loggedWithError(t *testing.T) {
 		logger:     logger,
 	}
 
-	_, _ = h.HandleMessage(context.Background(), 1, "do something")
+	_, _ = h.HandleMessage(context.Background(), 1, "", "do something")
 	var found bool
 	for _, r := range cap.records {
 		if r.msg == "tool invocation" && r.attrs["tool_id"] == "unknown_tool" {
@@ -1164,7 +1165,7 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 		logger:          logger,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "check server status")
+	_, err := h.HandleMessage(context.Background(), 1, "", "check server status")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1224,7 +1225,7 @@ func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testin
 		firstProviderSupportsTools: true,
 	}
 
-	_, err := h.HandleMessage(context.Background(), 1, "use alpha")
+	_, err := h.HandleMessage(context.Background(), 1, "", "use alpha")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1387,7 +1388,7 @@ func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 		firstProviderSupportsTools: false,
 	}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "run echo")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1475,7 +1476,7 @@ func TestHandleMessage_textBasedHermes_twoToolRounds_preservesForceJSONOnEachCom
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "run echo twice")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo twice")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1521,7 +1522,7 @@ func TestHandleMessage_textBasedHermes_invalidMarkup_userMessage(t *testing.T) {
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "x")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "x")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -1564,7 +1565,7 @@ func TestHandleMessage_textBased_systemPromptIncludesHermesAndTools(t *testing.T
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	_, err := h.HandleMessage(context.Background(), 1, "ping")
+	_, err := h.HandleMessage(context.Background(), 1, "", "ping")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1615,7 +1616,7 @@ func TestHandleMessage_textBasedHermes_unknownTool_noRunOnNode(t *testing.T) {
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	_, err := h.HandleMessage(context.Background(), 1, "x")
+	_, err := h.HandleMessage(context.Background(), 1, "", "x")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1655,7 +1656,7 @@ func TestHandleMessage_textBasedHermes_plainTextNoBlocks(t *testing.T) {
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	reply, err := h.HandleMessage(context.Background(), 1, "hello")
+	reply, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1706,7 +1707,7 @@ func TestHandleMessage_textBasedHermes_followUpMalformed_returnsError(t *testing
 		textBasedEnabled:           true,
 		firstProviderSupportsTools: false,
 	}
-	_, err := h.HandleMessage(context.Background(), 1, "run echo")
+	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err == nil {
 		t.Fatal("expected error from follow-up Hermes parse failure")
 	}
@@ -1715,5 +1716,233 @@ func TestHandleMessage_textBasedHermes_followUpMalformed_returnsError(t *testing
 	}
 	if callCount != 2 {
 		t.Errorf("Complete calls = %d, want 2", callCount)
+	}
+}
+
+// Covers AC-14.006, AC-14.010, AC-14.012: prior exchange appears between system and current user, oldest first.
+func TestHandleMessage_sessionMemory_injectsHistoryBetweenSystemAndUser(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	p := &mockProvider{result: &llm.CompletionResult{Content: "first reply"}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
+		sessionStore:          newSessionWindowStore(),
+	}
+	ctx := context.Background()
+	if _, err := h.HandleMessage(ctx, 1, "chat-1", "hello"); err != nil {
+		t.Fatalf("first turn: %v", err)
+	}
+	p.result = &llm.CompletionResult{Content: "second reply"}
+	if _, err := h.HandleMessage(ctx, 1, "chat-1", "follow up"); err != nil {
+		t.Fatalf("second turn: %v", err)
+	}
+	msgs := p.lastMessages
+	if len(msgs) != 4 {
+		t.Fatalf("len(messages) = %d, want 4", len(msgs))
+	}
+	if msgs[0].Role != "system" || msgs[1].Role != "user" || msgs[1].Content != "hello" ||
+		msgs[2].Role != "assistant" || msgs[2].Content != "first reply" ||
+		msgs[3].Role != "user" || msgs[3].Content != "follow up" {
+		t.Errorf("messages: %#v", msgs)
+	}
+}
+
+// Covers AC-14.007: when session memory off, only system + one user message.
+func TestHandleMessage_sessionDisabled_singleUserAfterSystem(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	p := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+	}
+	ctx := context.Background()
+	if _, err := h.HandleMessage(ctx, 1, "chat-1", "hi"); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.lastMessages) != 2 || p.lastMessages[0].Role != "system" || p.lastMessages[1].Role != "user" {
+		t.Errorf("got %#v", p.lastMessages)
+	}
+}
+
+// Covers AC-14.003: distinct session keys keep separate windows.
+func TestHandleMessage_sessionMemory_distinctKeysIsolated(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	p := &mockProvider{result: &llm.CompletionResult{Content: "r1"}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
+		sessionStore:          newSessionWindowStore(),
+	}
+	ctx := context.Background()
+	if _, err := h.HandleMessage(ctx, 1, "100", "only A"); err != nil {
+		t.Fatal(err)
+	}
+	p.result = &llm.CompletionResult{Content: "r2"}
+	if _, err := h.HandleMessage(ctx, 1, "200", "only B"); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.lastMessages) != 2 {
+		t.Fatalf("second chat should have no history, got %d msgs", len(p.lastMessages))
+	}
+	if p.lastMessages[1].Content != "only B" {
+		t.Errorf("user msg = %q", p.lastMessages[1].Content)
+	}
+}
+
+// Covers AC-14.008: cap drops oldest exchange.
+func TestHandleMessage_sessionMemory_capEvictsOldest(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	p := &mockProvider{result: &llm.CompletionResult{Content: "r"}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 1},
+		sessionStore:          newSessionWindowStore(),
+	}
+	ctx := context.Background()
+	for _, text := range []string{"m1", "m2", "m3"} {
+		if _, err := h.HandleMessage(ctx, 1, "k", text); err != nil {
+			t.Fatal(err)
+		}
+	}
+	msgs := p.lastMessages
+	if len(msgs) != 4 {
+		t.Fatalf("want 4 msgs (system + 1 pair + current), got %d", len(msgs))
+	}
+	if msgs[1].Content != "m2" || msgs[2].Content != "r" {
+		t.Errorf("expected window u2/a2 before m3, got %#v", msgs)
+	}
+}
+
+// Covers AC-14.009: empty user message does not grow session window.
+func TestHandleMessage_sessionMemory_emptyUser_noAppend(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	p := &mockProvider{result: &llm.CompletionResult{Content: "r"}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
+		sessionStore:          newSessionWindowStore(),
+	}
+	ctx := context.Background()
+	if _, err := h.HandleMessage(ctx, 1, "k", "ok"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.HandleMessage(ctx, 1, "k", "   "); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.HandleMessage(ctx, 1, "k", "after"); err != nil {
+		t.Fatal(err)
+	}
+	msgs := p.lastMessages
+	if len(msgs) != 4 {
+		t.Fatalf("want one stored exchange before 'after', got %d msgs", len(msgs))
+	}
+	if msgs[1].Content != "ok" {
+		t.Errorf("first user in history = %q", msgs[1].Content)
+	}
+}
+
+// Covers AC-14.009: over max length rejection does not append.
+func TestHandleMessage_sessionMemory_overMaxLength_noAppend(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	p := &mockProvider{result: &llm.CompletionResult{Content: "r"}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		maxMessageLength:      3,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
+		sessionStore:          newSessionWindowStore(),
+	}
+	ctx := context.Background()
+	if _, err := h.HandleMessage(ctx, 1, "k", "ok"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.HandleMessage(ctx, 1, "k", "toobig"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.HandleMessage(ctx, 1, "k", "z"); err != nil {
+		t.Fatal(err)
+	}
+	msgs := p.lastMessages
+	if len(msgs) != 4 || msgs[1].Content != "ok" {
+		t.Errorf("unexpected messages %#v", msgs)
+	}
+}
+
+// Covers AC-14.011: vector path unchanged with session (no hits → still system + history + user).
+func TestHandleMessage_sessionMemory_withVectorStoreEmpty_coexists(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	vec := &mockVectorStore{}
+	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
+	p := &mockProvider{result: &llm.CompletionResult{Content: "r1"}}
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		vectorStore:           vec,
+		embedder:              emb,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
+		sessionStore:          newSessionWindowStore(),
+	}
+	ctx := context.Background()
+	if _, err := h.HandleMessage(ctx, 1, "k", "one"); err != nil {
+		t.Fatal(err)
+	}
+	p.result = &llm.CompletionResult{Content: "r2"}
+	if _, err := h.HandleMessage(ctx, 1, "k", "two"); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.lastMessages) < 4 {
+		t.Fatalf("expected history + user, got %d", len(p.lastMessages))
+	}
+	if !strings.Contains(p.lastMessages[0].Content, "fixed assistant rules") {
+		t.Error("expected merged system first")
+	}
+}
+
+// Covers AC-14.013: DEBUG logs redact session history content like other user text.
+func TestHandleMessage_sessionMemory_debugLogsRedactHistoryUserText(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelDebug}
+	logger := slog.New(cap)
+	secret := "SECRET_TOKEN_XYZ"
+	p := &mockProvider{result: &llm.CompletionResult{Content: "r1"}}
+	redact := func(s string) string { return strings.ReplaceAll(s, secret, "[REDACTED]") }
+	h := &conversationHandler{
+		router:                mustRouterSingle(t, p),
+		logger:                logger,
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      10,
+		logRedactor:           redact,
+		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
+		sessionStore:          newSessionWindowStore(),
+	}
+	ctx := context.Background()
+	if _, err := h.HandleMessage(ctx, 1, "k", "hello "+secret); err != nil {
+		t.Fatal(err)
+	}
+	p.result = &llm.CompletionResult{Content: "r2"}
+	if _, err := h.HandleMessage(ctx, 1, "k", "next"); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range cap.records {
+		if c, ok := r.attrs["content"]; ok && strings.Contains(c, secret) {
+			t.Errorf("debug log leaked secret in content attr: %q", c)
+		}
 	}
 }

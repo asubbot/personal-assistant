@@ -77,7 +77,7 @@ func TestRuntimeSkills_handler_injectsPlaybook(t *testing.T) {
 		FirstProviderSupportsTools: true,
 	})
 
-	_, err = h.HandleMessage(ctx, 1, "alpha beta gamma query")
+	_, err = h.HandleMessage(ctx, 1, "", "alpha beta gamma query")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestRuntimeSkills_handler_toolBlocksBeforeRetrievedMarkers(t *testing.T) {
 		ToolFallbackCap:            50,
 		FirstProviderSupportsTools: true,
 	})
-	_, err := h.HandleMessage(ctx, 1, "q")
+	_, err := h.HandleMessage(ctx, 1, "", "q")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestRuntimeSkills_handler_trustAndRetrievedMarkers(t *testing.T) {
 		MaxDynamicSystemRunes: 4000,
 		VectorSearchTopK:      5,
 	})
-	_, err := h.HandleMessage(ctx, 1, "hi")
+	_, err := h.HandleMessage(ctx, 1, "", "hi")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestRuntimeSkills_handler_toolInstructionsMarkers(t *testing.T) {
 		Logger:                     testDiscardLogger(),
 		FirstProviderSupportsTools: true,
 	})
-	_, err := h.HandleMessage(ctx, 1, "q")
+	_, err := h.HandleMessage(ctx, 1, "", "q")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestRuntimeSkills_handler_toolUnionAlwaysInclude(t *testing.T) {
 		Logger:                     testDiscardLogger(),
 		FirstProviderSupportsTools: true,
 	})
-	_, err = h.HandleMessage(ctx, 1, "qqq")
+	_, err = h.HandleMessage(ctx, 1, "", "qqq")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -350,7 +350,7 @@ func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *te
 		Logger:                     testDiscardLogger(),
 		FirstProviderSupportsTools: true,
 	})
-	_, err = h.HandleMessage(ctx, 1, "unique skill phrase xyz")
+	_, err = h.HandleMessage(ctx, 1, "", "unique skill phrase xyz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +401,7 @@ func TestRuntimeSkills_handler_hermesBlockBeforeRetrievedMarkers(t *testing.T) {
 		TextBasedEnabled:           true,
 		FirstProviderSupportsTools: false,
 	})
-	_, err := h.HandleMessage(ctx, 1, "q")
+	_, err := h.HandleMessage(ctx, 1, "", "q")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -454,7 +454,7 @@ func TestRuntimeSkills_handler_toolRoundPreservesSystemContent(t *testing.T) {
 		ToolFallbackCap:            50,
 		FirstProviderSupportsTools: true,
 	})
-	_, err := h.HandleMessage(ctx, 1, "hi")
+	_, err := h.HandleMessage(ctx, 1, "", "hi")
 	if err != nil {
 		t.Fatal(err)
 	}
