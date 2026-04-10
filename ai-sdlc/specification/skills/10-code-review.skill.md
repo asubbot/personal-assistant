@@ -11,6 +11,13 @@ description: >-
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md). Complements [11-audit.skill.md](11-audit.skill.md) (audit = plan/tests/coverage). Runs after task execution (stage 9) and before audit (stage 11).  
 **Output:** The review is **shown in chat** in full. A file is **not** created unless the user explicitly asks to save (e.g. "save", "write to file", "lgtm"). **Recommended epic path when saving:** `ai-sdlc-artefacts/epics/<epic-id>/ep-code-review.md`; other paths (e.g. `ai-sdlc-artefacts/reviews/...`) only if the user prefers.
 
+## Mandatory delegation (pipeline stage 10)
+
+When this skill is run as **pipeline stage 10**, execution MUST follow [pipeline.spec.md](../pipeline.spec.md) **§3**:
+
+- **If you are the orchestrator** (you executed stage 9 / authored the change): **do not** perform the full structured review yourself in the same session. **Delegate** to a **subagent** or a **new chat** with fresh context; pass the agreed scope (PR URL, `base..head`, or file paths) and instruct the delegate to run this skill only.
+- **If you are the delegated reviewer:** follow §1–§4 below; stay **readonly** on the repo unless the user explicitly asks for edits; output in chat first; save `ep-code-review.md` only when the user requests.
+
 ---
 
 ## 1. Context and goal

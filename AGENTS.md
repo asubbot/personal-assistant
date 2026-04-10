@@ -17,7 +17,8 @@
 
 ## Heavy tasks, skills, and optional plans/subagents
 - **Primary:** non-trivial work (epics, audits, requirements, code review, consistency checks, etc.) is driven by the **skills**—open the right `*.skill.md` and execute it.
-- **Optional:** if you also use Cursor **plans** or **subagents**, align with the same rules: **one step at a time** with clear verification, **review** before moving on, **stop** on failure or doubt and report options (retry, fix manually, skip, change plan)—no automatic retries or bundling multiple steps without my approval. **Parallel** delegated work only when steps are independent and you can still review each outcome clearly.
+- **Pipeline stages 7 and 10 (mandatory delegation):** System design review (stage 7) and code review (stage 10) MUST be executed via a **subagent** or an equivalent **fresh agent session**, per [pipeline.spec.md](ai-sdlc/specification/pipeline.spec.md) §3 and the corresponding skills. The orchestrating agent does not substitute for that separate review run in the same uninterrupted author session.
+- **Optional (other work):** if you also use Cursor **plans** or **subagents** for other tasks, align with the same rules: **one step at a time** with clear verification, **review** before moving on, **stop** on failure or doubt and report options (retry, fix manually, skip, change plan)—no automatic retries or bundling multiple steps without my approval. **Parallel** delegated work only when steps are independent and you can still review each outcome clearly.
 - **Commits:** do not commit delegated or multi-step work until I approve; commit messages in English and, when helpful, reference the skill or plan step.
 
 ## Language

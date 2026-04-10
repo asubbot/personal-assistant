@@ -53,7 +53,25 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 ---
 
-## 3. Artefact file naming
+## 3. Delegated execution (mandatory subagent: stages 7 and 10)
+
+**Purpose:** Stages **7** (system design review) and **10** (code review) MUST run in a **separate agent session** from the work they critique, so the reviewer has clean context and is not biased by having just authored the design or the code.
+
+**MUST (when the environment supports subagents):**
+
+- **Stage 7** — The **orchestrating** agent (or human) **delegates** stage 7 to a **subagent** (or Cursor **Task** / equivalent) whose only job is to execute [07-system-design-review.skill.md](skills/07-system-design-review.skill.md) for the given epic: read `ep-scope.md`, `ep-requirements.md`, `ep-acceptance-criteria.md`, `ep-system-design.md`, and produce the review (draft in chat until user approves **save**, per skill). The subagent MUST NOT be the same linear chat session that **wrote** `ep-system-design.md` in one uninterrupted flow without handoff (start a new delegated run for the review).
+
+- **Stage 10** — The **orchestrating** agent **delegates** stage 10 to a **subagent** whose only job is to execute [10-code-review.skill.md](skills/10-code-review.skill.md) on the agreed change set (PR, branch range, or paths). Review stays **readonly** on the repo unless the user explicitly asks the reviewer to edit. Output is chat-first; optional `ep-code-review.md` only when the user asks to save.
+
+**Orchestrator responsibilities:** Provide epic id (`EP-XXX`) or explicit paths, confirm inputs exist, invoke the subagent with a short brief (“Run pipeline stage 7 per skill …”), then present the subagent’s output to the user for approval and file writes per skill rules.
+
+**Enforcement:** This is a **process rule** in git (this spec + skills). **CI cannot verify** that a subagent was used; compliance depends on agents following [AGENTS.md](../../AGENTS.md) and the stage skills.
+
+**SHOULD (when subagents are unavailable):** Open a **new chat / composer** with fresh context, state in the first message that the run is **only** pipeline stage 7 or **only** stage 10, paste the skill name and epic id or diff scope, and execute the same skill end-to-end—**without** carrying over the prior author-session transcript. That is treated as equivalent to a subagent for compliance with this section.
+
+---
+
+## 4. Artefact file naming
 
 **Project-level** (under `ai-sdlc-artefacts/`):
 
@@ -77,7 +95,7 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 ---
 
-## 4. Traceability
+## 5. Traceability
 
 - **scope.md** → strategy.md → ep-scope.md → ep-requirements.md → ep-acceptance-criteria.md → ep-system-design.md → ep-system-design-review.md → ep-implementation-plan.md → task execution (repo) → code review (stage 10; chat and/or ep-code-review.md when saved) → ep-audit-report.md.
 
@@ -87,7 +105,7 @@ If an upstream artefact changes, downstream stages and artefacts must be reviewe
 
 ---
 
-## 5. Summary diagram
+## 6. Summary diagram
 
 ```mermaid
 flowchart LR

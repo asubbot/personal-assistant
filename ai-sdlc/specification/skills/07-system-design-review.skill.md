@@ -10,6 +10,13 @@ description: Review system design documents for SDLC epics (stage 7). Use when r
 
 This skill guides systematic review of system design documents (`ep-system-design.md`) within the SDLC pipeline.
 
+## Mandatory delegation (pipeline stage 7)
+
+When this skill is run as **pipeline stage 7** for an epic, execution MUST follow [pipeline.spec.md](../pipeline.spec.md) **§3**:
+
+- **If you are the orchestrator** (you just helped author `ep-system-design.md` or earlier stages): **do not** perform this review yourself in the same session. **Delegate** to a **subagent** (Cursor Task / equivalent) or start a **new chat** with fresh context and a one-line brief: epic id, paths under `ai-sdlc-artefacts/epics/EP-XXX/`, instruction to run this skill end-to-end.
+- **If you are the delegated reviewer**: treat inputs as read-only; produce the review for the user; write `ep-system-design-review.md` only after explicit user approval to save, per this skill.
+
 ## When to Use
 
 - Reviewing `ai-sdlc-artefacts/epics/EP-XXX/ep-system-design.md`

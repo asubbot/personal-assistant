@@ -4,6 +4,8 @@ Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stag
 
 **Common behaviour:** The agent works in cooperation with the user. When several valid choices exist (output format, path, scope, or interpretation of the request), present them (e.g. A / B) and ask the user which they prefer. Do not proceed until the user has chosen. See [pipeline.spec.md](../pipeline.spec.md) (Human-in-the-loop).
 
+**Mandatory delegation:** Stages **7** (system design review) and **10** (code review) MUST run via a **subagent** or equivalent fresh session—see [pipeline.spec.md](../pipeline.spec.md) §3.
+
 ---
 
 ## Stage → skill (pipeline 1–11)
