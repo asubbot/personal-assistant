@@ -1,12 +1,13 @@
 # Project-level audit report
 
-**Date and time of creation:** 2026-04-09 (UTC)
+**Date and time of creation:** 2026-04-09 (UTC)  
+**Last updated:** 2026-04-10 (UTC) — EP-013 audit and project table row
 
 **Purpose:** Project-level audit summary — status of all epics (pipeline stage 11). Process: [11-audit.skill.md](../ai-sdlc/specification/skills/11-audit.skill.md), [pipeline.spec.md](../ai-sdlc/specification/pipeline.spec.md).
 
 **Links:** [scope.md](scope.md), [strategy.md](strategy.md).
 
-**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, the rollup table does **not** require a duplicate project-wide coverage line; the **current** codebase total from the latest `make check` is **73.4%** statements (`total:` line from `go tool cover -func=coverage.out`, 2026-04-09).
+**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, the rollup table does **not** require a duplicate project-wide coverage line; the **current** codebase total from the latest `make check` is **73.8%** statements (`total:` line from `go tool cover -func=coverage.out`, 2026-04-10).
 
 ---
 
@@ -26,8 +27,8 @@
 | [EP-010](epics/EP-010/ep-scope.md) | Distributed remote Go tool pipeline | CANCELED | — | — |
 | [EP-011](epics/EP-011/ep-scope.md) | Native web search and HTTPS content fetch (tools) | DONE | 72.9% | [ep-audit-report (2026-04-09)](epics/EP-011/ep-audit-report.md) |
 | [EP-012](epics/EP-012/ep-scope.md) | Telegram HTML formatting and typing indicator | DONE | ~73.4% | [ep-audit-report (2026-04-09)](epics/EP-012/ep-audit-report.md) |
+| [EP-013](epics/EP-013/ep-scope.md) | Runtime skills and consolidated system prompt | DONE | 73.8% | [ep-audit-report (2026-04-10)](epics/EP-013/ep-audit-report.md) |
 
-**EP-010:** The epic folder contains [ep-scope.md](epics/EP-010/ep-scope.md) only (canceled; implementation snapshot on feature branch `epic/EP-010-distributed-remote-tool-pipeline`, tag `Canceled`). No **ep-audit-report.md** in this folder.
 
 ---
 
@@ -35,7 +36,7 @@
 
 | Category | Epics |
 |----------|-------|
-| **DONE** (ep-scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012 |
+| **DONE** (ep-scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013 |
 | **NEW** | EP-002, EP-003, EP-005, EP-007 |
 | **CANCELED** | EP-010 |
 | **IN_PROGRESS** | None |
@@ -48,16 +49,16 @@ When an epic moves to **IN_PROGRESS**, run a full epic audit per stage 11 and ad
 
 ## Project-wide acceptance criteria check (validator)
 
-Command: `./bin/validate` (no arguments), run 2026-04-09.
+Command: `./bin/validate` (no arguments), run 2026-04-10.
 
 | Result | Detail |
 |--------|--------|
-| **In-scope traced** | 134/134 (100%) |
-| **Automated** | 121 (90.3%) |
+| **In-scope traced** | 148/148 (100%) |
+| **Automated** | 135 (91.2%) |
 | **Manual-only** | 13 |
 | **Deferred** | 2 |
-| **Total ACs** | 136 |
-| **Epics at 100% trace** (in validator scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012 |
+| **Total ACs** | 150 |
+| **Epics at 100% trace** (in validator scope) | EP-001, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013 |
 | **Test functions with t.Skip** (project-wide) | 25 |
 
 See [VALIDATION.md](../ai-sdlc/tools/validate/VALIDATION.md) for rules. Epics **NEW**, **CANCELED**, or without validator mapping may not appear in the validator epic list.

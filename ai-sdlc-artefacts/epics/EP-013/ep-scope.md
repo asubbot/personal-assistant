@@ -3,10 +3,11 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-013 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Runtime skills and consolidated system prompt |
 | **Description** | Introduce AgentSkills-style runtime skill packages (SKILL.md only for MVP), a dedicated `vec_skills` index with vector selection at startup, tool selection as union(skill-declared, always_include, tool_vector_top_k) with volume budgets and fail-fast validation. Extend the single merged `role: system` string with trust policy, canonical PA_BEGIN/PA_END block markers, retrieved-context placement and rules for user turns vs tool rounds, and a bounded RUNTIME_SKILLS block. No execution of skill `scripts/`, no `references/` in prompt or index in this epic. |
 | **First version date** | 2026-04-09 |
+| **Audit (stage 11)** | [ep-audit-report.md](ep-audit-report.md) — 2026-04-10 (UTC) |
 
 ## Glossary
 
