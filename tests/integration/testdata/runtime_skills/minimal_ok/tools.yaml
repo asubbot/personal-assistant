@@ -1,0 +1,10 @@
+# Minimal catalog for runtime skills config integration test.
+tools:
+  - id: test_tool
+    index_text: Test tool for runtime skills integration.
+    template: "echo {{arg}}"
+    node_id: nas
+    arguments:
+      - name: arg
+        type: string
+        required: true
