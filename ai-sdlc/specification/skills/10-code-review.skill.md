@@ -1,15 +1,15 @@
 ---
 name: code-review.skill
 description: >-
-  Perform structured code review on a change set (PR, branch diff, or explicit paths).
+  Perform structured code review on a change set (PR, branch diff, or explicit paths) — pipeline stage 10.
   Use when the user asks for code review, PR review, security review of changes,
   or pre-merge quality check aligned with project rules (KISS, fail fast, AGENTS.md).
 ---
 
-# Code review
+# Stage 10: Code review
 
-**Pipeline:** Optional; not a numbered SDLC stage. Complements [09-audit.skill.md](09-audit.skill.md) (audit = plan/tests/coverage) and manual inspection before merge.  
-**Output:** The review is **shown in chat** in full. A file under `ai-sdlc-artefacts/` is **not** created unless the user explicitly asks to save (e.g. "save", "write to file", "lgtm").
+**Pipeline:** [pipeline.spec.md](../pipeline.spec.md). Complements [11-audit.skill.md](11-audit.skill.md) (audit = plan/tests/coverage). Runs after task execution (stage 9) and before audit (stage 11).  
+**Output:** The review is **shown in chat** in full. A file is **not** created unless the user explicitly asks to save (e.g. "save", "write to file", "lgtm"). **Recommended epic path when saving:** `ai-sdlc-artefacts/epics/<epic-id>/ep-code-review.md`; other paths (e.g. `ai-sdlc-artefacts/reviews/...`) only if the user prefers.
 
 ---
 
@@ -39,7 +39,7 @@ You are a senior reviewer. Your task is to review a **bounded change set** and r
 3. **Apply the checklist (§3)** — Systematically walk through categories; note **severity** (Blocker / Major / Minor / Nit / Suggestion).
 4. **Tests** — If the change is non-trivial and the repo has a standard check command, you **may** suggest the user run **`make check`**; run it **only if** the user asked for verification or Agent mode allows running commands. Record pass/fail in the review when you ran it.
 5. **Output in chat** — Always output the **full** review using the structure in §4.
-6. **Save only when requested** — Write a file (e.g. `ai-sdlc-artefacts/reviews/code-review-YYYY-MM-DD-<topic>.md`) **only** when the user explicitly asks to save. Use relative links if the review references epic artefacts.
+6. **Save only when requested** — Write a file **only** when the user explicitly asks to save. Prefer `ai-sdlc-artefacts/epics/<epic-id>/ep-code-review.md` for epic-scoped reviews; otherwise e.g. `ai-sdlc-artefacts/reviews/code-review-YYYY-MM-DD-<topic>.md` if the user prefers. Use relative links if the review references epic artefacts.
 
 ---
 
@@ -88,5 +88,5 @@ Use this layout (or user-agreed equivalent):
 ## 6. Reference
 
 **Project rules:** [AGENTS.md](../../../AGENTS.md)  
-**Audit (status vs plan):** [09-audit.skill.md](09-audit.skill.md)  
+**Audit (status vs plan):** [11-audit.skill.md](11-audit.skill.md)  
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md)

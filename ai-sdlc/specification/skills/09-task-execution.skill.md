@@ -7,7 +7,7 @@ description: >-
   at least one test (or explicit manual scenario).
 ---
 
-# Stage 8: Task execution
+# Stage 9: Task execution
 
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md)  
 **Output:** Repo (codebase, commits, branches, PRs)
@@ -49,7 +49,7 @@ You are the implementation (coding) agent for this epic. Your task is to execute
    make build
    ./bin/validate EP-XXX
    ```
-   - **Exit code 0 ✅** — All ACs covered, ready for audit
+   - **Exit code 0 ✅** — All ACs covered, ready for code review and audit (stages 10–11)
    - **Exit code 1 ❌** — Some ACs not covered, add tests or defer them in ep-acceptance-criteria.md
 
    This tool performs an automated cross-check (enumerates AC-EE.NNN ids, searches codebase for `Covers AC-` comments) and saves significant token usage vs. manual inspection. See [VALIDATION.md](../../tools/validate/VALIDATION.md).

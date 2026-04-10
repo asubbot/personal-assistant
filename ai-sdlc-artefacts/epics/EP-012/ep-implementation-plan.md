@@ -1,6 +1,6 @@
 # EP-012 — Implementation plan
 
-**Pipeline:** Stage 7.
+**Pipeline:** Stage 8.
 
 ---
 
@@ -10,7 +10,7 @@
 2. **Outbound send helper** — Implement `sendOutboundText` with HTML mode and fallback; wire into `SendMessage` (notifier) and `handleUpdate` for all outbound texts; tests `Covers AC-12.003`, `Covers AC-12.004`, `Covers AC-12.005`.
 3. **Typing indicator** — Goroutine + ticker in `handleUpdate` for allowed-user text path; extend mock with `SendChatAction`; tests `Covers AC-12.006`, `Covers AC-12.007`.
 4. **Verification** — `make check`; `./bin/validate EP-012`.
-5. **Audit** — Update `ep-audit-report.md` (stage 9).
+5. **Audit** — Update `ep-audit-report.md` (stage 11).
 
 ---
 

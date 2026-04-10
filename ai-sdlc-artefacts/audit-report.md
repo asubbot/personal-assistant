@@ -2,7 +2,7 @@
 
 **Date and time of creation:** 2026-04-09 (UTC)
 
-**Purpose:** Project-level audit summary — status of all epics (pipeline stage 9). Process: [09-audit.skill.md](../ai-sdlc/specification/skills/09-audit.skill.md), [pipeline.spec.md](../ai-sdlc/specification/pipeline.spec.md).
+**Purpose:** Project-level audit summary — status of all epics (pipeline stage 11). Process: [11-audit.skill.md](../ai-sdlc/specification/skills/11-audit.skill.md), [pipeline.spec.md](../ai-sdlc/specification/pipeline.spec.md).
 
 **Links:** [scope.md](scope.md), [strategy.md](strategy.md).
 
@@ -40,7 +40,7 @@
 | **CANCELED** | EP-010 |
 | **IN_PROGRESS** | None |
 
-When an epic moves to **IN_PROGRESS**, run a full epic audit per stage 9 and add or refresh its **ep-audit-report.md**, then update this table.
+When an epic moves to **IN_PROGRESS**, run a full epic audit per stage 11 and add or refresh its **ep-audit-report.md**, then update this table.
 
 **Epic folders without ep-scope.md** under `ai-sdlc-artefacts/epics/` are not listed (none at audit date).
 

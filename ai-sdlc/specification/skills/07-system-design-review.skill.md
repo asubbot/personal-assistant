@@ -1,9 +1,12 @@
 ---
 name: system-design-review
-description: Review system design documents for SDLC epics. Use when reviewing ep-system-design.md files, checking architecture quality, requirement traceability, or when the user asks for architecture or system design review.
+description: Review system design documents for SDLC epics (stage 7). Use when reviewing ep-system-design.md files, checking architecture quality, requirement traceability, or when the user asks for architecture or system design review.
 ---
 
-# Architecture Review
+# Stage 7: System design review
+
+**Pipeline:** [pipeline.spec.md](../pipeline.spec.md)  
+**Output:** ai-sdlc-artefacts/epics/<epic-id>/ep-system-design-review.md (see § Report Template below).
 
 This skill guides systematic review of system design documents (`ep-system-design.md`) within the SDLC pipeline.
 
@@ -11,7 +14,7 @@ This skill guides systematic review of system design documents (`ep-system-desig
 
 - Reviewing `ai-sdlc-artefacts/epics/EP-XXX/ep-system-design.md`
 - User asks for architecture or design review
-- Before implementation planning stage
+- Before implementation planning (stage 8)
 
 ## Review Workflow
 
@@ -64,7 +67,7 @@ Categorize findings:
 
 ### Step 6: Output Report
 
-Generate review document alongside the design file.
+Generate **ep-system-design-review.md** in the same epic folder as `ep-system-design.md` (unless the user agrees another path). Follow the template below.
 
 ---
 

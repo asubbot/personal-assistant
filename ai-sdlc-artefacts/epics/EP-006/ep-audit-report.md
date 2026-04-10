@@ -1,8 +1,8 @@
 # EP-006 — Audit report
 
-**Date and time of creation:** 2026-03-20 13:01 UTC (project-level stage 9 audit; `make check` on same date)
+**Date and time of creation:** 2026-03-20 13:01 UTC (project-level stage 11 audit; `make check` on same date)
 
-**Pipeline:** Stage 9 ([09-audit.skill.md](../../../ai-sdlc/specification/skills/09-audit.skill.md)).
+**Pipeline:** Stage 11 ([11-audit.skill.md](../../../ai-sdlc/specification/skills/11-audit.skill.md)).
 
 **References:** [ep-implementation-plan.md](ep-implementation-plan.md) · [ep-acceptance-criteria.md](ep-acceptance-criteria.md) · [ep-requirements.md](ep-requirements.md) · [ep-system-design.md](ep-system-design.md) · [ep-manual-tests.md](ep-manual-tests.md)
 

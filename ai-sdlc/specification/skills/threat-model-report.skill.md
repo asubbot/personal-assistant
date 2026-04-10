@@ -87,4 +87,4 @@ Produce a **single markdown report** that:
 
 - Operator context: [docs/configuration.md](../../../docs/configuration.md), [docs/docker.md](../../../docs/docker.md).  
 - Project rules: [AGENTS.md](../../../AGENTS.md).  
-- Similar structured outputs: [code-review.skill.md](code-review.skill.md), [project-comparison-report.skill.md](project-comparison-report.skill.md).
+- Similar structured outputs: [10-code-review.skill.md](10-code-review.skill.md), [project-comparison-report.skill.md](project-comparison-report.skill.md).

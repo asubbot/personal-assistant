@@ -2,9 +2,9 @@
 
 **Date and time of creation:** 2026-03-22 (UTC)
 
-**Purpose:** Stage 9 audit — implementation vs plan, tests, coverage, quality gate, gaps and risks.
+**Purpose:** Stage 11 audit — implementation vs plan, tests, coverage, quality gate, gaps and risks.
 
-**Pipeline:** Stage 9 per repository file `ai-sdlc/specification/pipeline.spec.md` (not linked; outside `ai-sdlc-artefacts/`).
+**Pipeline:** Stage 11 per repository file `ai-sdlc/specification/pipeline.spec.md` (not linked; outside `ai-sdlc-artefacts/`).
 
 **Epic artefacts:**
 
@@ -12,7 +12,7 @@
 - [ep-requirements.md](ep-requirements.md)
 - [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [ep-system-design.md](ep-system-design.md)
-- **ep-implementation-plan.md** — missing at time of audit (stage 7 not recorded)
+- **ep-implementation-plan.md** — missing at time of audit (stage 8 not recorded)
 
 **Branch audited:** `feature/llm-parameters-enhancement`
 
@@ -30,7 +30,7 @@
 
 | Reference | Status | Notes |
 |-----------|--------|--------|
-| **ep-implementation-plan.md** | N/A | Missing — complete stage 7 to obtain task IDs for future audits. |
+| **ep-implementation-plan.md** | N/A | Missing — complete stage 8 to obtain task IDs for future audits. |
 | **ep-scope.md — scope / success criteria** | Done (by inspection) | Provider defaults and per-request overrides for temperature, max_tokens, response_format; JSON hint for text-based tools; optional config fields. |
 | **REQ-08.001–REQ-08.007** | Done | OpenAI-compatible `buildRequest` / resolution helpers and config validation. |
 | **AC-08.001–AC-08.007** | Verified | Unit tests below; Hermes integration tests preserve `ForceJSONOutput` for AC-08.005. |
@@ -90,7 +90,7 @@
 
 | Type | Item |
 |------|------|
-| **Gap** | Add `ep-implementation-plan.md` (stage 7) for task-level traceability in future audits. |
+| **Gap** | Add `ep-implementation-plan.md` (stage 8) for task-level traceability in future audits. |
 | **Gap** | No E2E test dedicated to new LLM fields (optional if unit + integration suffice per [strategy.md](../../strategy.md)). |
 | **Gap** | No manual deploy smoke scenarios in epic artefacts for operators. |
 | **Risk** | Low — logic concentrated in `OpenAICompatible`; tests and trace comments reduce regression risk. |

@@ -28,7 +28,7 @@ Follow these principles for all system design work:
 
 You are the Tech Lead for this epic. Your role is to produce the epic system design document (stage 6).
 
-**Goal:** Produce ep-system-design.md: components, interfaces, data models, and key design decisions. This output is the input for implementation planning (stage 7); keep it traceable to ep-requirements and, where useful, to ep-acceptance-criteria. Optionally include technical discovery (options, comparison, recommendation, risks) and references to research under `legacy/` (read-only).
+**Goal:** Produce ep-system-design.md: components, interfaces, data models, and key design decisions. This output is the input for system design review (stage 7), then implementation planning (stage 8); keep it traceable to ep-requirements and, where useful, to ep-acceptance-criteria. Optionally include technical discovery (options, comparison, recommendation, risks) and references to research under `legacy/` (read-only).
 
 **Inputs:** ep-requirements.md and ep-acceptance-criteria.md (ai-sdlc-artefacts/epics/<epic-id>/). If either is missing, ask the user to run stage 4 (Requirements) or stage 5 (Acceptance criteria) first. Platform constraints and research or technical discovery (e.g. under epic `legacy/`) may be used as reference.
 
@@ -67,7 +67,7 @@ Use these section headings (or user-agreed equivalents).
 
 **Traceability:** In the body, link to ep-requirements.md sections (e.g. [REQ-01.001](ep-requirements.md#interface-and-deployment)). **Every REQ from ep-requirements.md must be referenced at least once** in the document (full requirement traceability). Requirement IDs use format REQ-EE.NNN (epic number EE, requirement NNN). Every linked path must be under `ai-sdlc-artefacts/` and exist.
 
-**Quality:** Be specific and testable where possible; avoid vague wording. Keep the document maintainable for stage 7.
+**Quality:** Be specific and testable where possible; avoid vague wording. Keep the document maintainable for system design review (stage 7) and implementation planning (stage 8).
 
 ---
 

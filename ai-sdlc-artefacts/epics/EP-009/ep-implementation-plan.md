@@ -1,6 +1,6 @@
 # EP-009 Dynamic Tool Creation with Docker Sandbox — Implementation plan
 
-**Pipeline:** Stage 7 — see `ai-sdlc/specification/pipeline.spec.md` in the repo (not under `ai-sdlc-artefacts/`; no link per implementation-planning skill).  
+**Pipeline:** Stage 8 — see `ai-sdlc/specification/pipeline.spec.md` in the repo (not under `ai-sdlc-artefacts/`; no link per implementation-planning skill).  
 **Test strategy:** [../../strategy.md](../../strategy.md)
 
 **Related artefacts**
@@ -16,7 +16,7 @@
 
 **Purpose:** Ordered, verifiable coding tasks for EP-009. Each task maps to requirements and acceptance criteria where applicable. **Product code changes** require explicit user approval (see `AGENTS.md` at repo root) before implementation.
 
-**Implementation status (stage 8):** Core product tasks **§1–§6** and **§8.1–§8.2** are implemented (`make check` green). **§5.1** is implemented via `ValidateSandboxResourceSubstrings` in `create_tool` path. **§7** (SSH/Docker integration) is **not** automated in CI by default — see [ep-manual-tests.md](ep-manual-tests.md). **§8.3** applies only when C2 PlantUML changes. EP-009 coverage gate (AC-09.016): combined `internal/tools` + `internal/toolcatalog` under `-coverpkg=./internal/tools/...,./internal/toolcatalog/...`; target ≥70% — verify with `go test` / `go tool cover` on those packages or inspect the same packages’ contribution in `make coverage` output.
+**Implementation status (stage 9):** Core product tasks **§1–§6** and **§8.1–§8.2** are implemented (`make check` green). **§5.1** is implemented via `ValidateSandboxResourceSubstrings` in `create_tool` path. **§7** (SSH/Docker integration) is **not** automated in CI by default — see [ep-manual-tests.md](ep-manual-tests.md). **§8.3** applies only when C2 PlantUML changes. EP-009 coverage gate (AC-09.016): combined `internal/tools` + `internal/toolcatalog` under `-coverpkg=./internal/tools/...,./internal/toolcatalog/...`; target ≥70% — verify with `go test` / `go tool cover` on those packages or inspect the same packages’ contribution in `make coverage` output.
 
 **Contents**
 

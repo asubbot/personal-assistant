@@ -62,7 +62,7 @@ PersonalAssistant remains a **single deployable process** (see C2 below). EP-009
 | Aspect | Rule |
 |--------|------|
 | **Source of flags** | The **persisted `template` string** MUST include a **30s** execution bound (`timeout 30s` / `timeout 30 ` substring). Operators SHOULD add `--memory=256m` and `--cpus=0.5` (unquoted) for production sandboxes; `create_tool` does not substring-enforce memory/CPU. |
-| **Validation** | **Whitelist** ([REQ-09.009](ep-requirements.md#tool-creation)) remains prefix-only. **Optional hardening (recommended in implementation):** after prefix match, reject templates that do not contain the required substrings for memory/CPU/timeout so invalid tools never reach the node. Exact substring checks are specified in stage 7. |
+| **Validation** | **Whitelist** ([REQ-09.009](ep-requirements.md#tool-creation)) remains prefix-only. **Optional hardening (recommended in implementation):** after prefix match, reject templates that do not contain the required substrings for memory/CPU/timeout so invalid tools never reach the node. Exact substring checks are specified in stage 8. |
 | **No silent injection** | PA does **not** silently rewrite the LLM-provided template to inject flags in EP-009 MVP—avoids surprising operators and keeps allowlist strings stable. |
 
 **Integration tests** assert the **remote command** as built after substitution ([AC-09.002](ep-acceptance-criteria.md#ac-09-002)–[AC-09.004](ep-acceptance-criteria.md#ac-09-004)).
@@ -78,7 +78,7 @@ PersonalAssistant remains a **single deployable process** (see C2 below). EP-009
 1. After a successful YAML write, **in-memory `Catalog.Tools[id]`** is updated—the tool is invokable by id in the same process.
 2. **Embedding / `vec_tools` update** may be **async** or **best-effort**. If embedding fails after the file write succeeds:
    - Log an error (operator-visible).
-   - **Retry:** at least one retry or a background queue item is **recommended** in implementation; exact policy is stage 7.
+   - **Retry:** at least one retry or a background queue item is **recommended** in implementation; exact policy is stage 8.
    - **Pre-selection:** the new tool may be **missing from vector search** until embed succeeds or PA restarts and rebuilds the index—document as **known MVP limitation** unless implementation guarantees synchronous embed (see [ep-system-design-review.md](ep-system-design-review.md) §3.1).
 3. **Restart** always reloads YAML and can rebuild the tool index on startup—recovery path for operators.
 
@@ -93,7 +93,7 @@ PersonalAssistant remains a **single deployable process** (see C2 below). EP-009
 | `internal/toolcatalog` (extend) | Parse single tool; append list item to YAML; thread-safe or single-writer update of in-memory `Catalog`                 | `os`, `yaml`                         |
 | `internal/noderunner`           | Unchanged contract: after substitution, `cmdsafe` + allowlist + SSH `Exec`                                              | `internal/ssh`, `internal/allowlist` |
 | `internal/config` (extend)      | Load optional **secret detection patterns** for [REQ-09.017](ep-requirements.md#non-functional-requirements)            | existing validation                  |
-| `internal/core`                 | Wire `create_tool`; refresh tool list / pre-selection subset after successful create (implementation detail in stage 7) | `tools`, `toolcatalog`, `toolindex`  |
+| `internal/core`                 | Wire `create_tool`; refresh tool list / pre-selection subset after successful create (implementation detail in stage 8) | `tools`, `toolcatalog`, `toolindex`  |
 
 
 **Rule:** `create_tool` MUST NOT bypass `noderunner` for remote execution: new tools still use `run_on_node` with the same allowlist model (operator extends allowlist for expected `docker run` lines).
@@ -199,7 +199,7 @@ Exact final JSON shape and placement (nested under `tools` vs top-level) are fix
 Aligned with [strategy.md](../../strategy.md):
 
 - **Unit:** whitelist parser, duplicate check, secret regex, YAML append (temp dir), coverage per [REQ-09.016](ep-requirements.md#non-functional-requirements).
-- **Coverage ([REQ-09.016](ep-requirements.md#non-functional-requirements)):** The implementation plan / `Makefile` **SHALL** define how the **70%** floor is enforced (e.g. `go test -cover` on `internal/tools` and validation packages, or a coverage gate in `make check`). Until code exists, this remains a **stage 7** task (see [ep-system-design-review.md](ep-system-design-review.md) §3.3).
+- **Coverage ([REQ-09.016](ep-requirements.md#non-functional-requirements)):** The implementation plan / `Makefile` **SHALL** define how the **70%** floor is enforced (e.g. `go test -cover` on `internal/tools` and validation packages, or a coverage gate in `make check`). Until code exists, this remains a **stage 8** task (see [ep-system-design-review.md](ep-system-design-review.md) §3.3).
 - **Integration:** SSH testbed (existing pattern): run tool with `--network bridge` vs `--network none`; assert command flags; for none, run probe command inside container ([AC-09.018](ep-acceptance-criteria.md#ac-09-018)).
 - **Network isolation ([REQ-09.018](ep-requirements.md#docker-sandbox-execution)):** Satisfied by the **integration test** probe above. **Runtime** verification on every container start is **not** required by the epic. An optional **deploy-time** check (e.g. operator script that runs a one-off `docker run --network none` probe) is a **post-MVP / operations** improvement (see [ep-system-design-review.md](ep-system-design-review.md) §3.2).
 - **Manual / operator:** verify `pa-sandbox:python`, `:node`, `:base` images on NAS per [REQ-09.005](ep-requirements.md#docker-sandbox-execution)–[REQ-09.007](ep-requirements.md#docker-sandbox-execution).
@@ -209,7 +209,7 @@ Aligned with [strategy.md](../../strategy.md):
 ## Documentation and diagram maintenance
 
 - **C4 PNG:** Regenerate [c4-container.png](diagrams/c4-container.png) whenever [c4-container.puml](diagrams/c4-container.puml) changes (`plantuml -tpng diagrams/c4-container.puml` from this epic directory).
-- **CI (optional):** Add a check that `.puml` is newer than `.png` or run PlantUML in CI/docs build so drift is caught (see [ep-system-design-review.md](ep-system-design-review.md) §3.3)—implementation choice in stage 7.
+- **CI (optional):** Add a check that `.puml` is newer than `.png` or run PlantUML in CI/docs build so drift is caught (see [ep-system-design-review.md](ep-system-design-review.md) §3.3)—implementation choice in stage 8.
 - **Glossary overlap:** Prefer a single glossary in [ep-requirements.md](ep-requirements.md#glossary); [ep-scope.md](ep-scope.md) may keep a short epic summary only (see [ep-system-design-review.md](ep-system-design-review.md) §3.3).
 
 ---

@@ -1,6 +1,6 @@
 # Code review: EP-006 tool-call reliability branch
 
-**Skill:** [code-review.skill.md](../../../ai-sdlc/specification/skills/code-review.skill.md)  
+**Skill:** [10-code-review.skill.md](../../../ai-sdlc/specification/skills/10-code-review.skill.md)  
 **Dates:** 2026-03-20 (initial + follow-ups); **repeat pass** same day (handler/router/noderunner, `.golangci.yml`, `logredact`, `cmd/pa` wiring).  
 **Reviewer:** AI-assisted (Cursor), aligned with [AGENTS.md](../../../AGENTS.md) (KISS, fail fast).
 

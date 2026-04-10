@@ -1,7 +1,7 @@
 # EP-009 Dynamic Tool Creation with Docker Sandbox — Audit Report
 
 **Date and time:** 2026-03-23 (UTC)  
-**Pipeline:** Stage 9 — Audit  
+**Pipeline:** Stage 11 — Audit  
 **Epic:** [EP-009](ep-scope.md)
 
 **Related artefacts:**

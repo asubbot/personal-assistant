@@ -127,7 +127,7 @@ Items below are **addressed** in [ep-system-design.md](ep-system-design.md) (rev
 | M3 | **Integration test** as primary proof for REQ-09.018; deploy-time check explicitly **post-MVP / ops** in [Testing strategy](ep-system-design.md#testing-strategy). |
 | m1 | **Glossary** pointer: single source in ep-requirements in [Documentation and diagram maintenance](ep-system-design.md#documentation-and-diagram-maintenance). |
 | m2 | **CI / regen** note for diagram PNG in same section. |
-| m3 | **Coverage gate** deferred to **stage 7 / Makefile** in [Testing strategy](ep-system-design.md#testing-strategy). |
+| m3 | **Coverage gate** deferred to **stage 8 / Makefile** in [Testing strategy](ep-system-design.md#testing-strategy). |
 
 **C4 diagram:** Embedded PNG restored in [Architecture](ep-system-design.md#architecture).
 

@@ -1,9 +1,9 @@
 ---
 name: implementation-planning.skill
-description: Produce one implementation plan per epic (stage 7); output ep-implementation-plan.md. Use when planning tasks for an epic, e.g. "implementation plan for this epic", "break down epic into tasks".
+description: Produce one implementation plan per epic (stage 8); output ep-implementation-plan.md. Use when planning tasks for an epic, e.g. "implementation plan for this epic", "break down epic into tasks".
 ---
 
-# Stage 7: Implementation planning
+# Stage 8: Implementation planning
 
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md)  
 **Output:** ai-sdlc-artefacts/epics/<epic-id>/ep-implementation-plan.md
@@ -25,11 +25,11 @@ Follow these principles for all implementation planning work:
 
 ## 1. Context and goal
 
-You are the Tech Lead for this epic. Your role is to produce the implementation plan per epic (stage 7).
+You are the Tech Lead for this epic. Your role is to produce the implementation plan per epic (stage 8).
 
 **Goal:** Produce ep-implementation-plan.md: ordered tasks for the epic with dependencies, verification per task, traceability to REQ and AC (from ep-requirements and ep-acceptance-criteria), and checkpoints. Optionally group tasks by theme or label with user-story-like IDs (e.g. US-01) if useful; no separate story-level artefact is required.
 
-**Inputs:** ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, ep-system-design.md (all under ai-sdlc-artefacts/epics/<epic-id>/), and test strategy (e.g. strategy.md under ai-sdlc-artefacts/). If any epic input is missing, ask the user to run the corresponding prior stage first.
+**Inputs:** ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, ep-system-design.md (all under ai-sdlc-artefacts/epics/<epic-id>/), and test strategy (e.g. strategy.md under ai-sdlc-artefacts/). **Recommended:** ep-system-design-review.md after stage 7 (system design review). If any required epic input is missing, ask the user to run the corresponding prior stage first.
 
 **Questions to answer:** What are the discrete coding steps? In what order do we execute them? Where do we place checkpoints and how do we verify each step?
 
@@ -39,7 +39,7 @@ You are the Tech Lead for this epic. Your role is to produce the implementation 
 
 Follow this order:
 
-1. **Check inputs** — Ensure ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, and ep-system-design.md exist for the epic. If not, ask the user to run the missing stage(s) first. Optionally use test strategy (e.g. strategy.md) as reference.
+1. **Check inputs** — Ensure ep-scope.md, ep-requirements.md, ep-acceptance-criteria.md, and ep-system-design.md exist for the epic. If not, ask the user to run the missing stage(s) first. If ep-system-design-review.md is missing, recommend completing stage 7 first; proceed only if the user explicitly chooses to skip the review. Optionally use test strategy (e.g. strategy.md) as reference.
 2. **Check existing ep-implementation-plan** — If ep-implementation-plan.md exists for the epic, treat it as the baseline; propose changes as edits.
 3. **Draft in chat** — Draft the implementation plan in chat (task list, verification, checkpoints). Show it to the user and ask for clarification or changes. Do not write to file yet.
 4. **Resolve choices** — When multiple valid options exist (e.g. task breakdown, ordering), present options (e.g. A/B) and ask the user to choose.
@@ -52,7 +52,7 @@ Follow this order:
 
 Use these elements (or user-agreed equivalents):
 
-- **Document header** — Purpose, pipeline link, Previous/Related links to ep-acceptance-criteria.md, ep-requirements.md, ep-system-design.md (and optionally strategy.md).
+- **Document header** — Purpose, pipeline link, Previous/Related links to ep-acceptance-criteria.md, ep-requirements.md, ep-system-design.md, ep-system-design-review.md when present (and optionally strategy.md).
 - **Task list** — Numbered tasks with dependencies (e.g. "Task 2 depends on Task 1"). Clear objective per task; sub-bullets for details. Group into sections by theme if helpful.
 - **Verification per task** — For each task, state how to confirm the step is done (e.g. test passes, build succeeds, review done).
 - **Checkpoints** — Explicit checkpoints (e.g. "Ensure all tests pass before proceeding"; "Ask the user if questions arise").

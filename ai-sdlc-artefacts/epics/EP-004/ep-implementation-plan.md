@@ -2,7 +2,7 @@
 
 **Purpose:** Ordered implementation tasks for EP-004 with dependencies, verification per task, checkpoints per step, and traceability to requirements and acceptance criteria.
 
-**Pipeline:** Stage 7 — Implementation planning.
+**Pipeline:** Stage 8 — Implementation planning.
 
 **Previous/Related:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md), [ep-requirements.md](ep-requirements.md), [ep-system-design.md](ep-system-design.md).
 

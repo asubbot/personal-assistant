@@ -2,7 +2,7 @@
 
 **Date and time of creation:** 2026-04-09 16:36 UTC  
 **Last updated:** 2026-04-09 16:55 UTC — extended `web_tools` test coverage (redirect success, real `ValidateFetchURL` path, `web_search` edge cases).  
-**Pipeline:** [pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md) stage 9  
+**Pipeline:** [pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md) stage 11  
 **Related:** [ep-implementation-plan.md](ep-implementation-plan.md) · [ep-acceptance-criteria.md](ep-acceptance-criteria.md) · [ep-requirements.md](ep-requirements.md) · [ep-system-design.md](ep-system-design.md)
 
 ## Summary

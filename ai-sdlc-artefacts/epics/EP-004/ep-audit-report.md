@@ -1,7 +1,7 @@
 # EP-004 Structured tools and Tool-calling API — Audit Report
 
 **Date and time:** 2026-03-18 (UTC)  
-**Purpose:** Stage 9 audit — implementation vs plan, tests, coverage, quality gate, gaps/risks.  
+**Purpose:** Stage 11 audit — implementation vs plan, tests, coverage, quality gate, gaps/risks.  
 **Pipeline:** [ai-sdlc/specification/pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md)  
 **Epic artefacts:** [ep-implementation-plan.md](ep-implementation-plan.md), [ep-acceptance-criteria.md](ep-acceptance-criteria.md), [ep-requirements.md](ep-requirements.md), [ep-manual-tests.md](ep-manual-tests.md)
 

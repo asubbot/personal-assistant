@@ -1,6 +1,6 @@
 # EP-011 Native web search and HTTPS content fetch — Acceptance criteria
 
-This document defines testable acceptance criteria for [EP-011](ep-scope.md) in Gherkin form. Each criterion traces to [ep-requirements.md](ep-requirements.md). Use this document as input for system design (stage 6) and implementation planning (stage 7).
+This document defines testable acceptance criteria for [EP-011](ep-scope.md) in Gherkin form. Each criterion traces to [ep-requirements.md](ep-requirements.md). Use this document as input for system design (stage 6), system design review (stage 7), and implementation planning (stage 8).
 
 **Contents**
 

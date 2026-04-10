@@ -1,7 +1,7 @@
 # EP-012 — Audit report
 
 **Date and time of creation:** 2026-04-09 (UTC)  
-**Pipeline:** [pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md) stage 9  
+**Pipeline:** [pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md) stage 11  
 **Branch:** `epic/EP-012-telegram-html-typing`  
 **Related:** [ep-implementation-plan.md](ep-implementation-plan.md) · [ep-acceptance-criteria.md](ep-acceptance-criteria.md) · [ep-requirements.md](ep-requirements.md) · [ep-system-design.md](ep-system-design.md)
 

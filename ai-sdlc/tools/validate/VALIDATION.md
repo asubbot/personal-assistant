@@ -244,7 +244,7 @@ Example GitHub Actions:
 
 ### In SDLC Pipeline
 
-See [Stage 8 (Task Execution)](../specification/skills/08-task-execution.skill.md) and [Stage 9 (Audit)](../specification/skills/09-audit.skill.md).
+See [Stage 9 (Task Execution)](../specification/skills/09-task-execution.skill.md), [Stage 10 (Code review)](../specification/skills/10-code-review.skill.md), and [Stage 11 (Audit)](../specification/skills/11-audit.skill.md).
 
 ## Architecture
 
@@ -300,7 +300,7 @@ make build
 ./bin/validate EP-009
 
 # If incomplete: add more tests or defer ACs
-# If complete: ready for audit
+# If complete: ready for code review and audit (stages 10–11)
 ```
 
 ### 3. Before Audit
@@ -310,7 +310,7 @@ make build
 ./bin/validate EP-009
 
 # If gaps exist: list them for manual review/deferral
-# If all covered: proceed to stage 9 audit
+# If all covered: proceed to stages 10–11 (code review, then audit)
 ```
 
 ### 4. Deferring ACs

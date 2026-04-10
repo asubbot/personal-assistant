@@ -1,6 +1,6 @@
 # EP-011 Native web search and HTTPS content fetch — Implementation plan
 
-**Pipeline:** Stage 7 — see `ai-sdlc/specification/pipeline.spec.md` in the repo (not under `ai-sdlc-artefacts/`; no link per implementation-planning skill).  
+**Pipeline:** Stage 8 — see `ai-sdlc/specification/pipeline.spec.md` in the repo (not under `ai-sdlc-artefacts/`; no link per implementation-planning skill).  
 **Test strategy:** [../../strategy.md](../../strategy.md)
 
 **Related artefacts**

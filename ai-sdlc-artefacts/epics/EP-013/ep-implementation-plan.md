@@ -1,6 +1,6 @@
 # EP-013 — Implementation plan
 
-**Pipeline:** Stage 7.
+**Pipeline:** Stage 8.
 
 **Inputs:** [ep-scope.md](ep-scope.md), [ep-requirements.md](ep-requirements.md), [ep-acceptance-criteria.md](ep-acceptance-criteria.md), [ep-system-design.md](ep-system-design.md), [strategy.md](../../strategy.md)
 

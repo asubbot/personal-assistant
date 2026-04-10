@@ -1,6 +1,6 @@
 # EP-006 — Implementation plan
 
-**Pipeline:** Stage 7 ([07-implementation-planning.skill.md](../../../ai-sdlc/specification/skills/07-implementation-planning.skill.md)).
+**Pipeline:** Stage 8 ([08-implementation-planning.skill.md](../../../ai-sdlc/specification/skills/08-implementation-planning.skill.md)).
 
 **Artefacts:** [ep-scope.md](ep-scope.md) · [ep-requirements.md](ep-requirements.md) · [ep-acceptance-criteria.md](ep-acceptance-criteria.md) · [ep-system-design.md](ep-system-design.md) · [ep-code-review.md](ep-code-review.md) · [strategy.md](../../strategy.md)
 

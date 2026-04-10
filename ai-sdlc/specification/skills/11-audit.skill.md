@@ -1,9 +1,9 @@
 ---
 name: audit.skill
-description: Produce epic audit report (stage 9) or project-level audit draft; output ep-audit-report.md or audit-report.md. Use for "audit", "quality gate", "status report", "implementation vs plan", "project audit".
+description: Produce epic audit report (stage 11) or project-level audit draft; output ep-audit-report.md or audit-report.md. Use for "audit", "quality gate", "status report", "implementation vs plan", "project audit".
 ---
 
-# Stage 9: Audit
+# Stage 11: Audit
 
 **Pipeline:** [pipeline.spec.md](../pipeline.spec.md)  
 **Output:** The audit report is **always shown in chat** (full content). The file ai-sdlc-artefacts/epics/<epic-id>/ep-audit-report.md (epic) or ai-sdlc-artefacts/audit-report.md (project) is **not** created unless the user explicitly asks to save (e.g. "save", "write to file", "approve").
@@ -12,7 +12,7 @@ description: Produce epic audit report (stage 9) or project-level audit draft; o
 
 ## 1. Context and goal
 
-You are the QA and delivery lead. Your task is to produce an audit (status) report for the current branch (stage 9).
+You are the QA and delivery lead. Your task is to produce an audit (status) report for the current branch (stage 11).
 
 **Goal:** Produce an audit report (status of implementation vs plan, test results and coverage, quality gate, gaps or risks). The report is **output in chat** in full; it is **not saved to a file** unless the user explicitly asks. Plan = ep-implementation-plan.md; traceability to AC and implementation plan.
 
