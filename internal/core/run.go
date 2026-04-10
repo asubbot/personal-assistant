@@ -11,6 +11,7 @@ import (
 	"pa/internal/llmrouter"
 	"pa/internal/logredact"
 	"pa/internal/memory"
+	"pa/internal/runtimeskills"
 	"pa/internal/tools"
 	"pa/internal/vector"
 )
@@ -21,13 +22,21 @@ type ToolIndex interface {
 	Ready() bool
 }
 
+// SkillIndex provides vec_skills store and ready state (EP-013). Optional; when nil, runtime skills selection is skipped.
+type SkillIndex interface {
+	Store() vector.Store
+	Ready() bool
+	Close() error
+}
+
 // Run starts the application: wires the adapter to the conversation handler (LLM, vector, optional node runner) and blocks until ctx is cancelled.
 // memoryStore is not used by the handler (context is from vector only); vectorStore and embedder are optional; when provided, the handler runs semantic search and indexes turns (REQ-01.006, REQ-01.007, REQ-01.018).
 // nodeRunner is optional; when provided, tools can run allowlisted commands on nodes via SSH (REQ-01.004, REQ-01.005, REQ-01.013).
 // toolIndex is optional; when provided and Ready(), step 3.1 will use it for tool pre-selection.
 // providers and providerLabels define the ordered LLM chain used by the unified router.
+// skillIndex is optional; when provided and Ready(), runtime skills are selected per message (EP-013).
 // nativeRegistry is optional; when non-nil, native tools (e.g. run_on_node, create_tool) are merged into LLM tool lists and dispatch.
-func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, providers []llm.Provider, providerLabels []string, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, nativeRegistry *tools.Registry) error {
+func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, providers []llm.Provider, providerLabels []string, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry) error {
 	if adapter == nil {
 		return fmt.Errorf("core: adapter is nil")
 	}
@@ -44,14 +53,14 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 	if err != nil {
 		return err
 	}
-	handler, err := newRunConversationHandler(cfg, logger, redactor, router, vectorStore, embedder, nodeRunner, toolIndex, nativeRegistry)
+	handler, err := newRunConversationHandler(cfg, logger, redactor, router, vectorStore, embedder, nodeRunner, toolIndex, skillIndex, nativeRegistry)
 	if err != nil {
 		return err
 	}
 	return adapter.Run(ctx, handler)
 }
 
-func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, router *llmrouter.Router, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, nativeRegistry *tools.Registry) (*conversationHandler, error) {
+func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, router *llmrouter.Router, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry) (*conversationHandler, error) {
 	maxLen := 0
 	if cfg != nil && cfg.Telegram.MaxMessageLength > 0 {
 		maxLen = cfg.Telegram.MaxMessageLength
@@ -71,6 +80,16 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		toolTopK, toolMin, toolCap = 10, 1, 50
 	}
 	firstSupportsTools, textBased := firstProviderTextToolFlags(cfg)
+	byID := make(map[string]*runtimeskills.Package)
+	if cfg != nil {
+		for _, p := range cfg.RuntimeSkillPackages {
+			byID[p.ID] = p
+		}
+	}
+	var rs *config.RuntimeSkillsConfig
+	if cfg != nil {
+		rs = cfg.RuntimeSkills
+	}
 	h := &conversationHandler{
 		router:                     router,
 		escalation:                 escalationFromConfig(cfg),
@@ -78,6 +97,9 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		embedder:                   embedder,
 		nodeRunner:                 nodeRunner,
 		toolIndex:                  toolIndex,
+		skillIndex:                 skillIndex,
+		runtimeSkillsCfg:           rs,
+		skillPackagesByID:          byID,
 		nativeRegistry:             nativeRegistry,
 		toolSearchTopK:             toolTopK,
 		toolMinCount:               toolMin,

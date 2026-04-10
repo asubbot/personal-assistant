@@ -1,0 +1,47 @@
+@startuml C4 Container - PersonalAssistant EP-013
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-013 Runtime skills
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(nodes, "Nodes", "Remote hosts")
+System_Ext(llm_ext, "LLM API", "OpenAI, Ollama, etc.")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Telegram Bot", "Go", "Message adapter")
+    Container(core, "Go Core", "Go", "Orchestration, prompt assembly, tool loop")
+    Container(skills, "Runtime skills", "Go", "Load SKILL.md, vec_skills index, selection")
+    ContainerDb(cfg, "Config", "JSON", "Paths, tools, runtime_skills")
+    ContainerDb(toolcat, "Tool Catalog", "YAML", "Invocable tools")
+    ContainerDb(skillpack, "Skill packages", "Markdown", "Operator SKILL.md trees")
+    ContainerDb(vec, "Vector DB", "SQLite+vec", "vec_items, vec_tools, vec_skills")
+    Container(llm, "LLM Provider", "Go", "Model calls")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "Forward messages")
+Rel(core, tg, "Replies")
+Rel(core, cfg, "Load")
+Rel(core, toolcat, "Load")
+Rel(core, skillpack, "Read SKILL.md at startup")
+Rel(skills, skillpack, "Parse packages")
+Rel(skills, vec, "vec_skills")
+Rel(core, skills, "Select skills; merge tool ids")
+Rel(core, vec, "Memory + tool search")
+Rel(core, llm, "Completion")
+Rel(llm, llm_ext, "HTTP")
+
+@enduml

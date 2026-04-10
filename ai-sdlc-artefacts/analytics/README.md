@@ -15,6 +15,7 @@ Reports are produced with the project skill [`ai-sdlc/specification/skills/proje
 | Topsha | [topsha/topsha-analysis.md](topsha/topsha-analysis.md) |
 | GoClaw | [goclaw/goclaw-analysis.md](goclaw/goclaw-analysis.md), [goclaw/threat-model.md](goclaw/threat-model.md) |
 | PA distributed tooling vision | [pa-distributed-tooling-vision/pa-distributed-tooling-vision.md](pa-distributed-tooling-vision/pa-distributed-tooling-vision.md) |
+| PA runtime skills vs tools (RU) | [pa-runtime-skills-tools/pa-runtime-skills-tools.md](pa-runtime-skills-tools/pa-runtime-skills-tools.md) — модель runtime skills/tools, аналогия OpenClaw, договорённости для эпика |
 
 ## Similar projects on GitHub (for further research)
 

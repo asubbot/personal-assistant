@@ -65,6 +65,10 @@ func Load(path string) (*Config, error) {
 	}
 	raw.ToolCatalog = cat
 
+	if err := finalizeRuntimeSkills(&raw); err != nil {
+		return nil, err
+	}
+
 	return &raw, nil
 }
 

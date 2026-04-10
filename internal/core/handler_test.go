@@ -8,6 +8,7 @@ import (
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
+	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/tools"
 	"pa/internal/tooltext"
@@ -208,9 +209,12 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	if len(provider.lastMessages) != 2 {
 		t.Fatalf("len(messages) = %d, want 2", len(provider.lastMessages))
 	}
-	wantSystemPrefix := "You are a helpful assistant. Reply concisely."
-	if provider.lastMessages[0].Role != "system" || !strings.HasPrefix(provider.lastMessages[0].Content, wantSystemPrefix) {
-		t.Errorf("messages[0] = %+v, want system with prefix %q", provider.lastMessages[0], wantSystemPrefix)
+	sys := provider.lastMessages[0].Content
+	if provider.lastMessages[0].Role != "system" || !strings.HasPrefix(sys, systemprompt.TrustPolicy) {
+		t.Errorf("messages[0] = %+v, want system starting with trust policy", provider.lastMessages[0])
+	}
+	if !strings.Contains(sys, "You are a helpful assistant. Reply concisely.") {
+		t.Errorf("system message missing personality line: %s", sys)
 	}
 	if provider.lastMessages[1].Role != "user" || provider.lastMessages[1].Content != userText {
 		t.Errorf("messages[1] = %+v, want user + %q", provider.lastMessages[1], userText)

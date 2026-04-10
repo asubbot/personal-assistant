@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "telegram": {
+    "token_path": "/run/secrets/token",
+    "users_path": ""
+  },
+  "llm_providers": [
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434",
+      "model": "llama3.2",
+      "supports_tools": true,
+      "default_temperature": 0.3,
+      "default_max_tokens": 1024,
+      "supports_json_mode": true,
+      "default_response_format": "text"
+    }
+  ],
+  "paths": {
+    "memory_dir": "/data/memory",
+    "log_path": "/data/pa.log",
+    "vector_index_path": "/data/pa_vectors.sqlite",
+    "llm_log_dir": "/data/llm_logs",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml",
+    "skills_dir": "runtime_skills_skills"
+  },
+  "embedding": {
+    "type": "ollama",
+    "endpoint": "http://localhost:11434",
+    "model": "nomic-embed-text",
+    "dimensions": 768,
+    "batch_size": 100
+  },
+  "nodes": {},
+  "tools": {
+    "text_based_enabled": false
+  },
+  "log_redaction": {
+    "additional_patterns": []
+  },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": {
+    "tool_search_top_k": 10,
+    "tool_min_count": 1,
+    "tool_fallback_cap": 50
+  },
+  "conversation_context": {
+    "injected_context_max_chars": 4000,
+    "vector_search_top_k": 10
+  },
+  "runtime_skills": {
+    "enabled": true,
+    "always_include": ["definitely_not_in_catalog_or_native"]
+  }
+}

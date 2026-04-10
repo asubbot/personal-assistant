@@ -75,7 +75,7 @@ func TestRun_toolMayEscalate_advancesToSecondProvider(t *testing.T) {
 
 	err := Run(context.Background(), cfg, logger, adapter,
 		[]llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"},
-		nil, nil, nil, runner, nil, nil)
+		nil, nil, nil, runner, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestRun_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 	adapter := &capturingAdapter{}
 	err := Run(context.Background(), cfg, slog.Default(), adapter,
 		[]llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"},
-		nil, nil, nil, runner, nil, nil)
+		nil, nil, nil, runner, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}

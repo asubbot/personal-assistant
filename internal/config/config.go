@@ -1,6 +1,7 @@
 package config
 
 import (
+	"pa/internal/runtimeskills"
 	"pa/internal/toolcatalog"
 	"regexp"
 )
@@ -29,6 +30,10 @@ type Config struct {
 	CreateToolSecretRegex []*regexp.Regexp `json:"-"`
 	// WebTools is optional; when non-nil and enabled, registers web_search and web_fetch (EP-011, REQ-11.001, REQ-11.002).
 	WebTools *WebToolsConfig `json:"web_tools,omitempty"`
+	// RuntimeSkills is optional; when enabled, loads skill packages from paths.skills_dir (EP-013).
+	RuntimeSkills *RuntimeSkillsConfig `json:"runtime_skills,omitempty"`
+	// RuntimeSkillPackages is populated at Load when runtime_skills.enabled (json "-").
+	RuntimeSkillPackages []*runtimeskills.Package `json:"-"`
 }
 
 // LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002). JSON: tools.llm_escalation.
@@ -125,6 +130,7 @@ type Paths struct {
 	ScheduledTasksPath  string `json:"scheduled_tasks_path"`
 	SSHKnownHostsPath   string `json:"ssh_known_hosts_path"` // Required when nodes are configured. OpenSSH known_hosts file for host key verification.
 	ToolCatalogPath     string `json:"tool_catalog_path"`    // Required. Path to tool catalog YAML file; catalog is loaded at startup (fail fast on parse/schema error).
+	SkillsDir           string `json:"skills_dir,omitempty"` // Optional. Runtime skill packages root (subdirectory per skill); required when runtime_skills.enabled.
 }
 
 // Node holds SSH node configuration.

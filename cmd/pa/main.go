@@ -19,6 +19,7 @@ import (
 	"pa/internal/memory"
 	"pa/internal/noderunner"
 	"pa/internal/scheduler"
+	"pa/internal/skillindex"
 	"pa/internal/ssh"
 	"pa/internal/summarize"
 	"pa/internal/telegram"
@@ -141,8 +142,10 @@ func main() {
 }
 
 // runServer sets up adapter, stores, LLM, scheduler and runs the core until context is canceled.
+//
+//nolint:gocyclo // sequential startup wiring and teardown branches
 func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error {
-	adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, err := setup(cfg, configPath, logger)
+	adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, skillIndex, err := setup(cfg, configPath, logger)
 	if err != nil {
 		return err
 	}
@@ -156,6 +159,11 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		if toolIndex != nil {
 			if closeErr := toolIndex.Close(); closeErr != nil {
 				logger.Error("close tool index", "error", closeErr)
+			}
+		}
+		if skillIndex != nil {
+			if closeErr := skillIndex.Close(); closeErr != nil {
+				logger.Error("close skill index", "error", closeErr)
 			}
 		}
 	}()
@@ -188,7 +196,8 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
-	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti, toolRegistry)
+	var si core.SkillIndex = skillIndex
+	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti, si, toolRegistry)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second
@@ -475,7 +484,27 @@ func newToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.
 	return idx, nil
 }
 
+// newSkillIndex builds vec_skills synchronously when runtime skills are enabled (EP-013).
+func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.Logger) (*skillindex.Index, error) {
+	if cfg.RuntimeSkills == nil || !cfg.RuntimeSkills.Enabled || len(cfg.RuntimeSkillPackages) == 0 {
+		return nil, nil
+	}
+	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSkills)
+	if err != nil {
+		return nil, err
+	}
+	idx := skillindex.NewIndex(store)
+	if err := idx.BuildAndSetReady(context.Background(), cfg.RuntimeSkillPackages, embedder); err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("skill index: %w", err)
+	}
+	logger.Info("runtime skill index ready", "packages", len(cfg.RuntimeSkillPackages))
+	return idx, nil
+}
+
 // setup creates adapter, memory store, vector store, embedder, and optional node runner from config. Caller must close vectorStore.
+//
+//nolint:gocyclo // many optional subsystems; each branch is independent
 func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	adapter core.Adapter,
 	memoryStore *memory.Store,
@@ -483,53 +512,62 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	embedder embedding.Embedder,
 	nodeRunner core.NodeRunner,
 	toolIndex *toolindex.Index,
+	skillIndex *skillindex.Index,
 	err error,
 ) {
 	adapter, err = telegram.NewAdapter(cfg, configPath)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
 	if cfg.Paths.MemoryDir != "" {
 		if mkErr := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); mkErr != nil {
-			return nil, nil, nil, nil, nil, nil, mkErr
+			return nil, nil, nil, nil, nil, nil, nil, mkErr
 		}
 		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir)
 		if err != nil {
-			return nil, nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, nil, err
 		}
 	}
 
 	embedder, err = embedding.NewEmbedder(cfg.Embedding)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
 	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
 	if mkErr := os.MkdirAll(vecDir, 0o755); mkErr != nil {
-		return nil, nil, nil, nil, nil, nil, mkErr
+		return nil, nil, nil, nil, nil, nil, nil, mkErr
 	}
 	vectorStore, err = sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
 	toolIndex, err = newToolIndex(cfg, embedder, logger)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, err
+	}
+
+	skillIndex, err = newSkillIndex(cfg, embedder, logger)
+	if err != nil {
+		if toolIndex != nil {
+			_ = toolIndex.Close()
+		}
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
 	if len(cfg.Nodes) > 0 {
 		al, alErr := allowlist.NewChecker(cfg)
 		if alErr != nil {
-			return nil, nil, nil, nil, nil, nil, alErr
+			return nil, nil, nil, nil, nil, nil, nil, alErr
 		}
 		nr := noderunner.New(cfg, al, logger)
 		nr.SetLogRedactor(core.BuildLogRedactor(cfg))
 		nodeRunner = nr
 	}
 
-	return adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, nil
+	return adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, skillIndex, nil
 }
 
 func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) {

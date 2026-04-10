@@ -16,6 +16,7 @@ import (
 const (
 	TableMemory = "vec_items"
 	TableTools  = "vec_tools"
+	TableSkills = "vec_skills"
 )
 
 var autoOnce sync.Once

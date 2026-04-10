@@ -1,0 +1,71 @@
+package runtimeskills
+
+import (
+	"os"
+	"pa/internal/toolcatalog"
+	"path/filepath"
+	"testing"
+)
+
+func writeSkill(t *testing.T, root, skillName, content string) {
+	t.Helper()
+	dir := filepath.Join(root, skillName)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadDir_valid(t *testing.T) {
+	// Covers AC-13.011 happy path
+	root := t.TempDir()
+	writeSkill(t, root, "demo", "---\nname: Demo\ndescription: A demo\ntools:\n  - t1\n---\n\nBody here.\n")
+	pkgs, err := LoadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pkgs) != 1 || pkgs[0].ID != "demo" || pkgs[0].Body != "Body here." {
+		t.Fatalf("%+v", pkgs)
+	}
+}
+
+func TestLoadDir_missingFrontmatter(t *testing.T) {
+	// Covers AC-13.011
+	root := t.TempDir()
+	writeSkill(t, root, "bad", "no frontmatter\n")
+	_, err := LoadDir(root)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestLoadDir_forbiddenMarker(t *testing.T) {
+	// Covers AC-13.001 (loader)
+	root := t.TempDir()
+	bad := "---\nname: X\ndescription: Y\n---\n\n<<<PA_BEGIN_RETRIEVED_CONTEXT>>>\n"
+	writeSkill(t, root, "bad", bad)
+	_, err := LoadDir(root)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestValidateToolRefs_unknown(t *testing.T) {
+	// Covers AC-13.002
+	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{"t1": {ID: "t1"}}}
+	pkgs := []*Package{{ID: "s", Tools: []string{"nope"}}}
+	err := ValidateToolRefs(pkgs, cat, nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestValidateToolRefs_native(t *testing.T) {
+	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
+	pkgs := []*Package{{ID: "s", Tools: []string{"run_on_node"}}}
+	if err := ValidateToolRefs(pkgs, cat, []string{"run_on_node"}); err != nil {
+		t.Fatal(err)
+	}
+}
