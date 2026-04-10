@@ -69,14 +69,14 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	if err != nil {
 		return nil, err
 	}
-	var ctxMaxLen, topK int
+	var maxDynRunes, topK int
 	var toolTopK, toolMin, toolCap int
 	if cfg != nil {
-		ctxMaxLen, topK = conversationContextParams(cfg)
+		maxDynRunes, topK = conversationContextParams(cfg)
 		toolTopK, toolMin, toolCap = toolPreSelectionParams(cfg)
 	} else {
 		// core.Run allows nil config only for narrow tests; match historical implicit defaults.
-		ctxMaxLen, topK = 4000, 10
+		maxDynRunes, topK = 4000, 10
 		toolTopK, toolMin, toolCap = 10, 1, 50
 	}
 	firstSupportsTools, textBased := firstProviderTextToolFlags(cfg)
@@ -87,8 +87,10 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		}
 	}
 	var rs *config.RuntimeSkillsConfig
+	var tc *config.ToolsConfig
 	if cfg != nil {
 		rs = cfg.RuntimeSkills
+		tc = cfg.Tools
 	}
 	h := &conversationHandler{
 		router:                     router,
@@ -99,6 +101,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		toolIndex:                  toolIndex,
 		skillIndex:                 skillIndex,
 		runtimeSkillsCfg:           rs,
+		toolsCfg:                   tc,
 		skillPackagesByID:          byID,
 		nativeRegistry:             nativeRegistry,
 		toolSearchTopK:             toolTopK,
@@ -106,7 +109,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		toolFallbackCap:            toolCap,
 		logger:                     logger,
 		maxMessageLength:           maxLen,
-		contextMaxLen:              ctxMaxLen,
+		maxDynamicSystemRunes:      maxDynRunes,
 		vectorSearchTopK:           topK,
 		llmLog:                     llmLog,
 		model:                      model,
@@ -167,8 +170,8 @@ func toolPreSelectionParams(cfg *config.Config) (topK, minCount, fallbackCap int
 }
 
 // conversationContextParams returns conversation context limits from config (validated at config.Load).
-func conversationContextParams(cfg *config.Config) (contextMaxLen, vectorSearchTopK int) {
-	return cfg.ConversationContext.InjectedContextMaxChars, cfg.ConversationContext.VectorSearchTopK
+func conversationContextParams(cfg *config.Config) (maxDynamicSystemRunes, vectorSearchTopK int) {
+	return cfg.ConversationContext.MaxDynamicSystemRunes, cfg.ConversationContext.VectorSearchTopK
 }
 
 // buildRedactor returns a redactor from built-in patterns plus config additional_patterns (REQ-01.027, REQ-01.028).

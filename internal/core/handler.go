@@ -31,10 +31,10 @@ import (
 )
 
 const (
-	defaultContextMaxLen    = 4000 // tests: explicit handler.contextMaxLen when simulating production defaults
-	defaultVectorSearchTopK = 10   // tests: explicit handler.vectorSearchTopK when simulating production defaults
-	logTruncateMaxLen       = 2000 // max chars per message/response when logging at DEBUG (REQ-01.021)
-	maxToolRounds           = 10   // max request–tool-result rounds to avoid infinite loop (REQ-04.006)
+	defaultMaxDynamicSystemRunes = 4000 // tests: handler.maxDynamicSystemRunes when simulating production defaults
+	defaultVectorSearchTopK      = 10   // tests: explicit handler.vectorSearchTopK when simulating production defaults
+	logTruncateMaxLen            = 2000 // max chars per message/response when logging at DEBUG (REQ-01.021)
+	maxToolRounds                = 10   // max request–tool-result rounds to avoid infinite loop (REQ-04.006)
 )
 
 // genRequestID returns a short unique id for LLM log entries (16 hex chars from 8 random bytes).
@@ -55,27 +55,28 @@ type llmTurnState struct {
 // conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-01.006, REQ-01.007, REQ-01.018).
 // Context is built only from vector store (turns and summaries); no full.md day file.
 type conversationHandler struct {
-	router            *llmrouter.Router
-	escalation        *config.LLMEscalationConfig
-	vectorStore       vector.Store // optional; for semantic search and indexing
-	embedder          embedding.Embedder
-	nodeRunner        NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
-	toolIndex         ToolIndex  // optional; for tool pre-selection when Ready() (step 3.1)
-	skillIndex        SkillIndex // optional; vec_skills when Ready() (EP-013)
-	runtimeSkillsCfg  *config.RuntimeSkillsConfig
-	skillPackagesByID map[string]*runtimeskills.Package
-	nativeRegistry    *tools.Registry // optional; native tools (run_on_node, create_tool) when not overridden by catalog id
-	catalog           *toolcatalog.Catalog
-	toolSearchTopK    int
-	toolMinCount      int
-	toolFallbackCap   int
-	logger            *slog.Logger
-	maxMessageLength  int
-	contextMaxLen     int                 // max chars for injected context block (from config; >= 1 when using loaded config)
-	vectorSearchTopK  int                 // vector search top-K for context injection (from config; >= 1 when using loaded config)
-	llmLog            llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
-	model             string              // configured model name for LLM log entries
-	logRedactor       func(string) string // optional; redacts content in DEBUG app logs and INFO tool-invocation logs (REQ-01.026)
+	router                *llmrouter.Router
+	escalation            *config.LLMEscalationConfig
+	vectorStore           vector.Store // optional; for semantic search and indexing
+	embedder              embedding.Embedder
+	nodeRunner            NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
+	toolIndex             ToolIndex  // optional; for tool pre-selection when Ready() (step 3.1)
+	skillIndex            SkillIndex // optional; vec_skills when Ready() (EP-013)
+	runtimeSkillsCfg      *config.RuntimeSkillsConfig
+	toolsCfg              *config.ToolsConfig // optional; always_include and other tools.* JSON (EP-013)
+	skillPackagesByID     map[string]*runtimeskills.Package
+	nativeRegistry        *tools.Registry // optional; native tools (run_on_node, create_tool) when not overridden by catalog id
+	catalog               *toolcatalog.Catalog
+	toolSearchTopK        int
+	toolMinCount          int
+	toolFallbackCap       int
+	logger                *slog.Logger
+	maxMessageLength      int
+	maxDynamicSystemRunes int                 // max UTF-8 runes for dynamic system tail (from config; >= 1 when using loaded config)
+	vectorSearchTopK      int                 // vector search top-K for retrieved chunks (from config; >= 1 when using loaded config)
+	llmLog                llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
+	model                 string              // configured model name for LLM log entries
+	logRedactor           func(string) string // optional; redacts content in DEBUG app logs and INFO tool-invocation logs (REQ-01.026)
 	// textBasedEnabled + firstProviderSupportsTools: when true + false, Hermes text tool path (REQ-04.027–029).
 	textBasedEnabled           bool
 	firstProviderSupportsTools bool // true if first LLM provider sends tools in HTTP (supports_tools)
@@ -199,38 +200,14 @@ func textToolModeAfterFirstCompletion(textPath bool, result *llm.CompletionResul
 	return true, false, ""
 }
 
-// systemStaticHead returns retrieved-inner text (for WrapRetrievedContext) and the fixed
-// prefix (trust, marker supplement, personality). Retrieved markers are appended in
-// HandleMessage after tool/Hermes blocks (REQ-13.016).
-func (h *conversationHandler) systemStaticHead(ctx context.Context, userText string) (retrievedInner string, head string) {
-	retrievedInner = h.gatherRetrievedBody(ctx, userText)
+// systemStaticHead returns the fixed prefix (trust, marker supplement, personality).
+// hasRetrieved reflects whether vector search returned at least one non-empty chunk before tail fitting (REQ-13.016).
+func (h *conversationHandler) systemStaticHead(hasRetrieved bool) string {
 	personality := "You are a helpful assistant. Reply concisely."
-	if strings.TrimSpace(retrievedInner) != "" {
+	if hasRetrieved {
 		personality = "You are a personal assistant. Reply concisely."
 	}
-	head = systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + personality + "\n\n"
-	return retrievedInner, head
-}
-
-func (h *conversationHandler) appendToolBlocksToSystem(sys *llm.Message, toolIDs []string, opts *llm.CompletionOptions) {
-	if h.catalog == nil {
-		return
-	}
-	if len(toolIDs) == 0 && len(h.nativeToolDefs()) == 0 {
-		return
-	}
-	if len(toolIDs) > 0 {
-		if block := toolcatalog.AggregateSystemPrompts(h.catalog, toolIDs); block != "" {
-			sys.Content += systemprompt.WrapToolInstructions(block)
-		}
-	}
-	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
-	if textPath {
-		inner := tooltext.InstructionsForCatalogToolsPlusNative(h.catalog, toolIDs, h.nativeToolDefs())
-		if strings.TrimSpace(inner) != "" {
-			sys.Content += systemprompt.WrapHermesToolFormat(inner)
-		}
-	}
+	return systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + personality + "\n\n"
 }
 
 func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool, st *llmTurnState) (string, error) {
@@ -268,28 +245,60 @@ func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.
 // Runs semantic search, injects context into the LLM call, then indexes the turn (REQ-01.006, REQ-01.007, REQ-01.018).
+//
+//nolint:gocyclo // tail assembly, tool merge, options, and first completion share one linear flow
 func (h *conversationHandler) HandleMessage(ctx context.Context, _ int64, text string) (string, error) {
 	userText, early, stop := h.checkUserMessage(text)
 	if stop {
 		return early, nil
 	}
-	retrievedInner, sysHead := h.systemStaticHead(ctx, userText)
+	chunks := h.gatherRetrievedChunkTexts(ctx, userText)
+	hasRet := len(chunks) > 0
+	sysHead := h.systemStaticHead(hasRet)
 	messages := []llm.Message{
 		{Role: "system", Content: sysHead},
 		{Role: "user", Content: userText},
 	}
-	opts, toolIDs, selSkills, err := h.buildToolOptions(ctx, userText)
+	skills, err := h.selectSkillPackages(ctx, userText)
 	if err != nil {
 		return "", err
 	}
-	textPath := h.textBasedEnabled && !h.firstProviderSupportsTools && opts != nil && len(opts.Tools) > 0
-	// Stage B: set ForceJSONOutput hint for text-based tool mode (Hermes)
+	merged, sources, err := h.mergeSelectedToolIDs(ctx, userText, skills)
+	if err != nil {
+		return "", err
+	}
+	couldTextPath := h.textBasedEnabled && !h.firstProviderSupportsTools
+	includeHermes := false
+	if couldTextPath && h.catalog != nil {
+		inner := tooltext.InstructionsForCatalogToolsPlusNative(h.catalog, merged, h.nativeToolDefs())
+		includeHermes = strings.TrimSpace(inner) != ""
+	}
+	mergedCopy := append([]string(nil), merged...)
+	var sourcesCopy map[string]toolOrigin
+	if len(sources) > 0 {
+		sourcesCopy = make(map[string]toolOrigin, len(sources))
+		for k, v := range sources {
+			sourcesCopy[k] = v
+		}
+	}
+	tailState := &tailFitState{
+		merged:        mergedCopy,
+		sources:       sourcesCopy,
+		chunks:        append([]string(nil), chunks...),
+		skills:        append([]*runtimeskills.Package(nil), skills...),
+		includeHermes: includeHermes,
+		textPath:      couldTextPath,
+	}
+	h.fitDynamicTailToBudget(ctx, tailState, h.maxDynamicSystemRunes)
+	opts, err := h.completionOptionsMergedCatalogNative(tailState.merged)
+	if err != nil {
+		return "", err
+	}
+	textPath := couldTextPath && opts != nil && len(opts.Tools) > 0
 	if opts != nil && textPath {
 		opts.ForceJSONOutput = true
 	}
-	h.appendToolBlocksToSystem(&messages[0], toolIDs, opts)
-	messages[0].Content += systemprompt.WrapRetrievedContext(retrievedInner)
-	h.appendRuntimeSkillsBlock(ctx, &messages[0], selSkills)
+	messages[0].Content = sysHead + h.buildDynamicTailString(tailState)
 	requestID := genRequestID()
 	start := time.Now()
 	var st *llmTurnState
@@ -420,55 +429,26 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 	return messages, qualifyingFailure
 }
 
-// buildToolOptions returns completion options, merged catalog tool ids, and selected runtime skill packages (EP-013).
-//
-//nolint:gocyclo // skill selection, tool merge, caps, and native fallbacks
-func (h *conversationHandler) buildToolOptions(ctx context.Context, userText string) (*llm.CompletionOptions, []string, []*runtimeskills.Package, error) {
+// mergeSelectedToolIDs merges tools.always_include, skill-linked, and vector-selected catalog tool ids (EP-013).
+// When the tool index is nil or the catalog is nil, it returns nil, nil (native-only or no tools path).
+func (h *conversationHandler) mergeSelectedToolIDs(ctx context.Context, userText string, skills []*runtimeskills.Package) (merged []string, sources map[string]toolOrigin, err error) {
 	if h.catalog == nil {
-		return nil, nil, nil, nil
-	}
-	skills, err := h.selectSkillPackages(ctx, userText)
-	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil
 	}
 	topK := h.toolSearchTopK
 	if h.runtimeSkillsCfg != nil && h.runtimeSkillsCfg.Enabled && h.runtimeSkillsCfg.ToolVectorTopKCap > 0 && topK > h.runtimeSkillsCfg.ToolVectorTopKCap {
 		topK = h.runtimeSkillsCfg.ToolVectorTopKCap
 	}
 	if h.toolIndex == nil {
-		defs := h.nativeToolDefs()
-		if len(defs) == 0 {
-			return nil, nil, skills, nil
-		}
-		return &llm.CompletionOptions{Tools: defs}, nil, skills, nil
+		return nil, nil, nil
 	}
 	ids, err := toolindex.SelectToolIDs(ctx, h.embedder, h.toolIndex.Store(), h.toolIndex.Ready(), h.catalog, userText, topK, h.toolMinCount, h.toolFallbackCap, h.logger)
 	if err != nil {
 		h.logger.Error("tool pre-selection", "error", err)
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	merged, sources := mergeToolIDs(h.runtimeSkillsCfg, skills, ids)
-	if len(merged) == 0 {
-		native := h.nativeToolDefs()
-		if len(native) == 0 {
-			return nil, nil, skills, nil
-		}
-		return &llm.CompletionOptions{Tools: native}, nil, skills, nil
-	}
-	maxInst := 200000
-	if h.runtimeSkillsCfg != nil && h.runtimeSkillsCfg.Enabled {
-		maxInst = h.runtimeSkillsCfg.MaxToolInstructionRunesPerTurn
-	}
-	merged = trimToolIDsForInstructionBudget(h.catalog, merged, sources, maxInst)
-	opts, err := h.completionOptionsMergedCatalogNative(merged)
-	if err != nil {
-		h.logger.Error("build tool list", "error", err)
-		return nil, nil, nil, err
-	}
-	if opts == nil {
-		return nil, nil, skills, nil
-	}
-	return opts, merged, skills, nil
+	merged, sources = mergeToolIDs(h.toolsCfg, h.runtimeSkillsCfg, skills, ids)
+	return merged, sources, nil
 }
 
 func (h *conversationHandler) selectSkillPackages(ctx context.Context, userText string) ([]*runtimeskills.Package, error) {
@@ -487,38 +467,6 @@ func (h *conversationHandler) selectSkillPackages(ctx context.Context, userText 
 		}
 	}
 	return out, nil
-}
-
-func (h *conversationHandler) appendRuntimeSkillsBlock(ctx context.Context, sys *llm.Message, selected []*runtimeskills.Package) {
-	if h.runtimeSkillsCfg == nil || !h.runtimeSkillsCfg.Enabled || len(selected) == 0 {
-		return
-	}
-	maxR := h.runtimeSkillsCfg.MaxSkillRunesPerTurn
-	trimmed := trimSkillPackagesByBudget(selected, maxR)
-	if len(trimmed) < len(selected) && h.logger != nil {
-		kept := make(map[string]struct{}, len(trimmed))
-		for _, p := range trimmed {
-			kept[p.ID] = struct{}{}
-		}
-		var dropped []string
-		for _, p := range selected {
-			if _, ok := kept[p.ID]; !ok {
-				dropped = append(dropped, p.ID)
-			}
-		}
-		h.logger.InfoContext(ctx, "runtime skills dropped by rune budget",
-			"max_skill_runes_per_turn", maxR,
-			"selected", len(selected),
-			"included", len(trimmed),
-			"dropped_skill_ids", dropped,
-		)
-	}
-	var b strings.Builder
-	for _, p := range trimmed {
-		b.WriteString(p.PlaybookText())
-		b.WriteString("\n\n")
-	}
-	sys.Content += systemprompt.WrapRuntimeSkills(strings.TrimSpace(b.String()))
 }
 
 func (h *conversationHandler) completionOptionsMergedCatalogNative(ids []string) (*llm.CompletionOptions, error) {
@@ -670,50 +618,35 @@ func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID st
 	}
 }
 
-// gatherRetrievedBody returns text placed inside RETRIEVED_CONTEXT markers (REQ-01.006, REQ-01.007, EP-013).
-// Only whole chunks are included; when the limit is reached, remaining chunks are dropped (no mid-chunk truncation).
-func (h *conversationHandler) gatherRetrievedBody(ctx context.Context, userText string) string {
+// gatherRetrievedChunkTexts returns non-empty vector memory chunk texts in search order (REQ-01.006, REQ-01.007).
+// The dynamic system tail fitter may drop trailing chunks to satisfy max_dynamic_system_runes.
+func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, userText string) []string {
 	topK := h.vectorSearchTopK
 	if h.vectorStore == nil || h.embedder == nil {
-		return ""
+		return nil
 	}
 	queryEmbedding, err := h.embedder.Embed(ctx, userText)
 	if err != nil {
 		h.logger.Error("embed query", "error", err)
-		return ""
+		return nil
 	}
 	results, err := h.vectorStore.Search(ctx, queryEmbedding, topK)
 	if err != nil {
 		h.logger.Error("vector search", "error", err)
-		return ""
+		return nil
 	}
 	if len(results) == 0 {
-		return ""
+		return nil
 	}
-
-	maxLen := h.contextMaxLen
-	const suffixReserve = 4 // for trailing "\n..." when not all chunks fit
-	prefix := "\n\n---\n\nRelevant past context:\n"
-	buf := prefix
-	fitted := 0
+	var chunks []string
 	for _, r := range results {
-		line := "- " + r.Text + "\n"
-		if len(buf)+len(line)+suffixReserve <= maxLen {
-			buf += line
-			fitted++
-		} else {
-			break
+		if strings.TrimSpace(r.Text) == "" {
+			continue
 		}
+		chunks = append(chunks, r.Text)
 	}
-	if fitted == 0 {
-		h.logger.DebugContext(ctx, "context chunks", "fitted", 0, "total", len(results))
-		return ""
-	}
-	if fitted < len(results) {
-		buf += "\n..."
-	}
-	h.logger.DebugContext(ctx, "context chunks", "fitted", fitted, "total", len(results))
-	return "\n\nUse the following context if relevant to the user's message.\n\n" + buf
+	h.logger.DebugContext(ctx, "context chunks", "non_empty", len(chunks), "total", len(results))
+	return chunks
 }
 
 // logLLMRequest logs the full request at DEBUG (REQ-01.021). Content may be truncated and redacted (REQ-01.026).

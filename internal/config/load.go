@@ -16,11 +16,11 @@ const supportedVersion = 1
 
 // Upper bounds for tool pre-selection and conversation context (catch typos; values must be explicit in config).
 const (
-	maxToolSearchTopK          = 500
-	maxToolMinCount            = 500
-	maxToolFallbackCap         = 1000
-	maxVectorSearchTopK        = 500
-	maxInjectedContextMaxChars = 10_000_000
+	maxToolSearchTopK        = 500
+	maxToolMinCount          = 500
+	maxToolFallbackCap       = 1000
+	maxVectorSearchTopK      = 500
+	maxMaxDynamicSystemRunes = 10_000_000
 )
 
 // Load reads and validates config from path. On validation failure returns a clear error.
@@ -65,6 +65,9 @@ func Load(path string) (*Config, error) {
 	}
 	raw.ToolCatalog = cat
 
+	if err := validateToolsAlwaysInclude(&raw); err != nil {
+		return nil, err
+	}
 	if err := finalizeRuntimeSkills(&raw); err != nil {
 		return nil, err
 	}
@@ -203,11 +206,11 @@ func validateConversationContext(c *Config) error {
 		return errors.New("config: conversation_context is required")
 	}
 	cc := c.ConversationContext
-	if cc.InjectedContextMaxChars < 1 {
-		return errors.New("config: conversation_context.injected_context_max_chars must be >= 1")
+	if cc.MaxDynamicSystemRunes < 1 {
+		return errors.New("config: conversation_context.max_dynamic_system_runes must be >= 1")
 	}
-	if cc.InjectedContextMaxChars > maxInjectedContextMaxChars {
-		return fmt.Errorf("config: conversation_context.injected_context_max_chars must be <= %d", maxInjectedContextMaxChars)
+	if cc.MaxDynamicSystemRunes > maxMaxDynamicSystemRunes {
+		return fmt.Errorf("config: conversation_context.max_dynamic_system_runes must be <= %d", maxMaxDynamicSystemRunes)
 	}
 	if cc.VectorSearchTopK < 1 {
 		return errors.New("config: conversation_context.vector_search_top_k must be >= 1")
@@ -378,6 +381,27 @@ func validateNodes(c *Config) error {
 		if strings.TrimSpace(n.CommandAllowlistPath) == "" {
 			return fmt.Errorf("config: nodes.%s.command_allowlist_path is required", id)
 		}
+	}
+	return nil
+}
+
+// validateToolsAlwaysInclude rejects unknown tool ids in tools.always_include (REQ-13.003).
+func validateToolsAlwaysInclude(c *Config) error {
+	if c == nil || c.Tools == nil || c.ToolCatalog == nil {
+		return nil
+	}
+	for _, id := range c.Tools.AlwaysInclude {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := c.ToolCatalog.Tools[id]; ok {
+			continue
+		}
+		if NativeToolAllowed(c, id) {
+			continue
+		}
+		return fmt.Errorf("tools.always_include: unknown tool id %q", id)
 	}
 	return nil
 }

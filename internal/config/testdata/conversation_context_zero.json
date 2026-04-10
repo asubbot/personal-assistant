@@ -46,7 +46,7 @@
     "tool_fallback_cap": 50
   },
   "conversation_context": {
-    "injected_context_max_chars": 0,
+    "max_dynamic_system_runes": 0,
     "vector_search_top_k": 10
   }
 }

@@ -47,7 +47,8 @@ EP-013 adds **runtime skills** (parsed `SKILL.md` trees), a **`vec_skills`** sql
 | Component | Responsibility | Requirements |
 |-----------|----------------|--------------|
 | **`config.Paths`** | `skills_dir` string; resolved absolute at load. | [REQ-13.001](ep-requirements.md#configuration-and-paths) |
-| **`config.RuntimeSkillsConfig`** | `enabled`, `max_skills_per_turn`, `tool_vector_top_k_cap`, `max_skill_runes_per_turn`, `max_tool_instruction_runes_per_turn`, `always_include`. | [REQ-13.002](ep-requirements.md#configuration-and-paths), [REQ-13.003](ep-requirements.md#configuration-and-paths) |
+| **`config.RuntimeSkillsConfig`** | `enabled`, `max_skills_per_turn`, `tool_vector_top_k_cap`. | [REQ-13.002](ep-requirements.md#configuration-and-paths) |
+| **`config.ToolsConfig`** | Optional `always_include` tool ids (validated at load vs catalog + native allowlist). | [REQ-13.003](ep-requirements.md#configuration-and-paths) |
 | **`config.Config` (derived)** | `RuntimeSkillPackages []*runtimeskills.Package` (json `-`), filled after YAML/JSON load. | [REQ-13.004](ep-requirements.md#load-and-validation) |
 | **`runtimeskills.LoadDir`** | Walk immediate subdirs; parse frontmatter + body; validate markers. | [REQ-13.004](ep-requirements.md#load-and-validation), [REQ-13.005](ep-requirements.md#load-and-validation), [REQ-13.007](ep-requirements.md#load-and-validation) |
 | **`runtimeskills.ValidateToolRefs`** | Variant D vs catalog + native allowlist. | [REQ-13.006](ep-requirements.md#load-and-validation) |

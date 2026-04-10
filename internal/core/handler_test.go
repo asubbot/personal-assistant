@@ -447,12 +447,12 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 	}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
-		router:           mustRouterSingle(t, provider),
-		vectorStore:      vs,
-		embedder:         emb,
-		logger:           logger,
-		contextMaxLen:    defaultContextMaxLen,
-		vectorSearchTopK: defaultVectorSearchTopK,
+		router:                mustRouterSingle(t, provider),
+		vectorStore:           vs,
+		embedder:              emb,
+		logger:                logger,
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "what did I say about fruit?")
@@ -475,12 +475,12 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	vs := &mockVectorStore{}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
-		router:           mustRouterSingle(t, provider),
-		vectorStore:      vs,
-		embedder:         emb,
-		logger:           logger,
-		contextMaxLen:    defaultContextMaxLen,
-		vectorSearchTopK: defaultVectorSearchTopK,
+		router:                mustRouterSingle(t, provider),
+		vectorStore:           vs,
+		embedder:              emb,
+		logger:                logger,
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "user said this")
@@ -539,23 +539,23 @@ func TestHandleMessage_llmLogNil_succeedsWithoutWrite(t *testing.T) {
 	}
 }
 
-// Covers AC-01.014, REQ-01.007: gatherContext includes only whole chunks that fit; when no chunk fits, no context is injected.
-func TestHandleMessage_gatherContextTruncatesAtContextMaxLen(t *testing.T) {
+// Covers AC-01.014, REQ-01.007: retrieved memory uses whole chunks only; max_dynamic_system_runes trims the dynamic tail (drops trailing chunks first).
+func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 	logger := slog.Default()
-	// Single chunk too long to fit: nothing is injected (fitted 0/1).
-	longText := strings.Repeat("x", defaultContextMaxLen+500)
+	// Single chunk exceeds dynamic tail budget: chunk is dropped; no retrieved section.
+	longText := strings.Repeat("x", defaultMaxDynamicSystemRunes+500)
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
 	vs := &mockVectorStore{
 		searchResults: []vector.SearchResult{{Text: longText}},
 	}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
-		router:           mustRouterSingle(t, provider),
-		vectorStore:      vs,
-		embedder:         emb,
-		logger:           logger,
-		contextMaxLen:    defaultContextMaxLen,
-		vectorSearchTopK: defaultVectorSearchTopK,
+		router:                mustRouterSingle(t, provider),
+		vectorStore:           vs,
+		embedder:              emb,
+		logger:                logger,
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "query")
@@ -564,24 +564,25 @@ func TestHandleMessage_gatherContextTruncatesAtContextMaxLen(t *testing.T) {
 	}
 	sysContent := provider.lastMessages[0].Content
 	if strings.Contains(sysContent, "Relevant past context") {
-		t.Errorf("when no chunk fits, system message must not contain 'Relevant past context'; chunk was too long")
+		t.Errorf("when chunk does not fit tail budget, system message must not contain 'Relevant past context'")
 	}
 
-	// Two chunks: first fits, second too long — only first is included, with trailing "..."
+	// Two chunks: tail fit drops the oversized second chunk; first remains (no mid-chunk truncation).
 	shortChunk := "User: hi\nAssistant: hello"
+	longY := strings.Repeat("y", defaultMaxDynamicSystemRunes)
 	vs2 := &mockVectorStore{
 		searchResults: []vector.SearchResult{
 			{Text: shortChunk},
-			{Text: strings.Repeat("y", defaultContextMaxLen)},
+			{Text: longY},
 		},
 	}
 	h2 := &conversationHandler{
-		router:           mustRouterSingle(t, provider),
-		vectorStore:      vs2,
-		embedder:         emb,
-		logger:           logger,
-		contextMaxLen:    defaultContextMaxLen,
-		vectorSearchTopK: defaultVectorSearchTopK,
+		router:                mustRouterSingle(t, provider),
+		vectorStore:           vs2,
+		embedder:              emb,
+		logger:                logger,
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 	_, err = h2.HandleMessage(context.Background(), 1, "query")
 	if err != nil {
@@ -589,22 +590,13 @@ func TestHandleMessage_gatherContextTruncatesAtContextMaxLen(t *testing.T) {
 	}
 	sysContent2 := provider.lastMessages[0].Content
 	if !strings.Contains(sysContent2, "Relevant past context") {
-		t.Errorf("system message must contain 'Relevant past context' when at least one chunk fits")
+		t.Errorf("system message must contain 'Relevant past context' when the first chunk remains after tail fit")
 	}
 	if !strings.Contains(sysContent2, shortChunk) {
-		t.Errorf("system message must contain the first (fitting) chunk")
+		t.Errorf("system message must contain the first chunk")
 	}
-	if !strings.Contains(sysContent2, "...") {
-		t.Errorf("system message must contain '...' when not all chunks fit")
-	}
-	prefix := "Use the following context if relevant to the user's message."
-	idx := strings.Index(sysContent2, prefix)
-	if idx < 0 {
-		t.Fatalf("system message missing expected prefix")
-	}
-	contextBlock := sysContent2[idx+len(prefix):]
-	if len(contextBlock) > defaultContextMaxLen+10 {
-		t.Errorf("context block length = %d, want at most contextMaxLen+10 (~%d)", len(contextBlock), defaultContextMaxLen+10)
+	if strings.Contains(sysContent2, longY[:200]) {
+		t.Errorf("system message must not contain the dropped second chunk")
 	}
 }
 
@@ -618,12 +610,12 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 	vs := &mockVectorStore{}
 
 	h := &conversationHandler{
-		router:           mustRouterSingle(t, provider),
-		vectorStore:      vs,
-		embedder:         emb,
-		logger:           logger,
-		contextMaxLen:    defaultContextMaxLen,
-		vectorSearchTopK: defaultVectorSearchTopK,
+		router:                mustRouterSingle(t, provider),
+		vectorStore:           vs,
+		embedder:              emb,
+		logger:                logger,
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+		vectorSearchTopK:      defaultVectorSearchTopK,
 	}
 
 	reply, err := h.HandleMessage(context.Background(), 1, "hi")

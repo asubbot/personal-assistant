@@ -47,6 +47,8 @@ type LLMEscalationConfig struct {
 // ToolsConfig holds optional tool-invocation settings (REQ-04.030) and tools.llm_escalation (EP-006).
 type ToolsConfig struct {
 	TextBasedEnabled bool `json:"text_based_enabled"`
+	// AlwaysInclude lists catalog or allowed-native tool ids merged into every turn’s tool set (EP-013, REQ-13.011).
+	AlwaysInclude []string `json:"always_include,omitempty"`
 	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
 	CreateToolSecretPatterns []string             `json:"create_tool_secret_patterns,omitempty"`
 	LLMEscalation            *LLMEscalationConfig `json:"llm_escalation,omitempty"`
@@ -69,8 +71,9 @@ type ToolPreSelection struct {
 
 // ConversationContextConfig holds parameters for context injected into the LLM (vector search results). All fields >= 1 at load.
 type ConversationContextConfig struct {
-	InjectedContextMaxChars int `json:"injected_context_max_chars"` // max chars for vector+memory block injected into LLM
-	VectorSearchTopK        int `json:"vector_search_top_k"`        // number of vector search results to inject
+	// MaxDynamicSystemRunes caps the dynamic tail of the system message (after trust/marker/personality): tool instructions, Hermes, retrieved memory, runtime skills (UTF-8 runes).
+	MaxDynamicSystemRunes int `json:"max_dynamic_system_runes"`
+	VectorSearchTopK      int `json:"vector_search_top_k"` // number of vector search results to consider (whole chunks; tail fit may drop some)
 }
 
 // LogRedaction holds additional redaction patterns (REQ-01.028). Built-in patterns cannot be overridden (REQ-01.027).

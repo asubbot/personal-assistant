@@ -68,7 +68,7 @@ func TestRun_toolMayEscalate_advancesToSecondProvider(t *testing.T) {
 		LogRedaction:        &config.LogRedaction{},
 		PATimezone:          "UTC",
 		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
-		ConversationContext: &config.ConversationContextConfig{InjectedContextMaxChars: 4000, VectorSearchTopK: 10},
+		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, VectorSearchTopK: 10},
 	}
 	logger := slog.Default()
 	adapter := &capturingAdapter{}
@@ -131,7 +131,7 @@ func TestRun_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 		LogRedaction:        &config.LogRedaction{},
 		PATimezone:          "UTC",
 		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
-		ConversationContext: &config.ConversationContextConfig{InjectedContextMaxChars: 4000, VectorSearchTopK: 10},
+		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, VectorSearchTopK: 10},
 	}
 	adapter := &capturingAdapter{}
 	err := Run(context.Background(), cfg, slog.Default(), adapter,

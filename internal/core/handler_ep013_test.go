@@ -62,7 +62,6 @@ func TestHandleMessage_runtimeSkills_injectsPlaybook(t *testing.T) {
 
 	rs := &config.RuntimeSkillsConfig{
 		Enabled: true, MaxSkillsPerTurn: 2, ToolVectorTopKCap: 10,
-		MaxSkillRunesPerTurn: 10000, MaxToolInstructionRunesPerTurn: 200000,
 	}
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
 	h := &conversationHandler{
@@ -117,7 +116,7 @@ func TestHandleMessage_toolBlocksBeforeRetrievedMarkers(t *testing.T) {
 		vectorStore:                memVec,
 		embedder:                   constEmb4{},
 		logger:                     testDiscardLogger(),
-		contextMaxLen:              4000,
+		maxDynamicSystemRunes:      4000,
 		vectorSearchTopK:           5,
 		toolSearchTopK:             10,
 		toolMinCount:               1,
@@ -142,12 +141,12 @@ func TestHandleMessage_trustAndRetrievedMarkers(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
 	vs := &mockVectorStore{searchResults: []vector.SearchResult{{Text: "past fact"}}}
 	h := &conversationHandler{
-		router:           mustRouterSingle(t, provider),
-		vectorStore:      vs,
-		embedder:         constEmb4{},
-		logger:           testDiscardLogger(),
-		contextMaxLen:    4000,
-		vectorSearchTopK: 5,
+		router:                mustRouterSingle(t, provider),
+		vectorStore:           vs,
+		embedder:              constEmb4{},
+		logger:                testDiscardLogger(),
+		maxDynamicSystemRunes: 4000,
+		vectorSearchTopK:      5,
 	}
 	_, err := h.HandleMessage(ctx, 1, "hi")
 	if err != nil {
@@ -233,8 +232,6 @@ func TestHandleMessage_toolUnion_alwaysInclude(t *testing.T) {
 	ti := &mockToolIndex{store: toolVec, ready: true}
 	rs := &config.RuntimeSkillsConfig{
 		Enabled: true, MaxSkillsPerTurn: 2, ToolVectorTopKCap: 10,
-		MaxSkillRunesPerTurn: 10000, MaxToolInstructionRunesPerTurn: 500000,
-		AlwaysInclude: []string{"test_tool"},
 	}
 	var gotNames []string
 	provider := &mockProvider{}
@@ -253,6 +250,7 @@ func TestHandleMessage_toolUnion_alwaysInclude(t *testing.T) {
 		skillIndex:                 skIdx,
 		embedder:                   constEmb4{},
 		runtimeSkillsCfg:           rs,
+		toolsCfg:                   &config.ToolsConfig{AlwaysInclude: []string{"test_tool"}},
 		skillPackagesByID:          map[string]*runtimeskills.Package{"s1": pkg},
 		toolSearchTopK:             10,
 		toolMinCount:               1,
@@ -337,7 +335,6 @@ func TestHandleMessage_runtimeSkillsDisabled_toolPreselectionOnly(t *testing.T) 
 
 	rs := &config.RuntimeSkillsConfig{
 		Enabled: false, MaxSkillsPerTurn: 2, ToolVectorTopKCap: 10,
-		MaxSkillRunesPerTurn: 10000, MaxToolInstructionRunesPerTurn: 200000,
 	}
 	var toolNames []string
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
@@ -383,72 +380,6 @@ func TestHandleMessage_runtimeSkillsDisabled_toolPreselectionOnly(t *testing.T) 
 	}
 }
 
-func TestAppendRuntimeSkillsBlock_logsWhenSkillsDroppedByBudget(t *testing.T) {
-	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
-	logger := slog.New(cap)
-	h := &conversationHandler{
-		runtimeSkillsCfg: &config.RuntimeSkillsConfig{
-			Enabled: true, MaxSkillRunesPerTurn: 16,
-		},
-		logger: logger,
-	}
-	a := &runtimeskills.Package{ID: "a", Name: "A", Description: "d", Body: "aaaa"}
-	b := &runtimeskills.Package{ID: "b", Name: "B", Description: "d", Body: "bbbbbbbb"}
-	sys := &llm.Message{Role: "system", Content: "head\n"}
-	h.appendRuntimeSkillsBlock(context.Background(), sys, []*runtimeskills.Package{a, b})
-
-	var found bool
-	for _, r := range cap.records {
-		if r.msg != "runtime skills dropped by rune budget" {
-			continue
-		}
-		found = true
-		if r.attrs["selected"] != "2" || r.attrs["included"] != "1" {
-			t.Fatalf("attrs: %+v", r.attrs)
-		}
-		if !strings.Contains(r.attrs["dropped_skill_ids"], "b") {
-			t.Fatalf("dropped_skill_ids = %q", r.attrs["dropped_skill_ids"])
-		}
-		if r.attrs["max_skill_runes_per_turn"] != "16" {
-			t.Fatalf("max_skill_runes_per_turn = %q", r.attrs["max_skill_runes_per_turn"])
-		}
-	}
-	if !found {
-		t.Fatal("expected Info log for budget drop")
-	}
-	if !strings.Contains(sys.Content, promptmarkers.BeginRuntimeSkills) {
-		t.Fatalf("expected runtime skills block: %q", sys.Content)
-	}
-}
-
-func TestAppendRuntimeSkillsBlock_allDropped_logsAndNoRuntimeMarkers(t *testing.T) {
-	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
-	logger := slog.New(cap)
-	h := &conversationHandler{
-		runtimeSkillsCfg: &config.RuntimeSkillsConfig{Enabled: true, MaxSkillRunesPerTurn: 3},
-		logger:           logger,
-	}
-	p := &runtimeskills.Package{ID: "x", Name: "X", Description: "d", Body: "toobig"}
-	sys := &llm.Message{Role: "system", Content: ""}
-	h.appendRuntimeSkillsBlock(context.Background(), sys, []*runtimeskills.Package{p})
-
-	if strings.Contains(sys.Content, promptmarkers.BeginRuntimeSkills) {
-		t.Fatalf("unexpected RUNTIME_SKILLS markers in %q", sys.Content)
-	}
-	var found bool
-	for _, r := range cap.records {
-		if r.msg == "runtime skills dropped by rune budget" {
-			found = true
-			if r.attrs["included"] != "0" || r.attrs["selected"] != "1" {
-				t.Fatalf("attrs: %+v", r.attrs)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("expected Info log when all skills dropped")
-	}
-}
-
 func TestHandleMessage_hermesBlockBeforeRetrievedMarkers(t *testing.T) {
 	// REQ-13.016: dynamic tail ordering with text-based (Hermes) tool path
 	ctx := context.Background()
@@ -471,7 +402,7 @@ func TestHandleMessage_hermesBlockBeforeRetrievedMarkers(t *testing.T) {
 		vectorStore:                memVec,
 		embedder:                   constEmb4{},
 		logger:                     testDiscardLogger(),
-		contextMaxLen:              4000,
+		maxDynamicSystemRunes:      4000,
 		vectorSearchTopK:           5,
 		toolSearchTopK:             10,
 		toolMinCount:               1,

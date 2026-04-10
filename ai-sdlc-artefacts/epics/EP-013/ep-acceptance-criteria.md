@@ -52,7 +52,7 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 
 <a id="ac-13-003"></a>**AC-13.003** (Trace: [REQ-13.003](ep-requirements.md#requirements))
 
-**Given** `runtime_skills.always_include` contains a tool id not present in the catalog or allowed native set  
+**Given** `tools.always_include` contains a tool id not present in the catalog or allowed native set  
 **When** configuration is loaded  
 **Then** load SHALL fail with an error that identifies the tool id
 

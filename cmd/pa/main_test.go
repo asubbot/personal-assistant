@@ -145,7 +145,7 @@ var validSummarizeConfig = `{
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
 }`
 
 // runSummarizeCLI runs `go run ./cmd/pa -summarize=<value>` with minimal config in dir; expects exit 0 (e.g. skip when no data).

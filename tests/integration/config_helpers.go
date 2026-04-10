@@ -29,8 +29,8 @@ func ensureCoreRunConfigRequiredSections(cfg *config.Config) {
 	}
 	if cfg.ConversationContext == nil {
 		cfg.ConversationContext = &config.ConversationContextConfig{
-			InjectedContextMaxChars: 4000,
-			VectorSearchTopK:        10,
+			MaxDynamicSystemRunes: 4000,
+			VectorSearchTopK:      10,
 		}
 	}
 }

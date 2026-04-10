@@ -118,7 +118,7 @@ THE System SHALL expose `paths.skills_dir` as the filesystem root for runtime sk
 WHERE the `runtime_skills` configuration object is present, THE System SHALL support `enabled`, `max_skills_per_turn` (>= 1), `tool_vector_top_k_cap` (>= 1), `max_skill_runes_per_turn` (>= 1), and `max_tool_instruction_runes_per_turn` (>= 1) with validation at config load.
 
 **REQ-13.003** (Ubiquitous)  
-THE System SHALL validate every tool id in `runtime_skills.always_include` at startup against the tool catalog or the allowed native tool id set used by the core.
+THE System SHALL validate every tool id in `tools.always_include` at startup against the tool catalog or the allowed native tool id set used by the core.
 
 ---
 

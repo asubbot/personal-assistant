@@ -120,7 +120,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing log_redaction section", "missing_log_redaction.json", "log_redaction is required"},
 		{"missing pa_timezone", "missing_pa_timezone.json", "pa_timezone is required"},
 		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
-		{"conversation_context zero max chars", "conversation_context_zero.json", "injected_context_max_chars must be >= 1"},
+		{"conversation_context zero max runes", "conversation_context_zero.json", "max_dynamic_system_runes must be >= 1"},
 		// EP-008: reject invalid LLM default_* / supports_json_mode at load (prerequisite for REQ-08.001–008.007).
 		{"llm default_max_tokens zero", "llm_default_max_tokens_zero.json", "default_max_tokens must be >= 1"},
 		{"llm default_temperature negative", "llm_default_temperature_negative.json", "default_temperature must be in [0, 2]"},
@@ -243,7 +243,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	  "log_redaction": { "additional_patterns": [] },
 	  "pa_timezone": "UTC",
 	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-	  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
+	  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
 	}`
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
 		t.Fatal(err)
@@ -342,7 +342,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -392,7 +392,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "injected_context_max_chars": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)

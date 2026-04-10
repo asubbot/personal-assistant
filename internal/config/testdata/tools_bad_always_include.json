@@ -35,7 +35,8 @@
   },
   "nodes": {},
   "tools": {
-    "text_based_enabled": false
+    "text_based_enabled": false,
+    "always_include": ["definitely_not_in_catalog_or_native"]
   },
   "log_redaction": {
     "additional_patterns": []
@@ -47,11 +48,10 @@
     "tool_fallback_cap": 50
   },
   "conversation_context": {
-    "injected_context_max_chars": 4000,
+    "max_dynamic_system_runes": 4000,
     "vector_search_top_k": 10
   },
   "runtime_skills": {
-    "enabled": true,
-    "always_include": ["definitely_not_in_catalog_or_native"]
+    "enabled": true
   }
 }
