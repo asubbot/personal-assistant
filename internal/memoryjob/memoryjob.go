@@ -277,7 +277,11 @@ func (r *Runner) jobCatchUpDay(ctx context.Context) error {
 	loc := r.deps.Loc
 	y, m, d := patime.PreviousCalendarDate(loc, r.now())
 	day := patime.NoonOnCalendar(loc, y, m, d)
-	if !dayNeedsCatchUp(ctx, r.deps.Cfg, r.deps.Memory, loc, day) {
+	need, err := dayNeedsCatchUp(ctx, r.deps.Cfg, r.deps.Memory, loc, day)
+	if err != nil {
+		return err
+	}
+	if !need {
 		return nil
 	}
 	return r.runDayDirect(ctx, day)
@@ -286,7 +290,11 @@ func (r *Runner) jobCatchUpDay(ctx context.Context) error {
 func (r *Runner) jobCatchUpMonth(ctx context.Context) error {
 	loc := r.deps.Loc
 	py, pm := patime.PreviousMonth(loc, r.now())
-	if !r.monthNeedsCatchUp(ctx, py, int(pm)) {
+	need, err := r.monthNeedsCatchUp(ctx, py, int(pm))
+	if err != nil {
+		return err
+	}
+	if !need {
 		return nil
 	}
 	return r.runMonth(ctx, py, int(pm))
@@ -294,31 +302,37 @@ func (r *Runner) jobCatchUpMonth(ctx context.Context) error {
 
 func (r *Runner) jobCatchUpYear(ctx context.Context) error {
 	py := patime.PreviousYear(r.deps.Loc, r.now())
-	if !r.yearNeedsCatchUp(ctx, py) {
+	need, err := r.yearNeedsCatchUp(ctx, py)
+	if err != nil {
+		return err
+	}
+	if !need {
 		return nil
 	}
 	return r.runYear(ctx, py)
 }
 
-func (r *Runner) monthNeedsCatchUp(ctx context.Context, year, month int) bool {
+func (r *Runner) monthNeedsCatchUp(ctx context.Context, year, month int) (bool, error) {
 	sections, err := summarize.GatherDaySummariesForMonth(ctx, r.deps.Memory, year, month)
-	if err != nil || len(sections) == 0 {
-		return false
+	if err != nil {
+		return false, err
+	}
+	if len(sections) == 0 {
+		return false, nil
 	}
 	prev, err := r.deps.Memory.ReadMonthSummary(ctx, year, month)
 	if err != nil {
-		r.deps.Logger.Error("read month summary", "error", err)
-		return false
+		return false, err
 	}
-	return strings.TrimSpace(prev) == ""
+	return strings.TrimSpace(prev) == "", nil
 }
 
-func (r *Runner) yearNeedsCatchUp(ctx context.Context, year int) bool {
+func (r *Runner) yearNeedsCatchUp(ctx context.Context, year int) (bool, error) {
 	var anyMonth bool
 	for m := 1; m <= 12; m++ {
 		s, err := r.deps.Memory.ReadMonthSummary(ctx, year, m)
 		if err != nil {
-			return false
+			return false, err
 		}
 		if strings.TrimSpace(s) != "" {
 			anyMonth = true
@@ -326,25 +340,28 @@ func (r *Runner) yearNeedsCatchUp(ctx context.Context, year int) bool {
 		}
 	}
 	if !anyMonth {
-		return false
+		return false, nil
 	}
 	ys, err := r.deps.Memory.ReadYearSummary(ctx, year)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return strings.TrimSpace(ys) == ""
+	return strings.TrimSpace(ys) == "", nil
 }
 
-func dayNeedsCatchUp(ctx context.Context, cfg *config.Config, mem *memory.Store, loc *time.Location, day time.Time) bool {
+func dayNeedsCatchUp(ctx context.Context, cfg *config.Config, mem *memory.Store, loc *time.Location, day time.Time) (bool, error) {
 	entries, err := llmlog.ReadEntriesForDay(cfg.Paths.LLMLogDir, day, loc)
-	if err != nil || len(entries) == 0 {
-		return false
+	if err != nil {
+		return false, err
+	}
+	if len(entries) == 0 {
+		return false, nil
 	}
 	s, err := mem.ReadDaySummary(ctx, day)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return strings.TrimSpace(s) == ""
+	return strings.TrimSpace(s) == "", nil
 }
 
 func (r *Runner) runDayDirect(ctx context.Context, day time.Time) error {

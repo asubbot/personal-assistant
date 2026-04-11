@@ -598,7 +598,10 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 		if mkErr := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); mkErr != nil {
 			return nil, nil, nil, nil, nil, nil, nil, mkErr
 		}
-		loc, _ := time.LoadLocation(strings.TrimSpace(cfg.PATimezone))
+		loc, locErr := config.PALocation(cfg)
+		if locErr != nil {
+			return nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("memory store timezone: %w", locErr)
+		}
 		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir, loc)
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, nil, err
