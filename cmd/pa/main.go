@@ -58,18 +58,19 @@ func buildLLMProviders(cfg *config.Config) ([]llm.Provider, []string, error) {
 	return providers, labels, nil
 }
 
-// newLLMProvider builds a provider adapter backed by unified llmrouter transport routing.
-func newLLMProvider(cfg *config.Config, logger *slog.Logger) (llm.Provider, error) {
+// buildAppLLM constructs one set of LLM providers from cfg and a summarize-only adapter backed by the same
+// provider slice. Conversation (core) and summarization (memoryjob, -summarize CLI) share these instances;
+// each llm.Provider uses an http.Client safe for concurrent use.
+func buildAppLLM(cfg *config.Config, logger *slog.Logger) ([]llm.Provider, []string, llm.Provider, error) {
 	providers, labels, err := buildLLMProviders(cfg)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return llmrouter.NewProviderAdapter(providers, labels, llmrouter.SummarizeRouterConfig(cfg), logger)
-}
-
-// newLLMForConversation returns the ordered providers and labels for the unified router in core.
-func newLLMForConversation(cfg *config.Config) (providers []llm.Provider, labels []string, err error) {
-	return buildLLMProviders(cfg)
+	summarizeLLM, err := llmrouter.NewProviderAdapter(providers, labels, llmrouter.SummarizeRouterConfig(cfg), logger)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return providers, labels, summarizeLLM, nil
 }
 
 // configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./.config") joined with config.ConfigFileName.
@@ -169,7 +170,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		}
 	}()
 
-	llmProviders, llmLabels, err := newLLMForConversation(cfg)
+	llmProviders, llmLabels, summarizeLLM, err := buildAppLLM(cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -181,10 +182,6 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	var memJob *memoryjob.Runner
 	if memoryStore != nil && strings.TrimSpace(cfg.Paths.LLMLogDir) != "" &&
 		embedder != nil && vectorStore != nil {
-		summLLM, perr := newLLMProvider(cfg, logger)
-		if perr != nil {
-			return fmt.Errorf("memory summarization llm: %w", perr)
-		}
 		paLoc, locErr := config.PALocation(cfg)
 		if locErr != nil {
 			return fmt.Errorf("memory summarization pa_timezone: %w", locErr)
@@ -195,7 +192,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 			Memory:      memoryStore,
 			Vector:      vectorStore,
 			Embedder:    embedder,
-			LLMProvider: summLLM,
+			LLMProvider: summarizeLLM,
 			Logger:      logger,
 		})
 		logger.Info("memory summarization worker started")
@@ -359,7 +356,7 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 	}
 
 	logger.Info("summarize: building llm provider")
-	llmProvider, err := newLLMProvider(cfg, logger)
+	_, _, llmProvider, err := buildAppLLM(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
@@ -419,7 +416,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 	}
 
 	logger.Info("summarize: building llm provider")
-	llmProvider, err := newLLMProvider(cfg, logger)
+	_, _, llmProvider, err := buildAppLLM(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
@@ -475,7 +472,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 	}
 
 	logger.Info("summarize: building llm provider")
-	llmProvider, err := newLLMProvider(cfg, logger)
+	_, _, llmProvider, err := buildAppLLM(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}

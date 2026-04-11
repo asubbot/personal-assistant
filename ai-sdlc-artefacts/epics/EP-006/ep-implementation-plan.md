@@ -27,7 +27,7 @@
   - **Verification:** `go test ./internal/config/...` passes; invalid escalation config returns clear error at load.
 
 - [x] **2. Build LLM chain vs transport in `cmd/pa`**
-  - Extract building of individual `[]llm.Provider` and labels from current `newLLMProvider`.
+  - Extract building of individual `[]llm.Provider` and labels from current `buildAppLLM` / `buildLLMProviders` in `cmd/pa`.
   - If escalation enabled: pass non-nil `llmChain` + labels to `core.Run`, `llmTransport` nil.
   - If escalation disabled: pass `llmTransport` = `FallbackProvider`, `llmChain` nil (unchanged behaviour).
   - Scheduler / summarize / other entrypoints keep using `FallbackProvider` only.

@@ -159,7 +159,7 @@ flowchart TB
 |--------|--------|------------------------------|
 | **Primary use** | Enterprise multi-agent gateway, multi-channel | Personal Telegram assistant, optional nodes |
 | **Persistence** | PostgreSQL 18, migrations | SQLite (vectors), markdown memory files |
-| **LLM routing** | Provider abstraction + platform features (README) | **[llmrouter](../../../internal/llmrouter/)**: transport fallback ([DecideCompleteError](../../../internal/llmrouter/policy.go)) + policy escalation when `tools.llm_escalation` enabled ([DecideToolFailure](../../../internal/llmrouter/policy.go)); non-conversation code paths use [NewProviderAdapter](../../../internal/llmrouter/provider_adapter.go) with empty `Config` ([cmd/pa/main.go](../../../cmd/pa/main.go) `newLLMProvider`). |
+| **LLM routing** | Provider abstraction + platform features (README) | **[llmrouter](../../../internal/llmrouter/)**: transport fallback ([DecideCompleteError](../../../internal/llmrouter/policy.go)) + policy escalation when `tools.llm_escalation` enabled ([DecideToolFailure](../../../internal/llmrouter/policy.go)); non-conversation code paths use [NewProviderAdapter](../../../internal/llmrouter/provider_adapter.go) with summarize routing config ([cmd/pa/main.go](../../../cmd/pa/main.go) `buildAppLLM`). |
 | **Tools** | Broad built-ins, MCP, sandboxed exec | YAML catalog, SSH to nodes, Hermes text path |
 | **Channels** | 7+ (README) | Telegram (README); adapter pattern in `core` |
 | **Sandbox** | Docker-based (`internal/sandbox`) | Allowlist + cmdsafe + dedicated SSH user |
