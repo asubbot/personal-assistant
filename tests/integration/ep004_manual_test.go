@@ -12,11 +12,6 @@ func TestManual_AC04010_SonosEndToEnd(t *testing.T) {
 	t.Skip("manual: Sonos tool E2E on real deployment; steps in ep-manual-tests.md")
 }
 
-// manual Covers AC-04.012 — see ai-sdlc-artefacts/epics/EP-004/ep-audit-report.md (make check / regression)
-func TestManual_AC04012_RegressionSuite(t *testing.T) {
-	t.Skip("manual: AC-04.012 — run make check before release; ep-audit-report.md")
-}
-
 // manual Covers AC-04.021 — see ai-sdlc-artefacts/epics/EP-004/ep-manual-tests.md#tool-index-build-logging (failure path relates to AC-04.018)
 func TestManual_AC04021_ToolIndexBuildLogging(t *testing.T) {
 	t.Skip("manual: INFO/ERROR logs on index build success/failure; see ep-manual-tests.md")

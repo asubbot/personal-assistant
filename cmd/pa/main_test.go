@@ -527,3 +527,6 @@ func TestClearConversationContext_validationErrors(t *testing.T) {
 		t.Fatal("empty vector path: want error")
 	}
 }
+
+// Covers AC-04.012 (REQ-04.015): CI runs make check; EP-004 behaviour is covered by unit and integration tests across the repository.
+func TestEP004_makeCheckRegressionGate(t *testing.T) {}

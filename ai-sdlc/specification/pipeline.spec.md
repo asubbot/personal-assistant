@@ -1,15 +1,13 @@
 # SDLC Pipeline — ai-sdlc
 
-**Purpose:** This document specifies the agentic SDLC process: **11 stages** from scope analysis through strategy, epic planning, requirements, acceptance criteria, system design, system design review, implementation planning, task execution, code review, and audit. Stages 3–8 run in execution order: 3 → 4 → 5 → 6 → 7 → 8. It is the single source of truth for how epics are elaborated with agent-driven workflows. Each stage maps to a **skill file** under [specification/skills/](skills/); agent instructions live only in skills (no separate roles or prompts).
+**Purpose:** This document specifies the agentic SDLC process: **11 stages** from scope analysis through strategy, epic planning, requirements, acceptance criteria, system design, system design review, implementation planning, task execution, code review, and audit. Stages 3–11 run for each epic in execution order: 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11. It is the single source of truth for how epics are elaborated with agent-driven workflows. Each stage maps to a **skill file** under [specification/skills/](skills/); agent instructions live only in skills (no separate roles or prompts).
 
-**Artefact paths:** Project-level artefacts (scope.md, strategy.md) live in the **ai-sdlc-artefacts/** root. Epic-level outputs live under **ai-sdlc-artefacts/epics/<epic-id>/** (e.g. `ai-sdlc-artefacts/epics/EP-104/`). Story-level paths are no longer used by the pipeline; existing content under `stories/<story-id>/` is not modified.
+**Artefact paths:** Project-level artefacts (scope.md, strategy.md) live in the **ai-sdlc-artefacts/** root. Epic-level outputs live under **ai-sdlc-artefacts/epics/<epic-id>/** (e.g. `ai-sdlc-artefacts/epics/EP-001/`).
 Paths in this spec and in skills use that convention; no references to outside of that folders in links.
 
 **Artefact levels:** Project-level (scope.md, strategy.md) in `ai-sdlc-artefacts/`. Epic-level artefacts (ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design, ep-system-design-review, ep-implementation-plan, optional ep-code-review, ep-audit-report) live in `epics/<epic-id>/`.
 
 **Human-in-the-loop:** Pipeline execution is cooperative. When a stage has multiple valid outcomes (e.g. artefact naming, document structure, file placement), the agent MUST list options and ask the user to choose before proceeding. See also skills [README](skills/README.md) (Common behaviour).
-
-**Legacy** The folder `epics/<epic-id>/stories/<story-id>/legacy` contains the legacy docuemnts DON'T change them, use as a reference only.
 
 ---
 

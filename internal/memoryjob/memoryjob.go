@@ -45,6 +45,8 @@ type Deps struct {
 	Embedder    embedding.Embedder
 	LLMProvider llm.Provider
 	Logger      *slog.Logger
+	// Now returns the wall clock for scheduling and catch-up jobs; nil means time.Now (production).
+	Now func() time.Time
 }
 
 // Runner owns a priority queue and a worker goroutine.
@@ -61,6 +63,13 @@ type Runner struct {
 	lastDailyFireKey string
 	lastMonthFireKey string
 	lastYearFireKey  string
+}
+
+func (r *Runner) now() time.Time {
+	if r.deps.Now != nil {
+		return r.deps.Now()
+	}
+	return time.Now()
 }
 
 type jobItem struct {
@@ -103,7 +112,7 @@ func Start(ctx context.Context, deps Deps) *Runner {
 	if deps.Loc == nil {
 		deps.Loc = time.UTC
 	}
-	runCtx, cancel := context.WithCancel(ctx) //nolint:gosec // G118: cancel stored in Runner.stop and invoked from Stop()
+	runCtx, cancel := context.WithCancel(ctx)
 	r := &Runner{
 		deps: deps,
 		wake: make(chan struct{}, 1),
@@ -134,7 +143,7 @@ func (r *Runner) loop(ctx context.Context) {
 }
 
 func (r *Runner) onTick(ctx context.Context) {
-	now := time.Now()
+	now := r.now()
 	loc := r.deps.Loc
 	r.maybeEnqueueDaily(now, loc)
 	r.maybeEnqueueMonthRollup(now, loc)
@@ -246,14 +255,14 @@ func (r *Runner) drain(ctx context.Context) {
 
 func (r *Runner) jobSummarizeYesterday(ctx context.Context) error {
 	loc := r.deps.Loc
-	y, m, d := patime.PreviousCalendarDate(loc, time.Now())
+	y, m, d := patime.PreviousCalendarDate(loc, r.now())
 	day := patime.NoonOnCalendar(loc, y, m, d)
 	return r.runDayDirect(ctx, day)
 }
 
 func (r *Runner) jobCatchUpDay(ctx context.Context) error {
 	loc := r.deps.Loc
-	y, m, d := patime.PreviousCalendarDate(loc, time.Now())
+	y, m, d := patime.PreviousCalendarDate(loc, r.now())
 	day := patime.NoonOnCalendar(loc, y, m, d)
 	if !dayNeedsCatchUp(ctx, r.deps.Cfg, r.deps.Memory, loc, day) {
 		return nil
@@ -263,7 +272,7 @@ func (r *Runner) jobCatchUpDay(ctx context.Context) error {
 
 func (r *Runner) jobCatchUpMonth(ctx context.Context) error {
 	loc := r.deps.Loc
-	py, pm := patime.PreviousMonth(loc, time.Now())
+	py, pm := patime.PreviousMonth(loc, r.now())
 	if !r.monthNeedsCatchUp(ctx, py, int(pm)) {
 		return nil
 	}
@@ -271,7 +280,7 @@ func (r *Runner) jobCatchUpMonth(ctx context.Context) error {
 }
 
 func (r *Runner) jobCatchUpYear(ctx context.Context) error {
-	py := patime.PreviousYear(r.deps.Loc, time.Now())
+	py := patime.PreviousYear(r.deps.Loc, r.now())
 	if !r.yearNeedsCatchUp(ctx, py) {
 		return nil
 	}
@@ -386,7 +395,7 @@ func (r *Runner) runReconciliationScan(ctx context.Context) error {
 		return nil
 	}
 	loc := r.deps.Loc
-	now := time.Now().In(loc)
+	now := r.now().In(loc)
 	for i := 1; i <= n; i++ {
 		t := now.AddDate(0, 0, -i)
 		y, m, d := t.Date()

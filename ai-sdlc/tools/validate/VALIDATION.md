@@ -205,7 +205,7 @@ func TestMixed(t *testing.T) { }
 
 Operator scenarios live in `ai-sdlc-artefacts/epics/EP-XXX/ep-manual-tests.md` (or `ep-manual-test-scenarios.md` for EP-001). To anchor those ACs in code **without** mixing with automated tests, use dedicated files under `tests/integration/`:
 
-- [`ep001_manual_test.go`](../../../tests/integration/ep001_manual_test.go), [`ep004_manual_test.go`](../../../tests/integration/ep004_manual_test.go), [`ep006_manual_test.go`](../../../tests/integration/ep006_manual_test.go), [`ep009_manual_test.go`](../../../tests/integration/ep009_manual_test.go)
+- [`ep001_manual_test.go`](../../../tests/integration/ep001_manual_test.go), [`ep004_manual_test.go`](../../../tests/integration/ep004_manual_test.go), [`ep009_manual_test.go`](../../../tests/integration/ep009_manual_test.go) (EP-002 and EP-006 use automated-only traces; no dedicated `ep002` / `ep006` manual files)
 
 Conventions: `//go:build integration`, `package integration_test`, `// manual Covers AC-…` on the trace line, `t.Skip("manual: …")` with a pointer to the epic manual doc (and optional anchor). `./bin/validate` reads these files like any other `*_test.go` under `tests/`.
 
