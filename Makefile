@@ -1,5 +1,7 @@
 .PHONY: help fmt test test-race test-integration vet vuln lint coverage coverage-html check check-boundaries build validate
 
+GOLANGCI_LINT_VERSION ?= v2.5.0
+
 help:
 	@echo "Available commands:"
 	@echo ""
@@ -13,7 +15,7 @@ help:
 	@echo "  make test-integration - Run only integration tests (requires Docker; two-user SSH uses Debian image)"
 	@echo "  make vet    - Run go vet"
 	@echo "  make vuln   - Run govulncheck on modules (known CVEs in dependencies)"
-	@echo "  make lint   - Run golangci-lint (if installed)"
+	@echo "  make lint   - Run pinned golangci-lint ($(GOLANGCI_LINT_VERSION))"
 	@echo "  make coverage     - Print coverage summary (all tests)"
 	@echo "  make coverage-html - Build HTML coverage report"
 	@echo "  make check-boundaries - Verify module boundaries (no cycles, forbidden edges)"
@@ -60,12 +62,7 @@ vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@latest -tags=integration ./...
 
 lint:
-	@command -v golangci-lint >/dev/null 2>&1 || { \
-		echo "golangci-lint is not installed."; \
-		echo "Install: https://golangci-lint.run/welcome/install/"; \
-		exit 1; \
-	}
-	golangci-lint run --build-tags=integration ./...
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) run --build-tags=integration ./...
 
 coverage:
 	rm -f coverage.out

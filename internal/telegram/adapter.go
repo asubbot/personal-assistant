@@ -16,7 +16,7 @@ import (
 )
 
 // typingRefreshNs is the typing refresh interval in nanoseconds (atomic; default 4s). Tests may store a shorter duration.
-var typingRefreshNs int64 = int64(4 * time.Second)
+var typingRefreshNs = int64(4 * time.Second)
 
 func typingRefreshDuration() time.Duration {
 	return time.Duration(atomic.LoadInt64(&typingRefreshNs))
