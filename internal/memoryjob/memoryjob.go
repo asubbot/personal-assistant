@@ -47,6 +47,9 @@ type Deps struct {
 	Logger      *slog.Logger
 	// Now returns the wall clock for scheduling and catch-up jobs; nil means time.Now (production).
 	Now func() time.Time
+	// UserTurnActive reports whether an interactive user LLM turn is in progress (REQ-02.015).
+	// Nil defaults to core.UserTurnInProgress.
+	UserTurnActive func() bool
 }
 
 // Runner owns a priority queue and a worker goroutine.
@@ -70,6 +73,13 @@ func (r *Runner) now() time.Time {
 		return r.deps.Now()
 	}
 	return time.Now()
+}
+
+func (r *Runner) userTurnActive() bool {
+	if r.deps.UserTurnActive != nil {
+		return r.deps.UserTurnActive()
+	}
+	return core.UserTurnInProgress()
 }
 
 type jobItem struct {
@@ -233,8 +243,11 @@ func (r *Runner) drain(ctx context.Context) {
 		it := heap.Pop(&r.pq).(*jobItem)
 		r.mu.Unlock()
 
-		if it.priority >= PriorityCatchUp && core.UserTurnInProgress() {
+		if it.priority >= PriorityCatchUp && r.userTurnActive() {
 			// Re-queue and back off (REQ-02.015).
+			if lg := r.deps.Logger; lg != nil {
+				lg.Debug("memory job requeued during user turn", "job", it.name, "priority", it.priority, "reason", "user_turn")
+			}
 			time.Sleep(200 * time.Millisecond)
 			r.Enqueue(it.priority, it.name, it.run)
 			return

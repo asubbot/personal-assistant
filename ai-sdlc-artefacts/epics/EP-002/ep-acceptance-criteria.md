@@ -35,7 +35,7 @@ This document defines epic-level acceptance criteria for **EP-002 Automatic memo
 | [AC-02.013](#ac-02-013) | [REQ-02.012](ep-requirements.md#memory-retrieval-skill-and-native-tool) | Semantic vector retrieval works when memory tool is not invoked |
 | [AC-02.014](#ac-02-014) | [REQ-02.013](ep-requirements.md#upsert-semantics) | Re-run summarization replaces same-period summary; no duplicate vector id for that period |
 | [AC-02.015](#ac-02-015) | [REQ-02.014](ep-requirements.md#non-functional) | `make check` passes with new tests for EP-002 behaviour |
-| [AC-02.016](#ac-02-016) | [REQ-02.015](ep-requirements.md#non-functional) | Pending user LLM work runs before queued summarization job (observable ordering under test) |
+| [AC-02.016](#ac-02-016) | [REQ-02.015](ep-requirements.md#non-functional) | Catch-up and scheduled memory jobs (priority ≥ 5) do not run while a user LLM turn is active; heap order applies among jobs that execute |
 | [AC-02.017](#ac-02-017) | [REQ-02.016](ep-requirements.md#non-functional) | After file write succeeds and vector indexing fails, later run indexes same period |
 
 ---
@@ -165,9 +165,14 @@ Then all tests pass including new or updated unit and integration tests covering
 
 <a id="ac-02-016"></a>**AC-02.016** ([REQ-02.015](ep-requirements.md#non-functional))
 
-Given a user message and a pending summarization job are both queued in the **memoryjob** priority queue where **lower numeric priority runs first** (interactive LLM work = **0**, background summarization = **larger integer**, e.g. 10),  
-When the system dequeues work,  
-Then the interactive path is started before the summarization job (verified by test harness dequeue order or timestamps).
+Given the **memoryjob** runner uses a **single priority queue** where **lower numeric priority runs first** among jobs that are allowed to execute (reconciliation **4**, catch-up **5**, scheduled summarization **10**),  
+And an **interactive user LLM turn** is in progress (the same process marks user-turn scope while handling a user message),  
+When a catch-up or scheduled summarization job (priority **≥ 5**) would otherwise run,  
+Then that job is **not** executed until the user turn ends; it is **re-queued** with backoff so user-facing work is not starved by background summarization.  
+
+Given two **memoryjob** items are both eligible to run (no active user turn blocking them),  
+When the runner dequeues work,  
+Then the **lower numeric priority** job runs before the higher one (verified by test harness dequeue order).
 
 ---
 

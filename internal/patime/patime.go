@@ -35,6 +35,10 @@ func NoonOnCalendar(loc *time.Location, year int, month time.Month, day int) tim
 // NextClockAfter returns the earliest instant strictly after `from` such that
 // the local time in loc is hour:min:00 (seconds/nanos zero). If `from` is already
 // past that wall time today, the next calendar day is used.
+//
+// If hour or min is outside 0–23 / 0–59, NextClockAfter returns from unchanged
+// (no error). Callers must pass a validated wall clock; built-in summarization
+// uses fixed constants (01:00).
 func NextClockAfter(loc *time.Location, from time.Time, hour, min int) time.Time {
 	if loc == nil {
 		loc = time.UTC

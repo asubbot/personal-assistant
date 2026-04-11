@@ -50,7 +50,7 @@ The system design is coherent with [ep-scope.md](ep-scope.md): dedicated **`inte
 | # | Issue | Resolution |
 |---|-------|------------|
 | M1 | Missing **Risks and trade-offs** | Added section in [ep-system-design.md](ep-system-design.md). |
-| M2 | REQ-02.015 queue integration | Documented **priority values** (0 / 5 / 10), single queue, handler enqueue at 0; [ep-implementation-plan.md](ep-implementation-plan.md) task 2. |
+| M2 | REQ-02.015 queue integration | **Superseded by code + design:** priorities **4 / 5 / 10** (reconcile / catch-up / scheduled); interactive precedence via **`core.UserTurnInProgress()`** re-queue for jobs with priority **≥ 5** (not by enqueueing handler work at priority 0). See [ep-system-design.md](ep-system-design.md) Job queue row and [ep-implementation-plan.md](ep-implementation-plan.md) task 2. |
 | M3 | Tool auth/session | **`read_memory`** trust boundary = same as other native tools in tool-calling requests; always registered when memory is configured; redaction note in design. |
 | M4 | Reject vs truncate | **Reject** baseline; REQ-02.010, AC-02.011, design aligned. |
 
@@ -73,7 +73,7 @@ The system design is coherent with [ep-scope.md](ep-scope.md): dedicated **`inte
 
 | Decision | Justification |
 |----------|---------------|
-| Single internal job queue with interactive-first ordering | Matches [ep-scope.md](ep-scope.md) “single queue with priority”; keeps KISS vs multiple schedulers. |
+| Single internal job queue with user-turn deferral for background jobs | Matches [ep-scope.md](ep-scope.md) “single queue with priority”; catch-up and scheduled jobs (priority **≥ 5**) yield while **`UserTurnInProgress`**; reconciliation (**4**) is not deferred by that guard (documented trade-off). |
 | File write before vector index; retry on later run | Matches scope persistence ordering and [REQ-02.016](ep-requirements.md#non-functional); avoids tight retry loops. |
 | Skill (EP-013) owns phrase policy; core registers native tool only | Preserves modularity and scope boundary (no hybrid rule engine in core). |
 | Dedicated `summarize` timeout context for background jobs | Limits resource capture from live traffic; pairs with queue priority. |
@@ -91,7 +91,7 @@ The system design is coherent with [ep-scope.md](ep-scope.md): dedicated **`inte
 |-----|----------|--------|
 | [REQ-02.004](ep-requirements.md#automatic-summarization-schedule) | Built-in scheduling; `cmd/pa` + memoryjob; no external cron | OK |
 | [REQ-02.014](ep-requirements.md#non-functional) | Testing strategy; `make check` / AC-02.015 | OK |
-| [REQ-02.015](ep-requirements.md#non-functional) | Job queue; priority 0/5/10; handler contract | OK |
+| [REQ-02.015](ep-requirements.md#non-functional) | Job queue; priorities **4/5/10**; user-turn deferral for **≥ 5** | OK |
 | [REQ-02.016](ep-requirements.md#non-functional) | Summarize runner; **vector reconciliation** worker | OK |
 
 ---
@@ -134,7 +134,7 @@ The system design is coherent with [ep-scope.md](ep-scope.md): dedicated **`inte
 | REQ-02.012 | Components: retrieval independent of tool; core vector path | AC-02.013 | OK |
 | REQ-02.013 | Summarize + vector; Vector indexer (stable ids, upsert) | AC-02.014 | OK |
 | REQ-02.014 | Testing strategy | AC-02.015 | OK |
-| REQ-02.015 | Job queue; module boundaries | AC-02.016 | OK with Medium: integration detail (M2) |
+| REQ-02.015 | Job queue; module boundaries | AC-02.016 | OK (M2 superseded; AC aligns with user-turn deferral) |
 | REQ-02.016 | Summarize runner; Error handling; Vector upsert | AC-02.017 | OK |
 
 ---
@@ -155,7 +155,7 @@ Implementation matches the epic’s technical intent: dedicated `internal/memory
 
 | Severity | Id | Topic | Observation | Recommendation |
 |----------|-----|--------|-------------|----------------|
-| Low (doc) | C1 | Interactive vs background ([REQ-02.015](ep-requirements.md#non-functional)) | Design and plan still describe enqueueing interactive work at **priority 0**. Code does **not** enqueue handler work on `memoryjob.Runner`; it uses `core.EnterUserTurn` / `UserTurnInProgress` and defers jobs with `priority >= PriorityCatchUp` only. | Update [ep-system-design.md](ep-system-design.md) Components table / job queue row and [ep-implementation-plan.md](ep-implementation-plan.md) to describe the **user-turn deferral** model explicitly; remove or reword “enqueue at 0” if no code path will use it. |
+| Low (doc) | C1 | Interactive vs background ([REQ-02.015](ep-requirements.md#non-functional)) | ~~Design and plan still described enqueue at priority 0.~~ **Addressed:** [AC-02.016](ep-acceptance-criteria.md#ac-02-016), M2 resolution, and [ep-system-design.md](ep-system-design.md) Job queue row describe **user-turn deferral** (`UserTurnInProgress`, re-queue for priority **≥ 5**). | — |
 | Low | C2 | Reconciliation during user turn | `PriorityReconcile` (**4**) is **not** deferred when `UserTurnInProgress`; only priorities **≥ 5** re-queue. Reconciliation can run concurrently with an active LLM turn (embedder contention). | Either extend deferral to reconciliation while a user turn is active, or document as an intentional trade-off (faster vector consistency vs strict interactive isolation). |
 | Low | C3 | Startup reconciliation scan | `runReconciliationScan` walks **day** summaries only over the last **90** days; month/year files are not scanned for missing vector rows. | Accept as bounded MVP (align wording in design **Risks**), or add a bounded month/year scan later if operational data shows gaps after crashes. |
 | Low | C4 | Duplicate chunk type labels ([REQ-02.009](ep-requirements.md#date-and-chunk-labels-in-vector-memory)) | Stored vector text already includes `[turn]` or `[summary:*]`; `gatherRetrievedChunkTexts` prepends `[` + label + `]\n` again, so the model may see the label twice. | Optional cleanup: skip outer prefix when body already starts with the same label, or store without inline label and rely on retrieval prefix only (larger change). |

@@ -127,7 +127,8 @@ func calendarDaysInclusive(a, b time.Time, loc *time.Location) int {
 func (t *ReadMemoryTool) readDayRange(ctx context.Context, from, to time.Time, loc *time.Location) (string, error) {
 	var b strings.Builder
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
-		day := time.Date(d.In(loc).Year(), d.In(loc).Month(), d.In(loc).Day(), 12, 0, 0, 0, loc)
+		dl := d.In(loc)
+		day := time.Date(dl.Year(), dl.Month(), dl.Day(), 12, 0, 0, 0, loc)
 		path := daySummaryPathForCheck(t.store, day)
 		if !underMemoryRoot(t.store.RootDir(), path) {
 			return "", fmt.Errorf("read_memory: path outside memory_dir")
@@ -139,7 +140,7 @@ func (t *ReadMemoryTool) readDayRange(ctx context.Context, from, to time.Time, l
 		if text == "" {
 			continue
 		}
-		dateStr := day.In(loc).Format("2006-01-02")
+		dateStr := dl.Format("2006-01-02")
 		block := "## " + dateStr + "\n" + strings.TrimSpace(text) + "\n\n"
 		if b.Len()+len(block) > t.maxOutBytes {
 			return "", fmt.Errorf("read_memory: output would exceed max_output_bytes (%d)", t.maxOutBytes)
