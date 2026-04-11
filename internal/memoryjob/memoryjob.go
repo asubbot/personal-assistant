@@ -244,12 +244,13 @@ func (r *Runner) drain(ctx context.Context) {
 		r.mu.Unlock()
 
 		if it.priority >= PriorityCatchUp && r.userTurnActive() {
-			// Re-queue and back off (REQ-02.015).
-			if lg := r.deps.Logger; lg != nil {
-				lg.Debug("memory job requeued during user turn", "job", it.name, "priority", it.priority, "reason", "user_turn")
-			}
-			time.Sleep(200 * time.Millisecond)
-			r.Enqueue(it.priority, it.name, it.run)
+			// Silent push back without waking — avoids tight poll loop (REQ-02.015).
+			// Job retries on the next scheduler tick (≤60 s) or next real enqueue.
+			r.deps.Logger.Debug("memory job deferred during user turn", "job", it.name, "priority", it.priority)
+			r.mu.Lock()
+			r.seq++
+			heap.Push(&r.pq, &jobItem{priority: it.priority, seq: r.seq, name: it.name, run: it.run})
+			r.mu.Unlock()
 			return
 		}
 
