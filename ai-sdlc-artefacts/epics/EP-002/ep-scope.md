@@ -11,7 +11,7 @@ Calendar summarization (day → month → year) remains the **write path** to lo
 | Field | Content |
 |-------|---------|
 | **ID** | EP-002 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Automatic memory summarization |
 | **Description** | Automatic daily, monthly, and yearly summarization into long-term memory, date-aware vector storage, chunk-type labels in retrieved context, and answering questions about past conversations using a **memory retrieval runtime skill** and **native tool(s)** that read `memory_dir` by ISO date or range—plus vector search where relevant. |
 
