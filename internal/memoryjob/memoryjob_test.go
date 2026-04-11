@@ -3,10 +3,14 @@ package memoryjob
 import (
 	"container/heap"
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"pa/internal/config"
+	"pa/internal/llm"
 	"pa/internal/memory"
+	"pa/internal/summarize"
+	"pa/internal/vector"
 	"path/filepath"
 	"testing"
 	"time"
@@ -246,5 +250,134 @@ func TestYearNeedsCatchUp_readYearSummaryError(t *testing.T) {
 	_, err = r.yearNeedsCatchUp(ctx, 2033)
 	if err == nil {
 		t.Fatal("expected error when year summary path is not a readable file")
+	}
+}
+
+// testEmbedErr fails every Embed call (vector indexing after file write).
+type testEmbedErr struct{ err error }
+
+func (e testEmbedErr) Embed(ctx context.Context, text string) ([]float32, error) {
+	_ = ctx
+	_ = text
+	return nil, e.err
+}
+
+type testLLMOK struct{ content string }
+
+func (m testLLMOK) Complete(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+	_ = ctx
+	_ = messages
+	_ = opts
+	return &llm.CompletionResult{Content: m.content}, nil
+}
+
+type testVecOK struct{}
+
+func (testVecOK) Add(ctx context.Context, id string, embedding []float32, text string) error {
+	return nil
+}
+func (testVecOK) Delete(ctx context.Context, id string) error { return nil }
+func (testVecOK) Search(ctx context.Context, queryEmbedding []float32, topK int) ([]vector.SearchResult, error) {
+	return nil, nil
+}
+func (testVecOK) Exists(ctx context.Context, id string) (bool, error) { return false, nil }
+func (testVecOK) Clear(ctx context.Context) error                     { return nil }
+func (testVecOK) Close() error                                        { return nil }
+
+// Covers AC-02.017: month summarization file write then vector failure enqueues reconcile_month job.
+func TestRunMonth_embedFailsAfterFileWrite_enqueuesReconcileMonth(t *testing.T) {
+	ctx := context.Background()
+	loc := time.UTC
+	memRoot := t.TempDir()
+	store, err := memory.NewStore(memRoot, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d1 := time.Date(2026, 3, 5, 12, 0, 0, 0, loc)
+	d2 := time.Date(2026, 3, 6, 12, 0, 0, 0, loc)
+	if err := store.WriteDaySummary(ctx, d1, "alpha"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.WriteDaySummary(ctx, d2, "beta"); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &Runner{
+		deps: Deps{
+			Memory:      store,
+			Loc:         loc,
+			LLMProvider: testLLMOK{content: "month rollup"},
+			Embedder:    testEmbedErr{err: errors.New("embed failed")},
+			Vector:      testVecOK{},
+			Logger:      slog.New(slog.DiscardHandler),
+			Cfg:         &config.Config{},
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+
+	if err := r.runMonth(ctx, 2026, 3); err != nil {
+		t.Fatalf("runMonth: %v", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.pq.Len() != 1 {
+		t.Fatalf("queue len = %d, want 1 reconcile job", r.pq.Len())
+	}
+	it := heap.Pop(&r.pq).(*jobItem)
+	want := "reconcile_month:" + summarize.VectorIDPrefixMonth + "2026-03"
+	if it.name != want {
+		t.Fatalf("job name = %q, want %q", it.name, want)
+	}
+}
+
+// Covers AC-02.017: year summarization file write then vector failure enqueues reconcile_year job.
+func TestRunYear_embedFailsAfterFileWrite_enqueuesReconcileYear(t *testing.T) {
+	ctx := context.Background()
+	loc := time.UTC
+	memRoot := t.TempDir()
+	store, err := memory.NewStore(memRoot, loc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.WriteMonthSummary(ctx, 2027, 1, "jan"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.WriteMonthSummary(ctx, 2027, 2, "feb"); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &Runner{
+		deps: Deps{
+			Memory:      store,
+			Loc:         loc,
+			LLMProvider: testLLMOK{content: "year rollup"},
+			Embedder:    testEmbedErr{err: errors.New("embed failed")},
+			Vector:      testVecOK{},
+			Logger:      slog.New(slog.DiscardHandler),
+			Cfg:         &config.Config{},
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+
+	if err := r.runYear(ctx, 2027); err != nil {
+		t.Fatalf("runYear: %v", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.pq.Len() != 1 {
+		t.Fatalf("queue len = %d, want 1 reconcile job", r.pq.Len())
+	}
+	it := heap.Pop(&r.pq).(*jobItem)
+	want := "reconcile_year:2027"
+	if it.name != want {
+		t.Fatalf("job name = %q, want %q", it.name, want)
 	}
 }

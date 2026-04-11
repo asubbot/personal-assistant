@@ -29,9 +29,12 @@ const (
 
 // Built-in summarization timing (not configurable; EP-002).
 const (
-	summarizeHour          = 1
-	summarizeMinute        = 0
-	jobTimeoutSeconds      = 1800
+	summarizeHour     = 1
+	summarizeMinute   = 0
+	jobTimeoutSeconds = 1800
+	// reconciliationScanDays is how many past calendar days startup reconciliation compares
+	// (day summary file vs vector Exists). Bounded day-only window per EP-002 system design
+	// (e.g. last 90 days in ai-sdlc-artefacts/epics/EP-002/ep-system-design.md); not JSON-configurable.
 	reconciliationScanDays = 90
 	schedulerTickSeconds   = 60
 )

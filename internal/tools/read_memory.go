@@ -125,10 +125,21 @@ func calendarDaysInclusive(a, b time.Time, loc *time.Location) int {
 }
 
 func (t *ReadMemoryTool) readDayRange(ctx context.Context, from, to time.Time, loc *time.Location) (string, error) {
+	if loc == nil {
+		loc = time.UTC
+	}
+	// Anchor iteration at noon in pa_timezone (same as memory/summarize paths) to avoid DST
+	// midnight edge cases when from/to come from ParseInLocation at 00:00:00.
+	fl := from.In(loc)
+	tl := to.In(loc)
+	from = time.Date(fl.Year(), fl.Month(), fl.Day(), 12, 0, 0, 0, loc)
+	to = time.Date(tl.Year(), tl.Month(), tl.Day(), 12, 0, 0, 0, loc)
+	if to.Before(from) {
+		from, to = to, from
+	}
 	var b strings.Builder
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
-		dl := d.In(loc)
-		day := time.Date(dl.Year(), dl.Month(), dl.Day(), 12, 0, 0, 0, loc)
+		day := d
 		path := daySummaryPathForCheck(t.store, day)
 		if !underMemoryRoot(t.store.RootDir(), path) {
 			return "", fmt.Errorf("read_memory: path outside memory_dir")
@@ -140,7 +151,7 @@ func (t *ReadMemoryTool) readDayRange(ctx context.Context, from, to time.Time, l
 		if text == "" {
 			continue
 		}
-		dateStr := dl.Format("2006-01-02")
+		dateStr := d.In(loc).Format("2006-01-02")
 		block := "## " + dateStr + "\n" + strings.TrimSpace(text) + "\n\n"
 		if b.Len()+len(block) > t.maxOutBytes {
 			return "", fmt.Errorf("read_memory: output would exceed max_output_bytes (%d)", t.maxOutBytes)
