@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"pa/internal/config"
 	"pa/internal/core"
@@ -75,7 +76,7 @@ func (a *Adapter) SendMessage(ctx context.Context, text string) error {
 	if a.bot == nil || a.notifyChatID == 0 {
 		return fmt.Errorf("telegram: cannot notify (bot not started or no chat id)")
 	}
-	return sendOutboundText(ctx, a.bot, a.notifyChatID, text)
+	return sendLongOutboundText(ctx, a.bot, a.notifyChatID, text)
 }
 
 // Run starts long polling and blocks until ctx is cancelled. Incoming text messages from allowed users are passed to handler; replies are sent back.
@@ -161,7 +162,9 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender telegramOutbound, han
 	text := strings.TrimSpace(msg.Text)
 	userID := msg.From.ID
 	if _, ok := a.allowedUserIDs[userID]; !ok {
-		_ = sendOutboundText(ctx, sender, msg.Chat.ID, "You are not allowed to use this bot.")
+		if err := sendLongOutboundText(ctx, sender, msg.Chat.ID, "You are not allowed to use this bot."); err != nil {
+			slog.Default().Warn("telegram send failed", "op", "disallowed_notice", "chat_id", msg.Chat.ID, "error", err)
+		}
 		return
 	}
 
@@ -172,10 +175,14 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender telegramOutbound, han
 	typingCancel()
 
 	if err != nil {
-		_ = sendOutboundText(ctx, sender, msg.Chat.ID, "Sorry, an error occurred. Please try again.")
+		if serr := sendLongOutboundText(ctx, sender, msg.Chat.ID, "Sorry, an error occurred. Please try again."); serr != nil {
+			slog.Default().Warn("telegram send failed", "op", "handler_error_notice", "chat_id", msg.Chat.ID, "error", serr)
+		}
 		return
 	}
 	if reply != "" {
-		_ = sendOutboundText(ctx, sender, msg.Chat.ID, reply)
+		if serr := sendLongOutboundText(ctx, sender, msg.Chat.ID, reply); serr != nil {
+			slog.Default().Warn("telegram send failed", "op", "reply", "chat_id", msg.Chat.ID, "error", serr)
+		}
 	}
 }

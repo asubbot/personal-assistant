@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -525,6 +526,32 @@ func TestHandleUpdate_allowedUser_callsHandlerAndSendsReply(t *testing.T) {
 	}
 	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "hello back" {
 		t.Errorf("expected reply \"hello back\", got: %v", sender.sentTexts())
+	}
+	if sender.lastParseModes()[0] != models.ParseModeHTML {
+		t.Errorf("expected ParseModeHTML, got %q", sender.lastParseModes()[0])
+	}
+}
+
+// Long assistant replies must be split so Telegram's 4096-character limit is not exceeded.
+func TestHandleUpdate_longReplySplitIntoMultipleMessages(t *testing.T) {
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	long := strings.Repeat("w", 9000)
+	handler := &mockHandler{reply: long}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "go", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	if !handler.called {
+		t.Fatal("handler should be called")
+	}
+	texts := sender.sentTexts()
+	if len(texts) < 3 {
+		t.Fatalf("expected multiple outbound messages, got %d", len(texts))
+	}
+	for i, txt := range texts {
+		if utf8.RuneCountInString(txt) > telegramBotAPIMaxMessageRunes {
+			t.Fatalf("chunk %d len %d > limit", i, utf8.RuneCountInString(txt))
+		}
 	}
 	if sender.lastParseModes()[0] != models.ParseModeHTML {
 		t.Errorf("expected ParseModeHTML, got %q", sender.lastParseModes()[0])
