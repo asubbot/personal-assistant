@@ -644,7 +644,7 @@ func TestHandleUpdate_allowedUser_handlerNetworkErrorSendsProviderMessage(t *tes
 func TestHandleUpdate_allowedUser_handlerInvalidToolErrorSendsToolMessage(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
-	handler := &mockHandler{errReply: errors.New(`tool arguments JSON: invalid character 'x' looking for beginning of value`)}
+	handler := &mockHandler{errReply: core.WrapUserError(core.UserErrorKindToolResponse, errors.New(`tool arguments JSON: invalid character 'x' looking for beginning of value`))}
 	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
 		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
 	})
@@ -654,6 +654,23 @@ func TestHandleUpdate_allowedUser_handlerInvalidToolErrorSendsToolMessage(t *tes
 	want := "Request processing failed due to invalid tool response. Please rephrase and try again."
 	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != want {
 		t.Errorf("expected tool-response message %q, got: %v", want, sender.sentTexts())
+	}
+}
+
+// Supporting AC-01.001 (US-01): explicit configuration error kind maps to configuration-safe user message.
+func TestHandleUpdate_allowedUser_handlerConfigurationErrorSendsConfigurationMessage(t *testing.T) {
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{errReply: core.WrapUserError(core.UserErrorKindConfiguration, errors.New("missing tool id in config"))}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	if !handler.called {
+		t.Fatal("handler should be called")
+	}
+	want := "Service configuration issue detected. Please contact support."
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != want {
+		t.Errorf("expected configuration message %q, got: %v", want, sender.sentTexts())
 	}
 }
 

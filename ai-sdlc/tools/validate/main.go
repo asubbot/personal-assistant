@@ -45,7 +45,9 @@ type ACGap struct {
 
 type EpicSummary struct {
 	Epic                string  `json:"epic"`
+	REQCount            int     `json:"req_count"`
 	TotalACs            int     `json:"total_acs"`
+	TestsCount          int     `json:"tests_count"`
 	DeferredACs         int     `json:"deferred_acs"`
 	InScopeACs          int     `json:"in_scope_acs"`
 	AutomatedCoveredACs int     `json:"automated_covered_acs"`
@@ -121,6 +123,21 @@ func parseACsFromFile(path string) (map[ACCode]string, map[ACCode]bool, error) {
 	}
 
 	return acs, deferred, nil
+}
+
+// parseREQCountFromFile extracts a count of unique REQ-EE.NNN codes from ep-requirements.md.
+func parseREQCountFromFile(path string) (int, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	re := regexp.MustCompile(`REQ-(\d{2})\.(\d{3})`)
+	matches := re.FindAllStringSubmatch(string(content), -1)
+	seen := make(map[string]struct{}, len(matches))
+	for _, m := range matches {
+		seen["REQ-"+m[1]+"."+m[2]] = struct{}{}
+	}
+	return len(seen), nil
 }
 
 // normalizeCriterionPreview drops table/index lines from ep-acceptance-criteria.md that are not useful as a one-line hint.
@@ -303,6 +320,16 @@ func filterCoverageForEpicNum(coverage map[ACCode][]CoverageRef, epicNum string)
 		}
 	}
 	return out
+}
+
+func uniqueTestRefsCount(coverage map[ACCode][]CoverageRef) int {
+	seen := make(map[string]struct{})
+	for _, refs := range coverage {
+		for _, ref := range refs {
+			seen[ref.Ref] = struct{}{}
+		}
+	}
+	return len(seen)
 }
 
 var funcTestPattern = regexp.MustCompile(`func (Test\w+)`)
@@ -549,15 +576,25 @@ func scanEpicsAgainstCoverage(cwd string, epics []string, globalCoverage map[ACC
 		if _, err := os.Stat(acPath); os.IsNotExist(err) {
 			continue
 		}
+		reqPath := filepath.Join(cwd, "ai-sdlc-artefacts", "epics", epic, "ep-requirements.md")
 		acs, deferred, err := parseACsFromFile(acPath)
 		if err != nil {
 			continue
 		}
+		reqCount := 0
+		if _, err := os.Stat(reqPath); err == nil {
+			if n, reqErr := parseREQCountFromFile(reqPath); reqErr == nil {
+				reqCount = n
+			}
+		}
 		epicCoverage := filterCoverageForEpicNum(globalCoverage, epicNum)
+		testsCount := uniqueTestRefsCount(epicCoverage)
 		r := generateReport(epic, acs, deferred, epicCoverage)
 		results = append(results, EpicSummary{
 			Epic:                epic,
+			REQCount:            reqCount,
 			TotalACs:            r.TotalACs,
+			TestsCount:          testsCount,
 			DeferredACs:         r.DeferredACs,
 			InScopeACs:          r.InScopeACs,
 			AutomatedCoveredACs: r.AutomatedCoveredACs,
@@ -634,19 +671,21 @@ func printAllEpicsHuman(
 ) {
 	writelnStdout("📋 Epic Validation Summary")
 	writelnStdout("")
-	writeStdout("%-10s %-12s %-12s\n", "Epic", "Trace%", "Status")
-	writelnStdout(strings.Repeat("─", 36))
+	writeStdout("%-10s %-8s %-6s %-6s %-8s\n", "Epic", "Trace", "REQ", "AC", "Tests")
+	writelnStdout(strings.Repeat("─", 42))
 
+	totalREQ := 0
+	totalTests := 0
 	for _, res := range results {
-		status := "✓"
-		if res.AutomatedCoveredACs+res.ManualOnlyTracedACs < res.InScopeACs {
-			status = "✗"
-		}
 		pct := int(res.TraceabilityRatio * 100)
-		writeStdout("%s %-12s %3d%% %s\n", status, res.Epic, pct, "")
+		writeStdout("%-10s %3d%%     %-6d %-6d %-8d\n", res.Epic, pct, res.REQCount, res.InScopeACs, res.TestsCount)
+		totalREQ += res.REQCount
+		totalTests += res.TestsCount
 	}
 
-	writelnStdout(strings.Repeat("─", 36))
+	writelnStdout(strings.Repeat("─", 42))
+	writeStdout("%-10s %3d%%     %-6d %-6d %-8d\n", "TOTAL", int(traceRatio*100), totalREQ, totalInScope, totalTests)
+	writelnStdout(strings.Repeat("─", 42))
 
 	hasTestTraceGaps := len(testsMissingACTrace) > 0
 	overallFail := hasGaps || hasTestTraceGaps

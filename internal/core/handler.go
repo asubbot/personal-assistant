@@ -340,7 +340,7 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 	h.fitDynamicTailToBudget(ctx, tailState, h.maxDynamicSystemRunes)
 	opts, err := h.completionOptionsMergedCatalogNative(tailState.merged)
 	if err != nil {
-		return "", err
+		return "", WrapUserError(UserErrorKindConfiguration, err)
 	}
 	textPath := couldTextPath && opts != nil && len(opts.Tools) > 0
 	if opts != nil && textPath {
@@ -374,12 +374,12 @@ func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Contex
 			return cur, nil
 		}
 		if st == nil || !h.escalationEnabled() {
-			return nil, fmt.Errorf("follow-up tool_call parse: %w", perr)
+			return nil, WrapUserError(UserErrorKindToolResponse, fmt.Errorf("follow-up tool_call parse: %w", perr))
 		}
 		prev := activeIndex(st)
 		h.maybeEscalate(ctx, st, true, "hermes_parse")
 		if activeIndex(st) == prev {
-			return nil, fmt.Errorf("follow-up tool_call parse: %w", perr)
+			return nil, WrapUserError(UserErrorKindToolResponse, fmt.Errorf("follow-up tool_call parse: %w", perr))
 		}
 		next, err := h.completeAt(ctx, st, messages, optsFollow)
 		if err != nil {
