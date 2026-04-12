@@ -282,6 +282,7 @@ func TestHandleMessage_escalation_logContainsPolicyFields(t *testing.T) {
 }
 
 // Covers EP-006 observability: Hermes parse escalation emits failure_class=hermes_parse on policy escalate (REQ-06.010).
+// Covers AC-06.007: traceability for TestHandleMessage_escalation_logContainsHermesParseClass.
 func TestHandleMessage_escalation_logContainsHermesParseClass(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -343,6 +344,7 @@ func TestHandleMessage_escalation_logContainsHermesParseClass(t *testing.T) {
 }
 
 // Covers EP-006: pseudo Hermes (-tool_call>…</tool_call>) with empty parse triggers hermes_parse escalation (SuspectedBrokenHermesMarkup).
+// Covers AC-06.007: traceability for TestHandleMessage_escalation_suspectedBrokenHermesPseudoBlock.
 func TestHandleMessage_escalation_suspectedBrokenHermesPseudoBlock(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -405,6 +407,7 @@ func TestHandleMessage_escalation_suspectedBrokenHermesPseudoBlock(t *testing.T)
 }
 
 // Covers EP-006: one turn — Hermes parse consumes escalation budget; qualifying tool_execution does not advance to third provider when max=1.
+// Covers AC-06.007: traceability for TestHandleMessage_mixedHermesThenTool_maxPerOne_secondToolStaysOnProvider.
 func TestHandleMessage_mixedHermesThenTool_maxPerOne_secondToolStaysOnProvider(t *testing.T) {
 	const hermesTool = `<tool_call>
 {"name": "run_echo", "arguments": {"msg": "x1"}}
@@ -468,6 +471,7 @@ func TestHandleMessage_mixedHermesThenTool_maxPerOne_secondToolStaysOnProvider(t
 }
 
 // Covers EP-006: two native tool calls in one round — first MayEscalate, second succeeds → one policy escalation, stable reply.
+// Covers AC-06.007: traceability for TestHandleMessage_twoToolCalls_oneMayEscalate_oneOk_singlePolicyEscalation.
 func TestHandleMessage_twoToolCalls_oneMayEscalate_oneOk_singlePolicyEscalation(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -627,6 +631,7 @@ func TestHandleMessage_textBasedHermes_parseFailure_escalatesToNextProvider(t *t
 }
 
 // Covers EP-006: invalid JSON for a known tool qualifies for escalation; second provider completes (REQ-06.018, handler E2E).
+// Covers AC-06.007: traceability for TestHandleMessage_invalidToolJSON_escalatesToSecondProvider.
 func TestHandleMessage_invalidToolJSON_escalatesToSecondProvider(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{

@@ -70,6 +70,7 @@ func TestLogBuildOutcome_failure_errorWithReason(t *testing.T) {
 	}
 }
 
+// Covers AC-04.021: traceability for TestLogBuildOutcome_nilLogger_noPanic.
 func TestLogBuildOutcome_nilLogger_noPanic(t *testing.T) {
 	LogBuildOutcome(nil, 1, nil)
 	LogBuildOutcome(nil, 0, fmt.Errorf("x"))

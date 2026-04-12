@@ -96,6 +96,7 @@ func TestNewClient_invalidKeyFile_returnsError(t *testing.T) {
 }
 
 // NewClient with existing node but empty ssh_known_hosts_path returns error.
+// Covers AC-01.006: traceability for TestNewClient_emptySSHKnownHostsPath_returnsError.
 func TestNewClient_emptySSHKnownHostsPath_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	keyPath := filepath.Join(dir, "key")
@@ -124,6 +125,7 @@ func TestNewClient_emptySSHKnownHostsPath_returnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-01.006: traceability for TestVerifyDialAndHandshake_propagatesNewClientError.
 func TestVerifyDialAndHandshake_propagatesNewClientError(t *testing.T) {
 	dir := t.TempDir()
 	knownHostsPath := filepath.Join(dir, "known_hosts")

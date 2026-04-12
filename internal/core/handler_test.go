@@ -737,6 +737,7 @@ func TestExecuteOneToolCall_nativeRunOnNode(t *testing.T) {
 	}
 }
 
+// Covers AC-01.002: traceability for TestRemoteCommandFromRunOnNodeArgs.
 func TestRemoteCommandFromRunOnNodeArgs(t *testing.T) {
 	if got := remoteCommandFromRunOnNodeArgs("run_on_node", `{"node_id":"nas","command":"  docker ps  "}`); got != "docker ps" {
 		t.Errorf("got %q, want docker ps", got)
@@ -918,6 +919,7 @@ func TestHandleMessage_toolResultLoop_executionError_surfacedInChat(t *testing.T
 }
 
 // Covers REQ-04.006: loop stops after maxToolRounds to avoid infinite loop when provider keeps returning tool_calls.
+// Covers AC-01.002: traceability for TestHandleMessage_toolResultLoop_maxToolRounds_cap.
 func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -1019,6 +1021,7 @@ func TestHandleMessage_toolInvocation_loggedWithIdArgumentsAndResult(t *testing.
 }
 
 // Covers REQ-01.026: logRedactor applies to INFO tool invocation attrs (arguments, result, error).
+// Covers AC-01.002: traceability for TestHandleMessage_toolInvocation_redactsInfoLogAttrs.
 func TestHandleMessage_toolInvocation_redactsInfoLogAttrs(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
 	logger := slog.New(cap)
@@ -1077,6 +1080,7 @@ func TestHandleMessage_toolInvocation_redactsInfoLogAttrs(t *testing.T) {
 }
 
 // Covers REQ-01.026: INFO tool invocation error string is redacted (e.g. remote stderr from noderunner).
+// Covers AC-01.002: traceability for TestHandleMessage_toolInvocation_redactsErrorAttr.
 func TestHandleMessage_toolInvocation_redactsErrorAttr(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
 	logger := slog.New(cap)
@@ -1322,6 +1326,7 @@ func TestExecuteOneToolCall_substitutedCommandWithMetachar_noRunOnNode(t *testin
 }
 
 // Substituted command with a disallowed rune (e.g. tab) must not reach RunOnNode.
+// Covers AC-01.002: traceability for TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode.
 func TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -1346,6 +1351,7 @@ func TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode(t *
 }
 
 // Catalog substitution passes cmdsafe gate in handler: INFO log includes tool_id, node_id, remote_command.
+// Covers AC-01.002: traceability for TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand.
 func TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
 	logger := slog.New(cap)
@@ -1546,6 +1552,7 @@ func TestHandleMessage_textBasedHermes_twoToolRounds_preservesForceJSONOnEachCom
 	}
 }
 
+// Covers AC-01.002: traceability for TestHandleMessage_textBasedHermes_invalidMarkup_userMessage.
 func TestHandleMessage_textBasedHermes_invalidMarkup_userMessage(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -1628,6 +1635,7 @@ func TestHandleMessage_textBased_systemPromptIncludesHermesAndTools(t *testing.T
 }
 
 // AC-04.023/006: Hermes unknown tool id — same validation as native; no RunOnNode.
+// Covers AC-01.002: traceability for TestHandleMessage_textBasedHermes_unknownTool_noRunOnNode.
 func TestHandleMessage_textBasedHermes_unknownTool_noRunOnNode(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -1719,6 +1727,7 @@ func TestHandleMessage_textBasedHermes_plainTextNoBlocks(t *testing.T) {
 }
 
 // Hermes follow-up after tool round: malformed second response yields error (no silent success).
+// Covers AC-01.002: traceability for TestHandleMessage_textBasedHermes_followUpMalformed_returnsError.
 func TestHandleMessage_textBasedHermes_followUpMalformed_returnsError(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{

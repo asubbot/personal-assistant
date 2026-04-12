@@ -480,6 +480,7 @@ func TestYear_withMonthSummaries_callsLLMAndWrites(t *testing.T) {
 	assertSingleAddTextContains(t, vecMock, "Date: 2026", "[summary:year]")
 }
 
+// Covers AC-01.011: traceability for TestBuildDayTranscript_omitsEmptyAssistantLines.
 func TestBuildDayTranscript_omitsEmptyAssistantLines(t *testing.T) {
 	out := buildDayTranscript([]llmlog.Entry{{
 		Messages: []llm.Message{
@@ -501,6 +502,7 @@ func TestBuildDayTranscript_omitsEmptyAssistantLines(t *testing.T) {
 	}
 }
 
+// Covers AC-01.011: traceability for TestBuildDayTranscript_omitsToolRole.
 func TestBuildDayTranscript_omitsToolRole(t *testing.T) {
 	out := buildDayTranscript([]llmlog.Entry{{
 		Messages: []llm.Message{
@@ -518,6 +520,7 @@ func TestBuildDayTranscript_omitsToolRole(t *testing.T) {
 	}
 }
 
+// Covers AC-01.011: traceability for TestBuildDayTranscript_omitsSystem.
 func TestBuildDayTranscript_omitsSystem(t *testing.T) {
 	out := buildDayTranscript([]llmlog.Entry{{
 		Messages: []llm.Message{
@@ -538,6 +541,7 @@ func TestBuildDayTranscript_omitsSystem(t *testing.T) {
 	}
 }
 
+// Covers AC-01.011: traceability for TestBuildDayTranscript_noDuplicateAssistant.
 func TestBuildDayTranscript_noDuplicateAssistant(t *testing.T) {
 	out := buildDayTranscript([]llmlog.Entry{{
 		Messages: []llm.Message{
@@ -563,6 +567,7 @@ func assertSingleAddTextContains(t *testing.T, m *mockVectorStore, subs ...strin
 	}
 }
 
+// Covers AC-01.011: traceability for TestBuildDayTranscript_appendsResponseWhenNoAssistantInMessages.
 func TestBuildDayTranscript_appendsResponseWhenNoAssistantInMessages(t *testing.T) {
 	out := buildDayTranscript([]llmlog.Entry{{
 		Messages: []llm.Message{
@@ -579,6 +584,7 @@ func TestBuildDayTranscript_appendsResponseWhenNoAssistantInMessages(t *testing.
 	}
 }
 
+// Covers AC-01.011: traceability for TestLlmMessagesDebugText_joinsRoles.
 func TestLlmMessagesDebugText_joinsRoles(t *testing.T) {
 	got := llmMessagesDebugText([]llm.Message{
 		{Role: "system", Content: "a"},
@@ -595,6 +601,7 @@ func TestLlmMessagesDebugText_joinsRoles(t *testing.T) {
 	}
 }
 
+// Covers AC-01.011: traceability for TestLlmMessagesJSONByteLen_matchesMarshal.
 func TestLlmMessagesJSONByteLen_matchesMarshal(t *testing.T) {
 	msgs := []llm.Message{
 		{Role: "system", Content: "hello"},

@@ -28,6 +28,7 @@ func TestFitDynamicTail_trimsSkillsFromEnd(t *testing.T) {
 	}
 }
 
+// Covers AC-13.014: traceability for TestFitDynamicTail_logsWhenTrimmed.
 func TestFitDynamicTail_logsWhenTrimmed(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
 	logger := slog.New(cap)

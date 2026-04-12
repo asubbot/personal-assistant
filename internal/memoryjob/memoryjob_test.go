@@ -121,6 +121,7 @@ func TestRunner_drain_reconcileNotDeferredDuringUserTurn(t *testing.T) {
 	}
 }
 
+// Covers AC-02.016: traceability for TestDayNeedsCatchUp_noLogFile.
 func TestDayNeedsCatchUp_noLogFile(t *testing.T) {
 	ctx := context.Background()
 	logDir := t.TempDir()
@@ -141,6 +142,7 @@ func TestDayNeedsCatchUp_noLogFile(t *testing.T) {
 	}
 }
 
+// Covers AC-02.016: traceability for TestDayNeedsCatchUp_logEntriesMissingSummary.
 func TestDayNeedsCatchUp_logEntriesMissingSummary(t *testing.T) {
 	ctx := context.Background()
 	logDir := t.TempDir()
@@ -167,6 +169,7 @@ func TestDayNeedsCatchUp_logEntriesMissingSummary(t *testing.T) {
 	}
 }
 
+// Covers AC-02.016: traceability for TestDayNeedsCatchUp_corruptJSONL_returnsError.
 func TestDayNeedsCatchUp_corruptJSONL_returnsError(t *testing.T) {
 	ctx := context.Background()
 	logDir := t.TempDir()
@@ -189,6 +192,7 @@ func TestDayNeedsCatchUp_corruptJSONL_returnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-02.016: traceability for TestMonthNeedsCatchUp_noDaySummaries.
 func TestMonthNeedsCatchUp_noDaySummaries(t *testing.T) {
 	ctx := context.Background()
 	memRoot := t.TempDir()
@@ -207,6 +211,7 @@ func TestMonthNeedsCatchUp_noDaySummaries(t *testing.T) {
 	}
 }
 
+// Covers AC-02.016: traceability for TestMonthNeedsCatchUp_gatherReadError.
 func TestMonthNeedsCatchUp_gatherReadError(t *testing.T) {
 	ctx := context.Background()
 	memRoot := t.TempDir()
@@ -231,6 +236,7 @@ func TestMonthNeedsCatchUp_gatherReadError(t *testing.T) {
 	}
 }
 
+// Covers AC-02.016: traceability for TestYearNeedsCatchUp_readYearSummaryError.
 func TestYearNeedsCatchUp_readYearSummaryError(t *testing.T) {
 	ctx := context.Background()
 	memRoot := t.TempDir()

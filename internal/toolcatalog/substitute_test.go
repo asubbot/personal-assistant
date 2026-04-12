@@ -17,6 +17,7 @@ func TestSubstitute_ReplacesPlaceholders(t *testing.T) {
 	}
 }
 
+// Covers AC-04.007: traceability for TestSubstitute_MissingPlaceholder_ReturnsError.
 func TestSubstitute_MissingPlaceholder_ReturnsError(t *testing.T) {
 	template := "cmd {{foo}} {{bar}}"
 	args := map[string]any{"foo": "a"}
@@ -29,6 +30,7 @@ func TestSubstitute_MissingPlaceholder_ReturnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-04.007: traceability for TestSubstitute_NumberFormattedAsString.
 func TestSubstitute_NumberFormattedAsString(t *testing.T) {
 	template := "level {{n}}"
 	args := map[string]any{"n": float64(42)}
@@ -41,6 +43,7 @@ func TestSubstitute_NumberFormattedAsString(t *testing.T) {
 	}
 }
 
+// Covers AC-04.007: traceability for TestSubstituteMust_PanicsOnMissing.
 func TestSubstituteMust_PanicsOnMissing(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

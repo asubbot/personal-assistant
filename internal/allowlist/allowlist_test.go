@@ -126,6 +126,7 @@ func mustNewChecker(t *testing.T) *Checker {
 	return checker
 }
 
+// Covers AC-01.007: traceability for TestNewChecker_rejectsBareStarPattern.
 func TestNewChecker_rejectsBareStarPattern(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")
@@ -159,6 +160,7 @@ func TestNewChecker_rejectsBareStarPattern(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestNewChecker_rejectsLineThatTrimsToBareStar.
 func TestNewChecker_rejectsLineThatTrimsToBareStar(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")
@@ -190,6 +192,7 @@ func TestNewChecker_rejectsLineThatTrimsToBareStar(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestNewChecker_rejectsMultipleTrailingStars.
 func TestNewChecker_rejectsMultipleTrailingStars(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")
@@ -223,6 +226,7 @@ func TestNewChecker_rejectsMultipleTrailingStars(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestNewChecker_rejectsLineEndingWithTwoStarsOnly.
 func TestNewChecker_rejectsLineEndingWithTwoStarsOnly(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")
@@ -254,6 +258,7 @@ func TestNewChecker_rejectsLineEndingWithTwoStarsOnly(t *testing.T) {
 }
 
 // One invalid pattern causes the entire file to fail loading; no partial allowlist.
+// Covers AC-01.007: traceability for TestNewChecker_rejectsEntireFileWhenMixedWithInvalidPattern.
 func TestNewChecker_rejectsEntireFileWhenMixedWithInvalidPattern(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")
@@ -289,6 +294,7 @@ func TestNewChecker_rejectsEntireFileWhenMixedWithInvalidPattern(t *testing.T) {
 }
 
 // A single trailing * on a non-empty prefix loads and matches prefix semantics.
+// Covers AC-01.007: traceability for TestNewChecker_singleTrailingStarPatternLoadsAndMatches.
 func TestNewChecker_singleTrailingStarPatternLoadsAndMatches(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")
@@ -325,6 +331,7 @@ func TestNewChecker_singleTrailingStarPatternLoadsAndMatches(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestNewChecker_rejectsTripleTrailingStars.
 func TestNewChecker_rejectsTripleTrailingStars(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")
@@ -358,6 +365,7 @@ func TestNewChecker_rejectsTripleTrailingStars(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestNewChecker_rejectsStarNotOnlyAtEnd.
 func TestNewChecker_rejectsStarNotOnlyAtEnd(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "allowlist.txt")

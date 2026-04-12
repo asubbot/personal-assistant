@@ -18,6 +18,7 @@ func writeSkill(t *testing.T, root, skillName, content string) {
 	}
 }
 
+// Covers AC-13.011: traceability for TestLoadDir_valid.
 func TestLoadDir_valid(t *testing.T) {
 	// Covers AC-13.011 happy path
 	root := t.TempDir()

@@ -17,6 +17,7 @@ func TestWrapNodeOutcome_nilError(t *testing.T) {
 	}
 }
 
+// Covers AC-06.012: traceability for TestWrapNodeOutcome_table.
 func TestWrapNodeOutcome_table(t *testing.T) {
 	t.Parallel()
 	base := errors.New("underlying")

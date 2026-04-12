@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -492,5 +493,113 @@ func TestHasSkip(t *testing.T) {
 	}
 	if !m["TestHasSkip"] {
 		t.Error("TestHasSkip should have skip")
+	}
+}
+
+func TestTestFuncsMissingACTraceInFile_tracedAndMissing(t *testing.T) {
+	okFile := `package p
+
+import "testing"
+
+// Covers AC-09.001
+func TestOK(t *testing.T) {}
+`
+	if got := testFuncsMissingACTraceInFile("internal/foo/ok_test.go", okFile); len(got) != 0 {
+		t.Fatalf("want no missing, got %v", got)
+	}
+
+	two := `package p
+
+import "testing"
+
+// Covers AC-09.001
+func TestOK(t *testing.T) {}
+
+func TestBad(t *testing.T) {}
+`
+	got := testFuncsMissingACTraceInFile("internal/foo/b_test.go", two)
+	want := []string{"internal/foo/b_test.go::TestBad"}
+	if len(got) != 1 || got[0] != want[0] {
+		t.Fatalf("got %v want %v", got, want)
+	}
+}
+
+func TestTestFuncsMissingACTraceInFile_coversLineWithoutACCode(t *testing.T) {
+	src := `package p
+
+import "testing"
+
+// Covers integration behaviour only (no AC-EE.NNN on this line)
+func TestNoAC(t *testing.T) {}
+`
+	got := testFuncsMissingACTraceInFile("c_test.go", src)
+	if len(got) != 1 || got[0] != "c_test.go::TestNoAC" {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestTestFuncsMissingACTraceInFile_skipsTestMain(t *testing.T) {
+	src := `package p
+
+import "testing"
+
+func TestMain(m *testing.M) {}
+
+func TestReal(t *testing.T) {}
+`
+	got := testFuncsMissingACTraceInFile("m_test.go", src)
+	if len(got) != 1 || got[0] != "m_test.go::TestReal" {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestFindTestsMissingACTrace_tempDir(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "missing-trace-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	testsDir := filepath.Join(tmpDir, "tests")
+	if err := os.Mkdir(testsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	good := filepath.Join(testsDir, "good_test.go")
+	if err := os.WriteFile(good, []byte(`package tests
+
+import "testing"
+
+// Covers AC-09.001
+func TestOK(t *testing.T) {}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	badPath := filepath.Join(testsDir, "bad_test.go")
+	if err := os.WriteFile(badPath, []byte(`package tests
+
+import "testing"
+
+func TestBad(t *testing.T) {}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	refs, err := findTestsMissingACTrace(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "tests/bad_test.go::TestBad"
+	var found bool
+	for _, r := range refs {
+		if r == want {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("want ref %q in %v", want, refs)
+	}
+	for _, r := range refs {
+		if strings.Contains(r, "TestOK") {
+			t.Fatalf("did not want TestOK in missing list: %v", refs)
+		}
 	}
 }

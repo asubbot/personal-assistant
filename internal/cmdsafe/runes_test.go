@@ -28,6 +28,7 @@ func TestRejectDisallowedRunes_allowed(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestRejectDisallowedRunes_rejectsControlAndTab.
 func TestRejectDisallowedRunes_rejectsControlAndTab(t *testing.T) {
 	for _, cmd := range []string{
 		"uptime\x00",
@@ -47,6 +48,7 @@ func TestRejectDisallowedRunes_rejectsControlAndTab(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestRejectDisallowedRunes_rejectsFormatAndBidi.
 func TestRejectDisallowedRunes_rejectsFormatAndBidi(t *testing.T) {
 	for _, cmd := range []string{
 		"foo\u200bbar",
@@ -60,6 +62,7 @@ func TestRejectDisallowedRunes_rejectsFormatAndBidi(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestRejectDisallowedRunes_rejectsInvalidUTF8.
 func TestRejectDisallowedRunes_rejectsInvalidUTF8(t *testing.T) {
 	cmd := "ok\xff\xfe"
 	err := RejectDisallowedRunes(cmd)
@@ -68,6 +71,7 @@ func TestRejectDisallowedRunes_rejectsInvalidUTF8(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestRejectDisallowedRunes_rejectsDisallowedSymbol.
 func TestRejectDisallowedRunes_rejectsDisallowedSymbol(t *testing.T) {
 	err := RejectDisallowedRunes("echo 😀")
 	if err == nil {
@@ -78,6 +82,7 @@ func TestRejectDisallowedRunes_rejectsDisallowedSymbol(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestRejectDisallowedRunes_rejectsTilde.
 func TestRejectDisallowedRunes_rejectsTilde(t *testing.T) {
 	err := RejectDisallowedRunes("uptime~")
 	if err == nil {
@@ -89,6 +94,7 @@ func TestRejectDisallowedRunes_rejectsTilde(t *testing.T) {
 }
 
 // NBSP (U+00A0) is not the allowed ASCII space U+0020; reject to avoid accidentally widening Zs.
+// Covers AC-04.029: traceability for TestRejectDisallowedRunes_rejectsNBSP.
 func TestRejectDisallowedRunes_rejectsNBSP(t *testing.T) {
 	cmd := "uptime\u00a0"
 	err := RejectDisallowedRunes(cmd)
@@ -103,6 +109,7 @@ func TestRejectDisallowedRunes_rejectsNBSP(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestRejectDisallowedRunes_maxLength.
 func TestRejectDisallowedRunes_maxLength(t *testing.T) {
 	var sb strings.Builder
 	for utf8.RuneCountInString(sb.String()) < maxCommandRunes {

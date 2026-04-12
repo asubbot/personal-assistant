@@ -24,6 +24,7 @@ func (c *captureHandler) Handle(_ context.Context, r slog.Record) error {
 func (c *captureHandler) WithAttrs(_ []slog.Attr) slog.Handler { return c }
 func (c *captureHandler) WithGroup(_ string) slog.Handler      { return c }
 
+// Covers AC-01.001: traceability for TestLogEvent_emitsStructuredRoutingLine.
 func TestLogEvent_emitsStructuredRoutingLine(t *testing.T) {
 	h := &captureHandler{}
 	logger := slog.New(h)

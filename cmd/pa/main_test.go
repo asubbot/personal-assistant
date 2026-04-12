@@ -177,6 +177,7 @@ func TestSummarizeCLI_year_exitZero(t *testing.T) {
 }
 
 // LLM log retention (fail fast): config with llm_log_retention_days 0 or missing — binary exits non-zero (bot and -summarize).
+// Covers AC-01.011: traceability for TestCLI_retentionDaysZero_refusesStart.
 func TestCLI_retentionDaysZero_refusesStart(t *testing.T) {
 	dir := t.TempDir()
 	cfgZero := strings.Replace(validSummarizeConfig, `"llm_log_retention_days": 7`, `"llm_log_retention_days": 0`, 1)
@@ -207,6 +208,7 @@ func testLogger(t *testing.T) *slog.Logger {
 }
 
 // Covers cmd/pa runSummarize/runVerifyNodes coverage: invalid scope returns error.
+// Covers AC-01.011: traceability for TestRunSummarize_InvalidScope_returnsError.
 func TestRunSummarize_InvalidScope_returnsError(t *testing.T) {
 	logger := testLogger(t)
 	dir := t.TempDir()
@@ -341,6 +343,7 @@ func TestRunVerifyNodes_AllowlistLoadError_returnsError(t *testing.T) {
 }
 
 // LLM log retention: -summarize prunes old llm-YYYY-MM-DD.jsonl files and keeps recent ones.
+// Covers AC-01.011: traceability for TestSummarizeCLI_prunesOldLLMLogs.
 func TestSummarizeCLI_prunesOldLLMLogs(t *testing.T) {
 	dir := t.TempDir()
 	llmLogDir := filepath.Join(dir, "llm_logs")
@@ -370,6 +373,7 @@ func TestSummarizeCLI_prunesOldLLMLogs(t *testing.T) {
 }
 
 // newToolIndex with nil ToolCatalog returns error "tool catalog is required".
+// Covers AC-01.011: traceability for TestNewToolIndex_nilCatalog_returnsError.
 func TestNewToolIndex_nilCatalog_returnsError(t *testing.T) {
 	logger := testLogger(t)
 	cfg := &config.Config{
@@ -394,6 +398,7 @@ func TestNewToolIndex_nilCatalog_returnsError(t *testing.T) {
 }
 
 // newToolIndex when NewWithTable fails (e.g. path under non-existent dir) returns error; no goroutine started.
+// Covers AC-01.011: traceability for TestNewToolIndex_vectorStoreFails_returnsError.
 func TestNewToolIndex_vectorStoreFails_returnsError(t *testing.T) {
 	logger := testLogger(t)
 	// Path under a directory we do not create so sqlite open fails.
@@ -424,6 +429,7 @@ func testClearContextConfig(vectorPath string) *config.Config {
 }
 
 // clearConversationContext removes all vec_items rows so semantic context is empty on next Search.
+// Covers AC-01.011: traceability for TestClearConversationContext_vecItemsEmptyAfterClear.
 func TestClearConversationContext_vecItemsEmptyAfterClear(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -459,6 +465,7 @@ func TestClearConversationContext_vecItemsEmptyAfterClear(t *testing.T) {
 }
 
 // clearConversationContext does not delete vec_tools (tool pre-selection index).
+// Covers AC-01.011: traceability for TestClearConversationContext_vecToolsUnchanged.
 func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -508,6 +515,7 @@ func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
 	}
 }
 
+// Covers AC-01.011: traceability for TestClearConversationContext_validationErrors.
 func TestClearConversationContext_validationErrors(t *testing.T) {
 	if err := clearConversationContext(nil); err == nil {
 		t.Fatal("nil config: want error")

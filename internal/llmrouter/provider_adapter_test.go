@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// Covers AC-01.001: traceability for TestProviderAdapter_retryableFallbackAndModelLabel.
 func TestProviderAdapter_retryableFallbackAndModelLabel(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -27,6 +28,7 @@ func TestProviderAdapter_retryableFallbackAndModelLabel(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestProviderAdapter_doesNotOverrideExistingModel.
 func TestProviderAdapter_doesNotOverrideExistingModel(t *testing.T) {
 	p := &testProvider{result: &llm.CompletionResult{Content: "ok", Model: "provider/native"}}
 	adapter, err := NewProviderAdapter([]llm.Provider{p}, []string{"a/m0"}, Config{}, nil)
@@ -42,6 +44,7 @@ func TestProviderAdapter_doesNotOverrideExistingModel(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestProviderAdapter_startsAtBaselineIndex.
 func TestProviderAdapter_startsAtBaselineIndex(t *testing.T) {
 	p0 := &testProvider{result: &llm.CompletionResult{Content: "wrong"}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "from-baseline"}}
@@ -69,6 +72,7 @@ func TestProviderAdapter_startsAtBaselineIndex(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestSummarizeRouterConfig_nilConfig_returnsEmpty.
 func TestSummarizeRouterConfig_nilConfig_returnsEmpty(t *testing.T) {
 	if c := SummarizeRouterConfig(nil); c.Escalation != nil {
 		t.Fatalf("SummarizeRouterConfig(nil): want empty escalation, got %+v", c)

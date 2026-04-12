@@ -99,6 +99,7 @@ func TestStore_Delete_removesById(t *testing.T) {
 }
 
 // Clear removes all rows; memory and tools tables are independent.
+// Covers AC-01.013: traceability for TestStore_Clear_removesAllRows.
 func TestStore_Clear_removesAllRows(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -271,6 +272,7 @@ func twoTablesSameDB_assertBothTablesInDB(t *testing.T, ctx context.Context, pat
 }
 
 // NewWithTable rejects empty table name and invalid table name.
+// Covers AC-01.013: traceability for TestNewWithTable_validation.
 func TestNewWithTable_validation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 

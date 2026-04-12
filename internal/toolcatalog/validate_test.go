@@ -31,6 +31,7 @@ func TestValidateToolCall_UnknownTool_ReturnsError(t *testing.T) {
 	assertValidateKind(t, err, ValidateKindUnknownTool)
 }
 
+// Covers AC-04.005: traceability for TestValidateToolCall_MissingRequired_ReturnsError.
 func TestValidateToolCall_MissingRequired_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
@@ -50,6 +51,7 @@ func TestValidateToolCall_MissingRequired_ReturnsError(t *testing.T) {
 	assertValidateKind(t, err, ValidateKindMissingRequiredArg)
 }
 
+// Covers AC-04.005: traceability for TestValidateToolCall_WrongType_ReturnsError.
 func TestValidateToolCall_WrongType_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
@@ -69,6 +71,7 @@ func TestValidateToolCall_WrongType_ReturnsError(t *testing.T) {
 	assertValidateKind(t, err, ValidateKindArgTypeInteger)
 }
 
+// Covers AC-04.005: traceability for TestValidateToolCall_AllowedValues_ReturnsError.
 func TestValidateToolCall_AllowedValues_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
@@ -88,6 +91,7 @@ func TestValidateToolCall_AllowedValues_ReturnsError(t *testing.T) {
 	assertValidateKind(t, err, ValidateKindAllowedValuesMismatch)
 }
 
+// Covers AC-04.005: traceability for TestValidateToolCall_Pattern_ReturnsError.
 func TestValidateToolCall_Pattern_ReturnsError(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
@@ -107,6 +111,7 @@ func TestValidateToolCall_Pattern_ReturnsError(t *testing.T) {
 	assertValidateKind(t, err, ValidateKindPatternMismatch)
 }
 
+// Covers AC-04.005: traceability for TestValidateToolCall_MinMax_ReturnsError.
 func TestValidateToolCall_MinMax_ReturnsError(t *testing.T) {
 	min, max := 1, 10
 	catalog := &Catalog{
@@ -129,6 +134,7 @@ func TestValidateToolCall_MinMax_ReturnsError(t *testing.T) {
 	assertValidateKind(t, err, ValidateKindMaxViolated)
 }
 
+// Covers AC-04.005: traceability for TestValidateToolCall_ValidArgs_ReturnsToolAndArgs.
 func TestValidateToolCall_ValidArgs_ReturnsToolAndArgs(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{
@@ -150,6 +156,7 @@ func TestValidateToolCall_ValidArgs_ReturnsToolAndArgs(t *testing.T) {
 	}
 }
 
+// Covers AC-04.005: traceability for TestValidateToolCall_InvalidJSON_ReturnsError.
 func TestValidateToolCall_InvalidJSON_ReturnsError(t *testing.T) {
 	catalog := &Catalog{Tools: map[string]*Tool{"t": {ID: "t", IndexText: "x", Template: "c", NodeID: "n"}}}
 	_, _, err := ValidateToolCall(catalog, "t", `{invalid}`)

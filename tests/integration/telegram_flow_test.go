@@ -54,6 +54,7 @@ const integrationTimeout = 5 * time.Second
 
 // TestTelegramFlow_OneMessage_ReplyWithinTimeout exercises the path: adapter → core handler → LLM → reply.
 // Mocks: fake adapter (no real Telegram), mock LLM (no real API). Asserts a reply is returned before test timeout (AC-01.001).
+// Covers AC-01.002: traceability for TestTelegramFlow_OneMessage_ReplyWithinTimeout.
 func TestTelegramFlow_OneMessage_ReplyWithinTimeout(t *testing.T) {
 	t.Parallel()
 	wantReply := "hello from mock"

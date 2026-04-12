@@ -79,6 +79,7 @@ func TestRunOnNode_allowlistDenies_returnsError(t *testing.T) {
 }
 
 // Covers allowlist checker nil: no SSH/exec; error includes attempted command for diagnostics.
+// Covers AC-01.007: traceability for TestRunOnNode_nilAllowlist_returnsErrorWithAttempted.
 func TestRunOnNode_nilAllowlist_returnsErrorWithAttempted(t *testing.T) {
 	cfg := &config.Config{
 		Nodes: map[string]config.Node{
@@ -212,6 +213,7 @@ func TestRunOnNode_shellMetacharacters_rejected(t *testing.T) {
 }
 
 // Command strings with disallowed runes (e.g. tab) are rejected before allowlist and executor.
+// Covers AC-01.007: traceability for TestRunOnNode_disallowedRunes_rejectedBeforeExec.
 func TestRunOnNode_disallowedRunes_rejectedBeforeExec(t *testing.T) {
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
@@ -252,6 +254,7 @@ func TestRunOnNode_disallowedRunes_rejectedBeforeExec(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestEllipsisCommandForError.
 func TestEllipsisCommandForError(t *testing.T) {
 	if got := ellipsisCommandForError(""); got != "" {
 		t.Errorf("empty: got %q", got)
@@ -277,6 +280,7 @@ func TestEllipsisCommandForError(t *testing.T) {
 
 // strings.TrimSpace strips ASCII tab at the ends, so the trimmed command can match the allowlist
 // (tab only inside the string is still rejected by RejectDisallowedRunes).
+// Covers AC-01.007: traceability for TestRunOnNode_trimSpaceStripsLeadingTrailingTab.
 func TestRunOnNode_trimSpaceStripsLeadingTrailingTab(t *testing.T) {
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
@@ -319,6 +323,7 @@ func TestRunOnNode_trimSpaceStripsLeadingTrailingTab(t *testing.T) {
 
 // RejectDisallowedRunes runs before allowlist: a tilde is rejected even if the exact string is listed.
 // Semicolon is not in the allowed rune set, so it is rejected as a disallowed rune (before shell-meta and allowlist).
+// Covers AC-01.007: traceability for TestRunOnNode_disallowedRuneRejectedBeforeAllowlistAndShellMetaLayer.
 func TestRunOnNode_disallowedRuneRejectedBeforeAllowlistAndShellMetaLayer(t *testing.T) {
 	dir := t.TempDir()
 	allowlistPath := filepath.Join(dir, "allowlist.txt")
@@ -418,6 +423,7 @@ func (m *mockExecutor) Exec(ctx context.Context, nodeID, command string) ([]byte
 }
 
 // Smoke: RunOnNode errors still carry EP-006 escalation typing via escalationpolicy (full matrix in escalationpolicy tests).
+// Covers AC-01.007: traceability for TestRunOnNode_escalationPolicy_smoke.
 func TestRunOnNode_escalationPolicy_smoke(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -489,6 +495,7 @@ func TestRunOnNode_escalationPolicy_smoke(t *testing.T) {
 }
 
 // Remote stderr/stdout from the node are appended to the exec error (and logs) so tools and operators see script output.
+// Covers AC-01.007: traceability for TestRunOnNode_execError_includesRemoteStderr.
 func TestRunOnNode_execError_includesRemoteStderr(t *testing.T) {
 	dir := t.TempDir()
 	allowPath := filepath.Join(dir, "allowlist.txt")
@@ -529,6 +536,7 @@ func TestRunOnNode_execError_includesRemoteStderr(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestRunOnNode_execError_includesStdoutAndStderr.
 func TestRunOnNode_execError_includesStdoutAndStderr(t *testing.T) {
 	dir := t.TempDir()
 	allowPath := filepath.Join(dir, "allowlist.txt")
@@ -565,6 +573,7 @@ func TestRunOnNode_execError_includesStdoutAndStderr(t *testing.T) {
 	}
 }
 
+// Covers AC-01.007: traceability for TestRunOnNode_execError_truncatesLongRemoteStreams.
 func TestRunOnNode_execError_truncatesLongRemoteStreams(t *testing.T) {
 	dir := t.TempDir()
 	allowPath := filepath.Join(dir, "allowlist.txt")
@@ -603,6 +612,7 @@ func TestRunOnNode_execError_truncatesLongRemoteStreams(t *testing.T) {
 }
 
 // REQ-01.026: DEBUG ssh exec output redacts remote stream fragments when SetLogRedactor is set.
+// Covers AC-01.007: traceability for TestRunOnNode_debugLog_redactsRemoteStreams.
 func TestRunOnNode_debugLog_redactsRemoteStreams(t *testing.T) {
 	dir := t.TempDir()
 	allowPath := filepath.Join(dir, "allowlist.txt")
@@ -641,6 +651,7 @@ func TestRunOnNode_debugLog_redactsRemoteStreams(t *testing.T) {
 }
 
 // Returned exec error keeps unredacted remote detail for tool/LLM; Error log attrs are redacted.
+// Covers AC-01.007: traceability for TestRunOnNode_errorLog_redactsStreams_returnUnredacted.
 func TestRunOnNode_errorLog_redactsStreams_returnUnredacted(t *testing.T) {
 	dir := t.TempDir()
 	allowPath := filepath.Join(dir, "allowlist.txt")

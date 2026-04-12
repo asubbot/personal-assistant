@@ -2,6 +2,7 @@ package promptmarkers
 
 import "testing"
 
+// Covers AC-13.001: traceability for TestTextContainsForbiddenMarkerLine_detectsExactLine.
 func TestTextContainsForbiddenMarkerLine_detectsExactLine(t *testing.T) {
 	// Covers AC-13.001
 	if !TextContainsForbiddenMarkerLine("hello\n" + BeginRetrievedContext + "\nend") {

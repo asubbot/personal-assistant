@@ -106,6 +106,7 @@ func TestParseHermesToolCalls_multipleBlocks(t *testing.T) {
 	}
 }
 
+// Covers AC-04.024: traceability for TestSuspectedBrokenHermesMarkup_pseudoBlock.
 func TestSuspectedBrokenHermesMarkup_pseudoBlock(t *testing.T) {
 	s := `-tool_call>{"name":"run_echo","arguments":{"msg":"x"}}</tool_call>`
 	calls, err := ParseHermesToolCalls(s)
@@ -117,6 +118,7 @@ func TestSuspectedBrokenHermesMarkup_pseudoBlock(t *testing.T) {
 	}
 }
 
+// Covers AC-04.024: traceability for TestSuspectedBrokenHermesMarkup_reversedMarkers.
 func TestSuspectedBrokenHermesMarkup_reversedMarkers(t *testing.T) {
 	s := `note </tool_call> then -tool_call>{}`
 	calls, err := ParseHermesToolCalls(s)
@@ -128,6 +130,7 @@ func TestSuspectedBrokenHermesMarkup_reversedMarkers(t *testing.T) {
 	}
 }
 
+// Covers AC-04.024: traceability for TestSuspectedBrokenHermesMarkup_noCloseTag.
 func TestSuspectedBrokenHermesMarkup_noCloseTag(t *testing.T) {
 	s := `-tool_call>{"name":"x"}`
 	calls, err := ParseHermesToolCalls(s)
@@ -139,18 +142,21 @@ func TestSuspectedBrokenHermesMarkup_noCloseTag(t *testing.T) {
 	}
 }
 
+// Covers AC-04.024: traceability for TestSuspectedBrokenHermesMarkup_plainText.
 func TestSuspectedBrokenHermesMarkup_plainText(t *testing.T) {
 	if SuspectedBrokenHermesMarkup("plain only") {
 		t.Fatal("expected false")
 	}
 }
 
+// Covers AC-04.024: traceability for TestSuspectedBrokenHermesMarkup_emptyTrim.
 func TestSuspectedBrokenHermesMarkup_emptyTrim(t *testing.T) {
 	if SuspectedBrokenHermesMarkup("   \n\t  ") {
 		t.Fatal("expected false for whitespace-only")
 	}
 }
 
+// Covers AC-04.024: traceability for TestSuspectedBrokenHermesMarkup_validHermesNotUsedWithEmptyParse.
 func TestSuspectedBrokenHermesMarkup_validHermesNotUsedWithEmptyParse(t *testing.T) {
 	s := `<tool_call>
 {"name": "run_echo", "arguments": {"msg": "x"}}

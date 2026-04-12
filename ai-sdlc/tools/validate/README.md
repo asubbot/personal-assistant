@@ -6,7 +6,7 @@ Multi-purpose validation tool for the PersonalAssistant SDLC pipeline.
 
 ### AC (Acceptance Criteria) Validation
 
-Validates that all Acceptance Criteria from an epic's `ep-acceptance-criteria.md` are covered by tests (with separate metrics for **automated** vs **manual-only** traceability; deferred ACs do not inflate the traceability percentage).
+Validates that all Acceptance Criteria from an epic's `ep-acceptance-criteria.md` are covered by tests (with separate metrics for **automated** vs **manual-only** traceability; deferred ACs do not inflate the traceability percentage). It also checks the **reverse**: every top-level `Test*` under `tests/`, `internal/`, and `cmd/` must have at least one trace line that both matches the coverage declaration rules **and** contains a real `AC-EE.NNN` code bound to that test (see [VALIDATION.md](./VALIDATION.md#test-functions-must-declare-ac-trace-reverse-check)).
 
 **All Epics (Default):**
 ```bash
@@ -25,7 +25,7 @@ make build
 ./bin/validate --json EP-009
 ```
 
-Output (human mode) includes **Trace%** per epic (in-scope traceability), an **OVERALL** line with `in-scope … traced`, **automated** / **manual-only** counts, **deferred**, and **Project-wide: Test functions with t.Skip** (count of `Test*` bodies with `t.Skip` in scanned trees).
+Output (human mode) includes **Trace%** per epic (in-scope traceability), an **OVERALL** line with `in-scope … traced`, **automated** / **manual-only** counts, **deferred**, **Project-wide: Test functions with t.Skip** (count of `Test*` bodies with `t.Skip` in scanned trees), and — on failure — a list of **`path/to/file_test.go::TestName`** entries for `Test*` functions missing an AC trace.
 
 ```
 🔍 Validating AC coverage for all 9 epics...
@@ -66,8 +66,10 @@ See [VALIDATION.md](./VALIDATION.md) for full documentation (metrics JSON schema
 
 ## Exit Codes
 
-- **0** — All validations passed ✅
-- **1** — Validation failed ❌
+- **0** — All validations passed (AC coverage and per-`Test*` AC trace) ✅
+- **1** — Validation failed (missing AC coverage and/or `Test*` without bound AC trace) ❌
+
+JSON (`--json`): failures set `"has_gaps": true` when any in-scope AC is untraced **or** when `tests_missing_ac_trace` is non-empty. The `tests_missing_ac_trace` array is always **project-wide**, including when you run `./bin/validate EP-009 --json`.
 
 ## Future Validators
 

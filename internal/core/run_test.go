@@ -153,6 +153,7 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 }
 
 // Covers wiring validation: labels must match providers length.
+// Covers AC-01.003: traceability for TestRun_labelsLengthMismatch_returnsError.
 func TestRun_labelsLengthMismatch_returnsError(t *testing.T) {
 	cfg := minimalConfigForRun()
 	logger := slog.Default()
@@ -168,6 +169,7 @@ func TestRun_labelsLengthMismatch_returnsError(t *testing.T) {
 }
 
 // Covers provider chain mode: first provider in chain can handle completion.
+// Covers AC-01.003: traceability for TestRun_providerChain_wiresHandler.
 func TestRun_providerChain_wiresHandler(t *testing.T) {
 	cfg := minimalConfigForRun()
 	logger := slog.Default()

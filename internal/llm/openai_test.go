@@ -13,6 +13,7 @@ import (
 	"testing"
 )
 
+// Covers AC-01.036: traceability for TestOpenAICompatible_Complete_contentAsTextPartsArray.
 func TestOpenAICompatible_Complete_contentAsTextPartsArray(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -34,6 +35,7 @@ func TestOpenAICompatible_Complete_contentAsTextPartsArray(t *testing.T) {
 	}
 }
 
+// Covers AC-01.036: traceability for TestOpenAICompatible_Complete_reasoningContentFallback.
 func TestOpenAICompatible_Complete_reasoningContentFallback(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -55,6 +57,7 @@ func TestOpenAICompatible_Complete_reasoningContentFallback(t *testing.T) {
 	}
 }
 
+// Covers AC-01.036: traceability for TestDecodeAssistantMessageContent_variants.
 func TestDecodeAssistantMessageContent_variants(t *testing.T) {
 	tests := []struct {
 		raw  string
@@ -210,6 +213,7 @@ func TestOpenAICompatible_Complete_apiError(t *testing.T) {
 }
 
 // Covers LLM fallback: 5xx returns APIError so isRetryable is reliable.
+// Covers AC-01.036: traceability for TestOpenAICompatible_Complete_502_returnsAPIError.
 func TestOpenAICompatible_Complete_502_returnsAPIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -602,6 +606,7 @@ func TestOpenAICompatible_buildRequest_withForceJSONOutput_true(t *testing.T) {
 }
 
 // EP-008 REQ-08.005: when SupportsJSONMode is false, ForceJSONOutput does not set json_object; default format applies.
+// Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_withForceJSONOutput_false.
 func TestOpenAICompatible_buildRequest_withForceJSONOutput_false(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: false, DefaultResponseFormat: "text"}
 	p, err := NewOpenAICompatible(cfg)
@@ -705,6 +710,7 @@ func TestOpenAICompatible_buildRequest_withDefaultResponseFormat(t *testing.T) {
 }
 
 // EP-008 REQ-08.006: explicit json_object ignored when SupportsJSONMode is false; falls back to default format.
+// Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_explicitJSONObject_ignoredWithoutJSONMode.
 func TestOpenAICompatible_buildRequest_explicitJSONObject_ignoredWithoutJSONMode(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: false, DefaultResponseFormat: "text"}
 	p, err := NewOpenAICompatible(cfg)
@@ -730,6 +736,7 @@ func TestOpenAICompatible_buildRequest_explicitJSONObject_ignoredWithoutJSONMode
 }
 
 // EP-008: whitespace-only explicit ResponseFormat.Type treated as unset; default format chain applies.
+// Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_emptyExplicitResponseFormatType_usesDefault.
 func TestOpenAICompatible_buildRequest_emptyExplicitResponseFormatType_usesDefault(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"}
 	p, err := NewOpenAICompatible(cfg)
@@ -755,6 +762,7 @@ func TestOpenAICompatible_buildRequest_emptyExplicitResponseFormatType_usesDefau
 }
 
 // EP-008: empty explicit ResponseFormat.Type with ForceJSONOutput still yields json_object when JSON mode supported.
+// Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_emptyExplicitType_forceJSONStillApplies.
 func TestOpenAICompatible_buildRequest_emptyExplicitType_forceJSONStillApplies(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"}
 	p, err := NewOpenAICompatible(cfg)

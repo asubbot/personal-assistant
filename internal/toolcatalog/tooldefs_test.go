@@ -55,6 +55,7 @@ func TestBuildToolDefs_ReturnsToolDefsForIdsInCatalog(t *testing.T) {
 	}
 }
 
+// Covers AC-04.003: traceability for TestBuildToolDefs_NilOrEmptyCatalog_ReturnsNil.
 func TestBuildToolDefs_NilOrEmptyCatalog_ReturnsNil(t *testing.T) {
 	defs, err := BuildToolDefs(nil, []string{"x"})
 	if err != nil {
@@ -73,6 +74,7 @@ func TestBuildToolDefs_NilOrEmptyCatalog_ReturnsNil(t *testing.T) {
 	}
 }
 
+// Covers AC-04.003: traceability for TestBuildToolDefs_ArgumentsSchema_RequiredAndEnum.
 func TestBuildToolDefs_ArgumentsSchema_RequiredAndEnum(t *testing.T) {
 	catalog := &Catalog{
 		Tools: map[string]*Tool{

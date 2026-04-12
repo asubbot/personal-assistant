@@ -263,6 +263,7 @@ func TestReadEntriesForDay_twoEntries_parsed(t *testing.T) {
 }
 
 // ReadEntriesForDay accepts a single JSONL line longer than bufio.Scanner default (64 KiB).
+// Covers AC-01.011: traceability for TestReadEntriesForDay_lineExceedsDefaultScannerLimit_parsed.
 func TestReadEntriesForDay_lineExceedsDefaultScannerLimit_parsed(t *testing.T) {
 	dir := t.TempDir()
 	day := time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC)
@@ -296,6 +297,7 @@ func TestReadEntriesForDay_lineExceedsDefaultScannerLimit_parsed(t *testing.T) {
 }
 
 // PruneRetention: retentionDays <= 0 does not delete any files.
+// Covers AC-01.011: traceability for TestPruneRetention_zeroOrNegative_doesNotDelete.
 func TestPruneRetention_zeroOrNegative_doesNotDelete(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "llm-2020-01-01.jsonl")
@@ -318,6 +320,7 @@ func TestPruneRetention_zeroOrNegative_doesNotDelete(t *testing.T) {
 }
 
 // PruneRetention: with retention 7 and "today" 2026-03-18, files older than 7 days are deleted, recent kept.
+// Covers AC-01.011: traceability for TestPruneRetention_removesOldKeepsRecent.
 func TestPruneRetention_removesOldKeepsRecent(t *testing.T) {
 	dir := t.TempDir()
 	old1 := filepath.Join(dir, "llm-2020-01-01.jsonl")
@@ -343,6 +346,7 @@ func TestPruneRetention_removesOldKeepsRecent(t *testing.T) {
 }
 
 // PruneRetention: files not matching llm-YYYY-MM-DD.jsonl are not deleted.
+// Covers AC-01.011: traceability for TestPruneRetention_ignoresNonMatchingNames.
 func TestPruneRetention_ignoresNonMatchingNames(t *testing.T) {
 	dir := t.TempDir()
 	keep := filepath.Join(dir, "llm-2026-03-12.jsonl.bak")
@@ -359,6 +363,7 @@ func TestPruneRetention_ignoresNonMatchingNames(t *testing.T) {
 }
 
 // PruneRetention: returns error when directory does not exist (ReadDir fails).
+// Covers AC-01.011: traceability for TestPruneRetention_nonexistentDir_returnsError.
 func TestPruneRetention_nonexistentDir_returnsError(t *testing.T) {
 	dir := t.TempDir()
 	nonexistent := filepath.Join(dir, "nonexistent_subdir")

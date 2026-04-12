@@ -34,6 +34,7 @@ func copyRuntimeSkillsMinimalFixture(t *testing.T, destDir string) {
 }
 
 // Covers runtime_skills load path: config.Load populates RuntimeSkillPackages from paths.skills_dir.
+// Covers AC-14.001: traceability for TestRuntimeSkills_configLoad_populatesPackages.
 func TestRuntimeSkills_configLoad_populatesPackages(t *testing.T) {
 	t.Parallel()
 	cfgPath := filepath.Join("testdata", "runtime_skills", "minimal_ok", "config.json")
@@ -58,6 +59,7 @@ func TestRuntimeSkills_configLoad_populatesPackages(t *testing.T) {
 }
 
 // SKILL.md references a tool id missing from the catalog: Load must fail (ValidateToolRefs).
+// Covers AC-14.001: traceability for TestRuntimeSkills_configLoad_rejectsUnknownToolInSkill.
 func TestRuntimeSkills_configLoad_rejectsUnknownToolInSkill(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -88,6 +90,7 @@ Body.
 }
 
 // Forbidden PA marker line in SKILL.md must fail at package load.
+// Covers AC-14.001: traceability for TestRuntimeSkills_configLoad_rejectsForbiddenMarkerInSkill.
 func TestRuntimeSkills_configLoad_rejectsForbiddenMarkerInSkill(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -110,6 +113,7 @@ func TestRuntimeSkills_configLoad_rejectsForbiddenMarkerInSkill(t *testing.T) {
 }
 
 // runtime_skills.enabled without paths.skills_dir fails fast.
+// Covers AC-14.001: traceability for TestRuntimeSkills_configLoad_requiresSkillsDirWhenEnabled.
 func TestRuntimeSkills_configLoad_requiresSkillsDirWhenEnabled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

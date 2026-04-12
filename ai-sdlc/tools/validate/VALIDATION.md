@@ -12,6 +12,7 @@ Before completing an epic's audit, use this tool to ensure:
 - ✅ Every non-deferred AC-EE.NNN has traceability from a test comment (see [Test coverage declaration](#test-coverage-declaration)) or is explicitly **deferred** in `ep-acceptance-criteria.md`
 - ✅ AC codes in tests are found via the supported comment shapes (`covers` / `supporting`, EP-N AC-, label form, REQ+AC on the same line, etc.)
 - ✅ No AC is silently missed without traceability or documented deferral
+- ✅ Every top-level `func Test…` under `tests/`, `internal/`, and `cmd/` has at least one **AC trace line** bound to it (see [Test functions must declare AC trace](#test-functions-must-declare-ac-trace-reverse-check))
 
 ### Usage
 
@@ -57,6 +58,12 @@ EP-009
   ...
 
 Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.
+
+❌ Test functions without AC trace comment (project-wide): N
+  • internal/foo/bar_test.go::TestBaz
+  ...
+
+Action: Add a trace line (e.g. `// Covers AC-EE.NNN`) bound to each `Test*` per this document.
 ```
 
 **Trace%** is traceability **in scope** (non-deferred ACs only): `(automated + manual-only) / in_scope`. Deferred ACs are **not** counted in the numerator; they reduce `in_scope` instead of inflating the percentage.
@@ -96,6 +103,9 @@ AC Code         Criterion                                          Coverage
   ...
 
 Action: Add tests for missing ACs or defer them in ep-acceptance-criteria.md
+
+❌ Test functions without AC trace comment (project-wide): …
+  • …
 ```
 
 #### JSON output: Parse results programmatically
@@ -117,6 +127,7 @@ Action: Add tests for missing ACs or defer them in ep-acceptance-criteria.md
   "traceability_ratio": 0.8824,
   "automated_ratio": 0.8235,
   "test_funcs_with_skip": 3,
+  "tests_missing_ac_trace": ["internal/foo/bar_test.go::TestBaz"],
   "gaps": [
     {"code": "AC-09.001", "criterion": "", "status": "not_covered"},
     {"code": "AC-09.005", "criterion": "", "status": "deferred", "reason": "Deferred in ep-acceptance-criteria.md"},
@@ -130,7 +141,9 @@ Action: Add tests for missing ACs or defer them in ep-acceptance-criteria.md
 }
 ```
 
-**All epics** (`./bin/validate --json`) includes the same aggregate fields (`in_scope_acs`, `traceability_ratio`, `automated_ratio`, `test_funcs_with_skip`, …), plus `not_covered_acs` (flat list with `epic`, `code`, optional `criterion`) and `not_covered_count`.
+**All epics** (`./bin/validate --json`) includes the same aggregate fields (`in_scope_acs`, `traceability_ratio`, `automated_ratio`, `test_funcs_with_skip`, …), plus `not_covered_acs` (flat list with `epic`, `code`, optional `criterion`) and `not_covered_count`, and **`tests_missing_ac_trace`**: a sorted list of `path/to/file_test.go::TestName` for top-level tests missing an AC trace (same scan roots as coverage).
+
+For **`./bin/validate EP-XXX --json`**, `tests_missing_ac_trace` is still the **full repository** list (not limited to ACs belonging to that epic), so CI and local runs can fix every stray `Test*` in one pass.
 
 ## Metrics
 
@@ -144,6 +157,18 @@ For each epic (and for the all-epics JSON aggregate):
 | `traceability_ratio` | `(automated_covered_acs + manual_only_traced_acs) / in_scope_acs` — deferred are **not** in the numerator. |
 | `automated_ratio` | `automated_covered_acs / in_scope_acs`. |
 | `test_funcs_with_skip` | Project-wide count of `Test*` functions whose body contains `t.Skip` (direct call on `t`); scanned under `tests/`, `internal/`, `cmd/`. |
+| `tests_missing_ac_trace` | (JSON only, when non-empty) Sorted `rel/path_test.go::TestName` entries for top-level `Test*` functions without a bound AC trace line (see below). |
+
+## Test functions must declare AC trace (reverse check)
+
+In addition to **AC → tests**, the tool enforces **test → AC**: every top-level `func Test\w+` in scanned `*_test.go` files must have at least one qualifying trace line **bound** to that function (same attribution as coverage: `testFuncForTraceLine`). **`TestMain` is excluded.** `Benchmark*`, `Example*`, and `Fuzz*` are not checked.
+
+A line counts as an **AC trace** only if **both** hold:
+
+1. `lineDeclaresACCoverage(line)` is true (same rules as the coverage scanner — e.g. `covers` / `supporting`, `// AC-EE.NNN:`, EP+AC lines, `REQ-` + AC on the same line).
+2. The line contains at least one parseable **`AC-EE.NNN`** (`extractACsFromLine` is non-empty).
+
+So a comment like `// Covers integration` **without** an `AC-EE.NNN` code does **not** satisfy the reverse check, even though it contains the word “covers”.
 
 ## Test Coverage Declaration
 
@@ -250,11 +275,12 @@ See [Stage 9 (Task Execution)](../specification/skills/09-task-execution.skill.m
 
 **Location:** `ai-sdlc/tools/validate/` (multi-purpose validation tool)
 
-**Sources:** `main.go` (CLI, parsing, reports), `ast_skip.go` (`parseTestFuncsWithTSkip`, `t.Skip` detection), `output.go` (stdout helpers for `fmt.Fprintf` / forbidigo), `main_test.go`.
+**Sources:** `main.go` (CLI, parsing, reports), `ast_skip.go` (`parseTestFuncsWithTSkip`, `t.Skip` detection), `test_ac_trace.go` (`findTestsMissingACTrace`, reverse check), `output.go` (stdout helpers for `fmt.Fprintf` / forbidigo), `main_test.go`.
 
 **Core functions:**
 - `parseACsFromFile()` — Extract AC-EE.NNN from markdown (multiple heading/link shapes)
 - `findCoverageInCodebase()` — Walk `tests/`, `internal/`, and `cmd/` for `*_test.go`; use `lineDeclaresACCoverage()` + `extractACsFromLine()` + `lineDeclaresManualTrace()` + `testFuncForTraceLine()` + `parseTestFuncsWithTSkip()`
+- `findTestsMissingACTrace()` — Second pass over the same trees: top-level `Test*` without a bound AC trace line (exit 1 + stdout list when non-empty; JSON field `tests_missing_ac_trace`)
 - `filterCoverageForEpicNum()` — Filter global map per epic
 - `generateReport()` — Build coverage report (deferred gaps; metrics use `in_scope_acs` without inflating deferred into the traceability numerator)
 - `validateAllEpics()` / `scanEpicsAgainstCoverage()` — one codebase scan for all epics
@@ -277,8 +303,8 @@ make validate
 
 ## Exit Codes
 
-- **0** — All ACs covered ✅
-- **1** — Some ACs not covered ❌
+- **0** — All checks passed: every in-scope AC is traced, and every scanned `Test*` has an AC trace line ✅
+- **1** — Failure: at least one in-scope AC has no test trace, **or** at least one top-level `Test*` is missing a bound AC trace comment ❌
 
 ## Common Workflows
 

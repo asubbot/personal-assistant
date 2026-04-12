@@ -66,6 +66,7 @@ func TestBuild_populatesStoreAndSearchReturnsToolIds(t *testing.T) {
 }
 
 // Second Build clears vec_tools then repopulates; removed catalog ids no longer appear in Search.
+// Covers AC-04.017: traceability for TestBuild_secondBuild_dropsStaleToolIds.
 func TestBuild_secondBuild_dropsStaleToolIds(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -109,6 +110,7 @@ func TestBuild_secondBuild_dropsStaleToolIds(t *testing.T) {
 }
 
 // Empty catalog after Build leaves vec_tools empty (no stale rows).
+// Covers AC-04.017: traceability for TestBuild_emptyCatalog_clearsStore.
 func TestBuild_emptyCatalog_clearsStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -181,6 +183,7 @@ func TestIndex_Ready_afterBuildAndSetReady(t *testing.T) {
 }
 
 // Build with nil catalog/store/embedder is a no-op (no panic).
+// Covers AC-04.017: traceability for TestBuild_nilInputs_noOp.
 func TestBuild_nilInputs_noOp(t *testing.T) {
 	ctx := context.Background()
 	err := Build(ctx, nil, &mockEmbedder{vec: []float32{1}}, nil)
@@ -257,6 +260,7 @@ func (f *failingEmbedder) Embed(_ context.Context, _ string) ([]float32, error) 
 }
 
 // BuildAndSetReady when Build fails must not set ready; Ready() stays false.
+// Covers AC-04.017: traceability for TestBuildAndSetReady_whenBuildFails_ReadyStaysFalse.
 func TestBuildAndSetReady_whenBuildFails_ReadyStaysFalse(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -299,6 +303,7 @@ func (b *batchEmbedderWrongLength) EmbedBatch(_ context.Context, texts []string)
 }
 
 // Build (batched path) when EmbedBatch returns wrong length returns error with "EmbedBatch result length".
+// Covers AC-04.017: traceability for TestBuild_batched_embedBatchLengthMismatch_returnsError.
 func TestBuild_batched_embedBatchLengthMismatch_returnsError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
@@ -326,6 +331,7 @@ func TestBuild_batched_embedBatchLengthMismatch_returnsError(t *testing.T) {
 }
 
 // Build with canceled context returns context error (batched path).
+// Covers AC-04.017: traceability for TestBuild_contextCanceled_batched_returnsContextError.
 func TestBuild_contextCanceled_batched_returnsContextError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
@@ -353,6 +359,7 @@ func TestBuild_contextCanceled_batched_returnsContextError(t *testing.T) {
 }
 
 // Build with canceled context returns context error (sequential path).
+// Covers AC-04.017: traceability for TestBuild_contextCanceled_sequential_returnsContextError.
 func TestBuild_contextCanceled_sequential_returnsContextError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)

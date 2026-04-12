@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Covers AC-01.020: traceability for TestPreviousCalendarDate.
 func TestPreviousCalendarDate(t *testing.T) {
 	loc, err := time.LoadLocation("Europe/Moscow")
 	if err != nil {
@@ -18,6 +19,7 @@ func TestPreviousCalendarDate(t *testing.T) {
 	}
 }
 
+// Covers AC-01.020: traceability for TestPreviousCalendarDate_USDST.
 func TestPreviousCalendarDate_USDST(t *testing.T) {
 	loc, err := time.LoadLocation("America/New_York")
 	if err != nil {
@@ -31,6 +33,7 @@ func TestPreviousCalendarDate_USDST(t *testing.T) {
 	}
 }
 
+// Covers AC-01.020: traceability for TestNextClockAfter.
 func TestNextClockAfter(t *testing.T) {
 	loc, err := time.LoadLocation("UTC")
 	if err != nil {
@@ -50,6 +53,7 @@ func TestNextClockAfter(t *testing.T) {
 	}
 }
 
+// Covers AC-01.020: traceability for TestPreviousMonth.
 func TestPreviousMonth(t *testing.T) {
 	loc := time.UTC
 	tm := time.Date(2026, 3, 15, 0, 0, 0, 0, loc)
@@ -59,6 +63,7 @@ func TestPreviousMonth(t *testing.T) {
 	}
 }
 
+// Covers AC-01.020: traceability for TestPreviousYear.
 func TestPreviousYear(t *testing.T) {
 	loc := time.UTC
 	tm := time.Date(2026, 1, 1, 0, 0, 0, 0, loc)

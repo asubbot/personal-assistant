@@ -9,6 +9,7 @@ import (
 	"github.com/go-telegram/bot/models"
 )
 
+// Covers AC-01.001: traceability for TestSplitTelegramOutboundSource_shortUnchanged.
 func TestSplitTelegramOutboundSource_shortUnchanged(t *testing.T) {
 	s := "hello **world**"
 	got := splitTelegramOutboundSource(s)
@@ -17,6 +18,7 @@ func TestSplitTelegramOutboundSource_shortUnchanged(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestSplitTelegramOutboundSource_longPlainSplits.
 func TestSplitTelegramOutboundSource_longPlainSplits(t *testing.T) {
 	s := strings.Repeat("n", 12000)
 	got := splitTelegramOutboundSource(s)
@@ -31,6 +33,7 @@ func TestSplitTelegramOutboundSource_longPlainSplits(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestSendLongOutboundText_eachChunkWithinLimit.
 func TestSendLongOutboundText_eachChunkWithinLimit(t *testing.T) {
 	m := &mockSender{}
 	src := strings.Repeat("z", 15000)

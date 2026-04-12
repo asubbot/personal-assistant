@@ -31,6 +31,7 @@ type Report struct {
 	TraceabilityRatio   float64                  `json:"traceability_ratio"`
 	AutomatedRatio      float64                  `json:"automated_ratio"`
 	TestFuncsWithSkip   int                      `json:"test_funcs_with_skip"`
+	TestsMissingACTrace []string                 `json:"tests_missing_ac_trace,omitempty"`
 	Gaps                []ACGap                  `json:"gaps"`
 	Coverage            map[string][]CoverageRef `json:"ac_to_tests"`
 }
@@ -72,6 +73,7 @@ type AllEpicsReport struct {
 	TraceabilityRatio   float64               `json:"traceability_ratio"`
 	AutomatedRatio      float64               `json:"automated_ratio"`
 	TestFuncsWithSkip   int                   `json:"test_funcs_with_skip"`
+	TestsMissingACTrace []string              `json:"tests_missing_ac_trace,omitempty"`
 	HasGaps             bool                  `json:"has_gaps"`
 }
 
@@ -466,7 +468,8 @@ func acCoverageCell(refs []CoverageRef, deferred bool) (status, testStr string) 
 }
 
 // printTable prints a formatted table report. testFuncsWithSkip is project-wide Test* count with t.Skip.
-func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, testFuncsWithSkip int) {
+// testsMissingACTrace is project-wide (same list as full-repo validate), not filtered to the current epic.
+func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, testFuncsWithSkip int, testsMissingACTrace []string) {
 	writeStdout("\n📋 AC Coverage Report for %s\n\n", r.Epic)
 	writeStdout("%-15s %-50s %-30s\n", "AC Code", "Criterion", "Coverage")
 	writelnStdout(strings.Repeat("─", 95))
@@ -524,6 +527,14 @@ func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, test
 	} else {
 		writeStdout("\n✅ All ACs covered — epic is ready for audit\n")
 	}
+
+	if len(testsMissingACTrace) > 0 {
+		writeStdout("\n❌ Test functions without AC trace comment (project-wide): %d\n", len(testsMissingACTrace))
+		for _, ref := range testsMissingACTrace {
+			writeStdout("  • %s\n", ref)
+		}
+		writeStdout("\nAction: Add a trace line (e.g. // Covers AC-EE.NNN) bound to each Test* per VALIDATION.md\n")
+	}
 	writelnStdout("")
 }
 
@@ -576,6 +587,42 @@ func scanEpicsAgainstCoverage(cwd string, epics []string, globalCoverage map[ACC
 	return results, projectNotCovered, hasGaps
 }
 
+// printProjectNotCoveredHuman prints the AC-not-covered block (may be zero items).
+func printProjectNotCoveredHuman(projectNotCovered []ProjectNotCoveredAC) {
+	writelnStdout("")
+	writeStdout("❌ AC not covered by tests (project-wide): %d\n", len(projectNotCovered))
+	if len(projectNotCovered) == 0 {
+		return
+	}
+	currentEpic := ""
+	for _, item := range projectNotCovered {
+		if item.Epic != currentEpic {
+			currentEpic = item.Epic
+			writeStdout("\n%s\n", currentEpic)
+		}
+		line := fmt.Sprintf("  • %s", item.Code)
+		if c := strings.TrimSpace(item.Criterion); c != "" {
+			if len(c) > 72 {
+				c = c[:69] + "..."
+			}
+			line += " — " + c
+		}
+		writelnStdout(line)
+	}
+	writelnStdout("")
+}
+
+// printTestsMissingACTraceHuman prints the Test*-without-trace block.
+func printTestsMissingACTraceHuman(testsMissingACTrace []string) {
+	writelnStdout("")
+	writeStdout("❌ Test functions without AC trace comment (project-wide): %d\n", len(testsMissingACTrace))
+	for _, ref := range testsMissingACTrace {
+		writeStdout("  • %s\n", ref)
+	}
+	writelnStdout("")
+	writeStdout("Action: Add a trace line (e.g. // Covers AC-EE.NNN) bound to each Test* per VALIDATION.md\n")
+}
+
 func printAllEpicsHuman(
 	results []EpicSummary,
 	projectNotCovered []ProjectNotCoveredAC,
@@ -583,6 +630,7 @@ func printAllEpicsHuman(
 	traceRatio, autoRatio float64,
 	testFuncsWithSkip int,
 	hasGaps bool,
+	testsMissingACTrace []string,
 ) {
 	writelnStdout("📋 Epic Validation Summary")
 	writelnStdout("")
@@ -600,8 +648,11 @@ func printAllEpicsHuman(
 
 	writelnStdout(strings.Repeat("─", 36))
 
+	hasTestTraceGaps := len(testsMissingACTrace) > 0
+	overallFail := hasGaps || hasTestTraceGaps
+
 	statusEmoji := "✅"
-	if hasGaps {
+	if overallFail {
 		statusEmoji = "❌"
 	}
 
@@ -610,30 +661,17 @@ func printAllEpicsHuman(
 		totalAuto, autoRatio*100, totalManual, totalDeferred, totalACs)
 	writeStdout("   Project-wide: Test functions with t.Skip: %d\n", testFuncsWithSkip)
 
-	if !hasGaps {
+	if !overallFail {
 		return
 	}
 
-	writelnStdout("")
-	writeStdout("❌ AC not covered by tests (project-wide): %d\n", len(projectNotCovered))
-	if len(projectNotCovered) > 0 {
-		currentEpic := ""
-		for _, item := range projectNotCovered {
-			if item.Epic != currentEpic {
-				currentEpic = item.Epic
-				writeStdout("\n%s\n", currentEpic)
-			}
-			line := fmt.Sprintf("  • %s", item.Code)
-			if c := strings.TrimSpace(item.Criterion); c != "" {
-				if len(c) > 72 {
-					c = c[:69] + "..."
-				}
-				line += " — " + c
-			}
-			writelnStdout(line)
-		}
-		writelnStdout("")
+	if hasGaps {
+		printProjectNotCoveredHuman(projectNotCovered)
 	}
+	if hasTestTraceGaps {
+		printTestsMissingACTraceHuman(testsMissingACTrace)
+	}
+
 	writelnStdout("Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.")
 	os.Exit(1)
 }
@@ -663,6 +701,19 @@ func writeAllEpicsJSON(allReport AllEpicsReport, hasGaps bool) {
 	if hasGaps {
 		os.Exit(1)
 	}
+}
+
+// findCoverageAndTestTrace runs both codebase scans used for validation.
+func findCoverageAndTestTrace(cwd string) (map[ACCode][]CoverageRef, int, []string, error) {
+	globalCoverage, testFuncsWithSkip, err := findCoverageInCodebase(cwd)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	testsMissingACTrace, err := findTestsMissingACTrace(cwd)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	return globalCoverage, testFuncsWithSkip, testsMissingACTrace, nil
 }
 
 // validateAllEpics finds and validates all epics in ai-sdlc-artefacts/epics/
@@ -698,13 +749,16 @@ func validateAllEpics(jsonOutput bool) {
 		writeStdout("🔍 Validating AC coverage for all %d epics...\n\n", len(epics))
 	}
 
-	globalCoverage, testFuncsWithSkip, err := findCoverageInCodebase(cwd)
+	globalCoverage, testFuncsWithSkip, testsMissingACTrace, err := findCoverageAndTestTrace(cwd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error scanning codebase: %v\n", err)
 		os.Exit(1)
 	}
 
 	results, projectNotCovered, hasGaps := scanEpicsAgainstCoverage(cwd, epics, globalCoverage)
+	if len(testsMissingACTrace) > 0 {
+		hasGaps = true
+	}
 
 	sort.Slice(projectNotCovered, func(i, j int) bool {
 		if projectNotCovered[i].Epic != projectNotCovered[j].Epic {
@@ -727,6 +781,7 @@ func validateAllEpics(jsonOutput bool) {
 		TraceabilityRatio:   traceRatio,
 		AutomatedRatio:      autoRatio,
 		TestFuncsWithSkip:   testFuncsWithSkip,
+		TestsMissingACTrace: testsMissingACTrace,
 		HasGaps:             hasGaps,
 	}
 
@@ -735,7 +790,7 @@ func validateAllEpics(jsonOutput bool) {
 		return
 	}
 
-	printAllEpicsHuman(results, projectNotCovered, totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio, testFuncsWithSkip, hasGaps)
+	printAllEpicsHuman(results, projectNotCovered, totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio, testFuncsWithSkip, hasGaps, testsMissingACTrace)
 }
 
 // getEpicNumber extracts the numeric part from "EP-009" → "09" (2 digits, not 3)
@@ -766,44 +821,23 @@ func jsonOutputRequested(flagVal bool, argvTail []string) bool {
 	return false
 }
 
-func main() {
-	jsonFlag := flag.Bool("json", false, "Output report as JSON instead of table")
-	flag.Parse()
-	jsonOut := jsonOutputRequested(*jsonFlag, os.Args[1:])
-
-	args := flag.Args()
-
-	// Default to "all" if no argument provided
-	epic := "all"
-	if len(args) > 0 {
-		epic = args[0]
-	}
-
-	// Handle "all" to validate all epics
-	if epic == "all" {
-		validateAllEpics(jsonOut)
-		return
-	}
-
+func validateSingleEpic(epic string, jsonOut bool) {
 	epicNum, err := normalizeEpicNumber(epic)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Find repo root
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Print what we're validating (human mode only; JSON must be stdout-clean for CI)
 	if !jsonOut {
 		writeStdout("🔍 Validating AC coverage for %s...\n\n", epic)
 	}
 
-	// Locate ep-acceptance-criteria.md
 	acPath := filepath.Join(cwd, "ai-sdlc-artefacts", "epics", epic, "ep-acceptance-criteria.md")
 	if _, err := os.Stat(acPath); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, "Error: %s not found\n", acPath)
@@ -814,28 +848,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Parse ACs from file
 	acs, deferred, err := parseACsFromFile(acPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing AC file: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Find coverage in codebase
-	coverage, testFuncsWithSkip, err := findCoverageInCodebase(cwd)
+	coverage, testFuncsWithSkip, testsMissingACTrace, err := findCoverageAndTestTrace(cwd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error scanning codebase: %v\n", err)
 		os.Exit(1)
 	}
 
 	epicCoverage := filterCoverageForEpicNum(coverage, epicNum)
-
-	// Generate report
 	r := generateReport(epic, acs, deferred, epicCoverage)
 	r.TestFuncsWithSkip = testFuncsWithSkip
+	r.TestsMissingACTrace = testsMissingACTrace
 
 	if jsonOut {
-		// Output JSON
 		data, err := json.MarshalIndent(r, "", "  ")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
@@ -843,14 +873,31 @@ func main() {
 		}
 		writelnStdout(string(data))
 	} else {
-		// Output table
-		printTable(r, acs, deferred, testFuncsWithSkip)
+		printTable(r, acs, deferred, testFuncsWithSkip, testsMissingACTrace)
 	}
 
-	// Exit with error if coverage is incomplete
-	if hasBlockingGaps(r) {
+	if hasBlockingGaps(r) || len(testsMissingACTrace) > 0 {
 		os.Exit(1)
 	}
+}
+
+func main() {
+	jsonFlag := flag.Bool("json", false, "Output report as JSON instead of table")
+	flag.Parse()
+	jsonOut := jsonOutputRequested(*jsonFlag, os.Args[1:])
+
+	args := flag.Args()
+	epic := "all"
+	if len(args) > 0 {
+		epic = args[0]
+	}
+
+	if epic == "all" {
+		validateAllEpics(jsonOut)
+		return
+	}
+
+	validateSingleEpic(epic, jsonOut)
 }
 
 func normalizeEpicNumber(epic string) (string, error) {

@@ -371,6 +371,7 @@ func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *te
 }
 
 // REQ-13.016: Hermes block appears before RETRIEVED_CONTEXT when text-based tools are enabled.
+// Covers AC-13.004: traceability for TestRuntimeSkills_handler_hermesBlockBeforeRetrievedMarkers.
 func TestRuntimeSkills_handler_hermesBlockBeforeRetrievedMarkers(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

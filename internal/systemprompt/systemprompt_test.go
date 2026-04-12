@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// Covers AC-13.004: traceability for TestWrapRetrievedContext_nonEmpty.
 func TestWrapRetrievedContext_nonEmpty(t *testing.T) {
 	// Covers AC-13.004
 	out := WrapRetrievedContext("- item one\n")

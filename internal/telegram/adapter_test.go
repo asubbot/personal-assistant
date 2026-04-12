@@ -533,6 +533,7 @@ func TestHandleUpdate_allowedUser_callsHandlerAndSendsReply(t *testing.T) {
 }
 
 // Long assistant replies must be split so Telegram's 4096-character limit is not exceeded.
+// Covers AC-01.033: traceability for TestHandleUpdate_longReplySplitIntoMultipleMessages.
 func TestHandleUpdate_longReplySplitIntoMultipleMessages(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}

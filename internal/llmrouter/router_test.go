@@ -22,6 +22,7 @@ func (p *testProvider) Complete(_ context.Context, _ []llm.Message, _ *llm.Compl
 }
 
 // EP-006: transport fallback in Complete must not consume policy escalation budget (EscUsed).
+// Covers AC-01.001: traceability for TestComplete_transportRetry_doesNotIncrementEscUsed_withEscalationConfigured.
 func TestComplete_transportRetry_doesNotIncrementEscUsed_withEscalationConfigured(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -53,6 +54,7 @@ func TestComplete_transportRetry_doesNotIncrementEscUsed_withEscalationConfigure
 	}
 }
 
+// Covers AC-01.001: traceability for TestComplete_retryableFirst_switchesToNext.
 func TestComplete_retryableFirst_switchesToNext(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -76,6 +78,7 @@ func TestComplete_retryableFirst_switchesToNext(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestComplete_nonRetryable_stopsImmediately.
 func TestComplete_nonRetryable_stopsImmediately(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 401, Err: errors.New("unauthorized")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -93,6 +96,7 @@ func TestComplete_nonRetryable_stopsImmediately(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestOnQualifyingFailure_respectsEscalationCap.
 func TestOnQualifyingFailure_respectsEscalationCap(t *testing.T) {
 	p0 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -121,6 +125,7 @@ func TestOnQualifyingFailure_respectsEscalationCap(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestComplete_nilState_returnsError.
 func TestComplete_nilState_returnsError(t *testing.T) {
 	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	r, err := New([]llm.Provider{p}, []string{"a/m0"}, Config{}, nil)
@@ -133,6 +138,7 @@ func TestComplete_nilState_returnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestComplete_outOfRangeStateIndex_returnsError.
 func TestComplete_outOfRangeStateIndex_returnsError(t *testing.T) {
 	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	r, err := New([]llm.Provider{p}, []string{"a/m0"}, Config{}, nil)
@@ -145,6 +151,7 @@ func TestComplete_outOfRangeStateIndex_returnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestComplete_maxAttemptsExceeded_stopsDeterministically.
 func TestComplete_maxAttemptsExceeded_stopsDeterministically(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}
 	p1 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}
@@ -173,6 +180,7 @@ func TestComplete_maxAttemptsExceeded_stopsDeterministically(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestComplete_emitsSwitchEventPayload.
 func TestComplete_emitsSwitchEventPayload(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -199,6 +207,7 @@ func TestComplete_emitsSwitchEventPayload(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestOnQualifyingFailure_nilState_returnsFalse.
 func TestOnQualifyingFailure_nilState_returnsFalse(t *testing.T) {
 	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	r, err := New([]llm.Provider{p}, []string{"a/m0"}, Config{}, nil)
@@ -210,6 +219,7 @@ func TestOnQualifyingFailure_nilState_returnsFalse(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestOnQualifyingFailure_noNextProvider_returnsFalse.
 func TestOnQualifyingFailure_noNextProvider_returnsFalse(t *testing.T) {
 	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	r, err := New(
@@ -235,6 +245,7 @@ func (fakeNetErr) Temporary() bool { return true }
 
 var _ net.Error = fakeNetErr{}
 
+// Covers AC-01.001: traceability for TestClassifyCompleteError_networkAndTimeout.
 func TestClassifyCompleteError_networkAndTimeout(t *testing.T) {
 	if got := ClassifyCompleteError(fakeNetErr{}); got != FailureClassTransportNetwork {
 		t.Errorf("network class = %s", got)
@@ -244,6 +255,7 @@ func TestClassifyCompleteError_networkAndTimeout(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestDecideToolFailure_matrix.
 func TestDecideToolFailure_matrix(t *testing.T) {
 	st := &State{ActiveIndex: 0, EscUsed: 0}
 	if got := DecideToolFailure(st, false, 2, true); got != ActionStop {
@@ -260,6 +272,7 @@ func TestDecideToolFailure_matrix(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestNewState_usesConfiguredBaseline.
 func TestNewState_usesConfiguredBaseline(t *testing.T) {
 	p0 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -278,6 +291,7 @@ func TestNewState_usesConfiguredBaseline(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestComplete_wrapsExceededAttemptsErrorText.
 func TestComplete_wrapsExceededAttemptsErrorText(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}
 	p1 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}

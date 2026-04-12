@@ -89,6 +89,7 @@ func ep006TwoMessageProviders(t *testing.T) (p0, p1, p2 llm.Provider, c0, c1, c2
 }
 
 // TestEP006_Run_twoMessages_resetsBaselineAfterEscalation mirrors internal/core run_ep006_escalation_test via core.Run (AC-06.008).
+// Covers AC-06.008: traceability for TestEP006_Run_twoMessages_resetsBaselineAfterEscalation.
 func TestEP006_Run_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 	t.Parallel()
 	catalog := ep006ToolCatalog()

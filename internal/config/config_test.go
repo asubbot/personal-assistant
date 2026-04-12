@@ -361,6 +361,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 }
 
 // Covers SSH known_hosts: when nodes are configured, ssh_known_hosts_path must point to an existing file.
+// Covers AC-01.005: traceability for TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError.
 func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 	cfgDir := t.TempDir()
 	configPath := filepath.Join(cfgDir, "config.json")

@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// Covers AC-01.001: traceability for TestMergeToolIDs_orderAlwaysSkillThenVector.
 func TestMergeToolIDs_orderAlwaysSkillThenVector(t *testing.T) {
 	tc := &config.ToolsConfig{AlwaysInclude: []string{"  always_t  ", ""}}
 	rs := &config.RuntimeSkillsConfig{Enabled: true}
@@ -34,6 +35,7 @@ func TestMergeToolIDs_orderAlwaysSkillThenVector(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestMergeToolIDs_skillAndVectorSameID_unionsOrigin.
 func TestMergeToolIDs_skillAndVectorSameID_unionsOrigin(t *testing.T) {
 	rs := &config.RuntimeSkillsConfig{Enabled: true}
 	skills := []*runtimeskills.Package{{ID: "s", Tools: []string{"dup"}}}
@@ -48,6 +50,7 @@ func TestMergeToolIDs_skillAndVectorSameID_unionsOrigin(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestMergeToolIDs_runtimeDisabled_onlyVector.
 func TestMergeToolIDs_runtimeDisabled_onlyVector(t *testing.T) {
 	rs := &config.RuntimeSkillsConfig{Enabled: false}
 	skills := []*runtimeskills.Package{{ID: "s", Tools: []string{"skill_t"}}}
@@ -61,6 +64,7 @@ func TestMergeToolIDs_runtimeDisabled_onlyVector(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestMergeToolIDs_toolsAlwaysIncludeWhenRuntimeDisabled.
 func TestMergeToolIDs_toolsAlwaysIncludeWhenRuntimeDisabled(t *testing.T) {
 	tc := &config.ToolsConfig{AlwaysInclude: []string{"pinned"}}
 	rs := &config.RuntimeSkillsConfig{Enabled: false}
@@ -73,6 +77,7 @@ func TestMergeToolIDs_toolsAlwaysIncludeWhenRuntimeDisabled(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestMergeToolIDs_nilConfig_onlyVector.
 func TestMergeToolIDs_nilConfig_onlyVector(t *testing.T) {
 	ordered, src := mergeToolIDs(nil, nil, []*runtimeskills.Package{{Tools: []string{"t"}}}, []string{"v"})
 	if len(ordered) != 1 || ordered[0] != "v" {
@@ -83,6 +88,7 @@ func TestMergeToolIDs_nilConfig_onlyVector(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestTryRemoveToolStep4_prefersVectorFromEnd.
 func TestTryRemoveToolStep4_prefersVectorFromEnd(t *testing.T) {
 	st := &tailFitState{
 		merged:  []string{"pin", "vec"},
@@ -96,6 +102,7 @@ func TestTryRemoveToolStep4_prefersVectorFromEnd(t *testing.T) {
 	}
 }
 
+// Covers AC-01.001: traceability for TestTryRemoveToolStep4_skillLinkedNotAlwaysBeforeAlwaysInclude.
 func TestTryRemoveToolStep4_skillLinkedNotAlwaysBeforeAlwaysInclude(t *testing.T) {
 	st := &tailFitState{
 		merged: []string{"always_id", "skill_id"},
@@ -112,6 +119,7 @@ func TestTryRemoveToolStep4_skillLinkedNotAlwaysBeforeAlwaysInclude(t *testing.T
 	}
 }
 
+// Covers AC-01.001: traceability for TestTryRemoveToolStep4_alwaysIncludeLast.
 func TestTryRemoveToolStep4_alwaysIncludeLast(t *testing.T) {
 	st := &tailFitState{
 		merged: []string{"skill_only", "always_id"},

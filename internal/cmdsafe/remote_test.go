@@ -6,12 +6,14 @@ import (
 	"testing"
 )
 
+// Covers AC-04.029: traceability for TestValidateRemoteCommand_ok.
 func TestValidateRemoteCommand_ok(t *testing.T) {
 	if err := ValidateRemoteCommand("uptime"); err != nil {
 		t.Fatal(err)
 	}
 }
 
+// Covers AC-04.029: traceability for TestCommandValidationError_Unwrap.
 func TestCommandValidationError_Unwrap(t *testing.T) {
 	inner := errors.New("underlying")
 	e := &CommandValidationError{Kind: CommandRejectRunes, Err: inner}
@@ -20,6 +22,7 @@ func TestCommandValidationError_Unwrap(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestValidateRemoteCommand_rejectKind_runes.
 func TestValidateRemoteCommand_rejectKind_runes(t *testing.T) {
 	err := ValidateRemoteCommand("a~b")
 	if err == nil {
@@ -36,6 +39,7 @@ func TestValidateRemoteCommand_rejectKind_runes(t *testing.T) {
 }
 
 // Semicolon is rejected by the rune policy before shell-meta; RejectKind still classifies the first failure.
+// Covers AC-04.029: traceability for TestValidateRemoteCommand_semicolonRejectedAsRunes.
 func TestValidateRemoteCommand_semicolonRejectedAsRunes(t *testing.T) {
 	err := ValidateRemoteCommand("echo;rm")
 	if err == nil {
@@ -47,6 +51,7 @@ func TestValidateRemoteCommand_semicolonRejectedAsRunes(t *testing.T) {
 	}
 }
 
+// Covers AC-04.029: traceability for TestRejectKind_findsWrappedCommandValidationError.
 func TestRejectKind_findsWrappedCommandValidationError(t *testing.T) {
 	inner := &CommandValidationError{Kind: CommandRejectShellMeta, Err: errors.New("forbidden shell sequence")}
 	wrapped := fmt.Errorf("noderunner: %w", inner)

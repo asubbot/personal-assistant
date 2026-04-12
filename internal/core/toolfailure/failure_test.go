@@ -29,6 +29,7 @@ func TestQualifiesForEscalation_policyErrors(t *testing.T) {
 }
 
 // Covers REQ-06.015: untyped errors do not qualify (fail closed).
+// Covers AC-06.004: traceability for TestQualifiesForEscalation_untypedFailsClosed.
 func TestQualifiesForEscalation_untypedFailsClosed(t *testing.T) {
 	if QualifiesForEscalation(errors.New("noderunner: exec: boom")) {
 		t.Fatal("untyped error must not qualify")
