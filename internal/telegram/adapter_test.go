@@ -2,7 +2,9 @@ package telegram
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"os"
 	"pa/internal/config"
 	"pa/internal/core"
@@ -572,6 +574,86 @@ func TestHandleUpdate_allowedUser_handlerErrorSendsGenericMessage(t *testing.T) 
 	}
 	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != "Sorry, an error occurred. Please try again." {
 		t.Errorf("expected error message to user, got: %v", sender.sentTexts())
+	}
+}
+
+type timeoutNetError struct{}
+
+func (timeoutNetError) Error() string   { return "i/o timeout" }
+func (timeoutNetError) Timeout() bool   { return true }
+func (timeoutNetError) Temporary() bool { return true }
+
+type networkDownError struct{}
+
+func (networkDownError) Error() string   { return "connection refused" }
+func (networkDownError) Timeout() bool   { return false }
+func (networkDownError) Temporary() bool { return true }
+
+// Supporting AC-01.001 (US-01): deadline timeout gets safe timeout message instead of generic.
+func TestHandleUpdate_allowedUser_handlerDeadlineExceededSendsTimeoutMessage(t *testing.T) {
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{errReply: context.DeadlineExceeded}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	if !handler.called {
+		t.Fatal("handler should be called")
+	}
+	want := "Temporary timeout while processing the request. Please try again."
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != want {
+		t.Errorf("expected timeout message %q, got: %v", want, sender.sentTexts())
+	}
+}
+
+// Supporting AC-01.001 (US-01): network timeout also maps to safe timeout message.
+func TestHandleUpdate_allowedUser_handlerNetworkTimeoutSendsTimeoutMessage(t *testing.T) {
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{errReply: &net.OpError{Err: timeoutNetError{}}}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	if !handler.called {
+		t.Fatal("handler should be called")
+	}
+	want := "Temporary timeout while processing the request. Please try again."
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != want {
+		t.Errorf("expected timeout message %q, got: %v", want, sender.sentTexts())
+	}
+}
+
+// Supporting AC-01.001 (US-01): retryable network issue gets safe provider-connection message.
+func TestHandleUpdate_allowedUser_handlerNetworkErrorSendsProviderMessage(t *testing.T) {
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{errReply: &net.OpError{Err: networkDownError{}}}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	if !handler.called {
+		t.Fatal("handler should be called")
+	}
+	want := "Temporary connection issue with AI provider. Please try again."
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != want {
+		t.Errorf("expected provider message %q, got: %v", want, sender.sentTexts())
+	}
+}
+
+// Supporting AC-01.001 (US-01): tool/validation issue gets safe invalid tool-response message.
+func TestHandleUpdate_allowedUser_handlerInvalidToolErrorSendsToolMessage(t *testing.T) {
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{errReply: errors.New(`tool arguments JSON: invalid character 'x' looking for beginning of value`)}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 123}},
+	})
+	if !handler.called {
+		t.Fatal("handler should be called")
+	}
+	want := "Request processing failed due to invalid tool response. Please rephrase and try again."
+	if len(sender.sentTexts()) != 1 || sender.sentTexts()[0] != want {
+		t.Errorf("expected tool-response message %q, got: %v", want, sender.sentTexts())
 	}
 }
 

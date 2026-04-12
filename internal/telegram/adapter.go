@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"pa/internal/config"
 	"pa/internal/core"
@@ -147,6 +148,71 @@ func runTypingRefresh(ctx context.Context, tg telegramOutbound, chatID int64) {
 	}
 }
 
+const (
+	handlerErrGenericMsg  = "Sorry, an error occurred. Please try again."
+	handlerErrTimeoutMsg  = "Temporary timeout while processing the request. Please try again."
+	handlerErrProviderMsg = "Temporary connection issue with AI provider. Please try again."
+	handlerErrToolMsg     = "Request processing failed due to invalid tool response. Please rephrase and try again."
+)
+
+func classifyHandlerErrorMessage(err error) string {
+	if err == nil {
+		return handlerErrGenericMsg
+	}
+	if isTimeoutErr(err) {
+		return handlerErrTimeoutMsg
+	}
+	if isProviderErr(err) {
+		return handlerErrProviderMsg
+	}
+	if isToolResponseErr(err) {
+		return handlerErrToolMsg
+	}
+	return handlerErrGenericMsg
+}
+
+func isTimeoutErr(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
+func isProviderErr(err error) bool {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return containsAny(msg, []string{
+		"connection refused",
+		"no such host",
+		"dial tcp",
+		"tls handshake timeout",
+		"server gave http response",
+	})
+}
+
+func isToolResponseErr(err error) bool {
+	msg := strings.ToLower(err.Error())
+	return containsAny(msg, []string{
+		"invalid tool call format",
+		"tool arguments json",
+		"tool catalog: unknown tool",
+		"tools.always_include",
+	})
+}
+
+func containsAny(s string, needles []string) bool {
+	for _, n := range needles {
+		if strings.Contains(s, n) {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *Adapter) makeUpdateHandler(handler core.MessageHandler) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		a.handleUpdate(ctx, b, handler, update)
@@ -175,7 +241,17 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender telegramOutbound, han
 	typingCancel()
 
 	if err != nil {
-		if serr := sendLongOutboundText(ctx, sender, msg.Chat.ID, "Sorry, an error occurred. Please try again."); serr != nil {
+		slog.Default().Error(
+			"telegram handler failed",
+			"op", "handle_message",
+			"chat_id", msg.Chat.ID,
+			"user_id", userID,
+			"session_key", sessionKey,
+			"text_len", len(text),
+			"error", err,
+		)
+		userErr := classifyHandlerErrorMessage(err)
+		if serr := sendLongOutboundText(ctx, sender, msg.Chat.ID, userErr); serr != nil {
 			slog.Default().Warn("telegram send failed", "op", "handler_error_notice", "chat_id", msg.Chat.ID, "error", serr)
 		}
 		return
