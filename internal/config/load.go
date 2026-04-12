@@ -7,7 +7,9 @@ import (
 	"os"
 	"pa/internal/logredact"
 	"pa/internal/toolcatalog"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -45,10 +47,8 @@ func Load(path string) (*Config, error) {
 
 	ResolvePaths(&raw, path)
 
-	if len(raw.Nodes) > 0 {
-		if _, err := os.Stat(raw.Paths.SSHKnownHostsPath); err != nil {
-			return nil, fmt.Errorf("paths.ssh_known_hosts_path %s: %w", raw.Paths.SSHKnownHostsPath, err)
-		}
+	if err := validateAfterResolvePaths(&raw); err != nil {
+		return nil, err
 	}
 
 	// Validate users file if set (path is now resolved).
@@ -439,6 +439,100 @@ func validateNodes(c *Config) error {
 		}
 	}
 	return nil
+}
+
+type nodePrivateKeyRow struct {
+	id   string
+	path string
+}
+
+// validateAfterResolvePaths runs checks that need resolved paths (node keys, known_hosts when nodes exist).
+func validateAfterResolvePaths(c *Config) error {
+	if err := validateDistinctNodePrivateKeys(c); err != nil {
+		return err
+	}
+	if len(c.Nodes) == 0 {
+		return nil
+	}
+	if _, err := os.Stat(c.Paths.SSHKnownHostsPath); err != nil {
+		return fmt.Errorf("paths.ssh_known_hosts_path %s: %w", c.Paths.SSHKnownHostsPath, err)
+	}
+	return nil
+}
+
+func buildNodePrivateKeyRows(c *Config) []nodePrivateKeyRow {
+	rows := make([]nodePrivateKeyRow, 0, len(c.Nodes))
+	for id, n := range c.Nodes {
+		p := filepath.Clean(strings.TrimSpace(n.Auth.PrivateKeyPath))
+		if p == "." || p == "" {
+			continue
+		}
+		rows = append(rows, nodePrivateKeyRow{id: id, path: p})
+	}
+	return rows
+}
+
+func errDuplicatePrivateKeyCleanPath(path string, ids []string) error {
+	sort.Strings(ids)
+	return fmt.Errorf("config: nodes %q use the same SSH private_key_path (%s)", strings.Join(ids, ", "), path)
+}
+
+func findDuplicatePrivateKeyCleanPaths(rows []nodePrivateKeyRow) error {
+	byPath := make(map[string][]string)
+	for _, r := range rows {
+		byPath[r.path] = append(byPath[r.path], r.id)
+	}
+	for p, ids := range byPath {
+		if len(ids) < 2 {
+			continue
+		}
+		return errDuplicatePrivateKeyCleanPath(p, ids)
+	}
+	return nil
+}
+
+func findSameFilePrivateKeyPairs(rows []nodePrivateKeyRow) error {
+	for i := 0; i < len(rows); i++ {
+		statI, errI := os.Stat(rows[i].path)
+		if errI != nil {
+			continue
+		}
+		for j := i + 1; j < len(rows); j++ {
+			if rows[i].path == rows[j].path {
+				continue
+			}
+			statJ, errJ := os.Stat(rows[j].path)
+			if errJ != nil {
+				continue
+			}
+			if !os.SameFile(statI, statJ) {
+				continue
+			}
+			a, b := rows[i].id, rows[j].id
+			if a > b {
+				a, b = b, a
+			}
+			return fmt.Errorf("config: nodes %q and %q resolve to the same SSH private key file (%s and %s)", a, b, rows[i].path, rows[j].path)
+		}
+	}
+	return nil
+}
+
+// validateDistinctNodePrivateKeys fails when two or more nodes share the same private key file
+// after path resolution (including symlink / hardlink via os.SameFile). Missing key files are
+// ignored for SameFile pairing so SSH can still surface a clearer error later.
+func validateDistinctNodePrivateKeys(c *Config) error {
+	if c == nil || len(c.Nodes) < 2 {
+		return nil
+	}
+	rows := buildNodePrivateKeyRows(c)
+	if len(rows) < 2 {
+		return nil
+	}
+	if err := findDuplicatePrivateKeyCleanPaths(rows); err != nil {
+		return err
+	}
+	return findSameFilePrivateKeyPairs(rows)
 }
 
 // validateToolsAlwaysInclude rejects unknown tool ids in tools.always_include (REQ-13.003).

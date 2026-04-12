@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -475,5 +476,197 @@ func TestLoad_CreateToolSecretPatterns_InvalidRegex(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "create_tool_secret_patterns") {
 		t.Errorf("Load: error = %v", err)
+	}
+}
+
+// Covers AC-01.005: two nodes must not share the same private_key_path after resolve.
+func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
+	cfgDir := t.TempDir()
+	secretsDir := filepath.Join(cfgDir, "secrets")
+	if err := os.MkdirAll(secretsDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	keyFile := filepath.Join(secretsDir, "shared")
+	if err := os.WriteFile(keyFile, []byte("not-a-real-key"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "known_hosts"), []byte("localhost ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "allow.txt"), []byte("uptime\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(cfgDir, "config.json")
+	content := `{
+  "version": 1,
+  "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "paths": {
+    "memory_dir": "` + cfgDir + `",
+    "log_path": "` + cfgDir + `/pa.log",
+    "vector_index_path": "` + cfgDir + `/v.sqlite",
+    "llm_log_dir": "` + cfgDir + `",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "tools.yaml",
+    "ssh_known_hosts_path": "known_hosts"
+  },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "nodes": {
+    "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" },
+    "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" }
+  },
+  "tools": { "text_based_enabled": false },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+}`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "token"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PA_SECRETS_DIR", secretsDir)
+	_, err := Load(configPath)
+	if err == nil {
+		t.Fatal("Load: expected error when two nodes share the same private_key_path")
+	}
+	if !strings.Contains(err.Error(), "same SSH private_key_path") || !strings.Contains(err.Error(), "n1") || !strings.Contains(err.Error(), "n2") {
+		t.Fatalf("Load: error = %v", err)
+	}
+}
+
+// Covers AC-01.005: two nodes with different key files load successfully.
+func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
+	cfgDir := t.TempDir()
+	secretsDir := filepath.Join(cfgDir, "secrets")
+	if err := os.MkdirAll(secretsDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(secretsDir, "key1"), []byte("k1"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(secretsDir, "key2"), []byte("k2"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "known_hosts"), []byte("localhost ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "allow.txt"), []byte("uptime\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(cfgDir, "config.json")
+	content := `{
+  "version": 1,
+  "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "paths": {
+    "memory_dir": "` + cfgDir + `",
+    "log_path": "` + cfgDir + `/pa.log",
+    "vector_index_path": "` + cfgDir + `/v.sqlite",
+    "llm_log_dir": "` + cfgDir + `",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "tools.yaml",
+    "ssh_known_hosts_path": "known_hosts"
+  },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "nodes": {
+    "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "key1" }, "command_allowlist_path": "allow.txt" },
+    "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "key2" }, "command_allowlist_path": "allow.txt" }
+  },
+  "tools": { "text_based_enabled": false },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+}`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "token"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PA_SECRETS_DIR", secretsDir)
+	_, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+}
+
+// Covers AC-01.005: two nodes pointing at different paths that resolve to the same file (symlink) must fail load.
+func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not assumed on Windows CI")
+	}
+	cfgDir := t.TempDir()
+	secretsDir := filepath.Join(cfgDir, "secrets")
+	if err := os.MkdirAll(secretsDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	realKey := filepath.Join(secretsDir, "real")
+	aliasKey := filepath.Join(secretsDir, "alias")
+	if err := os.WriteFile(realKey, []byte("k"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(realKey, aliasKey); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "known_hosts"), []byte("localhost ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "allow.txt"), []byte("uptime\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(cfgDir, "config.json")
+	content := `{
+  "version": 1,
+  "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "paths": {
+    "memory_dir": "` + cfgDir + `",
+    "log_path": "` + cfgDir + `/pa.log",
+    "vector_index_path": "` + cfgDir + `/v.sqlite",
+    "llm_log_dir": "` + cfgDir + `",
+    "llm_log_retention_days": 7,
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "tools.yaml",
+    "ssh_known_hosts_path": "known_hosts"
+  },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "nodes": {
+    "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "real" }, "command_allowlist_path": "allow.txt" },
+    "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "alias" }, "command_allowlist_path": "allow.txt" }
+  },
+  "tools": { "text_based_enabled": false },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+}`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "token"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PA_SECRETS_DIR", secretsDir)
+	_, err := Load(configPath)
+	if err == nil {
+		t.Fatal("Load: expected error when two nodes use symlinked paths to the same key file")
+	}
+	if !strings.Contains(err.Error(), "resolve to the same SSH private key file") {
+		t.Fatalf("Load: error = %v", err)
 	}
 }
