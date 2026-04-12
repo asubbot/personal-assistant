@@ -30,7 +30,7 @@ func (w *WebFetchTool) Name() string { return "web_fetch" }
 
 // Description implements Tool.
 func (w *WebFetchTool) Description() string {
-	return `Fetch public HTTPS page body. Input: url (string, https only). Returns UTF-8 text truncated to configured max bytes. Blocks private/loopback/metadata targets (SSRF mitigation).`
+	return `Fetch an HTTPS URL and return the response body as UTF-8 text. Argument: url (string, https only). The body is truncated to configured max_body_bytes with a suffix if longer. SSRF mitigation blocks private networks and metadata endpoints. Prefer small, focused URLs (one document). For GitHub files or README content, use raw.githubusercontent.com or the GitHub API instead of the full HTML repository UI. Avoid fetching huge pages when a smaller URL answers the question.`
 }
 
 // ParamsSchema implements Tool.

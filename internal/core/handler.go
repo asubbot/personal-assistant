@@ -206,12 +206,15 @@ func textToolModeAfterFirstCompletion(textPath bool, result *llm.CompletionResul
 	return true, false, ""
 }
 
+// webResearchHint is a single-line reminder; detailed rules live in the optional runtime skill web-source-research.
+const webResearchHint = "For web or GitHub research, keep tool outputs small (prefer raw files, API, or git on nodes over huge HTML pages). A fuller playbook may appear in Runtime skills when relevant."
+
 // systemStaticHead returns the fixed prefix (trust, marker supplement, personality).
 // hasRetrieved reflects whether vector search returned at least one non-empty chunk before tail fitting (REQ-13.016).
 func (h *conversationHandler) systemStaticHead(hasRetrieved bool) string {
-	personality := "You are a helpful assistant. Reply concisely."
+	personality := "You are a helpful assistant. Reply concisely.\n\n" + webResearchHint
 	if hasRetrieved {
-		personality = "You are a personal assistant. Reply concisely."
+		personality = "You are a personal assistant. Reply concisely.\n\n" + webResearchHint
 	}
 	return systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + personality + "\n\n"
 }

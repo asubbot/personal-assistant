@@ -53,7 +53,7 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 
 - In **bot mode**, when **`paths.memory_dir`**, **`paths.llm_log_dir`**, embedding, and the vector index are available, a background worker always runs automatic day/month/year summarization (previous calendar day at **01:00** local `pa_timezone`, month/year rollups on the first local day of the month/year at **01:00**, tick **60s**, job timeout **1800s**, reconciliation scan **90** days; not configurable) and startup catch-up (see epic **EP-002**). Interactive Telegram turns take precedence over background jobs when both are pending.
 - LLM JSONL logs use one file per **calendar day in `pa_timezone`** (`llm-YYYY-MM-DD.jsonl`), aligned with day summaries under `memory_dir`.
-- A sample runtime skill that references **`read_memory`** is in **[config.examples/skills/memory-retrieval/SKILL.md](../config.examples/skills/memory-retrieval/SKILL.md)** — copy the package under your configured **`paths.skills_dir`** when **`runtime_skills.enabled`** is true.
+- Sample runtime skills (copy each package under your configured **`paths.skills_dir`** when **`runtime_skills.enabled`** is true): **[memory-retrieval](../config.examples/skills/memory-retrieval/SKILL.md)** (`read_memory`); **[web-source-research](../config.examples/skills/web-source-research/SKILL.md)** (`web_fetch`, `web_search`, `run_on_node`) for bounded website and GitHub research.
 
 ## Scheduled tasks
 
