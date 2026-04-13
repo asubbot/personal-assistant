@@ -38,6 +38,18 @@
 - **Strategy:** [strategy.md](../../strategy.md) — Increment after MVP; integration tests for SSH-related behaviour; security checks explicit. Aligns with delivery increment **after** stable tool execution ([EP-004](../EP-004/ep-scope.md)) and node model ([EP-001](../EP-001/ep-scope.md)).
 - **Related epics:** [EP-001](../EP-001/ep-scope.md) defines MVP node access and dedicated user; [EP-004](../EP-004/ep-scope.md) defines tool validation and `run_on_node`; EP-005 replaces the remote execution **transport** for nodes that opt in, without changing PA as sole source of command policy.
 
+## Security and architecture notes (design guidance)
+
+These points inform later **requirements** and **system design**; they do not expand functional scope unless explicitly adopted there.
+
+- **Privilege isolation:** If **one process** both parses the subsystem wire format and holds access to powerful resources (e.g. Docker Engine via `docker.sock`), a single vulnerability in parsing or request handling can have a **large blast radius** (roughly host-level impact). **Splitting** into two processes from the **same binary**—a narrow **gateway** (protocol only, minimal rights) and an **executor** (only the executor opens `docker.sock` / runs children)—reduces that coupling. EP-005 does not require a split process; record it as an optional hardening path when Docker or similar is in play.
+
+- **Protocols (reference stack):** **PA → node:** SSH, subsystem stream, **v1 structured payload** (no remote shell parsing of the payload). **Gateway ↔ executor (optional future layout):** local **IPC** (e.g. Unix domain socket with length-prefixed or line-framed JSON, or gRPC over UDS)—not internet-exposed. **Executor → Docker:** Docker Engine API, typically **HTTP over the Unix socket** (`docker.sock`), separate from SSH.
+
+- **`docker run --privileged`:** The flag greatly widens container capabilities (weaker default seccomp, broader device/capability surface). **Prefer not to use** for assistant-driven workloads. **Current PA product path:** enforcement is mainly the per-node **command allowlist** and tool policy on the PA side; a **prefix-only** template check (e.g. EP-009) does **not** by itself forbid `--privileged` inserted after an allowed `docker run --rm --network bridge` prefix. Operators must keep allowlists **tight**; a **code-level denylist or, better, argv construction from a whitelist** of permitted Docker options closes that class of gap.
+
+- **If pa-runner builds Docker invocations — primary control vs string checks:** Do **not** rely on **validating a finished shell-style command string** as the main gate. Instead **assemble `argv` from a whitelist**—e.g. `[]string{"docker", "run", "--rm", …}` passed to `execve` / `exec.Command` with **no shell**—and **do not allow unconstrained user-controlled fragments** in the “Docker flags” portion of that slice. The structured request should map only into **fixed fields** (allowed image refs, network enum, memory/CPU knobs, container argv). Then evasions such as `--privileged=true`, odd spacing, or shell-style escaping are **not** a problem for a bespoke string parser: disallowed combinations simply **never appear** in `argv` because only enumerated tokens and vetted values are emitted. Treat **substring / regex checks** on a joined string at most as a **secondary** safety net, not the primary policy.
+
 ## Out of scope (this epic)
 
 - HMAC or signed envelopes (optional follow-up).
