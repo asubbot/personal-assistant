@@ -1,0 +1,41 @@
+@startuml C4 Container - PersonalAssistant EP-016
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 70
+skinparam ranksep 70
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-016
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(llm_ext, "LLM / Embed API", "Chat completions and embeddings")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Telegram adapter", "Go", "Passes message timestamps to core where available")
+    Container(core, "Go core", "Go", "HandleMessage; retrieval merge; index turns with event date")
+    Container(mem, "Memory package", "Go", "summary.md and notes.md paths; read/write helpers")
+    Container(tools, "Native tools", "Go", "read_memory, write_memory")
+    Container(vec, "Vector sqlite stores", "Go + sqlite-vec", "vec_summaries, vec_turns, vec_notes (+ vec_tools, vec_skills)")
+    Container(sum, "Summarize / memoryjob", "Go", "Writes summary.md; indexes vec_summaries only")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "HandleMessage")
+Rel(core, mem, "Read/write day files")
+Rel(core, tools, "Invoke native tools")
+Rel(core, vec, "Search + Add / Delete")
+Rel(sum, mem, "Write summaries")
+Rel(sum, vec, "Upsert summary vectors")
+Rel(core, llm_ext, "HTTP")
+Rel(tools, mem, "read_memory / write_memory paths")
+
+@enduml
