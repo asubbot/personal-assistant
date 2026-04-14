@@ -171,7 +171,8 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender telegramOutbound, han
 	typingCtx, typingCancel := context.WithCancel(ctx)
 	go runTypingRefresh(typingCtx, sender, msg.Chat.ID)
 	sessionKey := fmt.Sprintf("%d", msg.Chat.ID)
-	reply, err := handler.HandleMessage(ctx, userID, sessionKey, text)
+	ctxMsg := core.WithTelegramMessageDate(ctx, int64(msg.Date))
+	reply, err := handler.HandleMessage(ctxMsg, userID, sessionKey, text)
 	typingCancel()
 
 	if err != nil {

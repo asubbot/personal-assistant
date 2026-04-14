@@ -38,12 +38,20 @@ type Config struct {
 	ConversationSession *ConversationSessionConfig `json:"conversation_session,omitempty"`
 	// ReadMemory is optional JSON; limits only. Native read_memory is registered whenever memory_dir is available (EP-002).
 	ReadMemory *ReadMemoryConfig `json:"read_memory,omitempty"`
+	// WriteMemory is optional JSON; limits for write_memory when memory and vector index are configured (EP-016).
+	WriteMemory *WriteMemoryConfig `json:"write_memory,omitempty"`
 }
 
 // ReadMemoryConfig limits the native read_memory tool (EP-002). The tool is always registered when memory is configured.
 type ReadMemoryConfig struct {
 	MaxSpanDays    int `json:"max_span_days"`
 	MaxOutputBytes int `json:"max_output_bytes"`
+}
+
+// WriteMemoryConfig limits the native write_memory tool (EP-016).
+type WriteMemoryConfig struct {
+	MaxAppendBytes int `json:"max_append_bytes"`
+	MaxFileBytes   int `json:"max_file_bytes"`
 }
 
 // ConversationSessionConfig enables in-process sliding session memory (EP-014, REQ-14.001).

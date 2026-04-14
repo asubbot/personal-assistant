@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -58,7 +59,7 @@ type llmTurnState struct {
 type conversationHandler struct {
 	router                *llmrouter.Router
 	escalation            *config.LLMEscalationConfig
-	vectorStore           vector.Store // optional; for semantic search and indexing
+	memVec                *MemoryVectors // optional; EP-016 split memory vectors (nil disables retrieval and turn indexing)
 	embedder              embedding.Embedder
 	nodeRunner            NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
 	toolIndex             ToolIndex  // optional; for tool pre-selection when Ready() (step 3.1)
@@ -674,7 +675,7 @@ func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID st
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMResponse(ctx, result)
 	}
-	if h.vectorStore != nil && h.embedder != nil {
+	if h.memVec != nil && h.memVec.Turns != nil && h.embedder != nil {
 		if err := h.indexTurn(ctx, userText, result.Content); err != nil {
 			h.logger.Error("index turn", "error", err)
 		}
@@ -695,7 +696,8 @@ func retrievalChunkWithLabel(label, body string) string {
 // The dynamic system tail fitter may drop trailing chunks to satisfy max_dynamic_system_runes.
 func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, userText string) []string {
 	topK := h.vectorSearchTopK
-	if h.vectorStore == nil || h.embedder == nil {
+	mv := h.memVec
+	if mv == nil || !mv.anyNonNil() || h.embedder == nil {
 		return nil
 	}
 	queryEmbedding, err := h.embedder.Embed(ctx, userText)
@@ -703,14 +705,13 @@ func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, use
 		h.logger.Error("embed query", "error", err)
 		return nil
 	}
-	results, err := h.vectorStore.Search(ctx, queryEmbedding, topK)
-	if err != nil {
-		h.logger.Error("vector search", "error", err)
-		return nil
+	if mv.legacySingleStoreCompat() {
+		return h.gatherLegacyCompatChunks(ctx, queryEmbedding, topK)
 	}
-	if len(results) == 0 {
-		return nil
-	}
+	return h.gatherSplitTableChunks(ctx, queryEmbedding, topK)
+}
+
+func (h *conversationHandler) labeledChunksFromResults(results []vector.SearchResult) []string {
 	var chunks []string
 	for _, r := range results {
 		if strings.TrimSpace(r.Text) == "" {
@@ -719,7 +720,47 @@ func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, use
 		label := summarize.VectorChunkLabel(r.ID)
 		chunks = append(chunks, retrievalChunkWithLabel(label, r.Text))
 	}
+	return chunks
+}
+
+func (h *conversationHandler) gatherLegacyCompatChunks(ctx context.Context, queryEmbedding []float32, topK int) []string {
+	mv := h.memVec
+	results, err := mv.Legacy.Search(ctx, queryEmbedding, topK)
+	if err != nil {
+		h.logger.Error("vector search", "error", err)
+		return nil
+	}
+	chunks := h.labeledChunksFromResults(results)
 	h.logger.DebugContext(ctx, "context chunks", "non_empty", len(chunks), "total", len(results))
+	return chunks
+}
+
+func (h *conversationHandler) gatherSplitTableChunks(ctx context.Context, queryEmbedding []float32, topK int) []string {
+	mv := h.memVec
+	var chunks []string
+	if mv.Notes != nil {
+		r, err := mv.Notes.Search(ctx, queryEmbedding, topK)
+		if err != nil {
+			h.logger.Error("vector search notes", "error", err)
+			return nil
+		}
+		chunks = append(chunks, h.labeledChunksFromResults(r)...)
+	}
+	sr, err := mergeSummarySearch(ctx, mv.Summaries, mv.Legacy, queryEmbedding, topK)
+	if err != nil {
+		h.logger.Error("vector search summaries", "error", err)
+		return nil
+	}
+	chunks = append(chunks, h.labeledChunksFromResults(sr)...)
+	if mv.Turns != nil && mv.Turns != mv.Legacy {
+		r, err := mv.Turns.Search(ctx, queryEmbedding, topK)
+		if err != nil {
+			h.logger.Error("vector search turns", "error", err)
+			return nil
+		}
+		chunks = append(chunks, h.labeledChunksFromResults(r)...)
+	}
+	h.logger.DebugContext(ctx, "context chunks", "non_empty", len(chunks))
 	return chunks
 }
 
@@ -754,13 +795,16 @@ func (h *conversationHandler) logLLMResponse(ctx context.Context, result *llm.Co
 	h.logger.DebugContext(ctx, "llm response", "content", content, "content_len", len(result.Content), "usage", result.Usage)
 }
 
-// indexTurn adds the user message and assistant reply to the vector store for future semantic search (REQ-01.007).
+// indexTurn adds the user message and assistant reply to the turn vector store (REQ-01.007, EP-016 dedup).
 func (h *conversationHandler) indexTurn(ctx context.Context, userText, reply string) error {
+	if h.memVec == nil || h.memVec.Turns == nil || h.embedder == nil {
+		return nil
+	}
 	loc := time.UTC
-	if h != nil && h.paLoc != nil {
+	if h.paLoc != nil {
 		loc = h.paLoc
 	}
-	dateStr := time.Now().In(loc).Format("2006-01-02")
+	dateStr := eventAlignedTurnDate(ctx, loc)
 	chunk := "Date: " + dateStr + "\n[turn]\nUser: " + userText + "\nAssistant: " + reply
 	if promptmarkers.TextContainsForbiddenMarkerLine(chunk) {
 		return fmt.Errorf("indexTurn: chunk contains forbidden PA marker line")
@@ -769,6 +813,28 @@ func (h *conversationHandler) indexTurn(ctx context.Context, userText, reply str
 	if err != nil {
 		return err
 	}
-	id := fmt.Sprintf("%d", time.Now().UnixNano())
-	return h.vectorStore.Add(ctx, id, emb, chunk)
+	sum := sha256.Sum256([]byte(canonicalizeTurnPair(userText, reply)))
+	id := fmt.Sprintf("turn:%s:%x", dateStr, sum[:12])
+	_ = h.memVec.Turns.Delete(ctx, id)
+	return h.memVec.Turns.Add(ctx, id, emb, chunk)
+}
+
+func eventAlignedTurnDate(ctx context.Context, paLoc *time.Location) string {
+	if u := TelegramMessageDateUnix(ctx); u > 0 {
+		return time.Unix(u, 0).In(paLoc).Format("2006-01-02")
+	}
+	return time.Now().In(paLoc).Format("2006-01-02")
+}
+
+func canonicalizeTurnPair(userText, reply string) string {
+	u := canonicalizeTurnText(userText)
+	a := canonicalizeTurnText(reply)
+	return u + "\n---\n" + a
+}
+
+func canonicalizeTurnText(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	return strings.Join(strings.Fields(s), " ")
 }

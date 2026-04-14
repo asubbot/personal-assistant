@@ -30,13 +30,13 @@ type SkillIndex interface {
 }
 
 // Run starts the application: wires the adapter to the conversation handler (LLM, vector, optional node runner) and blocks until ctx is cancelled.
-// memoryStore is not used by the handler (context is from vector only); vectorStore and embedder are optional; when provided, the handler runs semantic search and indexes turns (REQ-01.006, REQ-01.007, REQ-01.018).
+// memoryStore is used by native memory tools; memVec and embedder are optional; when provided, the handler runs semantic search and indexes turns (REQ-01.006, REQ-01.007, REQ-01.018, EP-016).
 // nodeRunner is optional; when provided, tools can run allowlisted commands on nodes via SSH (REQ-01.004, REQ-01.005, REQ-01.013).
 // toolIndex is optional; when provided and Ready(), step 3.1 will use it for tool pre-selection.
 // providers and providerLabels define the ordered LLM chain used by the unified router.
 // skillIndex is optional; when provided and Ready(), runtime skills are selected per message (EP-013).
 // nativeRegistry is optional; when non-nil, native tools (e.g. run_on_node, create_tool) are merged into LLM tool lists and dispatch.
-func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, providers []llm.Provider, providerLabels []string, memoryStore *memory.Store, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry) error {
+func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter Adapter, providers []llm.Provider, providerLabels []string, memoryStore *memory.Store, memVec *MemoryVectors, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry) error {
 	if adapter == nil {
 		return fmt.Errorf("core: adapter is nil")
 	}
@@ -53,14 +53,14 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 	if err != nil {
 		return err
 	}
-	handler, err := newRunConversationHandler(cfg, logger, redactor, router, vectorStore, embedder, nodeRunner, toolIndex, skillIndex, nativeRegistry)
+	handler, err := newRunConversationHandler(cfg, logger, redactor, router, memVec, embedder, nodeRunner, toolIndex, skillIndex, nativeRegistry)
 	if err != nil {
 		return err
 	}
 	return adapter.Run(ctx, handler)
 }
 
-func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, router *llmrouter.Router, vectorStore vector.Store, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry) (*conversationHandler, error) {
+func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, router *llmrouter.Router, memVec *MemoryVectors, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry) (*conversationHandler, error) {
 	maxLen := 0
 	if cfg != nil && cfg.Telegram.MaxMessageLength > 0 {
 		maxLen = cfg.Telegram.MaxMessageLength
@@ -102,7 +102,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	h := &conversationHandler{
 		router:                     router,
 		escalation:                 escalationFromConfig(cfg),
-		vectorStore:                vectorStore,
+		memVec:                     memVec,
 		embedder:                   embedder,
 		nodeRunner:                 nodeRunner,
 		toolIndex:                  toolIndex,

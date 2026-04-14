@@ -29,7 +29,7 @@ func TestReadMemoryTool_singleDate(t *testing.T) {
 	}
 }
 
-// Covers AC-02.011: read_memory rejects range wider than max_span_days.
+// Covers AC-02.011, AC-16.008: read_memory rejects range wider than max_span_days (span limit error).
 func TestReadMemoryTool_rangeTooLarge(t *testing.T) {
 	dir := t.TempDir()
 	store, err := memory.NewStore(dir, time.UTC)

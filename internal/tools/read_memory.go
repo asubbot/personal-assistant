@@ -124,6 +124,49 @@ func calendarDaysInclusive(a, b time.Time, loc *time.Location) int {
 	return n
 }
 
+// readMemoryDayBlock returns one formatted day section, skip=true when both summary and notes are empty.
+func (t *ReadMemoryTool) readMemoryDayBlock(ctx context.Context, d time.Time, loc *time.Location) (bs string, skip bool, err error) {
+	day := d
+	sumPath := daySummaryPathForCheck(t.store, day)
+	if !underMemoryRoot(t.store.RootDir(), sumPath) {
+		return "", false, fmt.Errorf("read_memory: path outside memory_dir")
+	}
+	notesPath := t.store.NotesPathForDay(day)
+	if !underMemoryRoot(t.store.RootDir(), notesPath) {
+		return "", false, fmt.Errorf("read_memory: path outside memory_dir")
+	}
+	summaryText, err := t.store.ReadDaySummary(ctx, day)
+	if err != nil {
+		return "", false, err
+	}
+	notesText, err := t.store.ReadDayNotes(ctx, day)
+	if err != nil {
+		return "", false, err
+	}
+	summaryText = strings.TrimSpace(summaryText)
+	notesText = strings.TrimSpace(notesText)
+	if summaryText == "" && notesText == "" {
+		return "", true, nil
+	}
+	dateStr := d.In(loc).Format("2006-01-02")
+	var block strings.Builder
+	block.WriteString("## ")
+	block.WriteString(dateStr)
+	block.WriteByte('\n')
+	if summaryText != "" {
+		block.WriteString("### Automatic summary\n")
+		block.WriteString(summaryText)
+		block.WriteByte('\n')
+	}
+	if notesText != "" {
+		block.WriteString("### Manual notes\n")
+		block.WriteString(notesText)
+		block.WriteByte('\n')
+	}
+	block.WriteByte('\n')
+	return block.String(), false, nil
+}
+
 func (t *ReadMemoryTool) readDayRange(ctx context.Context, from, to time.Time, loc *time.Location) (string, error) {
 	if loc == nil {
 		loc = time.UTC
@@ -139,28 +182,21 @@ func (t *ReadMemoryTool) readDayRange(ctx context.Context, from, to time.Time, l
 	}
 	var b strings.Builder
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
-		day := d
-		path := daySummaryPathForCheck(t.store, day)
-		if !underMemoryRoot(t.store.RootDir(), path) {
-			return "", fmt.Errorf("read_memory: path outside memory_dir")
-		}
-		text, err := t.store.ReadDaySummary(ctx, day)
+		bs, skip, err := t.readMemoryDayBlock(ctx, d, loc)
 		if err != nil {
 			return "", err
 		}
-		if text == "" {
+		if skip {
 			continue
 		}
-		dateStr := d.In(loc).Format("2006-01-02")
-		block := "## " + dateStr + "\n" + strings.TrimSpace(text) + "\n\n"
-		if b.Len()+len(block) > t.maxOutBytes {
+		if b.Len()+len(bs) > t.maxOutBytes {
 			return "", fmt.Errorf("read_memory: output would exceed max_output_bytes (%d)", t.maxOutBytes)
 		}
-		b.WriteString(block)
+		b.WriteString(bs)
 	}
 	out := strings.TrimSpace(b.String())
 	if out == "" {
-		return "(no day summaries in range)", nil
+		return "(no day summaries or notes in range)", nil
 	}
 	if len(out) > t.maxOutBytes {
 		return "", fmt.Errorf("read_memory: output exceeds max_output_bytes (%d)", t.maxOutBytes)

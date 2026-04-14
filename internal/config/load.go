@@ -133,6 +133,9 @@ func validateMandatoryJSONSections(c *Config) error {
 	if err := validateReadMemory(c); err != nil {
 		return err
 	}
+	if err := validateWriteMemory(c); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -165,6 +168,26 @@ func finalizeReadMemoryDefaults(c *Config) {
 	if rm.MaxOutputBytes == 0 {
 		rm.MaxOutputBytes = 256 * 1024
 	}
+}
+
+func validateWriteMemory(c *Config) error {
+	if c == nil || c.WriteMemory == nil {
+		return nil
+	}
+	wm := c.WriteMemory
+	if wm.MaxAppendBytes == 0 {
+		wm.MaxAppendBytes = 64 * 1024
+	}
+	if wm.MaxFileBytes == 0 {
+		wm.MaxFileBytes = 5 * 1024 * 1024
+	}
+	if wm.MaxAppendBytes < 256 || wm.MaxAppendBytes > 1024*1024 {
+		return errors.New("config: write_memory.max_append_bytes must be in 256..1048576")
+	}
+	if wm.MaxFileBytes < wm.MaxAppendBytes || wm.MaxFileBytes > 50*1024*1024 {
+		return errors.New("config: write_memory.max_file_bytes must be >= max_append_bytes and at most 52428800")
+	}
+	return nil
 }
 
 func validateTools(c *Config) error {

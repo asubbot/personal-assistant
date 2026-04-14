@@ -113,9 +113,11 @@ func (m *IntegrationMockNodeRunner) RunOnNode(ctx context.Context, nodeID, comma
 
 // IntegrationConversationParams wires conversationHandler for tests/integration (runtime skills, markers, tools).
 type IntegrationConversationParams struct {
-	Router                     *llmrouter.Router
-	Escalation                 *config.LLMEscalationConfig
+	Router     *llmrouter.Router
+	Escalation *config.LLMEscalationConfig
+	// VectorStore is used when MemoryVectors is nil: handler gets LegacyCompatMemoryVectors(VectorStore).
 	VectorStore                vector.Store
+	MemoryVectors              *MemoryVectors
 	Embedder                   embedding.Embedder
 	NodeRunner                 NodeRunner
 	ToolIndex                  ToolIndex
@@ -160,6 +162,10 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 	if p.VectorSearchTopK == 0 {
 		p.VectorSearchTopK = 10
 	}
+	mv := p.MemoryVectors
+	if mv == nil {
+		mv = LegacyCompatMemoryVectors(p.VectorStore)
+	}
 	var sessCfg *config.ConversationSessionConfig
 	var sessStore *sessionWindowStore
 	if p.ConversationSession != nil && p.ConversationSession.Enabled {
@@ -169,7 +175,7 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 	return &conversationHandler{
 		router:                     p.Router,
 		escalation:                 p.Escalation,
-		vectorStore:                p.VectorStore,
+		memVec:                     mv,
 		embedder:                   p.Embedder,
 		nodeRunner:                 p.NodeRunner,
 		toolIndex:                  p.ToolIndex,

@@ -9,6 +9,7 @@ import (
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
+	"pa/internal/memory"
 	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/tools"
@@ -446,13 +447,14 @@ func TestHandleMessage_llmLogEntryUsesDefaultModelWhenResultModelEmpty(t *testin
 func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
-	vs := &mockVectorStore{
-		searchResults: []vector.SearchResult{{Text: "past mention of bananas"}},
+	summ := &mockVectorStore{
+		searchResults: []vector.SearchResult{{ID: "summary:day:2099-01-01", Text: "past mention of bananas"}},
 	}
+	turnM := &mockVectorStore{}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		vectorStore:           vs,
+		memVec:                &MemoryVectors{Summaries: summ, Legacy: summ, Turns: turnM},
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -480,7 +482,7 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		vectorStore:           vs,
+		memVec:                LegacyCompatMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -556,7 +558,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		vectorStore:           vs,
+		memVec:                LegacyCompatMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -584,7 +586,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 	}
 	h2 := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		vectorStore:           vs2,
+		memVec:                LegacyCompatMemoryVectors(vs2),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -617,7 +619,7 @@ func TestHandleMessage_vectorSearchPrefixesSummaryDayLabel(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		vectorStore:           vs,
+		memVec:                LegacyCompatMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -662,7 +664,7 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		vectorStore:           vs,
+		memVec:                LegacyCompatMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -1076,6 +1078,60 @@ func TestHandleMessage_toolInvocation_redactsInfoLogAttrs(t *testing.T) {
 	}
 	if strings.Contains(resLog, "secret") || !strings.Contains(resLog, "[REDACTED]") {
 		t.Errorf("result attr should be redacted; got %q", resLog)
+	}
+}
+
+// Covers AC-16.019: write_memory tool invocation arguments are passed through the same log redactor as other native tools.
+func TestHandleMessage_writeMemory_toolInvocation_redactsArguments(t *testing.T) {
+	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
+	logger := slog.New(cap)
+	redactor := func(s string) string { return strings.ReplaceAll(s, "secret", "[REDACTED]") }
+	memDir := t.TempDir()
+	store, err := memory.NewStore(memDir, time.UTC)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg := tools.NewRegistry()
+	reg.Register(tools.NewWriteMemoryTool(store, nil, nil, 4096, 1<<20))
+	callCount := 0
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "w1", Name: "write_memory", Arguments: `{"text":"note secret body","date":"2026-04-14"}`}},
+			}, nil
+		}
+		return &llm.CompletionResult{Content: "saved", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:                     mustRouterSingle(t, provider),
+		catalog:                    &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
+		nativeRegistry:             reg,
+		logger:                     logger,
+		logRedactor:                redactor,
+		firstProviderSupportsTools: true,
+		maxDynamicSystemRunes:      defaultMaxDynamicSystemRunes,
+		vectorSearchTopK:           defaultVectorSearchTopK,
+	}
+	_, err = h.HandleMessage(context.Background(), 1, "", "remember this")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var argsLog string
+	for _, r := range cap.records {
+		if r.msg == "tool invocation" && r.attrs["tool_id"] == "write_memory" {
+			argsLog = r.attrs["arguments"]
+			break
+		}
+	}
+	if argsLog == "" {
+		t.Fatalf("expected write_memory tool invocation log; records=%+v", cap.records)
+	}
+	if strings.Contains(argsLog, "secret") || !strings.Contains(argsLog, "[REDACTED]") {
+		t.Errorf("write_memory arguments should be redacted; got %q", argsLog)
 	}
 }
 
@@ -1952,7 +2008,7 @@ func TestHandleMessage_sessionMemory_withVectorStoreEmpty_coexists(t *testing.T)
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
-		vectorStore:           vec,
+		memVec:                LegacyCompatMemoryVectors(vec),
 		embedder:              emb,
 		maxDynamicSystemRunes: 4000,
 		vectorSearchTopK:      10,

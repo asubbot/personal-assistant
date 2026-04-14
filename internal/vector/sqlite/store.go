@@ -14,9 +14,14 @@ import (
 
 // Table names for the vector DB. Same DB file can hold multiple tables (e.g. memory and tool index).
 const (
+	// TableMemory is the legacy mixed memory vector table (EP-016 rollout: summary-prefix reads only).
 	TableMemory = "vec_items"
 	TableTools  = "vec_tools"
 	TableSkills = "vec_skills"
+	// EP-016: split memory vectors (same DB file as TableMemory/tools/skills).
+	TableSummaries = "vec_summaries"
+	TableTurns     = "vec_turns"
+	TableNotes     = "vec_notes"
 )
 
 var autoOnce sync.Once
@@ -47,7 +52,7 @@ func validateTableName(table string) error {
 }
 
 // NewWithTable opens or creates a SQLite database at dbPath and returns a vector store for the given table.
-// Use TableMemory for conversation/memory index, TableTools for tool index. Same dbPath allows multiple tables in one DB file.
+// Use TableMemory for legacy vec_items, TableSummaries/TableTurns/TableNotes for EP-016 split stores, TableTools for tool index. Same dbPath allows multiple tables in one DB file.
 func NewWithTable(dbPath string, dimensions int, table string) (*Store, error) {
 	if dimensions <= 0 {
 		return nil, fmt.Errorf("vector/sqlite: dimensions must be positive, got %d", dimensions)

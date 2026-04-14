@@ -134,7 +134,7 @@ func main() {
 			logger.Error("clear-context-on-start", "error", err)
 			os.Exit(1)
 		}
-		logger.Info("cleared conversation context index (vec_items) before start")
+		logger.Info("cleared conversation context (vec_turns and vec_items) before start")
 	}
 
 	if err := runServer(cfg, configFilePath, logger); err != nil && !errors.Is(err, context.Canceled) {
@@ -147,15 +147,15 @@ func main() {
 //
 //nolint:gocyclo // sequential startup wiring and teardown branches
 func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error {
-	adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, skillIndex, err := setup(cfg, configPath, logger)
+	adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, err := setup(cfg, configPath, logger)
 	if err != nil {
 		return err
 	}
 	warnIfNodesSSHUnreachable(context.Background(), cfg, logger)
 	defer func() {
-		if vectorStore != nil {
-			if closeErr := vectorStore.Close(); closeErr != nil {
-				logger.Error("close vector store", "error", closeErr)
+		if memVec != nil {
+			if closeErr := memVec.Close(); closeErr != nil {
+				logger.Error("close memory vector stores", "error", closeErr)
 			}
 		}
 		if toolIndex != nil {
@@ -181,7 +181,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 
 	var memJob *memoryjob.Runner
 	if memoryStore != nil && strings.TrimSpace(cfg.Paths.LLMLogDir) != "" &&
-		embedder != nil && vectorStore != nil {
+		embedder != nil && memVec != nil && memVec.Summaries != nil {
 		paLoc, locErr := config.PALocation(cfg)
 		if locErr != nil {
 			return fmt.Errorf("memory summarization pa_timezone: %w", locErr)
@@ -190,7 +190,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 			Cfg:         cfg,
 			Loc:         paLoc,
 			Memory:      memoryStore,
-			Vector:      vectorStore,
+			Vector:      memVec.Summaries,
 			Embedder:    embedder,
 			LLMProvider: summarizeLLM,
 			Logger:      logger,
@@ -222,6 +222,15 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 			}
 		}
 		toolRegistry.Register(tools.NewReadMemoryTool(memoryStore, span, outBytes))
+		maxAppend := 64 * 1024
+		maxFile := 5 * 1024 * 1024
+		if wm := cfg.WriteMemory; wm != nil {
+			maxAppend = wm.MaxAppendBytes
+			maxFile = wm.MaxFileBytes
+		}
+		if memVec != nil && memVec.Notes != nil && embedder != nil {
+			toolRegistry.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, maxAppend, maxFile))
+		}
 	}
 	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
 		defer cleanup()
@@ -237,7 +246,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
 	var si core.SkillIndex = skillIndex
-	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, vectorStore, embedder, nodeRunner, ti, si, toolRegistry)
+	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, memVec, embedder, nodeRunner, ti, si, toolRegistry)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second
@@ -372,7 +381,7 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -432,7 +441,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -488,7 +497,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -576,13 +585,47 @@ func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog
 	return idx, nil
 }
 
-// setup creates adapter, memory store, vector store, embedder, and optional node runner from config. Caller must close vectorStore.
+// openMemoryVectorBundle opens EP-016 split tables plus legacy vec_items on the configured vector DB path.
+func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
+	dim := cfg.Embedding.Dimensions
+	path := cfg.Paths.VectorIndexPath
+	summ, err := sqlite.NewWithTable(path, dim, sqlite.TableSummaries)
+	if err != nil {
+		return nil, err
+	}
+	turns, err := sqlite.NewWithTable(path, dim, sqlite.TableTurns)
+	if err != nil {
+		_ = summ.Close()
+		return nil, err
+	}
+	notes, err := sqlite.NewWithTable(path, dim, sqlite.TableNotes)
+	if err != nil {
+		_ = summ.Close()
+		_ = turns.Close()
+		return nil, err
+	}
+	legacy, err := sqlite.NewWithTable(path, dim, sqlite.TableMemory)
+	if err != nil {
+		_ = summ.Close()
+		_ = turns.Close()
+		_ = notes.Close()
+		return nil, err
+	}
+	return &core.MemoryVectors{
+		Summaries: summ,
+		Turns:     turns,
+		Notes:     notes,
+		Legacy:    legacy,
+	}, nil
+}
+
+// setup creates adapter, memory store, memory vector bundle, embedder, and optional node runner from config. Caller must close memVec via MemoryVectors.Close.
 //
 //nolint:gocyclo // many optional subsystems; each branch is independent
 func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	adapter core.Adapter,
 	memoryStore *memory.Store,
-	vectorStore *sqlite.Store,
+	memVec *core.MemoryVectors,
 	embedder embedding.Embedder,
 	nodeRunner core.NodeRunner,
 	toolIndex *toolindex.Index,
@@ -617,13 +660,16 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	if mkErr := os.MkdirAll(vecDir, 0o755); mkErr != nil {
 		return nil, nil, nil, nil, nil, nil, nil, mkErr
 	}
-	vectorStore, err = sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
+	memVec, err = openMemoryVectorBundle(cfg)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
 	toolIndex, err = newToolIndex(cfg, embedder, logger)
 	if err != nil {
+		if memVec != nil {
+			_ = memVec.Close()
+		}
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
@@ -631,6 +677,9 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	if err != nil {
 		if toolIndex != nil {
 			_ = toolIndex.Close()
+		}
+		if memVec != nil {
+			_ = memVec.Close()
 		}
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
@@ -645,7 +694,7 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 		nodeRunner = nr
 	}
 
-	return adapter, memoryStore, vectorStore, embedder, nodeRunner, toolIndex, skillIndex, nil
+	return adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, nil
 }
 
 func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) {
@@ -663,7 +712,7 @@ func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *
 	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider)
 }
 
-// clearConversationContext deletes all rows from vec_items (semantic context for the LLM). vec_tools and memory/ files are unchanged.
+// clearConversationContext deletes turn rows from vec_turns and legacy vec_items. vec_summaries, vec_notes, and vec_tools are unchanged.
 func clearConversationContext(cfg *config.Config) error {
 	if cfg == nil {
 		return fmt.Errorf("clear context: config is nil")
@@ -678,10 +727,19 @@ func clearConversationContext(cfg *config.Config) error {
 	if err := os.MkdirAll(vecDir, 0o755); err != nil {
 		return fmt.Errorf("clear context: mkdir: %w", err)
 	}
-	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
+	ctx := context.Background()
+	turns, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTurns)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = store.Close() }()
-	return store.Clear(context.Background())
+	defer func() { _ = turns.Close() }()
+	if err := turns.Clear(ctx); err != nil {
+		return err
+	}
+	legacy, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = legacy.Close() }()
+	return legacy.Clear(ctx)
 }

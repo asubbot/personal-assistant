@@ -12,9 +12,20 @@ const (
 	VectorIDPrefixYear  = "summary:year:"
 )
 
+// IsSummaryVectorID reports whether id uses a rollup summary prefix (EP-016 legacy vec_items filtering).
+func IsSummaryVectorID(id string) bool {
+	return strings.HasPrefix(id, VectorIDPrefixDay) ||
+		strings.HasPrefix(id, VectorIDPrefixMonth) ||
+		strings.HasPrefix(id, VectorIDPrefixYear)
+}
+
 // VectorChunkLabel returns the retrieval label for REQ-02.009 from a vector document id.
 func VectorChunkLabel(id string) string {
 	switch {
+	case strings.HasPrefix(id, "notes:"):
+		return "notes"
+	case strings.HasPrefix(id, "turn:"):
+		return "turn"
 	case strings.HasPrefix(id, VectorIDPrefixDay):
 		return "summary:day"
 	case strings.HasPrefix(id, VectorIDPrefixMonth):
@@ -24,6 +35,21 @@ func VectorChunkLabel(id string) string {
 	default:
 		return "turn"
 	}
+}
+
+// FormatNotesVectorText builds stored vector text for a manual notes entry (EP-016).
+func FormatNotesVectorText(dateISO, noteBody, kind string) string {
+	var b strings.Builder
+	b.WriteString("Date: ")
+	b.WriteString(dateISO)
+	b.WriteString("\n[notes]\n")
+	if strings.TrimSpace(kind) != "" {
+		b.WriteString("kind=")
+		b.WriteString(strings.TrimSpace(strings.ToLower(kind)))
+		b.WriteByte('\n')
+	}
+	b.WriteString(strings.TrimSpace(noteBody))
+	return b.String()
 }
 
 // FormatDayVectorText builds stored vector text for a day summary (REQ-02.008).

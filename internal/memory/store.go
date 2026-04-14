@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -143,4 +144,112 @@ func (s *Store) ReadYearSummary(ctx context.Context, year int) (string, error) {
 		return "", fmt.Errorf("memory: read %s: %w", path, err)
 	}
 	return string(data), nil
+}
+
+// pathForDayNotes returns rootDir/YYYY/MM/DD/notes.md for the calendar day in pa_timezone (EP-016).
+func (s *Store) pathForDayNotes(day time.Time) string {
+	y, m, d := s.calendarOf(day)
+	return filepath.Join(s.rootDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", int(m)), fmt.Sprintf("%02d", d), "notes.md")
+}
+
+// NotesPathForDay returns the notes.md path for the day (for tools path-prefix checks).
+func (s *Store) NotesPathForDay(day time.Time) string {
+	if s == nil {
+		return ""
+	}
+	return s.pathForDayNotes(day)
+}
+
+// ReadDayNotes reads notes.md for the calendar day. Returns empty string and nil error if missing.
+func (s *Store) ReadDayNotes(ctx context.Context, day time.Time) (string, error) {
+	if s == nil {
+		return "", fmt.Errorf("memory: nil store")
+	}
+	path := s.pathForDayNotes(day)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", fmt.Errorf("memory: read %s: %w", path, err)
+	}
+	return string(data), nil
+}
+
+func normalizeNoteKind(kind string) (string, error) {
+	kind = strings.TrimSpace(strings.ToLower(kind))
+	if kind == "" {
+		return "", nil
+	}
+	switch kind {
+	case "fact", "guideline", "preference", "other":
+		return kind, nil
+	default:
+		return "", fmt.Errorf("memory: invalid kind %q (use fact, guideline, preference, or other)", kind)
+	}
+}
+
+func buildDayNoteEntry(text, kind string, nowUTC time.Time, maxAppend int) (string, error) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("memory: empty note text")
+	}
+	var b strings.Builder
+	b.WriteString(nowUTC.UTC().Format(time.RFC3339))
+	b.WriteByte('\n')
+	if kind != "" {
+		b.WriteString("kind=")
+		b.WriteString(kind)
+		b.WriteByte('\n')
+	}
+	b.WriteString(strings.TrimRight(text, "\n"))
+	b.WriteByte('\n')
+	entry := b.String()
+	if len(entry) > maxAppend {
+		return "", fmt.Errorf("memory: note exceeds max_append_bytes (%d)", maxAppend)
+	}
+	return entry, nil
+}
+
+// AppendDayNote appends one entry to notes.md: first line UTC RFC3339, optional kind= line, then text (EP-016).
+func (s *Store) AppendDayNote(ctx context.Context, day time.Time, text, kind string, nowUTC time.Time, maxAppend, maxFile int) error {
+	if s == nil {
+		return fmt.Errorf("memory: nil store")
+	}
+	if maxAppend < 1 || maxFile < 1 {
+		return fmt.Errorf("memory: invalid note size limits")
+	}
+	kind, err := normalizeNoteKind(kind)
+	if err != nil {
+		return err
+	}
+	entry, err := buildDayNoteEntry(text, kind, nowUTC, maxAppend)
+	if err != nil {
+		return err
+	}
+	existing, err := s.ReadDayNotes(ctx, day)
+	if err != nil {
+		return err
+	}
+	sep := ""
+	if strings.TrimSpace(existing) != "" {
+		sep = "\n\n"
+	}
+	if len(existing)+len(sep)+len(entry) > maxFile {
+		return fmt.Errorf("memory: notes.md would exceed max_file_bytes (%d)", maxFile)
+	}
+	path := s.pathForDayNotes(day)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("memory: mkdir %s: %w", dir, err)
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return fmt.Errorf("memory: open %s: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
+	if _, err := f.WriteString(sep + entry); err != nil {
+		return fmt.Errorf("memory: append %s: %w", path, err)
+	}
+	return nil
 }

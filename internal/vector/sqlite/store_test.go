@@ -243,6 +243,74 @@ func twoTablesSameDB_addAndSearchTools(t *testing.T, ctx context.Context, storeT
 	}
 }
 
+func ep016OpenSplitTableStores(t *testing.T, path string) []*Store {
+	t.Helper()
+	tables := []string{TableSummaries, TableTurns, TableNotes, TableMemory}
+	var stores []*Store
+	for _, tbl := range tables {
+		st, err := NewWithTable(path, testDimensions, tbl)
+		if err != nil {
+			t.Fatalf("NewWithTable(%s): %v", tbl, err)
+		}
+		stores = append(stores, st)
+	}
+	return stores
+}
+
+func ep016SeedSplitTableVectors(t *testing.T, ctx context.Context, stores []*Store) {
+	t.Helper()
+	adds := []struct {
+		idx int
+		id  string
+		vec []float32
+		txt string
+	}{
+		{0, "summary:day:2026-04-01", []float32{1, 0, 0, 0}, "day vec"},
+		{1, "turn:2026-04-01:abc", []float32{0, 1, 0, 0}, "turn vec"},
+		{2, "notes:2026-04-01:x", []float32{0, 0, 1, 0}, "note vec"},
+		{3, "legacy-only", []float32{0.1, 0.1, 0.1, 0.7}, "legacy"},
+	}
+	for _, a := range adds {
+		if err := stores[a.idx].Add(ctx, a.id, a.vec, a.txt); err != nil {
+			t.Fatalf("Add %s: %v", a.id, err)
+		}
+	}
+}
+
+// Covers AC-16.009: EP-016 split tables vec_summaries, vec_turns, vec_notes coexist with legacy vec_items on one DB path.
+func TestStore_EP016SplitTables_SameDB(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "ep016_vec.db")
+	ctx := context.Background()
+	stores := ep016OpenSplitTableStores(t, path)
+	defer func() {
+		for _, st := range stores {
+			_ = st.Close()
+		}
+	}()
+	ep016SeedSplitTableVectors(t, ctx, stores)
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?, ?, ?, ?)",
+		TableSummaries, TableTurns, TableNotes, TableMemory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+	var found int
+	for rows.Next() {
+		found++
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if found != 4 {
+		t.Fatalf("want 4 vec tables in sqlite_master, got %d", found)
+	}
+}
+
 func twoTablesSameDB_assertBothTablesInDB(t *testing.T, ctx context.Context, path string) {
 	t.Helper()
 	db, err := sql.Open("sqlite3", path)
