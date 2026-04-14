@@ -25,6 +25,7 @@ Instructions for AI agents working in a **git-backed software repository**.
 - **Product source and build configuration:** do not change without the repository owner’s **explicit allowance**, except where they have already approved a bounded change (e.g. a task from an agreed implementation plan).
 - **Delivery-process artefacts** (requirements, design, plans, reviews, etc., when this repo defines them): write or update them **only** through the process and skills the owner points you to for **this** repository (see **This repository** below).
 - **Commits:** do not commit without the owner’s explicit allowance—including after delegation or multi-step work. Commit messages in English; when helpful, reference the skill or plan step.
+- **Merge ≠ push:** merging branches (e.g. `git merge`, or finishing a merge locally) only updates **local** history unless a **push** follows. **Do not push** to a remote (`git push`, PR “push” actions, etc.) unless the user has **explicitly asked** for that remote update in the current request or otherwise clearly authorized it for this step. A request to “merge” or “commit and merge” alone is **not** permission to push.
 - **Secrets:** never commit real tokens, passwords, or private keys; do not paste them into the repo or examples. Use placeholders and patterns from the repo’s README and configuration documentation.
 
 ## Security (basics)
