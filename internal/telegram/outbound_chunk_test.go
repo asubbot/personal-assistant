@@ -9,6 +9,48 @@ import (
 	"github.com/go-telegram/bot/models"
 )
 
+// Covers AC-15.003, AC-15.006: token footer appears only on the last Telegram chunk; plain footer has no angle brackets.
+func TestSendLongOutboundText_EP015_footerOnlyOnLastChunk(t *testing.T) {
+	body := strings.Repeat("x\n\n", 3000)
+	foot := "Tokens 3 (in: 2 / out: 1)"
+	src := body + "\n" + foot
+	m := &mockSender{}
+	if err := sendLongOutboundText(context.Background(), m, 1, src); err != nil {
+		t.Fatal(err)
+	}
+	texts := m.sentTexts()
+	if len(texts) < 2 {
+		t.Fatalf("want multiple chunks, got %d", len(texts))
+	}
+	for i := 0; i < len(texts)-1; i++ {
+		if strings.Contains(texts[i], "Tokens ") {
+			t.Fatalf("chunk %d must not contain footer", i)
+		}
+	}
+	last := texts[len(texts)-1]
+	if !strings.Contains(last, "Tokens 3 (in: 2 / out: 1)") {
+		t.Fatalf("last chunk missing footer: %q", last)
+	}
+	if strings.ContainsAny(foot, "<>") {
+		t.Fatal("test footer must be plain")
+	}
+}
+
+// Covers AC-15.004, AC-15.007: empty body with footer only does not send a message.
+func TestSendLongOutboundText_EP015_emptyBodySkipsSend(t *testing.T) {
+	m := &mockSender{}
+	src := "\nTokens 1 (in: 1 / out: 0)"
+	if err := sendLongOutboundText(context.Background(), m, 1, src); err != nil {
+		t.Fatal(err)
+	}
+	m.mu.Lock()
+	n := len(m.sent)
+	m.mu.Unlock()
+	if n != 0 {
+		t.Fatalf("want no sends, got %d", n)
+	}
+}
+
 // Covers AC-01.001: traceability for TestSplitTelegramOutboundSource_shortUnchanged.
 func TestSplitTelegramOutboundSource_shortUnchanged(t *testing.T) {
 	s := "hello **world**"

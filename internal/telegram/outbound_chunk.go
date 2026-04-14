@@ -2,9 +2,28 @@ package telegram
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
+
+// tokenFooterSuffix matches the EP-015 trailing token line (plain text, end-anchored).
+var tokenFooterSuffix = regexp.MustCompile(`\nTokens \d+ \(in: \d+ / out: \d+\)\z`)
+
+// SplitTokenFooterSuffix splits a combined handler reply into Markdown body and optional token footer line (without leading newline).
+func SplitTokenFooterSuffix(s string) (body, footerLine string) {
+	s = strings.TrimRight(s, "\r\n")
+	if s == "" {
+		return "", ""
+	}
+	loc := tokenFooterSuffix.FindStringIndex(s)
+	if loc == nil {
+		return s, ""
+	}
+	body = strings.TrimRight(s[:loc[0]], "\r\n")
+	footerLine = strings.TrimPrefix(s[loc[0]:loc[1]], "\n")
+	return body, footerLine
+}
 
 // telegramBotAPIMaxMessageRunes is the maximum text length per sendMessage (Telegram Bot API).
 const telegramBotAPIMaxMessageRunes = 4096
@@ -85,8 +104,23 @@ func splitTelegramOutboundOversized(p string) []string {
 }
 
 // sendLongOutboundText sends source as one or more Telegram messages, each within the API length limit.
+// When source ends with an EP-015 token footer line, the footer is applied only to the last outbound chunk.
 func sendLongOutboundText(ctx context.Context, tg telegramOutbound, chatID int64, source string) error {
-	for _, chunk := range splitTelegramOutboundSource(source) {
+	body, foot := SplitTokenFooterSuffix(source)
+	chunks := splitTelegramOutboundSource(body)
+	if len(chunks) == 0 {
+		return nil
+	}
+	if foot != "" {
+		last := len(chunks) - 1
+		combined := chunks[last] + "\n" + foot
+		if fitsTelegramOutboundHTML(combined) {
+			chunks[last] = combined
+		} else {
+			chunks = append(chunks, foot)
+		}
+	}
+	for _, chunk := range chunks {
 		if err := sendOutboundText(ctx, tg, chatID, chunk); err != nil {
 			return err
 		}

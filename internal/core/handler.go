@@ -152,15 +152,22 @@ func (h *conversationHandler) completeViaRouter(ctx context.Context, st *llmTurn
 	return result, err
 }
 
-// completeAt runs Complete through the unified router.
-func (h *conversationHandler) completeAt(ctx context.Context, st *llmTurnState, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+// completeAt runs Complete through the unified router. usageAcc receives API usage on success when non-nil (EP-015).
+func (h *conversationHandler) completeAt(ctx context.Context, st *llmTurnState, messages []llm.Message, opts *llm.CompletionOptions, usageAcc *usageTurnAcc) (*llm.CompletionResult, error) {
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMRequest(ctx, messages)
 	}
 	if h.router == nil {
 		return nil, fmt.Errorf("core: llm router is nil")
 	}
-	return h.completeViaRouter(ctx, st, messages, opts)
+	result, err := h.completeViaRouter(ctx, st, messages, opts)
+	if err != nil {
+		return nil, err
+	}
+	if usageAcc != nil && result != nil {
+		usageAcc.add(result.Usage)
+	}
+	return result, nil
 }
 
 // failureClass is e.g. tool_execution, hermes_parse (REQ-06.010, REQ-06.016).
@@ -219,7 +226,7 @@ func (h *conversationHandler) systemStaticHead(hasRetrieved bool) string {
 	return systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + personality + "\n\n"
 }
 
-func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, sessionKey, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool, st *llmTurnState) (string, error) {
+func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, sessionKey, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool, st *llmTurnState, usageAcc *usageTurnAcc) (string, error) {
 	for {
 		textToolMode, plainDone, invalidReply := textToolModeAfterFirstCompletion(textPath, result, opts)
 		if invalidReply != "" {
@@ -232,7 +239,7 @@ func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID
 				return invalidReply, nil
 			}
 			var err error
-			result, err = h.completeAt(ctx, st, messages, opts)
+			result, err = h.completeAt(ctx, st, messages, opts, usageAcc)
 			if err != nil {
 				return "", err
 			}
@@ -244,7 +251,7 @@ func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID
 			return result.Content, nil
 		}
 		var err error
-		messages, result, err = h.runToolResultLoop(ctx, messages, result, opts, textToolMode, st)
+		messages, result, err = h.runToolResultLoop(ctx, messages, result, opts, textToolMode, st, usageAcc)
 		if err != nil {
 			return "", err
 		}
@@ -354,15 +361,23 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 		rs := h.router.NewState()
 		st = &llmTurnState{activeIdx: rs.ActiveIndex, escUsed: rs.EscUsed}
 	}
-	result, err := h.completeAt(ctx, st, messages, opts)
+	var usageAcc usageTurnAcc
+	result, err := h.completeAt(ctx, st, messages, opts, &usageAcc)
 	if err != nil {
 		return "", err
 	}
-	return h.finishAfterFirstLLM(ctx, requestID, sk, userText, start, messages, result, opts, textPath, st)
+	reply, err := h.finishAfterFirstLLM(ctx, requestID, sk, userText, start, messages, result, opts, textPath, st, &usageAcc)
+	if err != nil {
+		return "", err
+	}
+	if line := usageAcc.footerLine(); line != "" && strings.TrimSpace(reply) != "" {
+		return reply + "\n" + line, nil
+	}
+	return reply, nil
 }
 
 // resolveHermesFollowUpCompletion parses result.Content into tool calls for text-tool follow-ups; may escalate and re-Complete (REQ-06.016).
-func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Context, st *llmTurnState, messages []llm.Message, optsFollow *llm.CompletionOptions, result *llm.CompletionResult) (*llm.CompletionResult, error) {
+func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Context, st *llmTurnState, messages []llm.Message, optsFollow *llm.CompletionOptions, result *llm.CompletionResult, usageAcc *usageTurnAcc) (*llm.CompletionResult, error) {
 	cur := result
 	for {
 		calls, perr := tooltext.ParseHermesToolCalls(cur.Content)
@@ -381,7 +396,7 @@ func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Contex
 		if activeIndex(st) == prev {
 			return nil, WrapUserError(UserErrorKindToolResponse, fmt.Errorf("follow-up tool_call parse: %w", perr))
 		}
-		next, err := h.completeAt(ctx, st, messages, optsFollow)
+		next, err := h.completeAt(ctx, st, messages, optsFollow, usageAcc)
 		if err != nil {
 			h.logger.Error("llm complete", "error", err)
 			return nil, err
@@ -392,7 +407,7 @@ func (h *conversationHandler) resolveHermesFollowUpCompletion(ctx context.Contex
 
 // runToolResultLoop continues until no tool_calls or max rounds (REQ-04.006). textToolMode: follow-up without HTTP tools; tool results as user messages (REQ-04.029).
 // st is non-nil when EP-006 escalation is enabled; after a qualifying tool failure the active provider may advance before the next Complete.
-func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textToolMode bool, st *llmTurnState) ([]llm.Message, *llm.CompletionResult, error) {
+func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textToolMode bool, st *llmTurnState, usageAcc *usageTurnAcc) ([]llm.Message, *llm.CompletionResult, error) {
 	optsFollow := opts
 	if textToolMode {
 		optsFollow = copyOptsNoTools(opts)
@@ -402,13 +417,13 @@ func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []
 		messages, qual = h.appendToolRound(ctx, messages, result, textToolMode)
 		h.maybeEscalate(ctx, st, qual, "tool_execution")
 		var err error
-		result, err = h.completeAt(ctx, st, messages, optsFollow)
+		result, err = h.completeAt(ctx, st, messages, optsFollow, usageAcc)
 		if err != nil {
 			h.logger.Error("llm complete", "error", err)
 			return nil, nil, err
 		}
 		if textToolMode && len(result.ToolCalls) == 0 {
-			result, err = h.resolveHermesFollowUpCompletion(ctx, st, messages, optsFollow, result)
+			result, err = h.resolveHermesFollowUpCompletion(ctx, st, messages, optsFollow, result, usageAcc)
 			if err != nil {
 				return nil, nil, err
 			}

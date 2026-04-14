@@ -1,0 +1,34 @@
+@startuml C4 Container - PersonalAssistant EP-015
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+UpdateElementStyle(person, $fontColor="black", $bgColor="#08427B", $borderColor="#073B6F")
+UpdateElementStyle(container, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(database, $fontColor="black", $bgColor="#438DD5", $borderColor="#3C7FC0")
+UpdateElementStyle(external_system, $fontColor="black", $bgColor="#999999", $borderColor="#8A8A8A")
+
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 80
+skinparam ranksep 80
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-015 Telegram token usage footer
+
+Person_Ext(user, "User", "User of the assistant")
+System_Ext(llm_ext, "LLM API", "OpenAI-compatible usage fields")
+
+Container_Boundary(pa, "PersonalAssistant") {
+    Container(tg, "Telegram adapter", "Go", "Splits outbound; appends token line to last chunk")
+    Container(core, "Go core", "Go", "Sums usage per turn; returns reply + optional footer line")
+    Container(llm, "LLM router / providers", "Go", "CompletionResult.Usage from API")
+}
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "HandleMessage")
+Rel(core, tg, "Reply text (body + optional token line)")
+Rel(core, llm, "Complete")
+Rel(llm, llm_ext, "HTTP")
+
+@enduml
