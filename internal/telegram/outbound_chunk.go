@@ -7,8 +7,9 @@ import (
 	"unicode/utf8"
 )
 
-// tokenFooterSuffix matches the EP-015 trailing token line (plain text, end-anchored).
-var tokenFooterSuffix = regexp.MustCompile(`\nTokens \d+ \(in: \d+ / out: \d+\)\z`)
+// tokenFooterSuffix matches the EP-015 trailing token line (end-anchored).
+// Supports Markdown italic variant *Tokens …* and legacy plain Tokens … (no asterisks).
+var tokenFooterSuffix = regexp.MustCompile(`\n(?:\*Tokens \d+ \(in: \d+ / out: \d+\)\*|Tokens \d+ \(in: \d+ / out: \d+\))\z`)
 
 // SplitTokenFooterSuffix splits a combined handler reply into Markdown body and optional token footer line (without leading newline).
 func SplitTokenFooterSuffix(s string) (body, footerLine string) {

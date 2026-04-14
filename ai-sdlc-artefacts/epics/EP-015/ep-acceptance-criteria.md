@@ -29,13 +29,13 @@ This document defines testable acceptance criteria for the Telegram token usage 
 
 <a id="ac-15-001"></a>**AC-15.001** ([REQ-15.001](ep-requirements.md#req-15-001), [REQ-15.002](ep-requirements.md#req-15-002), [REQ-15.004](ep-requirements.md#req-15-004), [REQ-15.006](ep-requirements.md#req-15-006))
 
-Given a user turn that performs at least two successful LLM completions with API usage `prompt_tokens` 10 and 20 and `completion_tokens` 5 and 7 respectively, When the handler returns the Telegram-bound reply string, Then the string ends with a single new line followed by `Tokens 42 (in: 30 / out: 12)`.
+Given a user turn that performs at least two successful LLM completions with API usage `prompt_tokens` 10 and 20 and `completion_tokens` 5 and 7 respectively, When the handler returns the Telegram-bound reply string, Then the string ends with a single new line followed by `*Tokens 42 (in: 30 / out: 12)*` (Markdown italic wrapper).
 
 ---
 
 <a id="ac-15-002"></a>**AC-15.002** ([REQ-15.005](ep-requirements.md#req-15-005))
 
-Given a user turn where every completion returns zero for both `prompt_tokens` and `completion_tokens` in API usage, When the handler returns the Telegram-bound reply string, Then the string does not contain the substring `Tokens ` as a token footer (no footer line).
+Given a user turn where every completion returns zero for both `prompt_tokens` and `completion_tokens` in API usage, When the handler returns the Telegram-bound reply string, Then the string does not contain a token footer (no `\n*Tokens ` nor legacy `\nTokens ` line-ending footer).
 
 ---
 
@@ -59,7 +59,7 @@ Given sliding session memory is enabled and a user turn returns a non-empty repl
 
 <a id="ac-15-006"></a>**AC-15.006** ([REQ-15.007](ep-requirements.md#req-15-007))
 
-Given a non-zero usage footer is produced, When the footer line is inspected, Then the line contains no `<` and no `>` characters.
+Given a non-zero usage footer is produced, When the Markdown footer line (before Telegram HTML conversion) is inspected, Then the line contains no `<` and no `>` characters.
 
 ---
 

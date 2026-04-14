@@ -45,8 +45,8 @@ EP-015 surfaces **aggregated LLM API usage** for one **user turn** as a **plain-
 | **Usage accumulator** (core) | Holds running sums of `PromptTokens` and `CompletionTokens` for the active turn. | Private struct + `add(Usage)`; `footerLine() string`. |
 | **`completeAt` (core)** | Invokes router `Complete`; on success, adds `result.Usage` to the accumulator when a non-nil accumulator pointer is supplied. | Extend `completeAt` (or thin wrapper) with optional accumulator parameter passed through `finishAfterFirstLLM`, `runToolResultLoop`, `resolveHermesFollowUpCompletion`. |
 | **`HandleMessage` (core)** | After `finishAfterFirstLLM`, if footer non-empty and body non-empty, return `body + "\n" + footer`; session append continues to use **body** only. | Existing `MessageHandler` return type remains `string`; Telegram strips footer for chunking (see below). |
-| **`sendLongOutboundText` (telegram)** | Accept optional **plain footer line** (without leading newline). Split **body** via `splitTelegramOutboundSource`; append footer to last chunk if it fits after HTML conversion; otherwise append a final chunk containing only the footer. | `sendLongOutboundText(ctx, tg, chatID, body string, tokenFooterLine string) error` (exact signature may differ; behaviour per AC). |
-| **`SplitTokenFooterSuffix` (telegram, optional helper)** | If the handler returns `body + "\n" + footer`, split into `body` and `tokenFooterLine` using a strict suffix pattern so chunking applies only to **body**. | Package-local function; deterministic regex for `Tokens <n> (in: <n> / out: <n>)` at end of string. |
+| **`sendLongOutboundText` (telegram)** | Peel optional **Markdown footer line** (without leading newline). Split **body** via `splitTelegramOutboundSource`; append footer to last chunk if it fits after HTML conversion; otherwise append a final chunk containing only the footer. | Same entrypoint as today; footer is `*Tokens …*` or legacy plain `Tokens …`. |
+| **`SplitTokenFooterSuffix` (telegram)** | If the handler returns `body + "\n" + footer`, split using an end-anchored regex so chunking applies only to **body**. | Matches `\n*Tokens …*` (preferred) or legacy `\nTokens …` at end of string. |
 
 **Design note:** Passing `(body, footer)` as two values from core to Telegram would change `MessageHandler` and every test. The chosen approach keeps **`HandleMessage` returning one string** and lets the **Telegram adapter peel** a known footer suffix before splitting, matching [REQ-15.007](ep-requirements.md#req-15-007) without widening the `MessageHandler` interface.
 
@@ -57,7 +57,7 @@ EP-015 surfaces **aggregated LLM API usage** for one **user turn** as a **plain-
 | Entity | Fields | Notes |
 |--------|--------|-------|
 | **Turn usage accumulator** | `promptSum int`, `completionSum int` | Updated only after successful `Complete`; omitted usage treated as zero. |
-| **Footer string** | Single line, no HTML | Example: `Tokens 42 (in: 30 / out: 12)`. |
+| **Footer string** | Single Markdown line, italic wrapper | Example: `*Tokens 42 (in: 30 / out: 12)*` → `<i>…</i>` after `MarkdownToTelegramHTML`. |
 
 ---
 
@@ -96,8 +96,8 @@ EP-015 surfaces **aggregated LLM API usage** for one **user turn** as a **plain-
 | [REQ-15.003](ep-requirements.md#req-15-003) | Only `CompletionResult.Usage` from providers; no tiktoken. |
 | [REQ-15.004](ep-requirements.md#req-15-004) | Core appends footer when `promptSum>0 \|\| completionSum>0`. |
 | [REQ-15.005](ep-requirements.md#req-15-005) | Core omits footer when both sums are zero. |
-| [REQ-15.006](ep-requirements.md#req-15-006) | `fmt`-style line with `total = in + out`. |
-| [REQ-15.007](ep-requirements.md#req-15-007) | Telegram merges footer onto last outbound chunk; plain characters only. |
+| [REQ-15.006](ep-requirements.md#req-15-006) | Inner `Tokens …` pattern; `fmt`-style with `total = in + out`; wrapped in `*…*` for italic. |
+| [REQ-15.007](ep-requirements.md#req-15-007) | Telegram merges footer onto last outbound chunk; suffix regex accepts `*Tokens…*` or legacy plain form. |
 | [REQ-15.008](ep-requirements.md#req-15-008) | Telegram skips send when trimmed body empty and footer-only would result. |
 | [REQ-15.009](ep-requirements.md#req-15-009) | `appendSessionIfEnabled` uses assistant **body** without footer. |
 | [REQ-15.010](ep-requirements.md#req-15-010) | Positive and negative tests per AC-15.001 / AC-15.002 and chunk tests for AC-15.003. |

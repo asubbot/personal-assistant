@@ -10,8 +10,8 @@ func TestUsageTurnAcc_footerLine(t *testing.T) {
 	var a usageTurnAcc
 	a.add(llm.Usage{PromptTokens: 10, CompletionTokens: 5})
 	a.add(llm.Usage{PromptTokens: 20, CompletionTokens: 7})
-	if got := a.footerLine(); got != "Tokens 42 (in: 30 / out: 12)" {
-		t.Fatalf("footerLine() = %q, want Tokens 42 (in: 30 / out: 12)", got)
+	if got := a.footerLine(); got != "*Tokens 42 (in: 30 / out: 12)*" {
+		t.Fatalf("footerLine() = %q, want *Tokens 42 (in: 30 / out: 12)*", got)
 	}
 }
 

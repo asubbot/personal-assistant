@@ -48,7 +48,7 @@ func TestHandleMessage_EP015_tokenFooter_sumsAcrossToolRound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
-	wantSuffix := "\nTokens 42 (in: 30 / out: 12)"
+	wantSuffix := "\n*Tokens 42 (in: 30 / out: 12)*"
 	if !strings.HasSuffix(reply, wantSuffix) {
 		t.Fatalf("reply = %q, want suffix %q", reply, wantSuffix)
 	}
@@ -69,7 +69,7 @@ func TestHandleMessage_EP015_noFooterWhenZeroUsage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(reply, "\nTokens ") {
+	if strings.Contains(reply, "\n*Tokens ") || strings.Contains(reply, "\nTokens ") {
 		t.Fatalf("unexpected token footer in %q", reply)
 	}
 }

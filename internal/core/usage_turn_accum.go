@@ -18,12 +18,13 @@ func (a *usageTurnAcc) add(u llm.Usage) {
 	a.completionSum += u.CompletionTokens
 }
 
-// footerLine returns the EP-015 Telegram footer line without a leading newline, or empty when omitted.
+// footerLine returns the EP-015 Telegram footer without a leading newline, or empty when omitted.
+// The line is wrapped in *...* so MarkdownToTelegramHTML emits italic (Telegram HTML <i>).
 func (a *usageTurnAcc) footerLine() string {
 	if a == nil || (a.promptSum == 0 && a.completionSum == 0) {
 		return ""
 	}
 	in, out := a.promptSum, a.completionSum
 	total := in + out
-	return fmt.Sprintf("Tokens %d (in: %d / out: %d)", total, in, out)
+	return fmt.Sprintf("*Tokens %d (in: %d / out: %d)*", total, in, out)
 }

@@ -32,7 +32,7 @@ Epic EP-015 (Telegram token usage footer) is **implemented and verified**: `make
 | `make check` | Pass (fmt, vet, govulncheck, golangci-lint, `go test -race -tags=integration ./...`, coverage, module boundaries) |
 | `make build && ./bin/validate EP-015` | Pass — 7/7 AC traced (100%) |
 
-**Total test coverage (statements):** 73.2% (`go tool cover -func=coverage.out` total line).
+**Total test coverage (statements):** 73.4% (`go tool cover -func=coverage.out` total line).
 
 ---
 
@@ -65,5 +65,6 @@ Epic EP-015 (Telegram token usage footer) is **implemented and verified**: `make
 | Type | Item |
 |------|------|
 | **Risk** | Assistant text that accidentally matches the strict end-of-string footer pattern could be split incorrectly by `SplitTokenFooterSuffix`; acceptable for personal scope; monitor if reported. |
+| **Note** | Token footer uses Markdown `*Tokens …*` so Telegram renders italic (`<i>`); legacy plain `Tokens …` suffix is still recognised for splitting. |
 | **Recommendation** | Regenerate diagrams with `plantuml -tpng diagrams/c4-context.puml` and `plantuml -tpng diagrams/c4-container.puml` from the epic directory when C1/C2 sources change; committed assets use `c4-context.png` / `c4-container.png`. |
 | **Gap** | None identified versus [ep-implementation-plan.md](ep-implementation-plan.md) for EP-015. |

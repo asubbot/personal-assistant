@@ -77,8 +77,8 @@ flowchart LR
 | REQ-15.003 | FR | Source | Counts from API usage only |
 | REQ-15.004 | FR | Footer visibility | Append footer when in or out is greater than zero |
 | REQ-15.005 | FR | Footer visibility | Deliver body without footer when in and out are zero |
-| REQ-15.006 | FR | Footer format | Tokens value equals in plus out; prescribed layout |
-| REQ-15.007 | FR | Telegram | Footer on last outbound chunk; plain text |
+| REQ-15.006 | FR | Footer format | Inner `Tokens …` pattern; total equals in plus out; optional `*…*` for italic |
+| REQ-15.007 | FR | Telegram | Footer on last chunk; Markdown italic wrapper only |
 | REQ-15.008 | FR | Empty body | No token-only outbound Telegram message |
 | REQ-15.009 | FR | Session memory | Store assistant body without token footer |
 | REQ-15.010 | NFR | NFR | Automated tests with positive and negative cases |
@@ -115,7 +115,7 @@ WHEN **aggregated in** is greater than zero or **aggregated out** is greater tha
 WHEN **aggregated in** and **aggregated out** are both zero at the end of a user turn, THE PersonalAssistant SHALL deliver the Telegram-bound reply string without a **token footer**.
 
 <a id="req-15-006"></a>**REQ-15.006** (Event-driven)  
-WHEN a **token footer** is present, THE PersonalAssistant SHALL format it as exactly one new line at the end of the logical reply in the pattern `Tokens <total> (in: <aggregated in> / out: <aggregated out>)` where `<total>` equals `<aggregated in>` plus `<aggregated out>`, using decimal integer literals and single ASCII spaces as shown in [ep-scope.md](ep-scope.md).
+WHEN a **token footer** is present, THE PersonalAssistant SHALL format it as exactly one new line at the end of the logical reply consisting of the inner pattern `Tokens <total> (in: <aggregated in> / out: <aggregated out>)` wrapped as `*Tokens <total> (in: <aggregated in> / out: <aggregated out>)*` for Markdown italic, where `<total>` equals `<aggregated in>` plus `<aggregated out>`, using decimal integer literals and single ASCII spaces as shown in [ep-scope.md](ep-scope.md).
 
 <a id="req-15-008"></a>**REQ-15.008** (Event-driven)  
 WHEN the **assistant reply body** is empty at the end of a user turn, THE PersonalAssistant SHALL deliver no Telegram outbound message whose sole payload is the **token footer**.
@@ -127,7 +127,7 @@ WHEN the **assistant reply body** is empty at the end of a user turn, THE Person
 *REQ-15.007*
 
 <a id="req-15-007"></a>**REQ-15.007** (Ubiquitous)  
-THE Telegram adapter SHALL send the **token footer**, when present, only as part of the **last outbound chunk** for that reply, after Markdown-to-HTML length splitting of the **assistant reply body**; the **token footer** SHALL contain no Telegram HTML tags and SHALL use the same plain characters as in **REQ-15.006**.
+THE Telegram adapter SHALL send the **token footer**, when present, only as part of the **last outbound chunk** for that reply, after Markdown-to-HTML length splitting of the **assistant reply body**; the **token footer** in Markdown source SHALL use only the single-italic wrapper from **REQ-15.006** and SHALL contain no raw `<` or `>` characters inside the inner pattern.
 
 ---
 
@@ -148,7 +148,7 @@ THE PersonalAssistant SHALL persist the **assistant reply body** in sliding sess
 THE PersonalAssistant SHALL maintain automated tests that cover at least one positive case (non-zero usage yields a footer on the last chunk) and at least one negative case (zero usage yields no footer), including multi-chunk splitting behaviour where applicable.
 
 <a id="req-15-011"></a>**REQ-15.011** (Ubiquitous)  
-THE **token footer** SHALL contain only the numeric aggregates and fixed punctuation defined in **REQ-15.006**; the footer SHALL copy no user-provided text.
+THE **token footer** SHALL contain only the numeric aggregates, fixed punctuation, and the Markdown italic asterisk pair defined in **REQ-15.006**; the footer SHALL copy no user-provided text.
 
 <a id="req-15-012"></a>**REQ-15.012** (Ubiquitous)  
 THE repository validation command `./bin/validate EP-015` SHALL complete with exit code zero after this epic’s acceptance criteria are wired for coverage.
