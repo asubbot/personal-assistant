@@ -1,13 +1,13 @@
 # Project-level audit report
 
 **Date and time of creation:** 2026-04-09 (UTC)  
-**Last updated:** 2026-04-11 (UTC) — EP-002 moved to DONE, validator and quality-gate refresh
+**Last updated:** 2026-04-14 (UTC) — project rollup refresh; EP-015 added; `./bin/validate` re-run
 
 **Purpose:** Project-level audit summary — status of all epics (pipeline stage 11). Process: [11-audit.skill.md](../ai-sdlc/specification/skills/11-audit.skill.md), [pipeline.spec.md](../ai-sdlc/specification/pipeline.spec.md).
 
 **Links:** [scope.md](scope.md), [strategy.md](strategy.md).
 
-**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, the rollup table does **not** require a duplicate project-wide coverage line; the **current** codebase total from the latest `make check` is **73.3%** statements (`total:` line from `go tool cover -func=coverage.out`, 2026-04-11).
+**Note:** Values in **Test coverage** come from each epic’s **ep-audit-report.md** as recorded at that report’s date (typically `make check` with `-coverpkg=./...` — whole codebase, not per-epic isolation). Epics **NEW** or **CANCELED** without **ep-audit-report.md** show **—**. Per §3a of the audit skill, the rollup table does **not** require a duplicate project-wide coverage line. The most recent epic audit that recorded a project-wide `total:` line is **EP-015** (**73.4%**, 2026-04-14); earlier rollups cited **73.3%** (2026-04-11). This project-level refresh did **not** re-run `make check` solely for a new aggregate (see [11-audit.skill.md](../ai-sdlc/specification/skills/11-audit.skill.md) §2a).
 
 ---
 
@@ -29,6 +29,7 @@
 | [EP-012](epics/EP-012/ep-scope.md) | Telegram HTML formatting and typing indicator | DONE | ~73.4% | [ep-audit-report (2026-04-09)](epics/EP-012/ep-audit-report.md) |
 | [EP-013](epics/EP-013/ep-scope.md) | Runtime skills and consolidated system prompt | DONE | 73.8% | [ep-audit-report (2026-04-10)](epics/EP-013/ep-audit-report.md) |
 | [EP-014](epics/EP-014/ep-scope.md) | Sliding session memory window | DONE | 74.1% | [ep-audit-report (2026-04-10)](epics/EP-014/ep-audit-report.md) |
+| [EP-015](epics/EP-015/ep-scope.md) | Telegram token usage footer | DONE | 73.4% | [ep-audit-report (2026-04-14)](epics/EP-015/ep-audit-report.md) |
 
 ---
 
@@ -36,7 +37,7 @@
 
 | Category | Epics |
 |----------|-------|
-| **DONE** (ep-scope) | EP-001, EP-002, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013, EP-014 |
+| **DONE** (ep-scope) | EP-001, EP-002, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013, EP-014, EP-015 |
 | **NEW** | EP-003, EP-005, EP-007 |
 | **CANCELED** | EP-010 |
 | **IN_PROGRESS** | None |
@@ -49,17 +50,17 @@ When an epic moves to **IN_PROGRESS**, run a full epic audit per stage 11 and ad
 
 ## Project-wide acceptance criteria check (validator)
 
-Command: `./bin/validate` (no arguments), run 2026-04-11.
+Command: `./bin/validate` (no arguments), run **2026-04-14**.
 
 | Result | Detail |
 |--------|--------|
-| **In-scope traced** | 178/178 (100.0%) |
-| **Automated** | 166 (93.3%) |
+| **In-scope traced** | 185/185 (100.0%) |
+| **Automated** | 173 (93.5%) |
 | **Manual-only** | 12 |
 | **Deferred** | 3 |
-| **Total ACs** | 181 |
-| **Epics at 100% trace** (in validator summary) | EP-001, EP-002, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013, EP-014 |
-| **Test functions with t.Skip** (project-wide) | 15 |
+| **Total ACs** | 188 |
+| **Epics at 100% trace** (in validator summary) | EP-001, EP-002, EP-004, EP-006, EP-008, EP-009, EP-011, EP-012, EP-013, EP-014, EP-015 |
+| **Test functions with t.Skip** (project-wide) | 16 |
 
 See [VALIDATION.md](../ai-sdlc/tools/validate/VALIDATION.md) for rules. Epics **NEW**, **CANCELED**, or without validator mapping may not appear in the validator epic list.
 
