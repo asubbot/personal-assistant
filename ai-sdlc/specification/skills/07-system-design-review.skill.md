@@ -23,6 +23,16 @@ When this skill is run as **pipeline stage 7** for an epic, execution MUST follo
 - User asks for architecture or design review
 - Before implementation planning (stage 8)
 
+## Design–review iteration ([pipeline.spec.md](../pipeline.spec.md) §2.1)
+
+Stages **6** and **7** repeat until **zero** open findings in **Blocker**, **Major**, and **Medium**, or until the **operator decides** after the cap.
+
+1. **Count iterations** — Each completed save of a **`## Review iteration N`** section in `ep-system-design-review.md` is one stage 7 iteration. **N** must not exceed **5** without an explicit operator decision recorded in chat or in the review file (e.g. under the latest iteration).
+2. **Single file** — Use one `ep-system-design-review.md` per epic. For iteration **N**, add (or replace only if the user agrees to discard a draft) a **top-level** heading `## Review iteration N` with a stable increasing **N**. **Retain** all prior `## Review iteration …` sections for history.
+3. **Exit loop** — After this iteration’s findings are recorded, set **`Iteration summary — open counts`** for Blocker / Major / Medium. If all three are **zero**, the iteration loop is **complete**; stage 8 may follow. **Minor** does not block.
+4. **Cap** — If **N = 5** and any **Blocker**, **Major**, or **Medium** count is still **> 0**, **stop**: list remaining issues and require an **operator decision** before further stage 6/7 work or stage 8.
+5. **Return to stage 6** — When Blocker/Major/Medium > 0 and **N < 5**, the orchestrator runs **stage 6** again to revise `ep-system-design.md`, then runs **stage 7** again (new **delegated** session per pipeline §3).
+
 ## Review Workflow
 
 ### Step 1: Read Related Documents
@@ -64,89 +74,87 @@ Assess:
 
 ### Step 5: Identify Issues
 
-Categorize findings:
+Categorize every finding into **one** severity (definitions align with pipeline **§2.1** exit counts):
 
 | Severity | Criteria |
 |----------|----------|
-| **Critical** | Missing requirement coverage, security gaps, data loss risk |
-| **Medium** | Unclear contracts, missing error handling, incomplete specs |
-| **Minor** | Documentation gaps, consistency issues, improvement suggestions |
+| **Blocker** | Missing requirement coverage, unacceptable security gap, data loss or integrity risk, design that cannot meet must-have REQ/AC |
+| **Major** | Wrong or missing component/contract, traceability break, missing error-handling strategy for required flows, testability blocker |
+| **Medium** | Unclear interfaces, incomplete non-critical specs, inconsistent structure, gaps that should be fixed before implementation |
+| **Minor** | Documentation polish, optional consistency, low-risk improvements |
+
+**Loop exit:** **Blocker = 0 AND Major = 0 AND Medium = 0** (only open items in this iteration; resolved items from prior iterations do not need re-listing unless regressed).
 
 ### Step 6: Output Report
 
-Generate **ep-system-design-review.md** in the same epic folder as `ep-system-design.md` (unless the user agrees another path). Follow the template below.
+Generate or update **ep-system-design-review.md** in the same epic folder as `ep-system-design.md` (unless the user agrees another path). Add **`## Review iteration N`** per **Design–review iteration** above. Follow the template below. On first review, **N = 1**; on subsequent passes after stage 6 fixes, increment **N** (max **5** without operator decision).
 
 ---
 
 ## Report Template
 
+Use **one** `ep-system-design-review.md` per epic. **First** iteration: create the file with the document title once. **Later** iterations: **append** a new top-level `## Review iteration N` block at the end; **do not remove** prior iteration sections.
+
 ```markdown
-# Architecture Review — EP-XXX [Title]
+# Architecture Review — EP-XXX [optional title]
+
+**Reviewer:** [AI Agent / Name]
+
+---
+
+## Review iteration N
 
 **Review date:** YYYY-MM-DD
-**Reviewer:** [AI Agent / Name]
+**Stage 7 iteration:** N of max 5
 **Document reviewed:** [ep-system-design.md](ep-system-design.md)
+**Iteration summary — open counts:** Blocker: X | Major: X | Medium: X | Minor: X
+**Gate:** Pass (Blocker/Major/Medium all zero) | Fail (any Blocker/Major/Medium > 0) | Cap (N = 5 and Blocker/Major/Medium still > 0 — operator decision required)
 
----
+### Overall assessment
 
-## 1. Overall Assessment
+[2–3 sentences for this iteration]
 
-[2-3 sentences summarizing quality and readiness]
+**Verdict:** [Pass gate / Fail gate / Cap — stop for operator]
 
-**Verdict:** [Ready / Needs clarification / Not ready]
+### Strengths
 
----
+- [Specific strength with reference]
 
-## 2. Strengths
+### Issues and recommendations
 
-### 2.1 [Category]
-- [Specific strength with line reference]
-
----
-
-## 3. Issues and Recommendations
-
-### 3.1 Critical
-
-| # | Issue | Context | Recommendation |
-|---|-------|---------|----------------|
-| C1 | [Description] | [Line X: quote] | [Action] |
-
-### 3.2 Medium
+#### Blocker
 
 | # | Issue | Context | Recommendation |
 |---|-------|---------|----------------|
 
-### 3.3 Minor
+#### Major
 
 | # | Issue | Context | Recommendation |
 |---|-------|---------|----------------|
 
----
+#### Medium
 
-## 4. Architectural Decisions
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
 
-### 4.1 Justified Trade-offs
+#### Minor
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+### Architectural decisions (optional)
 
 | Decision | Justification |
 |----------|---------------|
-| [Decision] | [Why it's acceptable] |
+| | |
 
-### 4.2 Potential Improvements (post-MVP)
-
-1. [Improvement]
-
----
-
-## 5. NFR Coverage
+### NFR coverage (optional)
 
 | NFR | Coverage | Status |
 |-----|----------|--------|
-| [REQ-XX.XXX] | [How addressed] | OK / Needs work |
+| | | OK / Needs work |
 
----
-
-## 6. Project Rules Compliance
+### Project rules compliance (optional)
 
 | Rule | Compliance |
 |------|------------|
@@ -155,18 +163,7 @@ Generate **ep-system-design-review.md** in the same epic folder as `ep-system-de
 | Security | ✅ / ❌ / ⚠️ |
 | Testability | ✅ / ❌ / ⚠️ |
 
----
-
-## 7. Summary
-
-**[Ready status]** with action items:
-
-1. **[Action]** — [Details]
-2. **[Action]** — [Details]
-
----
-
-## Traceability
+### Traceability (this iteration)
 
 - **Architecture:** [ep-system-design.md](ep-system-design.md)
 - **Requirements:** [ep-requirements.md](ep-requirements.md)
@@ -179,8 +176,11 @@ Generate **ep-system-design-review.md** in the same epic folder as `ep-system-de
 ## Checklist
 
 Before completing review:
-- [ ] All requirements have traceability entries
-- [ ] Critical issues have clear recommendations
-- [ ] Report follows template structure
-- [ ] Severity ratings are consistent
+- [ ] Iteration number **N** is set (1–5); prior iteration sections preserved when **N > 1**
+- [ ] **Iteration summary — open counts** filled for Blocker / Major / Medium / Minor
+- [ ] Gate reflects **§2.1** (Pass only if Blocker/Major/Medium all zero; Cap if **N = 5** and any of those > 0)
+- [ ] All requirements have traceability entries for this iteration
+- [ ] Blocker / Major / Medium issues have clear recommendations
+- [ ] Report follows template structure under `## Review iteration N`
+- [ ] Severity ratings are consistent with the definitions in Step 5
 - [ ] Action items are specific and actionable

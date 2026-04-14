@@ -1,47 +1,40 @@
 # Project Instructions
 
+Instructions for AI agents working in a **git-backed software repository**.
+
+## How to read this file
+- **From Cooperation through Security (basics):** baseline agent and workspace habits; broadly reusable in similar repos.
+- **`## This repository (PersonalAssistant)`:** paths, tooling, and where to open SDLC files for **this** repository only.
+- **Normative pipeline** (stages, delegation, artefact rules, agent execution expectations): **[ai-sdlc/specification/pipeline.spec.md](ai-sdlc/specification/pipeline.spec.md)** and the stage skills it maps to. **[ai-sdlc/README.md](ai-sdlc/README.md)** is the **directory index** for `ai-sdlc/` (what each path is for).
+
 ## Cooperation with the user
-- The agent works **in cooperation with the user**. When multiple valid options exist (design, naming, artefact location, implementation approach, or interpretation of the request), present them clearly (e.g. A / B or 1A / 2B) with short pros/cons if helpful, and **ask the user to choose**. Do not decide autonomously. Proceed only after an explicit user choice.
-- **Chat language:** Reply in the language the user uses unless they ask otherwise. (Code, commits, and in-repo technical docs remain English per **Language** below.)
+- Work **with** the user: when several valid options exist (design, naming, artefact placement, approach, or interpretation), list them (e.g. A / B) with short pros/cons if useful and **ask for a choice**. Do not decide alone; wait for an explicit choice.
+- **Chat language:** match the user’s language unless they ask otherwise. (Code, commits, and in-repo technical docs stay English per **Language** below.)
 
-## File changing
-- **Product code and behaviour** (`cmd/`, `internal/`, `tests/`, build files, etc.): do not change without my explicit allowance.
-- **Project artefacts** under `ai-sdlc-artefacts/`: follow the relevant skill (e.g. draft in chat until I approve **save** where the skill says so).
-- **Commits:** do not commit without my explicit allowance.
-- **Secrets:** never commit real tokens, passwords, or private keys; do not paste them into the repo or examples. Use placeholders and existing secret-file patterns from README/config docs.
-
-## Architecture
-- Use **KISS** and **fail fast**.
-- Source of truth for requirements and design: **`ai-sdlc-artefacts`** (active epic folders under `epics/EP-XXX/`: scope, requirements, design, implementation plan, acceptance criteria). Process definition: **`ai-sdlc/specification/`** ([pipeline.spec.md](ai-sdlc/specification/pipeline.spec.md), [skills](ai-sdlc/specification/skills/README.md), templates).
-- **Heavy or SDLC tasks:** **read and follow** the matching skill under **`ai-sdlc/specification/skills/`** first. The skill is the workflow (outputs, verification, when to write files). Do not invent a parallel process.
-
-## Heavy tasks, skills, and optional plans/subagents
-- **Primary:** non-trivial work (epics, audits, requirements, code review, consistency checks, etc.) is driven by the **skills**—open the right `*.skill.md` and execute it.
-- **Pipeline stages 7 and 10 (mandatory delegation):** System design review (stage 7) and code review (stage 10) MUST be executed via a **subagent** or an equivalent **fresh agent session**, per [pipeline.spec.md](ai-sdlc/specification/pipeline.spec.md) §3 and the corresponding skills. The orchestrating agent does not substitute for that separate review run in the same uninterrupted author session.
-- **Optional (other work):** if you also use Cursor **plans** or **subagents** for other tasks, align with the same rules: **one step at a time** with clear verification, **review** before moving on, **stop** on failure or doubt and report options (retry, fix manually, skip, change plan)—no automatic retries or bundling multiple steps without my approval. **Parallel** delegated work only when steps are independent and you can still review each outcome clearly.
-- **Commits:** do not commit delegated or multi-step work until I approve; commit messages in English and, when helpful, reference the skill or plan step.
+## Principles
+- **KISS** — prefer the smallest change that solves the problem; avoid unnecessary abstraction and scope creep.
+- **Fail fast** — detect invalid state and errors early; do not swallow failures without a clear, documented reason.
 
 ## Language
 - All code comments, UI/user-facing messages in the product, and commit messages must be in English.
 
 ## Research / Docs-first
-- **Behaviour of this repo:** prefer **`ai-sdlc-artefacts`** and the current codebase over external sources.
-- **Third-party libraries, APIs, and platforms:** search **official documentation** using the USER's keywords (preserve the user's wording). Prefer official docs over GitHub issues or blog posts; fall back only if official docs lack the answer.
+- **Third-party libraries, APIs, and platforms:** use **official documentation**, keeping the **user’s keywords**. Prefer official docs over issues or blogs; fall back only if official docs are insufficient.
 
-## Optional tooling (Cursor): Sourcerer MCP
-- **What it is:** an optional MCP server for **semantic search** over the workspace (code and Markdown chunks), to navigate faster and reduce reading whole files. It is **not** part of the SDLC pipeline.
-- **Pipeline rule:** Stages and skills use files under **`ai-sdlc-artefacts/`** and **`ai-sdlc/specification/`** as the source of truth in git. Do not treat Sourcerer as a substitute for reading skills or approved artefacts.
-- **When it helps:** large repos, exploratory “where is X?” questions across code and docs. For small epic files, normal **read** / **grep** is often enough.
-- **Operator note:** typical setup needs an **embeddings API** (e.g. OpenAI), local index data (often under `.sourcerer/`—**gitignore** it), and respects **`.gitignore`**. Follow the upstream package docs for install and env.
-
-## Quality checks
-- After non-trivial code changes, run **`make check`** (fmt, vet, lint, tests with coverage) when you are allowed to execute commands, and fix failures before handing off—unless I say otherwise.
-- Before epic completion: run **`./bin/validate EP-XXX`** to ensure all Acceptance Criteria have test coverage.
-- For project health check: run **`./bin/validate`** (no args) to see AC coverage across all epics (see [ai-sdlc/tools/validate/VALIDATION.md](ai-sdlc/tools/validate/VALIDATION.md) and [ai-sdlc/tools/validate/README.md](ai-sdlc/tools/validate/README.md)).
+## File changing (general)
+- **Product source and build configuration:** do not change without the repository owner’s **explicit allowance**, except where they have already approved a bounded change (e.g. a task from an agreed implementation plan).
+- **Delivery-process artefacts** (requirements, design, plans, reviews, etc., when this repo defines them): write or update them **only** through the process and skills the owner points you to for **this** repository (see **This repository** below).
+- **Commits:** do not commit without the owner’s explicit allowance—including after delegation or multi-step work. Commit messages in English; when helpful, reference the skill or plan step.
+- **Secrets:** never commit real tokens, passwords, or private keys; do not paste them into the repo or examples. Use placeholders and patterns from the repo’s README and configuration documentation.
 
 ## Security (basics)
-- Treat config paths, SSH, Telegram, and LLM logs as sensitive contexts; follow requirements in epics (e.g. redaction, allowlists) when touching related code.
-- Do not weaken security or reliability for convenience without an explicit trade-off discussion with me.
+- Do not weaken security or reliability for convenience without an explicit trade-off discussion with the owner.
 
-## About this file
-- Suggest improvements to this file when you see ways to make it clearer, more complete, or better aligned with how we work—especially after we change process or tooling.
+## This repository (PersonalAssistant)
+
+- **Product code layout:** treat **`cmd/`**, **`internal/`**, **`tests/`**, and project **build files** (e.g. `Makefile`, Go module files) as product source unless the owner narrows scope further.
+- **Agentic SDLC:** definitions live under **`ai-sdlc/`**. Use **[ai-sdlc/README.md](ai-sdlc/README.md)** as the **directory index** (what each path is for). The **step-by-step pipeline** (stages, delegation, artefact rules, AC validation commands) is only in **[ai-sdlc/specification/pipeline.spec.md](ai-sdlc/specification/pipeline.spec.md)** and the **`*.skill.md`** files it maps to.
+- **Pipeline outputs:** documents produced by the SDLC (scope, strategy, epic files, etc.) go under **`ai-sdlc-artefacts/`** at the repo root, not inside `ai-sdlc/`.
+- **Checks after substantive code edits:** when you may run commands, run **`make check`** after non-trivial changes unless the owner says otherwise.
+- **Optional editor tooling (Cursor): Sourcerer MCP** — optional semantic search over the workspace; do not use it instead of the docs you were instructed to follow. Typical setup needs an embeddings API, a local index (often `.sourcerer/`, **gitignore**), and respects **`.gitignore`** — follow upstream package docs.
+- **Sensitive domains in this codebase:** treat **config paths**, **SSH**, **Telegram**, and **LLM logs** as high-sensitivity when touching related code; follow epic requirements (e.g. redaction, allowlists) where they apply.

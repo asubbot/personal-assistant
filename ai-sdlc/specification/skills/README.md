@@ -1,10 +1,10 @@
 # specification/skills — Agent instructions
 
-Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stage (1–11)**, plus **optional cross-cutting** skills (C4 C3 diagram, project comparison, threat model from code). Paths in skills use **ai-sdlc-artefacts/** (project root: `scope.md`, `strategy.md`, optional `analytics/`) and **ai-sdlc-artefacts/epics/<epic-id>/** for epic artefacts: ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design, ep-system-design-review, ep-implementation-plan, optional ep-code-review, ep-audit-report. Story-level paths are not used by the pipeline.
+Agent instructions for the SDLC pipeline. **One numbered skill per pipeline stage (1–11)**, plus **optional cross-cutting** skills (C4 C3 diagram, project comparison, threat model from code). Paths in skills use **ai-sdlc-artefacts/** (project root: `scope.md`, `strategy.md`, optional `analytics/`) and **ai-sdlc-artefacts/epics/<epic-id>/** for epic artefacts: ep-scope, ep-requirements, ep-acceptance-criteria, ep-system-design, ep-system-design-review, ep-implementation-plan, **ep-code-review** (when saved; **§2.2** uses per-iteration sections), ep-audit-report. Story-level paths are not used by the pipeline.
 
 **Common behaviour:** The agent works in cooperation with the user. When several valid choices exist (output format, path, scope, or interpretation of the request), present them (e.g. A / B) and ask the user which they prefer. Do not proceed until the user has chosen. See [pipeline.spec.md](../pipeline.spec.md) (Human-in-the-loop).
 
-**Mandatory delegation:** Stages **7** (system design review) and **10** (code review) MUST run via a **subagent** or equivalent fresh session—see [pipeline.spec.md](../pipeline.spec.md) §3.
+**Mandatory delegation:** Stages **7** (system design review) and **10** (code review) MUST run via a **subagent** or equivalent fresh session—see [pipeline.spec.md](../pipeline.spec.md) §3. Each **§2.1** or **§2.2** iteration after material edits requires a **new** delegated review run.
 
 ---
 

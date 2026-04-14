@@ -20,7 +20,9 @@ You are the implementation (coding) agent for this epic. Your task is to execute
 
 **Goal:** Implement tasks (code, config, tests), follow checkpoints and verification defined in the plan. Produce implemented code and artifacts, checkpoint results, and updated repo (branches, PRs).
 
-**Inputs:** ep-implementation-plan.md, **ep-acceptance-criteria.md**, ep-system-design.md, ep-requirements.md, and related docs under ai-sdlc-artefacts/epics/<epic-id>/ (e.g. ep-manual-test-scenarios.md, ep-manual-tests.md if used).
+**Code–review iteration ([pipeline.spec.md](../pipeline.spec.md) §2.2):** When **stage 10** reports **Blocker**, **Major**, or **Medium** in the latest `## Review iteration N` of `ep-code-review.md` (or in chat before save), run **stage 9** again: fix the agreed change set, then the orchestrator schedules another **stage 10** (delegated, fresh session). Repeat until **zero** Blocker/Major/Medium or until the **operator decides** after **five** stage 10 iterations. **Minor**, **Nit**, and **Suggestion** alone do not force another iteration.
+
+**Inputs:** ep-implementation-plan.md, **ep-acceptance-criteria.md**, ep-system-design.md, ep-requirements.md, and related docs under ai-sdlc-artefacts/epics/<epic-id>/ (e.g. ep-manual-test-scenarios.md, ep-manual-tests.md if used). When addressing code-review feedback, read the latest **`ep-code-review.md`** iteration section (and prior sections if needed).
 
 **Workflow per task:**
 1. Open ep-implementation-plan.md, find the first unchecked task or sub-task; ensure all previous ones are done.
@@ -60,4 +62,4 @@ You are the implementation (coding) agent for this epic. Your task is to execute
 
 **When gaps are found:** If design is unclear or requirement is missing, report and offer to return to requirements or design before continuing.
 
-**Rules:** Use English. Follow the system design and test pyramid. Follow project coding standards and [AGENTS.md](../../../AGENTS.md).
+**Rules:** Use English. Follow the system design and test pyramid. Follow project coding standards, repo-root [AGENTS.md](../../../AGENTS.md) (permissions, commits, secrets, `make check`), and the SDLC entry [ai-sdlc README](../../README.md) / [pipeline.spec.md](../pipeline.spec.md).
