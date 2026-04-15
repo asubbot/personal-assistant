@@ -7,14 +7,17 @@ import (
 )
 
 // usageTurnAcc sums API usage across all successful LLM completions in one user turn (EP-015).
+// round counts successful main-LLM completions in the turn (1-based), for per-call usage logs.
 type usageTurnAcc struct {
 	promptSum, completionSum int
+	round                    int
 }
 
 func (a *usageTurnAcc) add(u llm.Usage) {
 	if a == nil {
 		return
 	}
+	a.round++
 	a.promptSum += u.PromptTokens
 	a.completionSum += u.CompletionTokens
 }

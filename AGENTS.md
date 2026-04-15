@@ -14,6 +14,7 @@ Instructions for AI agents working in a **git-backed software repository**.
 ## Principles
 - **KISS** — prefer the smallest change that solves the problem; avoid unnecessary abstraction and scope creep.
 - **Fail fast** — detect invalid state and errors early; do not swallow failures without a clear, documented reason.
+- **Explicit JSON configuration** — any product configurations (for example )must spell out every application tuning knob the operator relies on. **`internal/config` must not silently invent or normalize omitted fields** (no hidden defaults at load for JSON-backed behaviour).
 
 ## Language
 - All code comments, UI/user-facing messages in the product, and commit messages must be in English.

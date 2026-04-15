@@ -52,5 +52,13 @@
   "conversation_session": {
     "enabled": true,
     "max_session_exchanges": 5
+  },
+  "read_memory": {
+    "max_span_days": 31,
+    "max_output_bytes": 262144
+  },
+  "write_memory": {
+    "max_append_bytes": 65536,
+    "max_file_bytes": 5242880
   }
 }

@@ -74,17 +74,18 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) 
 	embedder := stubEmbedder{}
 
 	cfgNoBlock := &config.Config{
-		ReadMemory: &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
+		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
+		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 4096, MaxFileBytes: 512 * 1024},
 	}
 	regNoBlock := patools.NewRegistry()
 	if err := registerMemoryToolsIfEnabled(cfgNoBlock, regNoBlock, store, memVec, embedder); err != nil {
-		t.Fatalf("registerMemoryToolsIfEnabled(no write_memory block): %v", err)
+		t.Fatalf("registerMemoryToolsIfEnabled: %v", err)
 	}
 	if _, ok := regNoBlock.Get("read_memory"); !ok {
 		t.Fatal("expected read_memory in registry")
 	}
 	if _, ok := regNoBlock.Get("write_memory"); !ok {
-		t.Fatal("expected write_memory in registry when cfg.write_memory is omitted")
+		t.Fatal("expected write_memory in registry")
 	}
 
 	cfgWrite := &config.Config{
@@ -106,7 +107,10 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryCoreDepsRequired(t *testing.T) 
 	if err != nil {
 		t.Fatalf("memory.NewStore: %v", err)
 	}
-	cfg := &config.Config{}
+	cfg := &config.Config{
+		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8192},
+		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
+	}
 	if err := registerMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{}, stubEmbedder{}); err == nil {
 		t.Fatal("expected error when notes vector is missing")
 	}
@@ -216,7 +220,9 @@ var validSummarizeConfig = `{
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
 }`
 
 // runSummarizeCLI runs `go run ./cmd/pa -summarize=<value>` with minimal config in dir; expects exit 0 (e.g. skip when no data).

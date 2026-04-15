@@ -63,6 +63,18 @@ func TestModel_UnparseableResponse(t *testing.T) {
 	}
 }
 
+// Covers AC-18.019: multi-line classification text (e.g. Ollama Gemma reasoning) with tier label not on the first line.
+func TestModel_Classify_multilineReasoningLabel(t *testing.T) {
+	mc := NewModelClassifier(&mockProvider{content: "brief analysis\nfull_lite"}, nil, 5*time.Second)
+	tier, err := mc.Classify(context.Background(), "что нового?")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tier != TierFullLite {
+		t.Errorf("tier = %s, want full_lite", tier)
+	}
+}
+
 // Covers AC-17.011
 // Supporting AC-17.008
 func TestModel_ThinkBlockStripped(t *testing.T) {

@@ -12,7 +12,7 @@ func TestValidateToolDynamicSelection_maxToolsBelowAlwaysIncludeFails(t *testing
 			TextBasedEnabled: true,
 			AlwaysInclude:    []string{"a", "b"},
 			DynamicSelection: &ToolDynamicSelection{
-				EnabledForFull:        true,
+				Enabled:               true,
 				MaxToolsForLLMRequest: 1,
 			},
 		},
@@ -28,20 +28,20 @@ func TestValidateToolDynamicSelection_maxToolsBelowAlwaysIncludeFails(t *testing
 	}
 }
 
-// Covers AC-18.019
-func TestValidateToolDynamicSelection_fullLiteRequiresTextBased(t *testing.T) {
+// Covers AC-18.019: dynamic_selection.enabled does not require text_based_enabled at load;
+// full_lite applies the cap at runtime only when text_based_enabled is true.
+func TestValidateToolDynamicSelection_enabledOkWithoutTextBased(t *testing.T) {
 	c := &Config{
 		Tools: &ToolsConfig{
 			TextBasedEnabled: false,
 			DynamicSelection: &ToolDynamicSelection{
-				EnabledForFullLite:    true,
-				EnabledForFull:        false,
+				Enabled:               true,
 				MaxToolsForLLMRequest: 5,
 			},
 		},
 	}
-	if err := validateToolDynamicSelection(c); err == nil {
-		t.Fatal("expected error when enabled_for_full_lite without text_based_enabled")
+	if err := validateToolDynamicSelection(c); err != nil {
+		t.Fatalf("unexpected: %v", err)
 	}
 }
 
@@ -50,13 +50,27 @@ func TestValidateToolDynamicSelection_okWhenDisabledFlags(t *testing.T) {
 	c := &Config{
 		Tools: &ToolsConfig{
 			DynamicSelection: &ToolDynamicSelection{
-				EnabledForFullLite:    false,
-				EnabledForFull:        false,
+				Enabled:               false,
 				MaxToolsForLLMRequest: 0,
 			},
 		},
 	}
 	if err := validateToolDynamicSelection(c); err != nil {
 		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+// Covers AC-18.019: when enabled, max_tools_for_llm_request must be explicit (>= 1); no load-time default.
+func TestValidateToolDynamicSelection_enabledRequiresPositiveMax(t *testing.T) {
+	c := &Config{
+		Tools: &ToolsConfig{
+			TextBasedEnabled: true,
+			DynamicSelection: &ToolDynamicSelection{
+				Enabled: true,
+			},
+		},
+	}
+	if err := validateToolDynamicSelection(c); err == nil {
+		t.Fatal("expected error when enabled and max_tools_for_llm_request is zero")
 	}
 }

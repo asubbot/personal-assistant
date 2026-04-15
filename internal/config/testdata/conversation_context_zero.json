@@ -48,5 +48,13 @@
   "conversation_context": {
     "max_dynamic_system_runes": 0,
     "vector_search_top_k": 10
+  },
+  "read_memory": {
+    "max_span_days": 31,
+    "max_output_bytes": 262144
+  },
+  "write_memory": {
+    "max_append_bytes": 65536,
+    "max_file_bytes": 5242880
   }
 }

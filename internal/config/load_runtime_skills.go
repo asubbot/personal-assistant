@@ -12,7 +12,6 @@ func finalizeRuntimeSkills(c *Config) error {
 		return nil
 	}
 	rs := c.RuntimeSkills
-	applyRuntimeSkillsDefaults(rs)
 	if err := validateRuntimeSkillsNumbers(rs); err != nil {
 		return err
 	}
@@ -36,15 +35,6 @@ func finalizeRuntimeSkills(c *Config) error {
 	}
 	c.RuntimeSkillPackages = pkgs
 	return nil
-}
-
-func applyRuntimeSkillsDefaults(rs *RuntimeSkillsConfig) {
-	if rs.MaxSkillsPerTurn < 1 {
-		rs.MaxSkillsPerTurn = 2
-	}
-	if rs.ToolVectorTopKCap < 1 {
-		rs.ToolVectorTopKCap = 20
-	}
 }
 
 func validateRuntimeSkillsNumbers(rs *RuntimeSkillsConfig) error {

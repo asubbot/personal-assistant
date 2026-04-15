@@ -121,8 +121,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 		firstProviderSupportsTools: true,
 		toolsCfg:                   &config.ToolsConfig{TextBasedEnabled: true},
 		toolsDynamic: &config.ToolDynamicSelection{
-			EnabledForFull:        true,
-			EnabledForFullLite:    false,
+			Enabled:               true,
 			MaxToolsForLLMRequest: 2,
 		},
 	}
@@ -305,8 +304,7 @@ func TestEP018_fullLite_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
 		firstProviderSupportsTools: true,
 		toolsCfg:                   &config.ToolsConfig{TextBasedEnabled: true},
 		toolsDynamic: &config.ToolDynamicSelection{
-			EnabledForFullLite:    true,
-			EnabledForFull:        false,
+			Enabled:               true,
 			MaxToolsForLLMRequest: 2,
 		},
 	}

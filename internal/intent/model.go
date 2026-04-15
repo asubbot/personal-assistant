@@ -71,15 +71,32 @@ var thinkBlockRe = regexp.MustCompile(`(?s)<think>.*?</think>`)
 func parseTierResponse(content string) (Tier, error) {
 	cleaned := thinkBlockRe.ReplaceAllString(content, "")
 	s := strings.TrimSpace(strings.ToLower(cleaned))
-	if strings.HasPrefix(s, "simple") {
-		return TierSimple, nil
+	if t, ok := tierFromSingleLineOrPrefix(s); ok {
+		return t, nil
 	}
-	// full_lite before full — "full" is a prefix of "full_lite" in some tokenizer outputs; check multi-token label first.
-	if strings.HasPrefix(s, "full_lite") || strings.HasPrefix(s, "full-lite") {
-		return TierFullLite, nil
-	}
-	if strings.HasPrefix(s, "full") {
-		return TierFull, nil
+	// Multi-line bodies (e.g. Ollama Gemma "reasoning" with prose then a label on the last line).
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if t, ok := tierFromSingleLineOrPrefix(line); ok {
+			return t, nil
+		}
 	}
 	return "", fmt.Errorf("unparseable classification response: %q", content)
+}
+
+// tierFromSingleLineOrPrefix maps one line (or whole single-line body) to a tier. full_lite is checked before full.
+func tierFromSingleLineOrPrefix(s string) (Tier, bool) {
+	if strings.HasPrefix(s, "simple") {
+		return TierSimple, true
+	}
+	if strings.HasPrefix(s, "full_lite") || strings.HasPrefix(s, "full-lite") {
+		return TierFullLite, true
+	}
+	if strings.HasPrefix(s, "full") {
+		return TierFull, true
+	}
+	return "", false
 }

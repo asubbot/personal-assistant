@@ -118,6 +118,9 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"tools.llm_escalation enabled with one provider", "tools_llm_escalation_enabled_one_provider.json", "tools.llm_escalation.enabled requires at least two llm_providers"},
 		{"tools.llm_escalation enabled max_per_user_message zero", "tools_llm_escalation_max_zero.json", "max_per_user_message must be >= 1 when enabled"},
 		{"missing tools section", "missing_tools.json", "tools is required"},
+		{"missing read_memory", "missing_read_memory.json", "read_memory is required"},
+		{"missing write_memory", "missing_write_memory.json", "write_memory is required"},
+		{"dynamic_selection enabled max zero", "tools_dynamic_selection_enabled_max_zero.json", "max_tools_for_llm_request must be >= 1"},
 		{"missing log_redaction section", "missing_log_redaction.json", "log_redaction is required"},
 		{"missing pa_timezone", "missing_pa_timezone.json", "pa_timezone is required"},
 		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
@@ -244,7 +247,9 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	  "log_redaction": { "additional_patterns": [] },
 	  "pa_timezone": "UTC",
 	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-	  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+	  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+	  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
 	}`
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
 		t.Fatal(err)
@@ -343,7 +348,9 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -394,7 +401,9 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -523,7 +532,9 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -587,7 +598,9 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -653,7 +666,9 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 }
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)

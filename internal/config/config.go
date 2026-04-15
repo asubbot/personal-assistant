@@ -9,12 +9,6 @@ import (
 // ConfigFileName is the name of the main config file inside the config directory (PA_CONFIG_DIR).
 const ConfigFileName = "config.json"
 
-// Defaults for write_memory limits when the JSON block omits zero values (EP-016); shared with cmd/pa and validateWriteMemory.
-const (
-	WriteMemoryDefaultMaxAppendBytes = 64 * 1024
-	WriteMemoryDefaultMaxFileBytes   = 5 * 1024 * 1024
-)
-
 // Config holds application configuration loaded from JSON.
 type Config struct {
 	Version             int                        `json:"version"`
@@ -30,7 +24,7 @@ type Config struct {
 	ToolCatalog *toolcatalog.Catalog `json:"-"`
 	// ToolPreSelection is required; all numeric fields must be >= 1 (no runtime defaults).
 	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
-	// Tools is required; use {"tools":{}} minimum; text_based_enabled defaults to false when the key is omitted inside the object.
+	// Tools is required; use {"tools":{}} minimum. Prefer explicit text_based_enabled in JSON for clarity.
 	Tools *ToolsConfig `json:"tools"`
 	// CreateToolSecretRegex is compiled at Load from tools.create_tool_secret_patterns (REQ-09.017). Nil when absent or empty.
 	CreateToolSecretRegex []*regexp.Regexp `json:"-"`
@@ -42,10 +36,10 @@ type Config struct {
 	RuntimeSkillPackages []*runtimeskills.Package `json:"-"`
 	// ConversationSession is optional; when enabled, keeps a sliding window of exchanges per session key (EP-014).
 	ConversationSession *ConversationSessionConfig `json:"conversation_session,omitempty"`
-	// ReadMemory is optional JSON; limits only. Native read_memory is registered whenever memory_dir is available (EP-002).
-	ReadMemory *ReadMemoryConfig `json:"read_memory,omitempty"`
-	// WriteMemory is optional JSON for limit tuning; write_memory is a core tool and always registers when runtime memory dependencies are healthy (EP-016).
-	WriteMemory *WriteMemoryConfig `json:"write_memory,omitempty"`
+	// ReadMemory is required; limits for native read_memory (EP-002). No load-time defaults.
+	ReadMemory *ReadMemoryConfig `json:"read_memory"`
+	// WriteMemory is required; limits for native write_memory (EP-016). No load-time defaults.
+	WriteMemory *WriteMemoryConfig `json:"write_memory"`
 	// IntentClassifier is optional; when enabled, classifies messages into complexity tiers before prompt assembly (EP-017).
 	IntentClassifier *IntentClassifierConfig `json:"intent_classifier,omitempty"`
 }
@@ -56,7 +50,7 @@ type ReadMemoryConfig struct {
 	MaxOutputBytes int `json:"max_output_bytes"`
 }
 
-// WriteMemoryConfig limits the native write_memory tool; omitting the block keeps default limits (EP-016).
+// WriteMemoryConfig limits the native write_memory tool (EP-016). All fields must be set in JSON.
 type WriteMemoryConfig struct {
 	MaxAppendBytes int `json:"max_append_bytes"`
 	MaxFileBytes   int `json:"max_file_bytes"`
@@ -81,7 +75,7 @@ type ToolsConfig struct {
 	TextBasedEnabled bool `json:"text_based_enabled"`
 	// AlwaysInclude lists catalog or allowed-native tool ids merged into every turn’s tool set (EP-013, REQ-13.011).
 	AlwaysInclude []string `json:"always_include,omitempty"`
-	// DynamicSelection is optional (EP-018): cap tools sent to the main LLM when enabled for full_lite and/or full tier.
+	// DynamicSelection is optional (EP-018). When present and enabled, max_tools_for_llm_request must be set in JSON (>= 1).
 	DynamicSelection *ToolDynamicSelection `json:"dynamic_selection,omitempty"`
 	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
 	CreateToolSecretPatterns []string             `json:"create_tool_secret_patterns,omitempty"`
@@ -89,9 +83,10 @@ type ToolsConfig struct {
 }
 
 // ToolDynamicSelection configures EP-018 dynamic narrowing of the main LLM tool list.
+// When Enabled is true, TierFull applies the cap after merge; TierFullLite applies it only if
+// tools.text_based_enabled is also true (Hermes path).
 type ToolDynamicSelection struct {
-	EnabledForFullLite    bool `json:"enabled_for_full_lite"`
-	EnabledForFull        bool `json:"enabled_for_full"`
+	Enabled               bool `json:"enabled"`
 	MaxToolsForLLMRequest int  `json:"max_tools_for_llm_request"`
 }
 

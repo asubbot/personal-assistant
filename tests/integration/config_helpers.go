@@ -8,7 +8,8 @@ import (
 )
 
 // ensureCoreRunConfigRequiredSections fills required config sections when tests bypass config.Load.
-// Production configs must include these keys explicitly; this helper only avoids duplicating literals in tests.
+// Production configs must include these keys explicitly in config.json; the loader does not inject them.
+// This helper only wires the same explicit values tests would otherwise repeat on every &config.Config{}.
 func ensureCoreRunConfigRequiredSections(cfg *config.Config) {
 	if cfg == nil {
 		return
@@ -31,6 +32,18 @@ func ensureCoreRunConfigRequiredSections(cfg *config.Config) {
 		cfg.ConversationContext = &config.ConversationContextConfig{
 			MaxDynamicSystemRunes: 4000,
 			VectorSearchTopK:      10,
+		}
+	}
+	if cfg.ReadMemory == nil {
+		cfg.ReadMemory = &config.ReadMemoryConfig{
+			MaxSpanDays:    31,
+			MaxOutputBytes: 256 * 1024,
+		}
+	}
+	if cfg.WriteMemory == nil {
+		cfg.WriteMemory = &config.WriteMemoryConfig{
+			MaxAppendBytes: 65536,
+			MaxFileBytes:   5 * 1024 * 1024,
 		}
 	}
 }

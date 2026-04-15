@@ -205,6 +205,20 @@ func decodeAssistantMessageContent(raw json.RawMessage) (string, error) {
 	return "", fmt.Errorf("assistant message content: unsupported JSON shape")
 }
 
+// assistantTextFromMessage resolves the visible assistant string when the API splits "thinking" vs answer.
+// Ollama OpenAI-compatible: some models (e.g. Gemma 4) return empty decoded content and put text in "reasoning"
+// (see ollama/ollama#15288). OpenAI-style models may use reasoning_content when content is empty.
+func assistantTextFromMessage(decodedContent string, msg *openAIChoiceMessage) string {
+	content := decodedContent
+	if strings.TrimSpace(content) == "" && strings.TrimSpace(msg.ReasoningContent) != "" {
+		content = msg.ReasoningContent
+	}
+	if strings.TrimSpace(content) == "" && strings.TrimSpace(msg.Reasoning) != "" {
+		content = msg.Reasoning
+	}
+	return content
+}
+
 func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult, error) {
 	if resp.StatusCode != http.StatusOK {
 		var errBody struct {
@@ -231,9 +245,7 @@ func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult
 	if err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
-	if strings.TrimSpace(content) == "" && strings.TrimSpace(msg.ReasoningContent) != "" {
-		content = msg.ReasoningContent
-	}
+	content = assistantTextFromMessage(content, msg)
 	usage := Usage{}
 	if out.Usage != nil {
 		usage.PromptTokens = out.Usage.PromptTokens
@@ -314,6 +326,7 @@ type openAIToolCall struct {
 type openAIChoiceMessage struct {
 	Content          json.RawMessage  `json:"content"`
 	ReasoningContent string           `json:"reasoning_content,omitempty"`
+	Reasoning        string           `json:"reasoning,omitempty"` // Ollama: thinking models may use this when content is empty
 	ToolCalls        []openAIToolCall `json:"tool_calls,omitempty"`
 }
 

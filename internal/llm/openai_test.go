@@ -57,6 +57,28 @@ func TestOpenAICompatible_Complete_reasoningContentFallback(t *testing.T) {
 	}
 }
 
+// Covers AC-01.036: Ollama OpenAI-compatible — Gemma and other thinking models may leave content empty and use "reasoning".
+func TestOpenAICompatible_Complete_ollamaReasoningFallback(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":null,"reasoning":"full_lite"}}],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}`))
+	}))
+	defer server.Close()
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text"}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := p.Complete(context.Background(), []Message{{Role: "user", Content: "hi"}}, nil)
+	if err != nil {
+		t.Fatalf("Complete: %v", err)
+	}
+	if result.Content != "full_lite" {
+		t.Errorf("Content = %q, want full_lite", result.Content)
+	}
+}
+
 // Covers AC-01.036: traceability for TestDecodeAssistantMessageContent_variants.
 func TestDecodeAssistantMessageContent_variants(t *testing.T) {
 	tests := []struct {

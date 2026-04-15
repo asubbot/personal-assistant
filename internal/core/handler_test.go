@@ -218,6 +218,13 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	if provider.lastMessages[0].Role != "system" || !strings.HasPrefix(sys, systemprompt.TrustPolicy) {
 		t.Errorf("messages[0] = %+v, want system starting with trust policy", provider.lastMessages[0])
 	}
+	if !strings.Contains(sys, "Current calendar date (assistant timezone): ") {
+		t.Errorf("system message missing calendar date line: %s", sys)
+	}
+	wantDate := time.Now().UTC().Format("2006-01-02")
+	if !strings.Contains(sys, wantDate) {
+		t.Errorf("system message should contain today's UTC date %q", wantDate)
+	}
 	if !strings.Contains(sys, "You are a helpful assistant. Reply concisely.") {
 		t.Errorf("system message missing personality line: %s", sys)
 	}
@@ -309,15 +316,15 @@ func TestHandleMessage_logsMetadataAtInfo(t *testing.T) {
 
 	_, _ = h.HandleMessage(context.Background(), 1, "", "hi")
 
-	var hasLLMCall bool
+	var hasMainLLM bool
 	for _, r := range cap.records {
-		if r.msg == "llm call" && r.level == slog.LevelInfo {
-			hasLLMCall = true
+		if r.msg == "main llm completion" && r.level == slog.LevelInfo {
+			hasMainLLM = true
 			break
 		}
 	}
-	if !hasLLMCall {
-		t.Errorf("expected one Info \"llm call\" record, got records: %+v", cap.records)
+	if !hasMainLLM {
+		t.Errorf("expected one Info \"main llm completion\" record, got records: %+v", cap.records)
 	}
 	// No Debug records (request/response) at INFO level
 	for _, r := range cap.records {
@@ -341,7 +348,7 @@ func TestHandleMessage_logsFullRequestResponseAtDebug(t *testing.T) {
 		switch r.msg {
 		case "llm request":
 			hasRequest = true
-		case "llm call":
+		case "main llm completion":
 			hasCall = true
 		case "llm response":
 			hasResponse = true

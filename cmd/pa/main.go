@@ -710,55 +710,23 @@ func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memor
 	if memoryStore == nil {
 		return fmt.Errorf("memory tools: memory store is required")
 	}
-	span, outBytes := readMemoryLimits(cfg)
-	reg.Register(tools.NewReadMemoryTool(memoryStore, span, outBytes))
+	if cfg.ReadMemory == nil || cfg.WriteMemory == nil {
+		return fmt.Errorf("memory tools: read_memory and write_memory are required in config")
+	}
+	rm := cfg.ReadMemory
+	wm := cfg.WriteMemory
+	reg.Register(tools.NewReadMemoryTool(memoryStore, rm.MaxSpanDays, rm.MaxOutputBytes))
 
 	// write_memory is a core feature and must be available in full mode at startup.
 	if !writeMemoryRuntimeReady(memVec, embedder) {
 		return fmt.Errorf("memory tools: write_memory requires notes vector and embedding provider")
 	}
-	maxAppend, maxFile := writeMemoryLimits(writeMemoryConfig(cfg))
-	reg.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, maxAppend, maxFile))
+	reg.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, wm.MaxAppendBytes, wm.MaxFileBytes))
 	return nil
-}
-
-func readMemoryLimits(cfg *config.Config) (span, outBytes int) {
-	span, outBytes = 31, 256*1024
-	if cfg == nil || cfg.ReadMemory == nil {
-		return span, outBytes
-	}
-	if cfg.ReadMemory.MaxSpanDays != 0 {
-		span = cfg.ReadMemory.MaxSpanDays
-	}
-	if cfg.ReadMemory.MaxOutputBytes != 0 {
-		outBytes = cfg.ReadMemory.MaxOutputBytes
-	}
-	return span, outBytes
 }
 
 func writeMemoryRuntimeReady(memVec *core.MemoryVectors, embedder embedding.Embedder) bool {
 	return memVec != nil && memVec.Notes != nil && embedder != nil
-}
-
-func writeMemoryConfig(cfg *config.Config) *config.WriteMemoryConfig {
-	if cfg == nil {
-		return nil
-	}
-	return cfg.WriteMemory
-}
-
-func writeMemoryLimits(wm *config.WriteMemoryConfig) (maxAppend, maxFile int) {
-	maxAppend, maxFile = config.WriteMemoryDefaultMaxAppendBytes, config.WriteMemoryDefaultMaxFileBytes
-	if wm == nil {
-		return maxAppend, maxFile
-	}
-	if wm.MaxAppendBytes != 0 {
-		maxAppend = wm.MaxAppendBytes
-	}
-	if wm.MaxFileBytes != 0 {
-		maxFile = wm.MaxFileBytes
-	}
-	return maxAppend, maxFile
 }
 
 // buildIntentClassifier constructs the EP-017 cascade classifier from config. Returns nil when disabled.

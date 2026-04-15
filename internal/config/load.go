@@ -108,8 +108,23 @@ func validateCore(c *Config) error {
 }
 
 func validateMandatoryJSONSections(c *Config) error {
-	finalizeReadMemoryDefaults(c)
+	if err := validateMandatoryJSONSectionsCore(c); err != nil {
+		return err
+	}
+	return validateIntentClassifier(c)
+}
+
+func validateMandatoryJSONSectionsCore(c *Config) error {
 	if err := validateTools(c); err != nil {
+		return err
+	}
+	if err := validateReadMemory(c); err != nil {
+		return err
+	}
+	if err := validateWriteMemory(c); err != nil {
+		return err
+	}
+	if err := validateRuntimeSkillsNumericFields(c); err != nil {
 		return err
 	}
 	if err := validateLogRedaction(c); err != nil {
@@ -130,24 +145,12 @@ func validateMandatoryJSONSections(c *Config) error {
 	if err := validateLLMEscalation(c); err != nil {
 		return err
 	}
-	if err := validateWebTools(c); err != nil {
-		return err
-	}
-	if err := validateReadMemory(c); err != nil {
-		return err
-	}
-	if err := validateWriteMemory(c); err != nil {
-		return err
-	}
-	if err := validateIntentClassifier(c); err != nil {
-		return err
-	}
-	return nil
+	return validateWebTools(c)
 }
 
 func validateReadMemory(c *Config) error {
 	if c == nil || c.ReadMemory == nil {
-		return nil
+		return errors.New("config: read_memory is required")
 	}
 	rm := c.ReadMemory
 	if rm.MaxSpanDays < 1 || rm.MaxSpanDays > 3660 {
@@ -159,39 +162,31 @@ func validateReadMemory(c *Config) error {
 	return nil
 }
 
-func finalizeReadMemoryDefaults(c *Config) {
-	if c == nil {
-		return
-	}
-	if c.ReadMemory == nil {
-		c.ReadMemory = &ReadMemoryConfig{MaxSpanDays: 31, MaxOutputBytes: 256 * 1024}
-		return
-	}
-	rm := c.ReadMemory
-	if rm.MaxSpanDays == 0 {
-		rm.MaxSpanDays = 31
-	}
-	if rm.MaxOutputBytes == 0 {
-		rm.MaxOutputBytes = 256 * 1024
-	}
-}
-
 func validateWriteMemory(c *Config) error {
 	if c == nil || c.WriteMemory == nil {
-		return nil
+		return errors.New("config: write_memory is required")
 	}
 	wm := c.WriteMemory
-	if wm.MaxAppendBytes == 0 {
-		wm.MaxAppendBytes = WriteMemoryDefaultMaxAppendBytes
-	}
-	if wm.MaxFileBytes == 0 {
-		wm.MaxFileBytes = WriteMemoryDefaultMaxFileBytes
-	}
 	if wm.MaxAppendBytes < 256 || wm.MaxAppendBytes > 1024*1024 {
 		return errors.New("config: write_memory.max_append_bytes must be in 256..1048576")
 	}
 	if wm.MaxFileBytes < wm.MaxAppendBytes || wm.MaxFileBytes > 50*1024*1024 {
 		return errors.New("config: write_memory.max_file_bytes must be >= max_append_bytes and at most 52428800")
+	}
+	return nil
+}
+
+// validateRuntimeSkillsNumericFields requires explicit caps when runtime_skills is present (no implicit defaults).
+func validateRuntimeSkillsNumericFields(c *Config) error {
+	if c == nil || c.RuntimeSkills == nil {
+		return nil
+	}
+	rs := c.RuntimeSkills
+	if rs.MaxSkillsPerTurn < 1 {
+		return errors.New("config: runtime_skills.max_skills_per_turn must be >= 1")
+	}
+	if rs.ToolVectorTopKCap < 1 {
+		return errors.New("config: runtime_skills.tool_vector_top_k_cap must be >= 1")
 	}
 	return nil
 }
@@ -609,14 +604,11 @@ func validateToolDynamicSelection(c *Config) error {
 		return nil
 	}
 	ds := c.Tools.DynamicSelection
-	if !ds.EnabledForFullLite && !ds.EnabledForFull {
+	if !ds.Enabled {
 		return nil
 	}
 	if ds.MaxToolsForLLMRequest < 1 {
-		return errors.New("config: tools.dynamic_selection.max_tools_for_llm_request must be >= 1 when enabled_for_full_lite or enabled_for_full")
-	}
-	if ds.EnabledForFullLite && !c.Tools.TextBasedEnabled {
-		return errors.New("config: tools.dynamic_selection.enabled_for_full_lite requires tools.text_based_enabled")
+		return errors.New("config: tools.dynamic_selection.max_tools_for_llm_request must be >= 1 when dynamic_selection.enabled is true")
 	}
 	n := countValidAlwaysIncludeTools(c)
 	if n > 0 && ds.MaxToolsForLLMRequest < n {

@@ -11,6 +11,7 @@ import (
 )
 
 // Covers AC-15.001: multi-completion turn aggregates usage into the trailing footer (also covers REQ-15.006 layout).
+// Also asserts one INFO "main llm completion" per successful main-model Complete (usage observability).
 func TestHandleMessage_EP015_tokenFooter_sumsAcrossToolRound(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -37,11 +38,13 @@ func TestHandleMessage_EP015_tokenFooter_sumsAcrossToolRound(t *testing.T) {
 			Usage:   llm.Usage{PromptTokens: 20, CompletionTokens: 7, TotalTokens: 27},
 		}, nil
 	}
+	cap := &captureHandler{level: slog.LevelInfo}
+	logger := slog.New(cap)
 	h := &conversationHandler{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
-		logger:     slog.Default(),
+		logger:     logger,
 	}
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo hi")
@@ -51,6 +54,15 @@ func TestHandleMessage_EP015_tokenFooter_sumsAcrossToolRound(t *testing.T) {
 	wantSuffix := "\n*Tokens 42 (in: 30 / out: 12) · full*"
 	if !strings.HasSuffix(reply, wantSuffix) {
 		t.Fatalf("reply = %q, want suffix %q", reply, wantSuffix)
+	}
+	var mainLLMLogs int
+	for _, r := range cap.records {
+		if r.msg == "main llm completion" && r.level == slog.LevelInfo {
+			mainLLMLogs++
+		}
+	}
+	if mainLLMLogs != 2 {
+		t.Fatalf("expected 2 Info \"main llm completion\" records, got %d: %+v", mainLLMLogs, cap.records)
 	}
 }
 

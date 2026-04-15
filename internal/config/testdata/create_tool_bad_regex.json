@@ -35,7 +35,9 @@
   "nodes": {},
   "tools": {
     "text_based_enabled": false,
-    "create_tool_secret_patterns": ["("]
+    "create_tool_secret_patterns": [
+      "("
+    ]
   },
   "log_redaction": {
     "additional_patterns": []
@@ -49,5 +51,13 @@
   "conversation_context": {
     "max_dynamic_system_runes": 4000,
     "vector_search_top_k": 10
+  },
+  "read_memory": {
+    "max_span_days": 31,
+    "max_output_bytes": 262144
+  },
+  "write_memory": {
+    "max_append_bytes": 65536,
+    "max_file_bytes": 5242880
   }
 }

@@ -22,7 +22,8 @@
     "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": ""
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml"
   },
   "embedding": {
     "type": "ollama",
@@ -51,9 +52,5 @@
   "read_memory": {
     "max_span_days": 31,
     "max_output_bytes": 262144
-  },
-  "write_memory": {
-    "max_append_bytes": 65536,
-    "max_file_bytes": 5242880
   }
 }

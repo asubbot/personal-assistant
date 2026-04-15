@@ -173,6 +173,7 @@ func (h *conversationHandler) completeAt(ctx context.Context, st *llmTurnState, 
 	}
 	if usageAcc != nil && result != nil {
 		usageAcc.add(result.Usage)
+		h.logMainLLMCompletion(ctx, usageAcc.round, len(messages), result)
 	}
 	return result, nil
 }
@@ -223,14 +224,25 @@ func textToolModeAfterFirstCompletion(textPath bool, result *llm.CompletionResul
 // webResearchHint is a single-line reminder; detailed rules live in the optional runtime skill web-source-research.
 const webResearchHint = "For web or GitHub research, keep tool outputs small (prefer raw files, API, or git on nodes over huge HTML pages). A fuller playbook may appear in Runtime skills when relevant."
 
-// systemStaticHead returns the fixed prefix (trust, marker supplement, personality).
+// systemStaticHead returns the fixed prefix (trust, marker supplement, calendar date, personality).
 // hasRetrieved reflects whether vector search returned at least one non-empty chunk before tail fitting (REQ-13.016).
+// The date line is YYYY-MM-DD only (no clock time) in pa_timezone so prompt text stays stable within a calendar day for caching.
 func (h *conversationHandler) systemStaticHead(hasRetrieved bool) string {
+	dateStr := todayCalendarDateInPALocation(h)
+	dateLine := "Current calendar date (assistant timezone): " + dateStr + "\n\n"
 	personality := "You are a helpful assistant. Reply concisely.\n\n" + webResearchHint
 	if hasRetrieved {
 		personality = "You are a personal assistant. Reply concisely.\n\n" + webResearchHint
 	}
-	return systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + personality + "\n\n"
+	return systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + dateLine + personality + "\n\n"
+}
+
+func todayCalendarDateInPALocation(h *conversationHandler) string {
+	loc := time.UTC
+	if h != nil && h.paLoc != nil {
+		loc = h.paLoc
+	}
+	return time.Now().In(loc).Format("2006-01-02")
 }
 
 func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, sessionKey, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, textPath bool, st *llmTurnState, usageAcc *usageTurnAcc) (string, error) {
@@ -370,7 +382,7 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 		if errMer != nil {
 			return "", errMer
 		}
-		if h.toolsDynamic != nil && h.toolsDynamic.EnabledForFull && len(merged) > 0 {
+		if h.toolsDynamic != nil && h.toolsDynamic.Enabled && len(merged) > 0 {
 			merged = h.pickToolsForMainRequest(ctx, merged, h.toolsDynamic.MaxToolsForLLMRequest)
 			dynamicRan = true
 		}
@@ -411,7 +423,7 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 		if errMer != nil {
 			return "", errMer
 		}
-		if h.toolsDynamic != nil && h.toolsDynamic.EnabledForFullLite && h.textBasedEnabled && len(merged) > 0 {
+		if h.toolsDynamic != nil && h.toolsDynamic.Enabled && h.textBasedEnabled && len(merged) > 0 {
 			merged = h.pickToolsForMainRequest(ctx, merged, h.toolsDynamic.MaxToolsForLLMRequest)
 			dynamicRan = true
 		}
@@ -783,7 +795,6 @@ func (h *conversationHandler) handleLLMSuccess(ctx context.Context, requestID st
 			DurationMs:      duration.Milliseconds(),
 		})
 	}
-	h.logLLMMetadata(ctx, len(messages), result)
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMResponse(ctx, result)
 	}
@@ -875,9 +886,26 @@ func (h *conversationHandler) logLLMRequest(ctx context.Context, messages []llm.
 	}
 }
 
-// logLLMMetadata logs message count, response length, and usage at INFO (REQ-01.021).
-func (h *conversationHandler) logLLMMetadata(ctx context.Context, messageCount int, result *llm.CompletionResult) {
-	h.logger.InfoContext(ctx, "llm call", "message_count", messageCount, "response_len", len(result.Content), "prompt_tokens", result.Usage.PromptTokens, "completion_tokens", result.Usage.CompletionTokens, "total_tokens", result.Usage.TotalTokens)
+// logMainLLMCompletion logs per-completion usage for the main chat model at INFO (REQ-01.021: metadata only).
+// One line per successful Complete (including each tool-follow-up round).
+func (h *conversationHandler) logMainLLMCompletion(ctx context.Context, round, messageCount int, result *llm.CompletionResult) {
+	if h == nil || h.logger == nil || result == nil {
+		return
+	}
+	model := result.Model
+	if model == "" {
+		model = h.model
+	}
+	h.logger.InfoContext(ctx, "main llm completion",
+		"round", round,
+		"message_count", messageCount,
+		"response_len", len(result.Content),
+		"tool_calls", len(result.ToolCalls),
+		"prompt_tokens", result.Usage.PromptTokens,
+		"completion_tokens", result.Usage.CompletionTokens,
+		"total_tokens", result.Usage.TotalTokens,
+		"model", model,
+	)
 }
 
 // logLLMResponse logs the full response at DEBUG (REQ-01.021). Content may be truncated and redacted (REQ-01.026).

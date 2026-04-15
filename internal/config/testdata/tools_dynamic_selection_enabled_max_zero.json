@@ -16,13 +16,21 @@
       "default_response_format": "text"
     }
   ],
+  "tools": {
+    "text_based_enabled": false,
+    "dynamic_selection": {
+      "enabled": true,
+      "max_tools_for_llm_request": 0
+    }
+  },
   "paths": {
     "memory_dir": "/data/memory",
     "log_path": "/data/pa.log",
     "vector_index_path": "/data/pa_vectors.sqlite",
     "llm_log_dir": "/data/llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": ""
+    "scheduled_tasks_path": "",
+    "tool_catalog_path": "valid_tools.yaml"
   },
   "embedding": {
     "type": "ollama",
@@ -32,9 +40,6 @@
     "batch_size": 100
   },
   "nodes": {},
-  "tools": {
-    "text_based_enabled": false
-  },
   "log_redaction": {
     "additional_patterns": []
   },
