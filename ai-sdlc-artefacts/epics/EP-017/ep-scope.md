@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-017 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Intent Classifier for Prompt Optimization |
 | **Description** | Add a two-stage intent classification step (fast heuristic → small model fallback) before LLM prompt construction so that simple messages are served with a minimal prompt — no tools, no RAG context, no dynamic tail — significantly reducing input token consumption on the main model. |
 | **First version date** | 2026-04-15 |

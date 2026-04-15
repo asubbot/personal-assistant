@@ -46,6 +46,8 @@ type Config struct {
 	ReadMemory *ReadMemoryConfig `json:"read_memory,omitempty"`
 	// WriteMemory is optional JSON for limit tuning; write_memory is a core tool and always registers when runtime memory dependencies are healthy (EP-016).
 	WriteMemory *WriteMemoryConfig `json:"write_memory,omitempty"`
+	// IntentClassifier is optional; when enabled, classifies messages into complexity tiers before prompt assembly (EP-017).
+	IntentClassifier *IntentClassifierConfig `json:"intent_classifier,omitempty"`
 }
 
 // ReadMemoryConfig limits the native read_memory tool (EP-002). The tool is always registered when memory is configured.
@@ -116,6 +118,32 @@ type RedactionPattern struct {
 	ID          string `json:"id"`
 	Regex       string `json:"regex"`
 	Replacement string `json:"replacement"`
+}
+
+// IntentClassifierConfig holds EP-017 intent classification settings.
+type IntentClassifierConfig struct {
+	Enabled    bool                       `json:"enabled"`
+	Heuristic  *HeuristicConfig           `json:"heuristic,omitempty"`
+	ModelStage *ClassificationModelConfig `json:"model_stage,omitempty"`
+}
+
+// HeuristicConfig defines patterns for the heuristic classification stage (EP-017).
+type HeuristicConfig struct {
+	SimplePatterns []string `json:"simple_patterns"`
+	FullPatterns   []string `json:"full_patterns"`
+	MaxSimpleLen   int      `json:"max_simple_len"`
+}
+
+// ClassificationModelConfig holds the cheap-model classification stage settings (EP-017).
+type ClassificationModelConfig struct {
+	Enabled            bool    `json:"enabled"`
+	Type               string  `json:"type"`
+	Endpoint           string  `json:"endpoint"`
+	APIKeyPath         string  `json:"api_key_path"`
+	Model              string  `json:"model"`
+	DefaultTemperature float64 `json:"default_temperature"`
+	DefaultMaxTokens   int     `json:"default_max_tokens"`
+	Timeout            string  `json:"timeout,omitempty"`
 }
 
 // EmbeddingProvider is the dedicated provider for vector store embeddings (separate from chat LLM).

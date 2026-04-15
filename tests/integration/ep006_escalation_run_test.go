@@ -117,7 +117,7 @@ func TestEP006_Run_twoMessages_resetsBaselineAfterEscalation(t *testing.T) {
 	defer cancel()
 	runDone := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, nil, nil, nil, runner, nil, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, nil, nil, nil, runner, nil, nil, nil, nil)
 		close(runDone)
 	}()
 
@@ -184,7 +184,7 @@ func TestEP006_Run_toolEscalation_secondProviderCompletes(t *testing.T) {
 
 	runDone := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, nil, nil, nil, runner, nil, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, nil, nil, nil, runner, nil, nil, nil, nil)
 		close(runDone)
 	}()
 
@@ -261,7 +261,7 @@ func TestEP006_Run_threeProviders_threeMessages_chainAndBaselineReset(t *testing
 	defer cancel()
 	runDone := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, nil, nil, nil, runner, nil, nil, nil)
+		_ = core.Run(ctx, cfg, logger, adapter, []llm.Provider{p0, p1, p2}, []string{"m0", "m1", "m2"}, nil, nil, nil, runner, nil, nil, nil, nil)
 		close(runDone)
 	}()
 

@@ -136,6 +136,9 @@ func validateMandatoryJSONSections(c *Config) error {
 	if err := validateWriteMemory(c); err != nil {
 		return err
 	}
+	if err := validateIntentClassifier(c); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -536,6 +539,58 @@ func findSameFilePrivateKeyPairs(rows []nodePrivateKeyRow) error {
 				a, b = b, a
 			}
 			return fmt.Errorf("config: nodes %q and %q resolve to the same SSH private key file (%s and %s)", a, b, rows[i].path, rows[j].path)
+		}
+	}
+	return nil
+}
+
+func validateIntentClassifier(c *Config) error {
+	ic := c.IntentClassifier
+	if ic == nil || !ic.Enabled {
+		return nil
+	}
+	if err := validateICHeuristic(ic.Heuristic); err != nil {
+		return err
+	}
+	return validateICModelStage(ic.ModelStage)
+}
+
+func validateICHeuristic(h *HeuristicConfig) error {
+	if h == nil {
+		return nil
+	}
+	if h.MaxSimpleLen < 1 {
+		return errors.New("config: intent_classifier.heuristic.max_simple_len must be >= 1")
+	}
+	for i, p := range h.SimplePatterns {
+		if _, err := regexp.Compile("(?i)" + p); err != nil {
+			return fmt.Errorf("config: intent_classifier.heuristic.simple_patterns[%d]: %w", i, err)
+		}
+	}
+	for i, p := range h.FullPatterns {
+		if _, err := regexp.Compile("(?i)" + p); err != nil {
+			return fmt.Errorf("config: intent_classifier.heuristic.full_patterns[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func validateICModelStage(ms *ClassificationModelConfig) error {
+	if ms == nil || !ms.Enabled {
+		return nil
+	}
+	if strings.TrimSpace(ms.Endpoint) == "" {
+		return errors.New("config: intent_classifier.model_stage.endpoint is required when model_stage.enabled")
+	}
+	if strings.TrimSpace(ms.Model) == "" {
+		return errors.New("config: intent_classifier.model_stage.model is required when model_stage.enabled")
+	}
+	if ms.DefaultMaxTokens < 1 {
+		return errors.New("config: intent_classifier.model_stage.default_max_tokens must be >= 1")
+	}
+	if ms.Timeout != "" {
+		if _, err := time.ParseDuration(ms.Timeout); err != nil {
+			return fmt.Errorf("config: intent_classifier.model_stage.timeout: %w", err)
 		}
 	}
 	return nil
