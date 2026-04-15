@@ -18,7 +18,7 @@ func TestDocs_configuration_listsWriteMemoryWithReadMemory(t *testing.T) {
 	if !strings.Contains(s, "**`read_memory`**") || !strings.Contains(s, "**`write_memory`**") {
 		t.Fatalf("expected read_memory and write_memory bullets in configuration.md")
 	}
-	if !strings.Contains(s, "If the block is omitted, **`write_memory`** is not registered") {
-		t.Fatalf("expected explicit write_memory opt-in wording in configuration.md")
+	if !strings.Contains(s, "write_memory`** tool is a core feature and is always registered") {
+		t.Fatalf("expected write_memory core-feature wording in configuration.md")
 	}
 }

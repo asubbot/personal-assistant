@@ -27,7 +27,7 @@ All flags are defined in `cmd/pa/main.go` via the standard `flag` package.
 | `-verify-nodes` | Load config, check allowlists, connect to each configured node over SSH, run **one** allowlisted command per node, then **exit** without starting the Telegram bot. Exit code **0** only if every node succeeds. |
 | `-verify-nodes-command` | Command string for `-verify-nodes` (default `uptime`). Must appear in each node’s allowlist file. |
 | `-summarize` | Run summarization for a scope and **exit**. Value format: **`YYYY-MM-DD`** (day), **`YYYY-MM`** (month), or **`YYYY`** (year). No default — flag must be non-empty. Also prunes old LLM log files per `paths.llm_log_retention_days`. |
-| `-clear-context-on-start` | Before starting the bot, clear the **conversation context** vector table (`vec_items`) in the SQLite index. Does **not** delete tool index data or memory markdown files. |
+| `-clear-context-on-start` | Before starting the bot, clear the **conversation turns** vector table (`vec_turns`) in the SQLite index. Does **not** delete summaries, notes, tool index data, or memory markdown files. |
 
 Examples:
 

@@ -44,7 +44,7 @@ type Config struct {
 	ConversationSession *ConversationSessionConfig `json:"conversation_session,omitempty"`
 	// ReadMemory is optional JSON; limits only. Native read_memory is registered whenever memory_dir is available (EP-002).
 	ReadMemory *ReadMemoryConfig `json:"read_memory,omitempty"`
-	// WriteMemory is optional JSON; when present, write_memory registers (with these limits) if memory + notes vector + embedder are available (EP-016).
+	// WriteMemory is optional JSON for limit tuning; write_memory is a core tool and always registers when runtime memory dependencies are healthy (EP-016).
 	WriteMemory *WriteMemoryConfig `json:"write_memory,omitempty"`
 }
 
@@ -54,7 +54,7 @@ type ReadMemoryConfig struct {
 	MaxOutputBytes int `json:"max_output_bytes"`
 }
 
-// WriteMemoryConfig limits the native write_memory tool; omitting the block disables write_memory registration (EP-016).
+// WriteMemoryConfig limits the native write_memory tool; omitting the block keeps default limits (EP-016).
 type WriteMemoryConfig struct {
 	MaxAppendBytes int `json:"max_append_bytes"`
 	MaxFileBytes   int `json:"max_file_bytes"`

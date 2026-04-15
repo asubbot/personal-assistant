@@ -32,7 +32,6 @@ func TestMemoryVectorsClose_DeduplicatesSamePointer(t *testing.T) {
 		Summaries: s,
 		Turns:     s,
 		Notes:     s,
-		Legacy:    s,
 	}
 	if err := mv.Close(); err != nil {
 		t.Fatalf("Close() error = %v, want nil", err)

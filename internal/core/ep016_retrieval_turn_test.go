@@ -17,7 +17,7 @@ func TestGatherRetrievedChunkTexts_splitTableOrder_notesSummaryTurn(t *testing.T
 	summ := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "summary:day:2026-04-01", Text: "SUM_LINE"}}}
 	turns := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:ab", Text: "TURN_LINE"}}}
 	h := &conversationHandler{
-		memVec:                &MemoryVectors{Notes: notes, Summaries: summ, Legacy: nil, Turns: turns},
+		memVec:                &MemoryVectors{Notes: notes, Summaries: summ, Turns: turns},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		logger:                slog.New(slog.DiscardHandler),
 		vectorSearchTopK:      5,
@@ -36,14 +36,14 @@ func TestGatherRetrievedChunkTexts_splitTableOrder_notesSummaryTurn(t *testing.T
 	}
 }
 
-// Covers AC-16.012: legacy vec_items may hold turn rows; merge summary path drops them so assembled context has no legacy turn noise alongside dedicated turns.
-func TestGatherRetrievedChunkTexts_legacyTurnRowsNotSurfacedAsSummaryMerge(t *testing.T) {
-	leg := &mockVectorStore{
+// Covers AC-16.012: non-summary rows in summaries search results are dropped by summary-id filtering.
+func TestGatherRetrievedChunkTexts_nonSummaryRowsDroppedFromSummaryMerge(t *testing.T) {
+	summ := &mockVectorStore{
 		searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:legacy", Text: "LEGACY_TURN_NOISE"}},
 	}
 	turns := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:ab", Text: "DEDICATED_TURN"}}}
 	h := &conversationHandler{
-		memVec:                &MemoryVectors{Notes: nil, Summaries: nil, Legacy: leg, Turns: turns},
+		memVec:                &MemoryVectors{Notes: nil, Summaries: summ, Turns: turns},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		logger:                slog.New(slog.DiscardHandler),
 		vectorSearchTopK:      5,

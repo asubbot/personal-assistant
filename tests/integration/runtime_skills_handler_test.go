@@ -273,7 +273,7 @@ func TestRuntimeSkills_handler_toolUnionAlwaysInclude(t *testing.T) {
 	}
 }
 
-// Covers AC-13.009: forbidden PA marker lines must not be indexed into vec_items.
+// Covers AC-13.009: forbidden PA marker lines must not be indexed into vector stores.
 func TestRuntimeSkills_handler_indexTurnRejectsForbiddenMarkerLine(t *testing.T) {
 	t.Parallel()
 	spy := &core.IntegrationMockVectorStore{}

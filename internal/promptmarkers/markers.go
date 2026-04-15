@@ -19,7 +19,7 @@ const (
 )
 
 // ForbiddenMarkerLines returns all canonical marker lines that must not appear
-// as a full line (after trim) in SKILL.md or in text indexed into vec_items.
+// as a full line (after trim) in SKILL.md or in text indexed into vector stores.
 func ForbiddenMarkerLines() []string {
 	return []string{
 		BeginRetrievedContext,

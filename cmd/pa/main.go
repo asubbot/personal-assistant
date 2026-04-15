@@ -99,7 +99,7 @@ func main() {
 	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
 	summarizeFlag := flag.String("summarize", "", "Run summarization and exit: YYYY-MM-DD (day), YYYY-MM (month), YYYY (year). No default.")
-	clearContextOnStart := flag.Bool("clear-context-on-start", false, "Clear conversation context index (vec_items) before starting the bot; does not affect vec_tools or memory files")
+	clearContextOnStart := flag.Bool("clear-context-on-start", false, "Clear conversation turn context index (vec_turns) before starting the bot; does not affect vec_tools or memory files")
 	flag.Parse()
 
 	configFilePath := configFilePath()
@@ -134,7 +134,7 @@ func main() {
 			logger.Error("clear-context-on-start", "error", err)
 			os.Exit(1)
 		}
-		logger.Info("cleared conversation context (vec_turns and vec_items) before start")
+		logger.Info("cleared conversation context (vec_turns) before start")
 	}
 
 	if err := runServer(cfg, configFilePath, logger); err != nil && !errors.Is(err, context.Canceled) {
@@ -211,7 +211,9 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
 	}
 	registerWebToolsIfEnabled(cfg, toolRegistry, logger)
-	registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder)
+	if err := registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder); err != nil {
+		return err
+	}
 	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
 		defer cleanup()
 	}
@@ -565,7 +567,7 @@ func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog
 	return idx, nil
 }
 
-// openMemoryVectorBundle opens EP-016 split tables plus legacy vec_items on the configured vector DB path.
+// openMemoryVectorBundle opens EP-016 split memory tables on the configured vector DB path.
 func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
 	dim := cfg.Embedding.Dimensions
 	path := cfg.Paths.VectorIndexPath
@@ -584,18 +586,10 @@ func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
 		_ = turns.Close()
 		return nil, err
 	}
-	legacy, err := sqlite.NewWithTable(path, dim, sqlite.TableMemory)
-	if err != nil {
-		_ = summ.Close()
-		_ = turns.Close()
-		_ = notes.Close()
-		return nil, err
-	}
 	return &core.MemoryVectors{
 		Summaries: summ,
 		Turns:     turns,
 		Notes:     notes,
-		Legacy:    legacy,
 	}, nil
 }
 
@@ -692,19 +686,23 @@ func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *
 	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider)
 }
 
-func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memoryStore *memory.Store, memVec *core.MemoryVectors, embedder embedding.Embedder) {
-	if reg == nil || memoryStore == nil {
-		return
+func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memoryStore *memory.Store, memVec *core.MemoryVectors, embedder embedding.Embedder) error {
+	if reg == nil {
+		return fmt.Errorf("memory tools: registry is nil")
+	}
+	if memoryStore == nil {
+		return fmt.Errorf("memory tools: memory store is required")
 	}
 	span, outBytes := readMemoryLimits(cfg)
 	reg.Register(tools.NewReadMemoryTool(memoryStore, span, outBytes))
 
-	// EP-016 explicit opt-in: write_memory registers only when the write_memory block is present.
-	if !writeMemoryEnabled(cfg, memVec, embedder) {
-		return
+	// write_memory is a core feature and must be available in full mode at startup.
+	if !writeMemoryRuntimeReady(memVec, embedder) {
+		return fmt.Errorf("memory tools: write_memory requires notes vector and embedding provider")
 	}
-	maxAppend, maxFile := writeMemoryLimits(cfg.WriteMemory)
+	maxAppend, maxFile := writeMemoryLimits(writeMemoryConfig(cfg))
 	reg.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, maxAppend, maxFile))
+	return nil
 }
 
 func readMemoryLimits(cfg *config.Config) (span, outBytes int) {
@@ -721,8 +719,15 @@ func readMemoryLimits(cfg *config.Config) (span, outBytes int) {
 	return span, outBytes
 }
 
-func writeMemoryEnabled(cfg *config.Config, memVec *core.MemoryVectors, embedder embedding.Embedder) bool {
-	return cfg != nil && cfg.WriteMemory != nil && memVec != nil && memVec.Notes != nil && embedder != nil
+func writeMemoryRuntimeReady(memVec *core.MemoryVectors, embedder embedding.Embedder) bool {
+	return memVec != nil && memVec.Notes != nil && embedder != nil
+}
+
+func writeMemoryConfig(cfg *config.Config) *config.WriteMemoryConfig {
+	if cfg == nil {
+		return nil
+	}
+	return cfg.WriteMemory
 }
 
 func writeMemoryLimits(wm *config.WriteMemoryConfig) (maxAppend, maxFile int) {
@@ -739,7 +744,7 @@ func writeMemoryLimits(wm *config.WriteMemoryConfig) (maxAppend, maxFile int) {
 	return maxAppend, maxFile
 }
 
-// clearConversationContext deletes turn rows from vec_turns and legacy vec_items. vec_summaries, vec_notes, and vec_tools are unchanged.
+// clearConversationContext deletes turn rows from vec_turns. vec_summaries, vec_notes, and vec_tools are unchanged.
 func clearConversationContext(cfg *config.Config) error {
 	if cfg == nil {
 		return fmt.Errorf("clear context: config is nil")
@@ -760,13 +765,5 @@ func clearConversationContext(cfg *config.Config) error {
 		return err
 	}
 	defer func() { _ = turns.Close() }()
-	if err := turns.Clear(ctx); err != nil {
-		return err
-	}
-	legacy, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableMemory)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = legacy.Close() }()
-	return legacy.Clear(ctx)
+	return turns.Clear(ctx)
 }

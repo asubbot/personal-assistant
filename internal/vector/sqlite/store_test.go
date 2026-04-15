@@ -14,11 +14,11 @@ const testDimensions = 4
 // Covers AC-01.013 (US-07): NewWithTable rejects invalid dimensions (vector store interface).
 func TestNewWithTable_dimensionsInvalid(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
-	_, err := NewWithTable(path, 0, TableMemory)
+	_, err := NewWithTable(path, 0, TableTurns)
 	if err == nil {
 		t.Fatal("expected error for dimensions 0")
 	}
-	_, err = NewWithTable(path, -1, TableMemory)
+	_, err = NewWithTable(path, -1, TableTurns)
 	if err == nil {
 		t.Fatal("expected error for negative dimensions")
 	}
@@ -29,7 +29,7 @@ func TestStore_Add_Search_topK(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableMemory)
+	store, err := NewWithTable(path, testDimensions, TableTurns)
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestStore_Delete_removesById(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableMemory)
+	store, err := NewWithTable(path, testDimensions, TableTurns)
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestStore_Clear_removesAllRows(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableMemory)
+	store, err := NewWithTable(path, testDimensions, TableTurns)
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestStore_Add_wrongDimensions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableMemory)
+	store, err := NewWithTable(path, testDimensions, TableTurns)
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestStore_Search_persisted(t *testing.T) {
 	path := filepath.Join(dir, "pa_vectors.sqlite")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableMemory)
+	store, err := NewWithTable(path, testDimensions, TableTurns)
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -167,7 +167,7 @@ func TestStore_Search_persisted(t *testing.T) {
 	}
 
 	// Reopen and search
-	store2, err := NewWithTable(path, testDimensions, TableMemory)
+	store2, err := NewWithTable(path, testDimensions, TableTurns)
 	if err != nil {
 		t.Fatalf("NewWithTable (reopen): %v", err)
 	}
@@ -181,14 +181,14 @@ func TestStore_Search_persisted(t *testing.T) {
 	}
 }
 
-// Covers AC-04.014: same DB file contains both memory table and tool table; search returns top-k tool ids.
+// Covers AC-04.014: same DB file contains both turn and tool tables; search returns top-k tool ids.
 func TestStore_TwoTables_SameDB(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	storeMem, err := NewWithTable(path, testDimensions, TableMemory)
+	storeMem, err := NewWithTable(path, testDimensions, TableTurns)
 	if err != nil {
-		t.Fatalf("NewWithTable(memory): %v", err)
+		t.Fatalf("NewWithTable(turns): %v", err)
 	}
 	defer func() { _ = storeMem.Close() }()
 
@@ -245,7 +245,7 @@ func twoTablesSameDB_addAndSearchTools(t *testing.T, ctx context.Context, storeT
 
 func ep016OpenSplitTableStores(t *testing.T, path string) []*Store {
 	t.Helper()
-	tables := []string{TableSummaries, TableTurns, TableNotes, TableMemory}
+	tables := []string{TableSummaries, TableTurns, TableNotes, TableTools}
 	var stores []*Store
 	for _, tbl := range tables {
 		st, err := NewWithTable(path, testDimensions, tbl)
@@ -268,7 +268,7 @@ func ep016SeedSplitTableVectors(t *testing.T, ctx context.Context, stores []*Sto
 		{0, "summary:day:2026-04-01", []float32{1, 0, 0, 0}, "day vec"},
 		{1, "turn:2026-04-01:abc", []float32{0, 1, 0, 0}, "turn vec"},
 		{2, "notes:2026-04-01:x", []float32{0, 0, 1, 0}, "note vec"},
-		{3, "legacy-only", []float32{0.1, 0.1, 0.1, 0.7}, "legacy"},
+		{3, "tool:legacy", []float32{0.1, 0.1, 0.1, 0.7}, "tool vec"},
 	}
 	for _, a := range adds {
 		if err := stores[a.idx].Add(ctx, a.id, a.vec, a.txt); err != nil {
@@ -277,7 +277,7 @@ func ep016SeedSplitTableVectors(t *testing.T, ctx context.Context, stores []*Sto
 	}
 }
 
-// Covers AC-16.009: EP-016 split tables vec_summaries, vec_turns, vec_notes coexist with legacy vec_items on one DB path.
+// Covers AC-16.009: EP-016 split tables vec_summaries, vec_turns, vec_notes coexist with vec_tools on one DB path.
 func TestStore_EP016SplitTables_SameDB(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "ep016_vec.db")
 	ctx := context.Background()
@@ -294,7 +294,7 @@ func TestStore_EP016SplitTables_SameDB(t *testing.T) {
 	}
 	defer func() { _ = db.Close() }()
 	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?, ?, ?, ?)",
-		TableSummaries, TableTurns, TableNotes, TableMemory)
+		TableSummaries, TableTurns, TableNotes, TableTools)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,7 +318,7 @@ func twoTablesSameDB_assertBothTablesInDB(t *testing.T, ctx context.Context, pat
 		t.Fatalf("open db for table check: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?, ?)", TableMemory, TableTools)
+	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?, ?)", TableTurns, TableTools)
 	if err != nil {
 		t.Fatalf("query sqlite_master: %v", err)
 	}

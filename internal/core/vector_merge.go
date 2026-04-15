@@ -25,7 +25,7 @@ func appendUniqueSummaryHits(hits []vector.SearchResult, seen map[string]struct{
 	return out
 }
 
-func mergeSummarySearch(ctx context.Context, sum, leg vector.Store, query []float32, topK int) ([]vector.SearchResult, error) {
+func mergeSummarySearch(ctx context.Context, sum vector.Store, query []float32, topK int) ([]vector.SearchResult, error) {
 	if topK < 1 {
 		topK = 1
 	}
@@ -37,13 +37,6 @@ func mergeSummarySearch(ctx context.Context, sum, leg vector.Store, query []floa
 			return nil, err
 		}
 		out = appendUniqueSummaryHits(r, seen, out, 0)
-	}
-	if leg != nil {
-		r, err := leg.Search(ctx, query, topK*4)
-		if err != nil {
-			return nil, err
-		}
-		out = appendUniqueSummaryHits(r, seen, out, topK*2)
 	}
 	return out, nil
 }

@@ -12,7 +12,7 @@ const (
 	VectorIDPrefixYear  = "summary:year:"
 )
 
-// IsSummaryVectorID reports whether id uses a rollup summary prefix (EP-016 legacy vec_items filtering).
+// IsSummaryVectorID reports whether id uses a rollup summary prefix.
 func IsSummaryVectorID(id string) bool {
 	return strings.HasPrefix(id, VectorIDPrefixDay) ||
 		strings.HasPrefix(id, VectorIDPrefixMonth) ||

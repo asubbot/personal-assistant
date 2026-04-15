@@ -115,7 +115,7 @@ func (m *IntegrationMockNodeRunner) RunOnNode(ctx context.Context, nodeID, comma
 type IntegrationConversationParams struct {
 	Router     *llmrouter.Router
 	Escalation *config.LLMEscalationConfig
-	// VectorStore is used when MemoryVectors is nil: handler gets LegacyCompatMemoryVectors(VectorStore).
+	// VectorStore is used when MemoryVectors is nil: handler gets SingleStoreMemoryVectors(VectorStore).
 	VectorStore                vector.Store
 	MemoryVectors              *MemoryVectors
 	Embedder                   embedding.Embedder
@@ -164,7 +164,7 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 	}
 	mv := p.MemoryVectors
 	if mv == nil {
-		mv = LegacyCompatMemoryVectors(p.VectorStore)
+		mv = SingleStoreMemoryVectors(p.VectorStore)
 	}
 	var sessCfg *config.ConversationSessionConfig
 	var sessStore *sessionWindowStore

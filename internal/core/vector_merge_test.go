@@ -6,16 +6,16 @@ import (
 	"testing"
 )
 
-// Covers AC-16.011: legacy summary merge path keeps only summary-prefixed ids from vec_items-style search results.
-func TestMergeSummarySearch_filtersNonSummaryFromLegacy(t *testing.T) {
+// Covers AC-16.011: summary merge path keeps only summary-prefixed ids from search results.
+func TestMergeSummarySearch_filtersNonSummaryRows(t *testing.T) {
 	ctx := context.Background()
-	leg := &mockVectorStore{
+	summ := &mockVectorStore{
 		searchResults: []vector.SearchResult{
 			{ID: "turn-legacy", Text: "turn noise"},
 			{ID: "summary:day:2026-04-01", Text: "day summary body"},
 		},
 	}
-	out, err := mergeSummarySearch(ctx, nil, leg, []float32{1, 0, 0, 0}, 10)
+	out, err := mergeSummarySearch(ctx, summ, []float32{1, 0, 0, 0}, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

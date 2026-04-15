@@ -64,8 +64,8 @@ func (noopVectorStore) Search(context.Context, []float32, int) ([]vector.SearchR
 func (noopVectorStore) Exists(context.Context, string) (bool, error) { return false, nil }
 func (noopVectorStore) Close() error                                 { return nil }
 
-// Covers AC-16.022: write_memory registers only with explicit write_memory config block.
-func TestRegisterMemoryToolsIfEnabled_WriteMemoryRequiresConfigBlock(t *testing.T) {
+// Covers AC-16.018: write_memory is registered as a core native tool (config block tunes limits only).
+func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) {
 	store, err := memory.NewStore(t.TempDir(), time.UTC)
 	if err != nil {
 		t.Fatalf("memory.NewStore: %v", err)
@@ -73,16 +73,18 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryRequiresConfigBlock(t *testing.
 	memVec := &core.MemoryVectors{Notes: noopVectorStore{}}
 	embedder := stubEmbedder{}
 
-	cfgNoWrite := &config.Config{
+	cfgNoBlock := &config.Config{
 		ReadMemory: &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
 	}
-	regNoWrite := patools.NewRegistry()
-	registerMemoryToolsIfEnabled(cfgNoWrite, regNoWrite, store, memVec, embedder)
-	if _, ok := regNoWrite.Get("read_memory"); !ok {
+	regNoBlock := patools.NewRegistry()
+	if err := registerMemoryToolsIfEnabled(cfgNoBlock, regNoBlock, store, memVec, embedder); err != nil {
+		t.Fatalf("registerMemoryToolsIfEnabled(no write_memory block): %v", err)
+	}
+	if _, ok := regNoBlock.Get("read_memory"); !ok {
 		t.Fatal("expected read_memory in registry")
 	}
-	if _, ok := regNoWrite.Get("write_memory"); ok {
-		t.Fatal("write_memory must not register when cfg.write_memory is omitted")
+	if _, ok := regNoBlock.Get("write_memory"); !ok {
+		t.Fatal("expected write_memory in registry when cfg.write_memory is omitted")
 	}
 
 	cfgWrite := &config.Config{
@@ -90,9 +92,26 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryRequiresConfigBlock(t *testing.
 		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
 	}
 	regWrite := patools.NewRegistry()
-	registerMemoryToolsIfEnabled(cfgWrite, regWrite, store, memVec, embedder)
+	if err := registerMemoryToolsIfEnabled(cfgWrite, regWrite, store, memVec, embedder); err != nil {
+		t.Fatalf("registerMemoryToolsIfEnabled(write_memory block): %v", err)
+	}
 	if _, ok := regWrite.Get("write_memory"); !ok {
 		t.Fatal("expected write_memory in registry when cfg.write_memory is present")
+	}
+}
+
+// Covers AC-16.018: startup fails fast when write_memory core dependencies are unavailable.
+func TestRegisterMemoryToolsIfEnabled_WriteMemoryCoreDepsRequired(t *testing.T) {
+	store, err := memory.NewStore(t.TempDir(), time.UTC)
+	if err != nil {
+		t.Fatalf("memory.NewStore: %v", err)
+	}
+	cfg := &config.Config{}
+	if err := registerMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{}, stubEmbedder{}); err == nil {
+		t.Fatal("expected error when notes vector is missing")
+	}
+	if err := registerMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{Notes: noopVectorStore{}}, nil); err == nil {
+		t.Fatal("expected error when embedder is missing")
 	}
 }
 
@@ -480,21 +499,21 @@ func testClearContextConfig(vectorPath string) *config.Config {
 	}
 }
 
-// clearConversationContext removes all vec_items rows so semantic context is empty on next Search.
-// Covers AC-01.011: traceability for TestClearConversationContext_vecItemsEmptyAfterClear.
-func TestClearConversationContext_vecItemsEmptyAfterClear(t *testing.T) {
+// clearConversationContext removes all vec_turns rows so turn context is empty on next Search.
+// Covers AC-01.011: traceability for TestClearConversationContext_vecTurnsEmptyAfterClear.
+func TestClearConversationContext_vecTurnsEmptyAfterClear(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "vec.sqlite")
 
-	mem, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
+	turns, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
 	if err != nil {
-		t.Fatalf("NewWithTable memory: %v", err)
+		t.Fatalf("NewWithTable turns: %v", err)
 	}
-	if err := mem.Add(ctx, "turn1", []float32{1, 0, 0, 0}, "User: hello"); err != nil {
+	if err := turns.Add(ctx, "turn1", []float32{1, 0, 0, 0}, "User: hello"); err != nil {
 		t.Fatalf("Add: %v", err)
 	}
-	if err := mem.Close(); err != nil {
+	if err := turns.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
 
@@ -502,12 +521,12 @@ func TestClearConversationContext_vecItemsEmptyAfterClear(t *testing.T) {
 		t.Fatalf("clearConversationContext: %v", err)
 	}
 
-	mem2, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
+	turns2, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}
-	defer func() { _ = mem2.Close() }()
-	results, err := mem2.Search(ctx, []float32{1, 0, 0, 0}, 10)
+	defer func() { _ = turns2.Close() }()
+	results, err := turns2.Search(ctx, []float32{1, 0, 0, 0}, 10)
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -523,15 +542,15 @@ func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "both.sqlite")
 
-	mem, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
+	turns, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
 	if err != nil {
-		t.Fatalf("NewWithTable memory: %v", err)
+		t.Fatalf("NewWithTable turns: %v", err)
 	}
-	if err := mem.Add(ctx, "mem1", []float32{1, 0, 0, 0}, "context chunk"); err != nil {
-		t.Fatalf("Add mem: %v", err)
+	if err := turns.Add(ctx, "turn1", []float32{1, 0, 0, 0}, "context chunk"); err != nil {
+		t.Fatalf("Add turns: %v", err)
 	}
-	if err := mem.Close(); err != nil {
-		t.Fatalf("Close mem: %v", err)
+	if err := turns.Close(); err != nil {
+		t.Fatalf("Close turns: %v", err)
 	}
 
 	tools, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools)
@@ -549,11 +568,11 @@ func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
 		t.Fatalf("clearConversationContext: %v", err)
 	}
 
-	mem2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableMemory)
-	defer func() { _ = mem2.Close() }()
-	rMem, _ := mem2.Search(ctx, []float32{1, 0, 0, 0}, 10)
-	if len(rMem) != 0 {
-		t.Errorf("vec_items: want 0 after clear, got %d", len(rMem))
+	turns2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
+	defer func() { _ = turns2.Close() }()
+	rTurns, _ := turns2.Search(ctx, []float32{1, 0, 0, 0}, 10)
+	if len(rTurns) != 0 {
+		t.Errorf("vec_turns: want 0 after clear, got %d", len(rTurns))
 	}
 
 	tools2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools)

@@ -705,9 +705,6 @@ func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, use
 		h.logger.Error("embed query", "error", err)
 		return nil
 	}
-	if mv.legacySingleStoreCompat() {
-		return h.gatherLegacyCompatChunks(ctx, queryEmbedding, topK)
-	}
 	return h.gatherSplitTableChunks(ctx, queryEmbedding, topK)
 }
 
@@ -723,18 +720,6 @@ func (h *conversationHandler) labeledChunksFromResults(results []vector.SearchRe
 	return chunks
 }
 
-func (h *conversationHandler) gatherLegacyCompatChunks(ctx context.Context, queryEmbedding []float32, topK int) []string {
-	mv := h.memVec
-	results, err := mv.Legacy.Search(ctx, queryEmbedding, topK)
-	if err != nil {
-		h.logger.Error("vector search", "error", err)
-		return nil
-	}
-	chunks := h.labeledChunksFromResults(results)
-	h.logger.DebugContext(ctx, "context chunks", "non_empty", len(chunks), "total", len(results))
-	return chunks
-}
-
 func (h *conversationHandler) gatherSplitTableChunks(ctx context.Context, queryEmbedding []float32, topK int) []string {
 	mv := h.memVec
 	var chunks []string
@@ -746,13 +731,13 @@ func (h *conversationHandler) gatherSplitTableChunks(ctx context.Context, queryE
 			chunks = append(chunks, h.labeledChunksFromResults(r)...)
 		}
 	}
-	sr, err := mergeSummarySearch(ctx, mv.Summaries, mv.Legacy, queryEmbedding, topK)
+	sr, err := mergeSummarySearch(ctx, mv.Summaries, queryEmbedding, topK)
 	if err != nil {
 		h.logger.Error("vector search summaries", "error", err)
 		return nil
 	}
 	chunks = append(chunks, h.labeledChunksFromResults(sr)...)
-	if mv.Turns != nil && mv.Turns != mv.Legacy {
+	if mv.Turns != nil {
 		r, err := mv.Turns.Search(ctx, queryEmbedding, topK)
 		if err != nil {
 			h.logger.Error("vector search turns", "error", err)

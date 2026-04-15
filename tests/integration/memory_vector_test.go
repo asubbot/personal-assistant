@@ -42,7 +42,7 @@ const vectorTestDimensions = 4
 func TestVectorStore_injectsPastContext(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "pa_vectors.sqlite")
-	vecStore, err := sqlite.NewWithTable(path, vectorTestDimensions, sqlite.TableMemory)
+	vecStore, err := sqlite.NewWithTable(path, vectorTestDimensions, sqlite.TableTurns)
 	if err != nil {
 		t.Fatalf("vector store New: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestVectorStore_injectsPastContext(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	done1 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx1, cfg, logger, adapter1, []llm.Provider{provider}, []string{"test/default"}, nil, core.LegacyCompatMemoryVectors(vecStore), emb, nil, nil, nil, nil)
+		_ = core.Run(ctx1, cfg, logger, adapter1, []llm.Provider{provider}, []string{"test/default"}, nil, core.SingleStoreMemoryVectors(vecStore), emb, nil, nil, nil, nil)
 		close(done1)
 	}()
 
@@ -79,7 +79,7 @@ func TestVectorStore_injectsPastContext(t *testing.T) {
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	done2 := make(chan struct{})
 	go func() {
-		_ = core.Run(ctx2, cfg, logger, adapter2, []llm.Provider{provider}, []string{"test/default"}, nil, core.LegacyCompatMemoryVectors(vecStore), emb, nil, nil, nil, nil)
+		_ = core.Run(ctx2, cfg, logger, adapter2, []llm.Provider{provider}, []string{"test/default"}, nil, core.SingleStoreMemoryVectors(vecStore), emb, nil, nil, nil, nil)
 		close(done2)
 	}()
 

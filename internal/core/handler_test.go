@@ -454,7 +454,7 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		memVec:                &MemoryVectors{Summaries: summ, Legacy: summ, Turns: turnM},
+		memVec:                &MemoryVectors{Summaries: summ, Turns: turnM},
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -482,7 +482,7 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		memVec:                LegacyCompatMemoryVectors(vs),
+		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -558,7 +558,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		memVec:                LegacyCompatMemoryVectors(vs),
+		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -586,7 +586,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 	}
 	h2 := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		memVec:                LegacyCompatMemoryVectors(vs2),
+		memVec:                SingleStoreMemoryVectors(vs2),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -619,7 +619,7 @@ func TestHandleMessage_vectorSearchPrefixesSummaryDayLabel(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{0.1}}
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		memVec:                LegacyCompatMemoryVectors(vs),
+		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -664,7 +664,7 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, provider),
-		memVec:                LegacyCompatMemoryVectors(vs),
+		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
@@ -2008,7 +2008,7 @@ func TestHandleMessage_sessionMemory_withVectorStoreEmpty_coexists(t *testing.T)
 	h := &conversationHandler{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
-		memVec:                LegacyCompatMemoryVectors(vec),
+		memVec:                SingleStoreMemoryVectors(vec),
 		embedder:              emb,
 		maxDynamicSystemRunes: 4000,
 		vectorSearchTopK:      10,
