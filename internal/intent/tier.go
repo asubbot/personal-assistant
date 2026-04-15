@@ -1,4 +1,4 @@
-// Package intent provides a two-stage intent classifier for prompt optimization (EP-017).
+// Package intent provides a two-stage intent classifier for prompt optimization (EP-017, EP-018).
 package intent
 
 import "context"
@@ -7,8 +7,9 @@ import "context"
 type Tier string
 
 const (
-	TierSimple Tier = "simple"
-	TierFull   Tier = "full"
+	TierSimple   Tier = "simple"
+	TierFullLite Tier = "full_lite"
+	TierFull     Tier = "full"
 )
 
 // Result holds the classification outcome for one user turn.

@@ -10,17 +10,21 @@ import (
 	"time"
 )
 
-const classificationPromptTemplate = `Classify the following user message into one of these categories:
-- "simple": casual greeting, ping, short acknowledgment, chitchat (no tools or memory needed)
-- "full": question requiring knowledge, memory, tools, or detailed response
+const classificationPromptTemplate = `Classify the following user message into exactly one tier. Reply with a single token on the first line: simple, full_lite, or full.
 
-Message: "%s"
+Tiers:
+- simple: casual greeting, ping, short acknowledgment, chitchat (no tools or memory needed)
+- full_lite: normal conversation without long-term memory retrieval in the prompt; tools may still apply when configured
+- full: question requiring knowledge, memory (RAG), tools, or a detailed response
 
-Reply with exactly one word: simple or full`
+User message:
+<<<%s>>>
+
+Reply with exactly one word on the first line: simple, full_lite, or full`
 
 const defaultModelTimeout = 5 * time.Second
 
-// ModelClassifier sends a minimal prompt to a cheap LLM for ambiguous cases (REQ-17.007–REQ-17.009).
+// ModelClassifier sends a minimal prompt to a cheap LLM for ambiguous cases (REQ-17.007–REQ-17.009, EP-018 three-way).
 type ModelClassifier struct {
 	provider llm.Provider
 	logger   *slog.Logger
@@ -44,7 +48,7 @@ func (m *ModelClassifier) Classify(ctx context.Context, message string) (Tier, e
 
 	prompt := fmt.Sprintf(classificationPromptTemplate, message)
 	msgs := []llm.Message{{Role: "user", Content: prompt}}
-	opts := &llm.CompletionOptions{MaxTokens: 10}
+	opts := &llm.CompletionOptions{MaxTokens: 16}
 
 	result, err := m.provider.Complete(ctx, msgs, opts)
 	if err != nil {
@@ -69,6 +73,10 @@ func parseTierResponse(content string) (Tier, error) {
 	s := strings.TrimSpace(strings.ToLower(cleaned))
 	if strings.HasPrefix(s, "simple") {
 		return TierSimple, nil
+	}
+	// full_lite before full — "full" is a prefix of "full_lite" in some tokenizer outputs; check multi-token label first.
+	if strings.HasPrefix(s, "full_lite") || strings.HasPrefix(s, "full-lite") {
+		return TierFullLite, nil
 	}
 	if strings.HasPrefix(s, "full") {
 		return TierFull, nil

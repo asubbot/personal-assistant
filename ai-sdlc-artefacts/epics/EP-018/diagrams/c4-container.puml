@@ -1,0 +1,47 @@
+@startuml
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 60
+skinparam ranksep 80
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-018 Tiered Prompt Cost Reduction
+
+Person(user, "User", "Telegram user")
+System_Ext(telegram, "Telegram", "Messaging / Bot API")
+System_Ext(llm_main, "Main LLM Provider", "Chat completions")
+System_Ext(llm_class, "Classification LLM", "Three-way tier choice when ambiguous")
+System_Ext(embed_api, "Embedding API", "Embeddings (full tier RAG only)")
+
+System_Boundary(pa, "PersonalAssistant") {
+  Container(tg_adapter, "Telegram Adapter", "Go", "Receives updates, routes to handler")
+  Container(classifier, "Intent Classifier", "Go", "Heuristic + model; simple / full_lite / full")
+  Container(handler, "Conversation Handler", "Go", "Tier + tool subset; LLM call")
+  Container(tool_rank, "Tool Pre-Selection", "Go", "Vector-ranked tool candidates (existing)")
+  Container(tool_pick, "Dynamic Tool Picker", "Go", "Cap + always_include merge")
+  Container(tail, "Dynamic Tail Builder", "Go", "RAG chunks, Hermes, skills (tier-gated)")
+  Container(head, "Static System Head", "Go", "Same prose as EP-017; tier omits sections only")
+  ContainerDb(config_store, "Config", "JSON", "Tiers, tool caps, dynamic flags")
+}
+
+Rel(user, telegram, "Uses")
+Rel(telegram, tg_adapter, "Bot API")
+Rel(tg_adapter, classifier, "User message")
+Rel(classifier, config_store, "Reads tier rules")
+Rel(classifier, llm_class, "Ambiguous only")
+Rel(classifier, handler, "Tier assignment")
+Rel(handler, head, "Assemble head")
+Rel(handler, tool_rank, "User text (when tools path)")
+Rel(tool_rank, tool_pick, "Ranked IDs")
+Rel(handler, tool_pick, "Tier + limits")
+Rel(handler, tail, "full: RAG+skills; full_lite: no RAG, no skills")
+Rel(tail, embed_api, "Embed query (full only)")
+Rel(handler, llm_main, "Completion request")
+Rel(handler, tg_adapter, "Reply")
+Rel(tg_adapter, telegram, "Send reply")
+
+@enduml

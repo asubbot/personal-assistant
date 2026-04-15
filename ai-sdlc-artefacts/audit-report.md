@@ -22,5 +22,5 @@
 | [EP-013](epics/EP-013/ep-scope.md) | Runtime skills and consolidated system prompt | DONE | 73.0% | [ep-audit-report (2026-04-10)](epics/EP-013/ep-audit-report.md) |
 | [EP-014](epics/EP-014/ep-scope.md) | Sliding session memory window | DONE | 73.7% | [ep-audit-report (2026-04-10)](epics/EP-014/ep-audit-report.md) |
 | [EP-015](epics/EP-015/ep-scope.md) | Telegram token usage footer | DONE | 73.2% | [ep-audit-report (2026-04-14)](epics/EP-015/ep-audit-report.md) |
-| [EP-016](epics/EP-016/ep-scope.md) | Manual day notes, write_memory, and vector memory refinement | IN_PROGRESS | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-016/ep-audit-report.md) |
+| [EP-016](epics/EP-016/ep-scope.md) | Manual day notes, write_memory, and vector memory refinement | DONE | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-016/ep-audit-report.md) |
 | [EP-017](epics/EP-017/ep-scope.md) | Intent Classifier for Prompt Optimization | DONE | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-017/ep-audit-report.md) |

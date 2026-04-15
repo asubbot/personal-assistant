@@ -12,7 +12,7 @@ import (
 
 // Covers AC-17.010
 func TestCascade_HeuristicConfident(t *testing.T) {
-	h := NewHeuristicClassifier([]string{`^привет$`}, nil, 40)
+	h := NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40)
 	c := NewCascadeClassifier(h, nil, nil)
 	r := c.Classify(context.Background(), "привет")
 	if r.Tier != TierSimple {
@@ -25,7 +25,7 @@ func TestCascade_HeuristicConfident(t *testing.T) {
 
 // Covers AC-17.010
 func TestCascade_AmbiguousToModel(t *testing.T) {
-	h := NewHeuristicClassifier([]string{`^привет$`}, nil, 40)
+	h := NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40)
 	mp := &mockProvider{content: "full"}
 	mc := NewModelClassifier(mp, nil, 5*time.Second)
 	c := NewCascadeClassifier(h, mc, nil)
@@ -40,7 +40,7 @@ func TestCascade_AmbiguousToModel(t *testing.T) {
 
 // Covers AC-17.010
 func TestCascade_ModelDisabled_DefaultFull(t *testing.T) {
-	h := NewHeuristicClassifier([]string{`^привет$`}, nil, 40)
+	h := NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40)
 	c := NewCascadeClassifier(h, nil, nil)
 	r := c.Classify(context.Background(), "погода")
 	if r.Tier != TierFull {
@@ -52,8 +52,9 @@ func TestCascade_ModelDisabled_DefaultFull(t *testing.T) {
 }
 
 // Covers AC-17.011
+// Supporting AC-18.011 (model failure → default full tier + WARN)
 func TestCascade_ModelError_DefaultFull(t *testing.T) {
-	h := NewHeuristicClassifier([]string{`^привет$`}, nil, 40)
+	h := NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40)
 	mp := &mockProvider{err: errors.New("fail")}
 	mc := NewModelClassifier(mp, nil, 5*time.Second)
 	c := NewCascadeClassifier(h, mc, nil)
@@ -67,10 +68,11 @@ func TestCascade_ModelError_DefaultFull(t *testing.T) {
 }
 
 // Covers AC-17.011
+// Supporting AC-18.011
 func TestCascade_ModelError_LogsWarn(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	h := NewHeuristicClassifier([]string{`^привет$`}, nil, 40)
+	h := NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40)
 	mp := &mockProvider{err: errors.New("connection refused")}
 	mc := NewModelClassifier(mp, nil, 5*time.Second)
 	c := NewCascadeClassifier(h, mc, logger)

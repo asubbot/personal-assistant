@@ -37,7 +37,7 @@ func TestModelClassifier_LogsUsageSeparately(t *testing.T) {
 
 // Covers AC-17.016
 func TestCascadeClassifier_ResultContainsStageAndLen(t *testing.T) {
-	h := NewHeuristicClassifier([]string{`^hello$`}, nil, 40)
+	h := NewHeuristicClassifier([]string{`^hello$`}, nil, nil, 40)
 	c := NewCascadeClassifier(h, nil, nil)
 	r := c.Classify(context.Background(), "hello")
 	if r.Tier != TierSimple {

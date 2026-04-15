@@ -81,9 +81,18 @@ type ToolsConfig struct {
 	TextBasedEnabled bool `json:"text_based_enabled"`
 	// AlwaysInclude lists catalog or allowed-native tool ids merged into every turn’s tool set (EP-013, REQ-13.011).
 	AlwaysInclude []string `json:"always_include,omitempty"`
+	// DynamicSelection is optional (EP-018): cap tools sent to the main LLM when enabled for full_lite and/or full tier.
+	DynamicSelection *ToolDynamicSelection `json:"dynamic_selection,omitempty"`
 	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
 	CreateToolSecretPatterns []string             `json:"create_tool_secret_patterns,omitempty"`
 	LLMEscalation            *LLMEscalationConfig `json:"llm_escalation,omitempty"`
+}
+
+// ToolDynamicSelection configures EP-018 dynamic narrowing of the main LLM tool list.
+type ToolDynamicSelection struct {
+	EnabledForFullLite    bool `json:"enabled_for_full_lite"`
+	EnabledForFull        bool `json:"enabled_for_full"`
+	MaxToolsForLLMRequest int  `json:"max_tools_for_llm_request"`
 }
 
 // ToolsLLMEscalation returns tools.llm_escalation for EP-006 (nil if tools section or escalation block absent).
@@ -127,11 +136,12 @@ type IntentClassifierConfig struct {
 	ModelStage *ClassificationModelConfig `json:"model_stage,omitempty"`
 }
 
-// HeuristicConfig defines patterns for the heuristic classification stage (EP-017).
+// HeuristicConfig defines patterns for the heuristic classification stage (EP-017, EP-018).
 type HeuristicConfig struct {
-	SimplePatterns []string `json:"simple_patterns"`
-	FullPatterns   []string `json:"full_patterns"`
-	MaxSimpleLen   int      `json:"max_simple_len"`
+	SimplePatterns   []string `json:"simple_patterns"`
+	FullPatterns     []string `json:"full_patterns"`
+	FullLitePatterns []string `json:"full_lite_patterns,omitempty"`
+	MaxSimpleLen     int      `json:"max_simple_len"`
 }
 
 // ClassificationModelConfig holds the cheap-model classification stage settings (EP-017).

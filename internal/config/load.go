@@ -68,6 +68,9 @@ func Load(path string) (*Config, error) {
 	if err := validateToolsAlwaysInclude(&raw); err != nil {
 		return nil, err
 	}
+	if err := validateToolDynamicSelection(&raw); err != nil {
+		return nil, err
+	}
 	if err := finalizeRuntimeSkills(&raw); err != nil {
 		return nil, err
 	}
@@ -571,6 +574,53 @@ func validateICHeuristic(h *HeuristicConfig) error {
 		if _, err := regexp.Compile("(?i)" + p); err != nil {
 			return fmt.Errorf("config: intent_classifier.heuristic.full_patterns[%d]: %w", i, err)
 		}
+	}
+	for i, p := range h.FullLitePatterns {
+		if _, err := regexp.Compile("(?i)" + p); err != nil {
+			return fmt.Errorf("config: intent_classifier.heuristic.full_lite_patterns[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func countValidAlwaysIncludeTools(c *Config) int {
+	if c == nil || c.Tools == nil || c.ToolCatalog == nil {
+		return 0
+	}
+	seen := make(map[string]struct{})
+	for _, id := range c.Tools.AlwaysInclude {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := c.ToolCatalog.Tools[id]; ok {
+			seen[id] = struct{}{}
+			continue
+		}
+		if NativeToolAllowed(c, id) {
+			seen[id] = struct{}{}
+		}
+	}
+	return len(seen)
+}
+
+func validateToolDynamicSelection(c *Config) error {
+	if c == nil || c.Tools == nil || c.Tools.DynamicSelection == nil {
+		return nil
+	}
+	ds := c.Tools.DynamicSelection
+	if !ds.EnabledForFullLite && !ds.EnabledForFull {
+		return nil
+	}
+	if ds.MaxToolsForLLMRequest < 1 {
+		return errors.New("config: tools.dynamic_selection.max_tools_for_llm_request must be >= 1 when enabled_for_full_lite or enabled_for_full")
+	}
+	if ds.EnabledForFullLite && !c.Tools.TextBasedEnabled {
+		return errors.New("config: tools.dynamic_selection.enabled_for_full_lite requires tools.text_based_enabled")
+	}
+	n := countValidAlwaysIncludeTools(c)
+	if n > 0 && ds.MaxToolsForLLMRequest < n {
+		return fmt.Errorf("config: tools.dynamic_selection.max_tools_for_llm_request (%d) must be >= valid always_include count (%d)", ds.MaxToolsForLLMRequest, n)
 	}
 	return nil
 }

@@ -11,11 +11,12 @@ import (
 )
 
 // Covers AC-17.002
+// Supporting AC-18.002 (simple tier unchanged vs EP-017)
 func TestHandleMessage_SimpleTier_NoToolsNoRAG(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hi there!"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, 40),
+		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40),
 		nil,
 		nil,
 	)
@@ -43,7 +44,7 @@ func TestHandleMessage_FullTier_IncludesFullPromptPath(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "full response"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier(nil, []string{`напомни`}, 40),
+		intent.NewHeuristicClassifier(nil, []string{`напомни`}, nil, 40),
 		nil,
 		nil,
 	)
@@ -82,7 +83,7 @@ func TestHandleMessage_SimpleTier_SkipsToolsAndRAG(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hi"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, 40),
+		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40),
 		nil,
 		nil,
 	)
@@ -155,7 +156,7 @@ func TestHandleMessage_SimpleTier_FooterOnlyMainTokens(t *testing.T) {
 	}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, 40),
+		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, nil, 40),
 		nil,
 		nil,
 	)
@@ -182,7 +183,7 @@ func TestHandleMessage_ClassificationLogsInfo(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, 40),
+		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, nil, 40),
 		nil,
 		nil,
 	)

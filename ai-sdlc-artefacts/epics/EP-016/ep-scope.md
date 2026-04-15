@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-016 |
-| **Status** | IN_PROGRESS |
+| **Status** | DONE |
 | **Title** | Manual day notes, write_memory, and vector memory refinement |
 | **Description** | Introduce operator- and model-addressable **daily notes** on disk (`notes.md` per calendar day under `memory_dir`), a native **`write_memory`** tool that appends validated content to `notes.md` and indexes it for semantic retrieval, extend **`read_memory`** so date-range reads include both automatic **`summary.md`** and **`notes.md`**, and refine **vector memory**: separate **conversation-turn** embeddings from **rollup summary** embeddings, use **event-aligned calendar dates** in turn chunks (not “time of indexing”), and apply **deduplication** policy for turn indexing to limit redundant rows. |
 | **First version date** | 2026-04-14 |

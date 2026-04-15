@@ -83,19 +83,21 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	}
 	firstSupportsTools, textBased := firstProviderTextToolFlags(cfg)
 	byID := make(map[string]*runtimeskills.Package)
-	if cfg != nil {
-		for _, p := range cfg.RuntimeSkillPackages {
-			byID[p.ID] = p
-		}
-	}
 	var rs *config.RuntimeSkillsConfig
 	var tc *config.ToolsConfig
+	var toolDynSel *config.ToolDynamicSelection
 	var sessCfg *config.ConversationSessionConfig
 	var sessStore *sessionWindowStore
 	paLoc := paLocationFromConfig(cfg)
 	if cfg != nil {
 		rs = cfg.RuntimeSkills
 		tc = cfg.Tools
+		if tc != nil {
+			toolDynSel = tc.DynamicSelection
+		}
+		for _, p := range cfg.RuntimeSkillPackages {
+			byID[p.ID] = p
+		}
 		if cfg.ConversationSession != nil && cfg.ConversationSession.Enabled {
 			sessCfg = cfg.ConversationSession
 			sessStore = newSessionWindowStore()
@@ -129,6 +131,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		sessionStore:               sessStore,
 		paLoc:                      paLoc,
 		classifier:                 classifier,
+		toolsDynamic:               toolDynSel,
 	}
 	if cfg != nil && cfg.ToolCatalog != nil {
 		h.catalog = cfg.ToolCatalog

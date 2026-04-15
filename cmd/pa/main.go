@@ -231,7 +231,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		return err
 	}
 
-	logger.Info("starting", "adapter", "telegram")
+	logger.Info("starting", "adapter", "telegram", "model", mainConversationModelName(cfg))
 	var ti core.ToolIndex = toolIndex
 	var si core.SkillIndex = skillIndex
 	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, memVec, embedder, nodeRunner, ti, si, toolRegistry, classifier)
@@ -259,19 +259,30 @@ func warnIfNodesSSHUnreachable(ctx context.Context, cfg *config.Config, logger *
 	}
 }
 
-func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {
-	model := cfg.LLMProviders[0].Model
-	if model == "" {
-		model = "default"
+// mainConversationModelName returns the configured chat model id for the active baseline provider
+// (first provider, or tools.llm_escalation.baseline_index when escalation is enabled).
+func mainConversationModelName(cfg *config.Config) string {
+	if cfg == nil || len(cfg.LLMProviders) == 0 {
+		return "unknown"
 	}
+	idx := 0
 	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled {
 		bi := esc.BaselineIndex
 		if bi >= 0 && bi < len(cfg.LLMProviders) {
-			model = cfg.LLMProviders[bi].Model
-			if model == "" {
-				model = "default"
-			}
+			idx = bi
 		}
+	}
+	m := cfg.LLMProviders[idx].Model
+	if m == "" {
+		return "default"
+	}
+	return m
+}
+
+func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {
+	model := mainConversationModelName(cfg)
+	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled {
+		bi := esc.BaselineIndex
 		logger.Info("llm escalation", "enabled", true, "baseline_index", bi, "model", model)
 		return
 	}
@@ -761,6 +772,7 @@ func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) (intent.Clas
 		heuristic = intent.NewHeuristicClassifier(
 			ic.Heuristic.SimplePatterns,
 			ic.Heuristic.FullPatterns,
+			ic.Heuristic.FullLitePatterns,
 			ic.Heuristic.MaxSimpleLen,
 		)
 	}
@@ -790,10 +802,13 @@ func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) (intent.Clas
 		}
 		model = intent.NewModelClassifier(provider, logger, timeout)
 	}
-	logger.Info("intent classifier enabled",
-		"heuristic", heuristic != nil,
-		"model_stage", model != nil,
-	)
+	attrs := []any{"heuristic", heuristic != nil, "model_stage", model != nil}
+	if ic.ModelStage != nil && ic.ModelStage.Enabled {
+		if m := strings.TrimSpace(ic.ModelStage.Model); m != "" {
+			attrs = append(attrs, "classifier_model", m)
+		}
+	}
+	logger.Info("intent classifier enabled", attrs...)
 	return intent.NewCascadeClassifier(heuristic, model, logger), nil
 }
 

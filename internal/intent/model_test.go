@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"pa/internal/llm"
+	"strings"
 	"testing"
 	"time"
 )
@@ -114,7 +115,8 @@ func TestModel_Timeout(t *testing.T) {
 }
 
 // Covers AC-17.009
-func TestModel_PromptContainsOnlyMessageAndTiers(t *testing.T) {
+// Covers AC-18.010 (classification user message includes three tier bullets and delimited user text per template)
+func TestModel_PromptContainsTierLabelsAndDelimitedUserMessage(t *testing.T) {
 	var captured []llm.Message
 	mp := &capturingProvider{inner: &mockProvider{content: "simple"}}
 	mc := NewModelClassifier(mp, nil, 5*time.Second)
@@ -125,6 +127,24 @@ func TestModel_PromptContainsOnlyMessageAndTiers(t *testing.T) {
 	}
 	if captured[0].Role != "user" {
 		t.Errorf("role = %s, want user", captured[0].Role)
+	}
+	body := captured[0].Content
+	for _, needle := range []string{"- simple:", "- full_lite:", "- full:", "<<<test message>>>"} {
+		if !strings.Contains(body, needle) {
+			t.Errorf("classification prompt missing %q", needle)
+		}
+	}
+}
+
+// Covers AC-18.010
+func TestModel_ClassifyFullLiteToken(t *testing.T) {
+	mc := NewModelClassifier(&mockProvider{content: "full_lite"}, nil, 5*time.Second)
+	tier, err := mc.Classify(context.Background(), "x")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tier != TierFullLite {
+		t.Errorf("tier = %s, want full_lite", tier)
 	}
 }
 
