@@ -8,7 +8,7 @@
 
 ## Summary
 
-EP-018 implementation is **complete** against the implementation plan: three-way intent classification, `full_lite` prompt assembly, optional dynamic tool capping for `full` and `full_lite`, configuration validation, observability, tests, documentation, and quality gates. **`make check`** and **`./bin/validate EP-018`** both exited **0**. Total statement coverage from `make check`: **74.0%** (project-wide aggregate).
+EP-018 implementation is **complete** against the implementation plan: three-way intent classification, `full_lite` prompt assembly, optional dynamic tool capping for `full` and `full_lite`, configuration validation, observability, tests, documentation, and quality gates. A small follow-up appends the assigned **intent tier** to the Telegram token usage footer (EP-015 line) for operator visibility. **`make check`** and **`./bin/validate EP-018`** both exited **0**. Total statement coverage from `make check`: **73.8%** (project-wide aggregate).
 
 ## Implementation vs plan
 
@@ -23,6 +23,7 @@ EP-018 implementation is **complete** against the implementation plan: three-way
 | 9 — rune regression | Done | `handler_ep018_test.go` |
 | 10 — cmd/pa wiring | Done | `buildIntentClassifier` passes `FullLitePatterns` |
 | 11–12 — validate + CI | Done | `./bin/validate EP-018`, `make check` |
+| Follow-up — tier in token footer | Done | `usageTurnAcc.footerLine(tier)`, `outbound_chunk` regex (operator UX) |
 
 Checkpoints A–D: **all satisfied** (see implementation plan).
 
@@ -33,7 +34,7 @@ Checkpoints A–D: **all satisfied** (see implementation plan).
 | `make check` | Pass (fmt, vet, vuln, lint, `go test -race`, coverage, module boundaries) |
 | `./bin/validate EP-018` | Pass — 21/21 AC traced (20 automated, 1 manual: AC-18.016) |
 
-**Total coverage (from `make check` / `go tool cover -func`):** 74.0% of statements.
+**Total coverage (from `make check` / `go tool cover -func`):** 73.8% of statements.
 
 ## REQ/AC test coverage matrix
 
@@ -71,4 +72,4 @@ Checkpoints A–D: **all satisfied** (see implementation plan).
 
 - **Gap:** None blocking; AC-18.016 lacks an automated integration test for tool index disabled — acceptable as manual trace per validation.
 - **Risk:** Operators must configure `full_lite` / `full` patterns carefully to avoid mis-tiering; mitigated by EP-017-style cascade and default `full` on model failure.
-- **Recommendation:** After merge, update [ep-scope.md](ep-scope.md) **Status** from NEW to DONE when the owner closes the epic.
+- **Recommendation:** None; epic **Status** set to **DONE** in [ep-scope.md](ep-scope.md) at audit close-out.

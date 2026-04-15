@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-018 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Tiered Prompt Cost Reduction |
 | **Description** | Extend the post-EP-017 prompt path with a third complexity tier (`full_lite`) and per-turn **dynamic tool selection** (bounded subset plus configured `always_include`) so that main-model input tokens drop on conversational turns without sacrificing the existing `full` tier behaviour when dynamic selection for `full` is disabled. |
 | **First version date** | 2026-04-15 |

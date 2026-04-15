@@ -24,3 +24,4 @@
 | [EP-015](epics/EP-015/ep-scope.md) | Telegram token usage footer | DONE | 73.2% | [ep-audit-report (2026-04-14)](epics/EP-015/ep-audit-report.md) |
 | [EP-016](epics/EP-016/ep-scope.md) | Manual day notes, write_memory, and vector memory refinement | DONE | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-016/ep-audit-report.md) |
 | [EP-017](epics/EP-017/ep-scope.md) | Intent Classifier for Prompt Optimization | DONE | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-017/ep-audit-report.md) |
+| [EP-018](epics/EP-018/ep-scope.md) | Tiered Prompt Cost Reduction | DONE | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-018/ep-audit-report.md) |
