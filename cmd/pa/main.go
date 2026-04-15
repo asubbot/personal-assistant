@@ -13,6 +13,7 @@ import (
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/embedding"
+	"pa/internal/intent"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
@@ -225,10 +226,15 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		}
 	}()
 
+	classifier, err := buildIntentClassifier(cfg, logger)
+	if err != nil {
+		return err
+	}
+
 	logger.Info("starting", "adapter", "telegram")
 	var ti core.ToolIndex = toolIndex
 	var si core.SkillIndex = skillIndex
-	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, memVec, embedder, nodeRunner, ti, si, toolRegistry)
+	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, memVec, embedder, nodeRunner, ti, si, toolRegistry, classifier)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second
@@ -743,6 +749,55 @@ func writeMemoryLimits(wm *config.WriteMemoryConfig) (maxAppend, maxFile int) {
 	}
 	return maxAppend, maxFile
 }
+
+// buildIntentClassifier constructs the EP-017 cascade classifier from config. Returns nil when disabled.
+func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) (intent.Classifier, error) {
+	ic := cfg.IntentClassifier
+	if ic == nil || !ic.Enabled {
+		return nil, nil
+	}
+	var heuristic *intent.HeuristicClassifier
+	if ic.Heuristic != nil {
+		heuristic = intent.NewHeuristicClassifier(
+			ic.Heuristic.SimplePatterns,
+			ic.Heuristic.FullPatterns,
+			ic.Heuristic.MaxSimpleLen,
+		)
+	}
+	var model *intent.ModelClassifier
+	if ic.ModelStage != nil && ic.ModelStage.Enabled {
+		provCfg := &config.LLMProvider{
+			Type:                  ic.ModelStage.Type,
+			Endpoint:              ic.ModelStage.Endpoint,
+			APIKeyPath:            ic.ModelStage.APIKeyPath,
+			Model:                 ic.ModelStage.Model,
+			DefaultTemperature:    ic.ModelStage.DefaultTemperature,
+			DefaultMaxTokens:      ic.ModelStage.DefaultMaxTokens,
+			DefaultResponseFormat: "text",
+			SupportsTools:         boolPtr(false),
+		}
+		provider, err := llm.NewProvider(provCfg)
+		if err != nil {
+			return nil, fmt.Errorf("intent classifier model provider: %w", err)
+		}
+		var timeout time.Duration
+		if ic.ModelStage.Timeout != "" {
+			var parseErr error
+			timeout, parseErr = time.ParseDuration(ic.ModelStage.Timeout)
+			if parseErr != nil {
+				return nil, fmt.Errorf("intent classifier model timeout: %w", parseErr)
+			}
+		}
+		model = intent.NewModelClassifier(provider, logger, timeout)
+	}
+	logger.Info("intent classifier enabled",
+		"heuristic", heuristic != nil,
+		"model_stage", model != nil,
+	)
+	return intent.NewCascadeClassifier(heuristic, model, logger), nil
+}
+
+func boolPtr(v bool) *bool { return &v }
 
 // clearConversationContext deletes turn rows from vec_turns. vec_summaries, vec_notes, and vec_tools are unchanged.
 func clearConversationContext(cfg *config.Config) error {

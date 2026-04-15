@@ -1,57 +1,85 @@
 # EP-016 — Audit report (stage 11)
 
-**Date and time of creation:** 2026-04-14 (UTC)  
+**Date and time of creation:** 2026-04-15 (UTC)  
 **Branch:** `epic/EP-016-memory-notes`  
-**Pipeline:** [pipeline.spec.md](../../ai-sdlc/specification/pipeline.spec.md) stage 11  
-**Inputs:** [ep-implementation-plan.md](ep-implementation-plan.md), [ep-acceptance-criteria.md](ep-acceptance-criteria.md), [ep-code-review.md](ep-code-review.md) (absent — stage 10 not executed)
+**Pipeline:** [pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md) stage 11  
+**Inputs:** [ep-implementation-plan.md](ep-implementation-plan.md), [ep-acceptance-criteria.md](ep-acceptance-criteria.md), [ep-requirements.md](ep-requirements.md)
 
 ## Summary
 
-SDLC **planning and design artefacts** for EP-016 are present through **stage 8**; **system design review** completed with **iteration 3 Pass** (zero Blocker / Major / Medium). **Stages 9 and 10** (product code and code review) are **not executed** on this branch: there is **no** functional implementation of `write_memory`, vector split, or related core changes yet. **`make check`** passes on the branch (documentation-only delta). **`./bin/validate EP-016`** fails with **0%** AC traceability because no tests declare `Covers AC-16.*` — expected until stage 9 runs.
+All **13 tasks** from the implementation plan are **Done**. `make check` passes with **73.8%** total statement coverage. `./bin/validate EP-016` reports **100% AC traceability** (20/20 in-scope ACs traced, 1 deferred). **Code review (stage 10) has not been executed** — `ep-code-review.md` does not exist. Per [pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md) §2.2, code review must complete before treating the epic delivery as DONE.
 
 ## Implementation vs plan
 
-| Task (ep-implementation-plan) | Status |
-|-------------------------------|--------|
-| 1 — Config schema | **Pending** |
-| 2 — memory notes.md helpers | **Pending** |
-| 3 — vector sqlite table constants | **Pending** |
-| 4 — summarize → vec_summaries | **Pending** |
-| 5 — cmd/pa three stores | **Pending** |
-| 6 — indexTurn vec_turns + event date | **Pending** |
-| 7 — retrieval triple merge | **Pending** |
-| 8 — write_memory tool | **Pending** |
-| 9 — read_memory extension | **Pending** |
-| 10 — migration INFO log | **Pending** |
-| 11 — runtime skills / allowlist | **Pending** |
-| 12 — validate EP-016 + make check | **Pending** (blocked by 1–11) |
-| 13 — stage 10 code review | **Pending** |
+| Task | Status | Notes |
+|------|--------|-------|
+| 1 — Vector sqlite table names and constructors | **Done** | [ep-implementation-plan](ep-implementation-plan.md) |
+| 2 — Configuration: notes byte limits | **Done** | |
+| 3 — memory.Store: append and read notes.md | **Done** | |
+| 4 — write_memory native tool | **Done** | |
+| 5 — Extend read_memory for notes + headings | **Done** | |
+| 6 — cmd/pa: open summary, turn, note, and legacy stores | **Done** | |
+| 7 — Summarize pipeline: write rollup vectors to vec_summaries | **Done** | |
+| 8 — Core retrieval: split search + merge order | **Done** | |
+| 9 — indexTurn: event-aligned date + stable id + upsert | **Done** | |
+| 10 — Logging / redaction for write_memory | **Done** | |
+| 11 — Summarize job preserves notes.md | **Done** | |
+| 12 — Documentation: REQ-16.027 | **Done** | |
+| 13 — AC↔test comments and validation | **Done** | |
 
-**Documentation stages completed on this branch:** 4 (requirements), 5 (AC), 6 (system design), 7 (design review ×3), 8 (implementation plan). Stage 3 scope file updated (**IN_PROGRESS**).
+Checkpoints A, B, C: all passed.
 
 ## Test results and coverage
 
 | Command | Result |
 |---------|--------|
-| `make check` | **Pass** (exit 0); total statements coverage from run: **73.4%** (unchanged vs baseline; no new Go code). |
-| `make build && ./bin/validate EP-016` | **Fail** (exit 1): 0/18 ACs traced — implementation and test trace comments absent. |
+| `make check` | **Pass** (exit 0) |
+| Total coverage | **73.8%** (statements) |
+| `./bin/validate EP-016` | **Pass** (exit 0): 20/20 in-scope ACs traced (100%), 1 deferred |
 
 ## REQ/AC test coverage matrix
 
-| AC | Automated test | Notes |
-|----|----------------|-------|
-| AC-16.001 — AC-16.018 | None | Deferred until stage 9 |
+| AC | REQ | Unit | Integration | E2E | Manual | Link |
+|----|-----|------|-------------|-----|--------|------|
+| [AC-16.001](ep-acceptance-criteria.md#ac-16-001) | [REQ-16.001](ep-requirements.md#req-16-001) | ✓ | — | — | — | internal/memory/ep016_notes_test.go |
+| [AC-16.002](ep-acceptance-criteria.md#ac-16-002) | [REQ-16.002](ep-requirements.md#req-16-002) | ✓ | — | — | — | internal/memory/ep016_notes_test.go |
+| [AC-16.003](ep-acceptance-criteria.md#ac-16-003) | [REQ-16.004](ep-requirements.md#req-16-004) | ✓ | — | — | — | internal/memory/ep016_notes_test.go |
+| [AC-16.004](ep-acceptance-criteria.md#ac-16-004) | [REQ-16.006](ep-requirements.md#req-16-006) | ✓ | — | — | — | internal/memory/ep016_notes_test.go, internal/config/ep016_test.go |
+| [AC-16.005](ep-acceptance-criteria.md#ac-16-005) | [REQ-16.009](ep-requirements.md#req-16-009) | ✓ | — | — | — | internal/tools/ep016_memory_tools_test.go |
+| [AC-16.006](ep-acceptance-criteria.md#ac-16-006) | [REQ-16.011](ep-requirements.md#req-16-011) | ✓ | — | — | — | internal/tools/ep016_memory_tools_test.go |
+| [AC-16.007](ep-acceptance-criteria.md#ac-16-007) | [REQ-16.013](ep-requirements.md#req-16-013) | ✓ | — | — | — | internal/tools/ep016_memory_tools_test.go |
+| [AC-16.008](ep-acceptance-criteria.md#ac-16-008) | [REQ-16.014](ep-requirements.md#req-16-014) | ✓ | — | — | — | internal/tools/read_memory_test.go |
+| [AC-16.009](ep-acceptance-criteria.md#ac-16-009) | [REQ-16.015](ep-requirements.md#req-16-015) | ✓ | — | — | — | internal/vector/sqlite/store_test.go |
+| [AC-16.010](ep-acceptance-criteria.md#ac-16-010) | [REQ-16.017](ep-requirements.md#req-16-017) | ✓ | — | — | — | internal/core/ep016_retrieval_test.go |
+| [AC-16.011](ep-acceptance-criteria.md#ac-16-011) | [REQ-16.018](ep-requirements.md#req-16-018) | ✓ | — | — | — | internal/core/vector_merge_test.go |
+| [AC-16.012](ep-acceptance-criteria.md#ac-16-012) | [REQ-16.019](ep-requirements.md#req-16-019) | ✓ | — | — | — | internal/core/ep016_retrieval_test.go |
+| [AC-16.013](ep-acceptance-criteria.md#ac-16-013) | [REQ-16.020](ep-requirements.md#req-16-020) | ✓ | — | — | — | internal/core/ep016_retrieval_test.go |
+| [AC-16.014](ep-acceptance-criteria.md#ac-16-014) | [REQ-16.021](ep-requirements.md#req-16-021) | ✓ | — | — | — | internal/core/ep016_retrieval_test.go |
+| [AC-16.015](ep-acceptance-criteria.md#ac-16-015) | [REQ-16.022](ep-requirements.md#req-16-022) | ✓ | — | — | — | internal/core/ep016_retrieval_test.go |
+| [AC-16.016](ep-acceptance-criteria.md#ac-16-016) | [REQ-16.010](ep-requirements.md#req-16-010) | ✓ | — | — | — | internal/tools/ep016_memory_tools_test.go |
+| [AC-16.017](ep-acceptance-criteria.md#ac-16-017) | [REQ-16.005](ep-requirements.md#req-16-005) | ✓ | — | — | — | internal/tools/ep016_memory_tools_test.go |
+| [AC-16.018](ep-acceptance-criteria.md#ac-16-018) | [REQ-16.007](ep-requirements.md#req-16-007) | ✓ | — | — | — | internal/tools/ep016_memory_tools_test.go, internal/core/handler_test.go, internal/config/ep016_test.go |
+| [AC-16.019](ep-acceptance-criteria.md#ac-16-019) | [REQ-16.024](ep-requirements.md#req-16-024) | ✓ | — | — | — | internal/core/handler_test.go |
+| [AC-16.020](ep-acceptance-criteria.md#ac-16-020) | [REQ-16.025](ep-requirements.md#req-16-025) | — | — | — | — | DEFERRED (CI enforcement) |
+| [AC-16.021](ep-acceptance-criteria.md#ac-16-021) | [REQ-16.027](ep-requirements.md#req-16-027) | ✓ | — | — | — | internal/config/docs_ep016_test.go |
+
+## Quality gate
+
+| Check | Result |
+|-------|--------|
+| `go fmt` | Pass |
+| `go vet` | Pass |
+| `govulncheck` | Pass (no vulnerabilities) |
+| `golangci-lint` | Pass (0 issues) |
+| `go test -race` | Pass (all packages) |
+| Module boundaries | Pass (no cycles, no forbidden edges) |
 
 ## Code review gate (stage 10)
 
-**Not applicable** — no change set was produced for EP-016 product code on this branch; `ep-code-review.md` does not exist. Per pipeline §2.2, code review must run after stage 9 before treating the epic delivery as complete.
+**Not executed** — `ep-code-review.md` does not exist. Per [pipeline.spec.md](../../../ai-sdlc/specification/pipeline.spec.md) §2.2, code review must run after stage 9 before treating the epic delivery as complete.
 
-## Gaps and risks
+## Gaps, risks, recommendations
 
-- **Epic scope is large** (vector migration, new tool, adapter timestamp); execution should follow **ep-implementation-plan.md** task order with checkpoints.  
-- **Legacy `vec_items`:** operators need the startup INFO message and optional cleanup path once implementation lands.  
-- **REQ-16.002 AC** assumes summarization never touches `notes.md`; tests must lock that invariant.
-
-## Operator decision (if any)
-
-None recorded. Continue with **stage 9** on branch `epic/EP-016-memory-notes` when ready to implement.
+- **Gap:** Code review (stage 10) has not been performed for EP-016. This is required before setting Status to DONE.
+- **Risk:** EP-016 scope is large (vector migration, new tool, adapter timestamp); thorough code review should verify edge cases around legacy `vec_items` coexistence.
+- **Recommendation:** Run stage 10 (code review) for the EP-016 change set, then update `ep-scope.md` Status to DONE.

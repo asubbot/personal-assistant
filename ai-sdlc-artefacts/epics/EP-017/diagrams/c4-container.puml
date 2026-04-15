@@ -1,0 +1,44 @@
+@startuml C4 Container - PersonalAssistant EP-017
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 60
+skinparam ranksep 80
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-017 Intent Classifier
+
+Person(user, "User", "Telegram user")
+System_Ext(telegram, "Telegram", "Messaging / Bot API")
+System_Ext(llm_main, "Main LLM Provider", "Chat completions")
+System_Ext(llm_class, "Classification LLM", "Cheap model for ambiguous intents")
+System_Ext(embed_api, "Embedding API", "Embeddings (full tier only)")
+
+System_Boundary(pa, "PersonalAssistant") {
+  Container(tg_adapter, "Telegram Adapter", "Go", "Receives updates, routes to handler")
+  Container(classifier, "Intent Classifier", "Go", "Heuristic + model cascade; assigns tier")
+  Container(handler, "Conversation Handler", "Go", "Tiered prompt assembly, LLM call, tool loop")
+  Container(sys_tail, "System Tail Builder", "Go", "Dynamic tail: tools, RAG, Hermes, skills")
+  Container(tool_sel, "Tool Selector", "Go", "Skill/tool pre-selection (full tier only)")
+  Container(rag, "RAG Retrieval", "Go", "Vector search over memory (full tier only)")
+  ContainerDb(config_store, "Config", "JSON", "Tiers, patterns, classifier provider")
+}
+
+Rel(user, telegram, "Uses")
+Rel(telegram, tg_adapter, "Bot API")
+Rel(tg_adapter, classifier, "User message")
+Rel(classifier, config_store, "Reads patterns, tier defs")
+Rel(classifier, llm_class, "Ambiguous only")
+Rel(classifier, handler, "Tier assignment")
+Rel(handler, tool_sel, "Full tier only")
+Rel(handler, rag, "Full tier only")
+Rel(handler, sys_tail, "Full tier: build tail")
+Rel(handler, llm_main, "Completion request")
+Rel(rag, embed_api, "Embed query")
+Rel(handler, tg_adapter, "Reply")
+Rel(tg_adapter, telegram, "Send reply")
+
+@enduml

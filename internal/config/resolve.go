@@ -47,6 +47,10 @@ func ResolvePaths(cfg *Config, configFilePath string) {
 	if cfg.WebTools != nil && cfg.WebTools.Enabled {
 		cfg.WebTools.Search.BraveAPIKeyPath = resolve(secretsDir, cfg.WebTools.Search.BraveAPIKeyPath)
 	}
+
+	if cfg.IntentClassifier != nil && cfg.IntentClassifier.ModelStage != nil {
+		cfg.IntentClassifier.ModelStage.APIKeyPath = resolve(secretsDir, cfg.IntentClassifier.ModelStage.APIKeyPath)
+	}
 }
 
 func envDefault(key, def string) string {

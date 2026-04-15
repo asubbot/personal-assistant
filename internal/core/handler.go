@@ -13,6 +13,7 @@ import (
 	"pa/internal/core/toolfailure"
 	"pa/internal/embedding"
 	"pa/internal/escalationpolicy"
+	"pa/internal/intent"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
@@ -88,6 +89,8 @@ type conversationHandler struct {
 	sessionStore *sessionWindowStore
 	// paLoc is pa_timezone for vector turn dates (EP-002); nil means UTC.
 	paLoc *time.Location
+	// classifier is the optional EP-017 intent classifier; nil = disabled (always full tier).
+	classifier intent.Classifier
 }
 
 // checkUserMessage returns trimmed text, or earlyReply when the message must not reach the LLM.
@@ -304,7 +307,23 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 	if sk == "" {
 		sk = fmt.Sprintf("uid:%d", userID)
 	}
-	chunks := h.gatherRetrievedChunkTexts(ctx, userText)
+
+	// EP-017: classify intent tier.
+	tier := intent.TierFull
+	if h.classifier != nil {
+		classResult := h.classifier.Classify(ctx, userText)
+		tier = classResult.Tier
+		h.logger.InfoContext(ctx, "intent classified",
+			"tier", string(tier),
+			"stage", classResult.Stage,
+			"message_len", classResult.MessageLen,
+		)
+	}
+
+	var chunks []string
+	if tier == intent.TierFull {
+		chunks = h.gatherRetrievedChunkTexts(ctx, userText)
+	}
 	hasRet := len(chunks) > 0
 	sysHead := h.systemStaticHead(hasRet)
 	messages := []llm.Message{
@@ -316,46 +335,52 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 		}
 	}
 	messages = append(messages, llm.Message{Role: "user", Content: userText})
-	skills, err := h.selectSkillPackages(ctx, userText)
-	if err != nil {
-		return "", err
-	}
-	merged, sources, err := h.mergeSelectedToolIDs(ctx, userText, skills)
-	if err != nil {
-		return "", err
-	}
-	couldTextPath := h.textBasedEnabled && !h.firstProviderSupportsTools
-	includeHermes := false
-	if couldTextPath && h.catalog != nil {
-		inner := tooltext.InstructionsForCatalogToolsPlusNative(h.catalog, merged, h.nativeToolDefs())
-		includeHermes = strings.TrimSpace(inner) != ""
-	}
-	mergedCopy := append([]string(nil), merged...)
-	var sourcesCopy map[string]toolOrigin
-	if len(sources) > 0 {
-		sourcesCopy = make(map[string]toolOrigin, len(sources))
-		for k, v := range sources {
-			sourcesCopy[k] = v
+
+	var opts *llm.CompletionOptions
+	var textPath bool
+	if tier == intent.TierFull {
+		skills, err := h.selectSkillPackages(ctx, userText)
+		if err != nil {
+			return "", err
 		}
+		merged, sources, err := h.mergeSelectedToolIDs(ctx, userText, skills)
+		if err != nil {
+			return "", err
+		}
+		couldTextPath := h.textBasedEnabled && !h.firstProviderSupportsTools
+		includeHermes := false
+		if couldTextPath && h.catalog != nil {
+			inner := tooltext.InstructionsForCatalogToolsPlusNative(h.catalog, merged, h.nativeToolDefs())
+			includeHermes = strings.TrimSpace(inner) != ""
+		}
+		mergedCopy := append([]string(nil), merged...)
+		var sourcesCopy map[string]toolOrigin
+		if len(sources) > 0 {
+			sourcesCopy = make(map[string]toolOrigin, len(sources))
+			for k, v := range sources {
+				sourcesCopy[k] = v
+			}
+		}
+		tailState := &tailFitState{
+			merged:        mergedCopy,
+			sources:       sourcesCopy,
+			chunks:        append([]string(nil), chunks...),
+			skills:        append([]*runtimeskills.Package(nil), skills...),
+			includeHermes: includeHermes,
+			textPath:      couldTextPath,
+		}
+		h.fitDynamicTailToBudget(ctx, tailState, h.maxDynamicSystemRunes)
+		opts, err = h.completionOptionsMergedCatalogNative(tailState.merged)
+		if err != nil {
+			return "", WrapUserError(UserErrorKindConfiguration, err)
+		}
+		textPath = couldTextPath && opts != nil && len(opts.Tools) > 0
+		if opts != nil && textPath {
+			opts.ForceJSONOutput = true
+		}
+		messages[0].Content = sysHead + h.buildDynamicTailString(tailState)
 	}
-	tailState := &tailFitState{
-		merged:        mergedCopy,
-		sources:       sourcesCopy,
-		chunks:        append([]string(nil), chunks...),
-		skills:        append([]*runtimeskills.Package(nil), skills...),
-		includeHermes: includeHermes,
-		textPath:      couldTextPath,
-	}
-	h.fitDynamicTailToBudget(ctx, tailState, h.maxDynamicSystemRunes)
-	opts, err := h.completionOptionsMergedCatalogNative(tailState.merged)
-	if err != nil {
-		return "", WrapUserError(UserErrorKindConfiguration, err)
-	}
-	textPath := couldTextPath && opts != nil && len(opts.Tools) > 0
-	if opts != nil && textPath {
-		opts.ForceJSONOutput = true
-	}
-	messages[0].Content = sysHead + h.buildDynamicTailString(tailState)
+	// Simple tier: opts stays nil (provider defaults: no tools, default temp/max_tokens).
 	requestID := genRequestID()
 	start := time.Now()
 	var st *llmTurnState
