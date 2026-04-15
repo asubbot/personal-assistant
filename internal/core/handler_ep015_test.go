@@ -48,7 +48,7 @@ func TestHandleMessage_EP015_tokenFooter_sumsAcrossToolRound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
-	wantSuffix := "\n*Tokens 42 (in: 30 / out: 12)*"
+	wantSuffix := "\n*Tokens 42 (in: 30 / out: 12) · full*"
 	if !strings.HasSuffix(reply, wantSuffix) {
 		t.Fatalf("reply = %q, want suffix %q", reply, wantSuffix)
 	}

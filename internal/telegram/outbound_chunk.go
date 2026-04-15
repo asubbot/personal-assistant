@@ -9,7 +9,8 @@ import (
 
 // tokenFooterSuffix matches the EP-015 trailing token line (end-anchored).
 // Supports Markdown italic variant *Tokens …* and legacy plain Tokens … (no asterisks).
-var tokenFooterSuffix = regexp.MustCompile(`\n(?:\*Tokens \d+ \(in: \d+ / out: \d+\)\*|Tokens \d+ \(in: \d+ / out: \d+\))\z`)
+// Optional " · tier" suffix (tier: letters, digits, underscore) matches intent tier in the footer.
+var tokenFooterSuffix = regexp.MustCompile(`\n(?:\*Tokens \d+ \(in: \d+ / out: \d+\)(?: · [a-zA-Z0-9_]+)?\*|Tokens \d+ \(in: \d+ / out: \d+\)(?: · [a-zA-Z0-9_]+)?)\z`)
 
 // SplitTokenFooterSuffix splits a combined handler reply into Markdown body and optional token footer line (without leading newline).
 func SplitTokenFooterSuffix(s string) (body, footerLine string) {

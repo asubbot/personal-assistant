@@ -467,7 +467,7 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 	if err != nil {
 		return "", err
 	}
-	if line := usageAcc.footerLine(); line != "" && strings.TrimSpace(reply) != "" {
+	if line := usageAcc.footerLine(string(tier)); line != "" && strings.TrimSpace(reply) != "" {
 		return reply + "\n" + line, nil
 	}
 	return reply, nil
