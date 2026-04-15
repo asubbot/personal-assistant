@@ -132,6 +132,10 @@ Reply with exactly one word: simple or full
 
 Parses the response: if the trimmed lowercase output starts with `simple` → `TierSimple`; if `full` → `TierFull`; otherwise returns error (unparseable). Uses existing `llm.Provider.Complete` with `max_tokens=10`, no tools ([REQ-17.008](ep-requirements.md#req-17-008)).
 
+**Timeout:** `ModelClassifier.Classify` applies a context deadline from the configured `timeout` field (default 5 s) before calling `provider.Complete`. If the deadline expires, the error propagates to `CascadeClassifier` which logs at WARN and defaults to `full` ([REQ-17.011](ep-requirements.md#req-17-011)).
+
+**Token logging** ([REQ-17.018](ep-requirements.md#req-17-018)): After `provider.Complete` returns, `ModelClassifier` logs prompt and completion token counts at INFO via `m.logger` with `"component"="intent_classifier_model"`. Classification runs **before** `usageTurnAcc` is initialised in `HandleMessage`, so model-stage tokens structurally never reach `footerLine()` — the user-facing footer reports only main-model usage.
+
 ### CascadeClassifier
 
 ```go
@@ -214,7 +218,8 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
         skills, err := h.selectSkillPackages(ctx, userText)
         // ... existing tail building, opts construction ...
     }
-    // else: simple tier — no tools, no dynamic tail, no opts
+    // else: simple tier — opts remains nil; Provider.Complete treats nil opts
+    // as provider defaults (no tools, default temperature/max_tokens).
 
     // ... rest of completeAt, tool loop, usage footer ...
 }
@@ -281,13 +286,14 @@ func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) intent.Class
       "model": "qwen2.5:0.5b",
       "api_key_path": "",
       "default_temperature": 0.0,
-      "default_max_tokens": 10
+      "default_max_tokens": 10,
+      "timeout": "5s"
     }
   }
 }
 ```
 
-([REQ-17.016](ep-requirements.md#req-17-016)): All fields changeable via config.json without code changes.
+([REQ-17.016](ep-requirements.md#req-17-016)): All fields changeable via config.json without code changes. Note: REQ-17.016 mentions `config.yaml` — the project uses `config.json`; the requirement text should be treated as referring to the project's actual config file format.
 
 ### Config Go types
 
@@ -309,10 +315,11 @@ type ClassificationModelConfig struct {
     Enabled            bool    `json:"enabled"`
     Type               string  `json:"type"`               // "openai-compatible", "ollama"
     Endpoint           string  `json:"endpoint"`
-    APIKeyPath         string  `json:"api_key_path"`
+    APIKeyPath         string  `json:"api_key_path"`        // resolved by ResolvePaths via PA_SECRETS_DIR
     Model              string  `json:"model"`
     DefaultTemperature float64 `json:"default_temperature"`
     DefaultMaxTokens   int     `json:"default_max_tokens"`
+    Timeout            string  `json:"timeout,omitempty"`   // Go duration string, e.g. "5s"; default 5s
 }
 ```
 
@@ -325,10 +332,14 @@ type Config struct {
 }
 ```
 
+### Path resolution
+
+`ResolvePaths` is extended to resolve `intent_classifier.model_stage.api_key_path` against `PA_SECRETS_DIR`, following the same pattern as `LLMProvider.APIKeyPath` and `EmbeddingProvider.APIKeyPath`. Environment variable support for EP-017 config is limited to path resolution (consistent with the rest of the project); all other fields are set in `config.json`.
+
 ### Validation at load
 
 - If `intent_classifier.enabled` is true and `heuristic` is present: compile each regex in `simple_patterns` and `full_patterns` (fail fast on invalid regex). `max_simple_len` must be >= 1.
-- If `model_stage.enabled` is true: `endpoint` and `model` must be non-empty. `default_max_tokens` must be >= 1.
+- If `model_stage.enabled` is true: `endpoint` and `model` must be non-empty. `default_max_tokens` must be >= 1. `timeout` is parsed as `time.Duration`; if empty or omitted, default is `5s`.
 - If `intent_classifier` is absent or `enabled` is false: classifier is nil, zero overhead.
 
 ---
@@ -338,7 +349,7 @@ type Config struct {
 | Scenario | Behaviour | REQ |
 |----------|-----------|-----|
 | Invalid regex in heuristic config | Fail fast at config load | [REQ-17.016](ep-requirements.md#req-17-016) |
-| Model stage endpoint unreachable | Timeout → WARN log → default `full` | [REQ-17.011](ep-requirements.md#req-17-011) |
+| Model stage endpoint unreachable | Context deadline (configured `timeout`, default 5 s) expires → WARN log → default `full` | [REQ-17.011](ep-requirements.md#req-17-011) |
 | Model stage returns unparseable response | WARN log → default `full` | [REQ-17.011](ep-requirements.md#req-17-011) |
 | Classifier disabled or nil | No classification call; `HandleMessage` runs existing full path | [REQ-17.016](ep-requirements.md#req-17-016) |
 | Heuristic alone (model stage disabled) + ambiguous | Default `full` | [REQ-17.010](ep-requirements.md#req-17-010) |
