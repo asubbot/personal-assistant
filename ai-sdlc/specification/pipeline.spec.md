@@ -41,10 +41,10 @@ flowchart TB
   K[11. Audit]
   A --> B --> C --> D --> E --> F --> G
   G -->|blocking findings, iteration cap not reached| F
-  G -->|zero Blocker Major Medium, or operator decision| H
+  G -->|zero Blocker Major Medium Minor, or operator decision| H
   H --> I --> J
   J -->|blocking findings, iteration cap not reached| I
-  J -->|zero Blocker Major Medium, or operator decision| K
+  J -->|zero Blocker Major Medium Minor, or operator decision| K
 ```
 
 ---
@@ -71,9 +71,9 @@ Each stage lists its **skill file** (under `specification/skills/`), purpose, ma
 
 Stages **6** and **7** are **re-entrant**: after **stage 7** finds issues in **`ep-system-design.md`**, run **stage 6** again to apply fixes, then run **stage 7** again on the updated design. Stage numbers **do not change**; each pass is another **iteration** of the same stages.
 
-**Exit the iteration loop** when the latest **stage 7** report records **zero** open findings with severity **Blocker**, **Major**, or **Medium** (severity definitions and report layout: [07-system-design-review.skill.md](skills/07-system-design-review.skill.md)). **Minor** (and purely informational items) do not block exit.
+**Exit the iteration loop** when the latest **stage 7** report records **zero** open findings with severity **Blocker**, **Major**, **Medium**, and **Minor** (severity definitions and report layout: [07-system-design-review.skill.md](skills/07-system-design-review.skill.md)).
 
-**Iteration cap:** After **five** completed **stage 7** iterations, if any **Blocker**, **Major**, or **Medium** finding **remains**, **stop** the cycle and obtain an explicit **operator decision** (e.g. accept residual risk, narrow scope, redesign approach, or written override) before **stage 8** or further automated passes.
+**Iteration cap:** After **five** completed **stage 7** iterations, if any **Blocker**, **Major**, **Medium**, or **Minor** finding **remains**, **stop** the cycle and obtain an explicit **operator decision** (e.g. accept residual risk, narrow scope, redesign approach, or written override) before **stage 8** or further automated passes.
 
 **Artefact `ep-system-design-review.md`:** **One file per epic**, containing a **separate top-level section per iteration** (e.g. `## Review iteration 1` … `## Review iteration N`) as specified in the stage 7 skill—preserve prior iterations when adding a new one.
 
@@ -81,11 +81,11 @@ Stages **6** and **7** are **re-entrant**: after **stage 7** finds issues in **`
 
 ### 2.2 Task execution ↔ code review iteration (stages 9 and 10)
 
-Stages **9** and **10** are **re-entrant** for a bounded change set (e.g. epic branch / PR for **EP-XXX**): after **stage 10** records **Blocker**, **Major**, or **Medium** findings on that change set, run **stage 9** again to apply fixes in the repo, then run **stage 10** again on the **updated** diff (same epic scope; refresh paths or `base..head` as needed). Stage numbers **do not change**; each pass is another **iteration** of the same stages.
+Stages **9** and **10** are **re-entrant** for a bounded change set (e.g. epic branch / PR for **EP-XXX**): after **stage 10** records **Blocker**, **Major**, **Medium**, or **Minor** findings on that change set, run **stage 9** again to apply fixes in the repo, then run **stage 10** again on the **updated** diff (same epic scope; refresh paths or `base..head` as needed). Stage numbers **do not change**; each pass is another **iteration** of the same stages.
 
-**Exit the iteration loop** when the latest **stage 10** report records **zero** open findings with severity **Blocker**, **Major**, or **Medium** (definitions: [10-code-review.skill.md](skills/10-code-review.skill.md)). **Minor**, **Nit**, and **Suggestion** do not block exit.
+**Exit the iteration loop** when the latest **stage 10** report records **zero** open findings with severity **Blocker**, **Major**, **Medium**, and **Minor** (definitions: [10-code-review.skill.md](skills/10-code-review.skill.md)). **Nit** and **Suggestion** do not block exit.
 
-**Iteration cap:** After **five** completed **stage 10** iterations, if any **Blocker**, **Major**, or **Medium** finding **remains**, **stop** the cycle and obtain an explicit **operator decision** before **stage 11** or further automated passes.
+**Iteration cap:** After **five** completed **stage 10** iterations, if any **Blocker**, **Major**, **Medium**, or **Minor** finding **remains**, **stop** the cycle and obtain an explicit **operator decision** before **stage 11** or further automated passes.
 
 **Artefact `ep-code-review.md`:** **One file per epic** when persisting reviews, containing a **separate top-level section per iteration** (e.g. `## Review iteration 1` … `## Review iteration N`) as specified in the stage 10 skill—preserve prior iterations when appending. (Reviews may still be drafted in chat first; save per skill and user approval.)
 

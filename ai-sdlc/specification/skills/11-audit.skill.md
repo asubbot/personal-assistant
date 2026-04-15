@@ -20,7 +20,7 @@ You are the QA and delivery lead. Your task is to produce an audit (status) repo
 
 - Current branch (codebase).
 - **Epic artefacts:** ai-sdlc-artefacts/epics/<epic-id>/ep-implementation-plan.md, ep-acceptance-criteria.md; optionally ep-requirements.md, ep-system-design.md, ep-manual-test-scenarios.md, **ep-code-review.md** (include **all** `## Review iteration N` sections when assessing the code-review gate per [pipeline.spec.md](../pipeline.spec.md) **§2.2**).
-- **Prerequisite (epic delivery path):** Do not treat the epic as past the code-review gate until **§2.2** exit criteria are met (zero Blocker/Major/Medium) or the operator has recorded a decision after the iteration cap—see [10-code-review.skill.md](10-code-review.skill.md).
+- **Prerequisite (epic delivery path):** Do not treat the epic as past the code-review gate until **§2.2** exit criteria are met (zero Blocker/Major/Medium/Minor) or the operator has recorded a decision after the iteration cap—see [10-code-review.skill.md](10-code-review.skill.md).
 - **Test strategy:** e.g. ai-sdlc-artefacts/strategy.md or project-defined test/coverage commands.
 - **Test and coverage outputs:** Run **`make check`** (or the project’s equivalent). This single command is sufficient, as it runs all defined checks (e.g. fmt, vet, lint, tests with coverage, module boundaries). Use its terminal output for pass/fail and for the **total** test coverage figure.
 - **AC Coverage (RECOMMENDED):** Before audit, optionally run `./bin/validate EP-XXX` to verify all Acceptance Criteria have test coverage. This avoids token-expensive manual inspection. Exit code 0 = all ACs covered. See [VALIDATION.md](../../tools/validate/VALIDATION.md).

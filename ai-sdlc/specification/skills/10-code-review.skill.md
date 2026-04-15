@@ -13,13 +13,13 @@ description: >-
 
 ## Code–review iteration ([pipeline.spec.md](../pipeline.spec.md) §2.2)
 
-Stages **9** and **10** repeat until **zero** open findings in **Blocker**, **Major**, and **Medium**, or until the **operator decides** after the cap.
+Stages **9** and **10** repeat until **zero** open findings in **Blocker**, **Major**, **Medium**, and **Minor**, or until the **operator decides** after the cap.
 
 1. **Count iterations** — Each completed save of a **`## Review iteration N`** section in `ep-code-review.md` (or a full review recorded as iteration **N** per operator agreement) is one stage 10 iteration. **N** must not exceed **5** without an explicit operator decision recorded in chat or in the review file.
 2. **Single file** — Use one `ep-code-review.md` per epic when persisting. For iteration **N**, add a **top-level** heading `## Review iteration N` with stable increasing **N**. **Retain** prior iteration sections.
-3. **Exit loop** — After this iteration, if **Blocker**, **Major**, and **Medium** open counts are all **zero**, the iteration loop is **complete**; stage 11 may follow. **Minor**, **Nit**, and **Suggestion** do not block.
-4. **Cap** — If **N = 5** and any **Blocker**, **Major**, or **Medium** is still **> 0**, **stop** and require an **operator decision** before further stage 9/10 work or stage 11.
-5. **Return to stage 9** — When Blocker/Major/Medium > 0 and **N < 5**, the orchestrator runs **stage 9** again to fix the codebase, then runs **stage 10** again (new **delegated** session per pipeline §3) on the updated change set.
+3. **Exit loop** — After this iteration, if **Blocker**, **Major**, **Medium**, and **Minor** open counts are all **zero**, the iteration loop is **complete**; stage 11 may follow. **Nit** and **Suggestion** do not block.
+4. **Cap** — If **N = 5** and any **Blocker**, **Major**, **Medium**, or **Minor** is still **> 0**, **stop** and require an **operator decision** before further stage 9/10 work or stage 11.
+5. **Return to stage 9** — When Blocker/Major/Medium/Minor > 0 and **N < 5**, the orchestrator runs **stage 9** again to fix the codebase, then runs **stage 10** again (new **delegated** session per pipeline §3) on the updated change set.
 
 ## Mandatory delegation (pipeline stage 10)
 
@@ -53,7 +53,7 @@ You are a senior reviewer. Your task is to review a **bounded change set** and r
 
 1. **Confirm scope** — If the user did not specify PR, branch, or paths, ask. If they want “full codebase review”, warn that it is broad; suggest narrowing to a PR or directory.
 2. **Gather the diff** — Read changed files (and immediate callers/callees if needed for context). Prefer minimal context: only files relevant to the change.
-3. **Apply the checklist (§3)** — Systematically walk through categories; note **severity** using the definitions below (**Blocker**, **Major**, **Medium** gate **§2.2**; **Minor**, **Nit**, **Suggestion** do not).
+3. **Apply the checklist (§3)** — Systematically walk through categories; note **severity** using the definitions below (**Blocker**, **Major**, **Medium**, **Minor** gate **§2.2**; **Nit** and **Suggestion** do not).
 4. **Tests** — If the change is non-trivial and the repo has a standard check command, you **may** suggest the user run **`make check`**; run it **only if** the user asked for verification or Agent mode allows running commands. Record pass/fail in the review when you ran it.
 5. **Output in chat** — Always output the **full** review using the structure in §4 (include **Iteration summary — open counts** for Blocker / Major / Medium / Minor / Nit / Suggestion when **§2.2** applies).
 6. **Save only when requested** — Write a file **only** when the user explicitly asks to save. Prefer `ai-sdlc-artefacts/epics/<epic-id>/ep-code-review.md` for epic-scoped reviews; otherwise e.g. `ai-sdlc-artefacts/reviews/code-review-YYYY-MM-DD-<topic>.md` if the user prefers. For **§2.2**, append **`## Review iteration N`** to `ep-code-review.md` (preserve prior sections). Use relative links if the review references epic artefacts.
@@ -67,11 +67,11 @@ You are a senior reviewer. Your task is to review a **bounded change set** and r
 | **Blocker** | Must not merge: correctness bug, security flaw, broken contract, data loss, or CI-breaking defect. |
 | **Major** | Should block merge until fixed: significant gap (missing tests for new critical path, serious API misuse, missing error handling for required flow). |
 | **Medium** | Should fix before merge if time allows, or track immediately after: maintainability, incomplete edge cases, doc/code drift that misleads. |
-| **Minor** | Polish, low-risk cleanups; does not block **§2.2** exit. |
+| **Minor** | Polish, low-risk cleanups; blocks **§2.2** exit until resolved or operator decision at cap. |
 | **Nit** | Style-only or preference; does not block exit. |
 | **Suggestion** | Optional improvement; does not block exit. |
 
-**§2.2 gate:** Exit the 9↔10 loop only when open **Blocker** = 0, **Major** = 0, and **Medium** = 0 for the current iteration.
+**§2.2 gate:** Exit the 9↔10 loop only when open **Blocker** = 0, **Major** = 0, **Medium** = 0, and **Minor** = 0 for the current iteration.
 
 ---
 
@@ -100,7 +100,7 @@ Use this layout (or user-agreed equivalent):
 
 1. **Scope** — What was reviewed (PR, commits, files).
 2. **Iteration summary — open counts** — (when **§2.2** applies) Blocker: *n* \| Major: *n* \| Medium: *n* \| Minor: *n* \| Nit: *n* \| Suggestion: *n*.
-3. **Gate (§2.2)** — Pass \| Fail \| Cap (iteration 5 and Blocker/Major/Medium still > 0 — operator decision required).
+3. **Gate (§2.2)** — Pass \| Fail \| Cap (iteration 5 and Blocker/Major/Medium/Minor still > 0 — operator decision required).
 4. **Summary** — 2–4 sentences: merge recommendation (approve / approve with nits / request changes) and why.
 5. **Blockers** — Must fix before merge (empty if none).
 6. **Findings** — Table or bullet list: **Severity** | Location | Issue | Recommendation.

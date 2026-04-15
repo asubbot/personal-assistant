@@ -25,13 +25,13 @@ When this skill is run as **pipeline stage 7** for an epic, execution MUST follo
 
 ## Design–review iteration ([pipeline.spec.md](../pipeline.spec.md) §2.1)
 
-Stages **6** and **7** repeat until **zero** open findings in **Blocker**, **Major**, and **Medium**, or until the **operator decides** after the cap.
+Stages **6** and **7** repeat until **zero** open findings in **Blocker**, **Major**, **Medium**, and **Minor**, or until the **operator decides** after the cap.
 
 1. **Count iterations** — Each completed save of a **`## Review iteration N`** section in `ep-system-design-review.md` is one stage 7 iteration. **N** must not exceed **5** without an explicit operator decision recorded in chat or in the review file (e.g. under the latest iteration).
 2. **Single file** — Use one `ep-system-design-review.md` per epic. For iteration **N**, add (or replace only if the user agrees to discard a draft) a **top-level** heading `## Review iteration N` with a stable increasing **N**. **Retain** all prior `## Review iteration …` sections for history.
-3. **Exit loop** — After this iteration’s findings are recorded, set **`Iteration summary — open counts`** for Blocker / Major / Medium. If all three are **zero**, the iteration loop is **complete**; stage 8 may follow. **Minor** does not block.
-4. **Cap** — If **N = 5** and any **Blocker**, **Major**, or **Medium** count is still **> 0**, **stop**: list remaining issues and require an **operator decision** before further stage 6/7 work or stage 8.
-5. **Return to stage 6** — When Blocker/Major/Medium > 0 and **N < 5**, the orchestrator runs **stage 6** again to revise `ep-system-design.md`, then runs **stage 7** again (new **delegated** session per pipeline §3).
+3. **Exit loop** — After this iteration’s findings are recorded, set **`Iteration summary — open counts`** for Blocker / Major / Medium / Minor. If all four are **zero**, the iteration loop is **complete**; stage 8 may follow.
+4. **Cap** — If **N = 5** and any **Blocker**, **Major**, **Medium**, or **Minor** count is still **> 0**, **stop**: list remaining issues and require an **operator decision** before further stage 6/7 work or stage 8.
+5. **Return to stage 6** — When Blocker/Major/Medium/Minor > 0 and **N < 5**, the orchestrator runs **stage 6** again to revise `ep-system-design.md`, then runs **stage 7** again (new **delegated** session per pipeline §3).
 
 ## Review Workflow
 
@@ -83,7 +83,7 @@ Categorize every finding into **one** severity (definitions align with pipeline 
 | **Medium** | Unclear interfaces, incomplete non-critical specs, inconsistent structure, gaps that should be fixed before implementation |
 | **Minor** | Documentation polish, optional consistency, low-risk improvements |
 
-**Loop exit:** **Blocker = 0 AND Major = 0 AND Medium = 0** (only open items in this iteration; resolved items from prior iterations do not need re-listing unless regressed).
+**Loop exit:** **Blocker = 0 AND Major = 0 AND Medium = 0 AND Minor = 0** (only open items in this iteration; resolved items from prior iterations do not need re-listing unless regressed).
 
 ### Step 6: Output Report
 
@@ -108,7 +108,7 @@ Use **one** `ep-system-design-review.md` per epic. **First** iteration: create t
 **Stage 7 iteration:** N of max 5
 **Document reviewed:** [ep-system-design.md](ep-system-design.md)
 **Iteration summary — open counts:** Blocker: X | Major: X | Medium: X | Minor: X
-**Gate:** Pass (Blocker/Major/Medium all zero) | Fail (any Blocker/Major/Medium > 0) | Cap (N = 5 and Blocker/Major/Medium still > 0 — operator decision required)
+**Gate:** Pass (Blocker/Major/Medium/Minor all zero) | Fail (any Blocker/Major/Medium/Minor > 0) | Cap (N = 5 and Blocker/Major/Medium/Minor still > 0 — operator decision required)
 
 ### Overall assessment
 
@@ -178,9 +178,9 @@ Use **one** `ep-system-design-review.md` per epic. **First** iteration: create t
 Before completing review:
 - [ ] Iteration number **N** is set (1–5); prior iteration sections preserved when **N > 1**
 - [ ] **Iteration summary — open counts** filled for Blocker / Major / Medium / Minor
-- [ ] Gate reflects **§2.1** (Pass only if Blocker/Major/Medium all zero; Cap if **N = 5** and any of those > 0)
+- [ ] Gate reflects **§2.1** (Pass only if Blocker/Major/Medium/Minor all zero; Cap if **N = 5** and any of those > 0)
 - [ ] All requirements have traceability entries for this iteration
-- [ ] Blocker / Major / Medium issues have clear recommendations
+- [ ] Blocker / Major / Medium / Minor issues have clear recommendations
 - [ ] Report follows template structure under `## Review iteration N`
 - [ ] Severity ratings are consistent with the definitions in Step 5
 - [ ] Action items are specific and actionable
