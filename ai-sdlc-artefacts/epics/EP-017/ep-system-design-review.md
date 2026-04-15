@@ -75,3 +75,76 @@ _None._
 - **Requirements:** [ep-requirements.md](ep-requirements.md)
 - **Acceptance criteria:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - **Scope:** [ep-scope.md](ep-scope.md)
+
+---
+
+## Review iteration 2
+
+**Review date:** 2026-04-15
+**Stage 7 iteration:** 2 of max 5
+**Document reviewed:** [ep-system-design.md](ep-system-design.md)
+**Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 0 | Minor: 0
+**Gate:** Pass
+
+### Overall assessment
+
+All six findings from iteration 1 have been resolved with clear, specific additions to the design document. The model-stage token logging mechanism, timeout strategy, environment-variable/path-resolution scope, simple-tier completion path, config-format erratum, and `ResolvePaths` extension are now explicitly documented at the appropriate component level. No new issues were found — the design fully traces all 20 requirements and all 18 acceptance criteria, maintains clean module boundaries, and follows project principles.
+
+**Verdict:** Pass gate
+
+### Iteration 1 findings — resolution status
+
+| # | Status | Notes |
+|---|--------|-------|
+| M1 | Resolved | Token logging paragraph added to `ModelClassifier` section: logs prompt/completion tokens at INFO with `"component"="intent_classifier_model"`; notes structural separation from `usageTurnAcc`/`footerLine()`. Fully addresses REQ-17.018. |
+| M2 | Resolved | `timeout` field added to `ClassificationModelConfig` (Go duration string, default `"5s"`). `ModelClassifier` section now specifies context-deadline application before `provider.Complete`, with error propagation to `CascadeClassifier` → WARN + `full`. Validation at load parses the duration. |
+| M3 | Resolved | New "Path resolution" subsection documents `ResolvePaths` extension for `intent_classifier.model_stage.api_key_path` against `PA_SECRETS_DIR`. Config note clarifies env-var support is limited to path resolution (consistent with project). Config.yaml → config.json erratum also noted. |
+| m1 | Resolved | Pseudocode comment added: simple tier leaves `opts` nil; `Provider.Complete` treats nil opts as provider defaults (no tools). Session history inclusion for both tiers is explicitly noted. |
+| m2 | Resolved | Inline note after config JSON schema: "REQ-17.016 mentions `config.yaml` — the project uses `config.json`; the requirement text should be treated as referring to the project's actual config file format." |
+| m3 | Resolved | "Path resolution" subsection states `ResolvePaths` extended for `intent_classifier.model_stage.api_key_path`, following the same pattern as `LLMProvider.APIKeyPath` and `EmbeddingProvider.APIKeyPath`. |
+
+### New issues (if any)
+
+#### Blocker
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Major
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Medium
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Minor
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+### Project rules compliance
+
+| Rule | Compliance |
+|------|------------|
+| KISS | ✅ — Minimal new surface: one package, one interface, three focused structs. No unnecessary abstractions; reuses existing `llm.Provider`. |
+| Fail fast | ✅ — Invalid regex and missing required config fields rejected at load time. |
+| Security | ✅ — API key resolved via `PA_SECRETS_DIR`/`ResolvePaths`; no new HTTP clients; classification prompt sends only user message text and tier labels. |
+| Testability | ✅ — `Classifier` interface enables dependency injection; nil-classifier path testable without mocks; testing strategy maps all ACs. |
+
+### Traceability (this iteration)
+
+- **Architecture:** [ep-system-design.md](ep-system-design.md)
+- **Requirements:** [ep-requirements.md](ep-requirements.md)
+- **Acceptance criteria:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
+- **Scope:** [ep-scope.md](ep-scope.md)
