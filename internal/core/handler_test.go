@@ -813,6 +813,78 @@ func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
 	}
 }
 
+func TestTruncateToolResultForPrompt(t *testing.T) {
+	small := "ok"
+	if got := truncateToolResultForPrompt(small); got != small {
+		t.Fatalf("small content changed: got %q", got)
+	}
+	large := strings.Repeat("a", maxToolResultPromptBytes+73)
+	got := truncateToolResultForPrompt(large)
+	if got == large {
+		t.Fatal("expected large content to be truncated")
+	}
+	if !strings.Contains(got, "[tool output truncated: 73 bytes omitted]") {
+		t.Fatalf("missing truncation marker: %q", got[len(got)-80:])
+	}
+	if len(got) >= len(large) {
+		t.Fatalf("expected shorter content after truncation; got=%d want<%d", len(got), len(large))
+	}
+}
+
+func TestHandleMessage_toolResultLoop_largeToolOutput_truncatedForFollowUp(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	largeOut := strings.Repeat("z", maxToolResultPromptBytes+512)
+	runner := &mockNodeRunner{stdout: largeOut}
+	callCount := 0
+	var secondCallMessages []llm.Message
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, messages []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content:   "",
+				Usage:     llm.Usage{},
+				ToolCalls: []llm.ToolCall{{ID: "call_1", Name: "run_echo", Arguments: `{"msg": "hi"}`}},
+			}, nil
+		}
+		secondCallMessages = append([]llm.Message(nil), messages...)
+		return &llm.CompletionResult{Content: "done", Usage: llm.Usage{}}, nil
+	}
+	h := &conversationHandler{
+		router:     mustRouterSingle(t, provider),
+		catalog:    catalog,
+		nodeRunner: runner,
+		logger:     slog.Default(),
+	}
+	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var found bool
+	for _, m := range secondCallMessages {
+		if m.Role != "tool" {
+			continue
+		}
+		if strings.Contains(m.Content, "[tool output truncated:") {
+			found = true
+			if len(m.Content) >= len(largeOut) {
+				t.Fatalf("tool message was not reduced; got=%d want<%d", len(m.Content), len(largeOut))
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected truncated tool message; messages=%+v", secondCallMessages)
+	}
+}
+
 // Covers AC-04.006, AC-04.008: tool_call with invalid args (unknown tool) → no RunOnNode; error surfaced in chat (in messages to next provider call or in reply).
 func TestHandleMessage_toolResultLoop_invalidArgs_noRunOnNode_errorInChat(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
@@ -1535,6 +1607,70 @@ func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 	}
 	if !sawHermesLog {
 		t.Errorf("expected tool invocation with invoked_via=hermes; records=%+v", cap.records)
+	}
+}
+
+func TestHandleMessage_textBasedHermes_largeToolOutput_truncatedForFollowUp(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	largeOut := strings.Repeat("x", maxToolResultPromptBytes+1024)
+	runner := &mockNodeRunner{stdout: largeOut}
+	callCount := 0
+	var secondMsgs []llm.Message
+	provider := &mockProvider{}
+	provider.CompleteFn = func(_ context.Context, messages []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
+		callCount++
+		if callCount == 1 {
+			return &llm.CompletionResult{
+				Content: `<tool_call>
+{"name": "run_echo", "arguments": {"msg": "hi"}}
+</tool_call>`,
+				Usage: llm.Usage{},
+			}, nil
+		}
+		secondMsgs = append([]llm.Message(nil), messages...)
+		return &llm.CompletionResult{Content: "done", Usage: llm.Usage{}}, nil
+	}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		router:                     mustRouterSingle(t, provider),
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		textBasedEnabled:           true,
+		firstProviderSupportsTools: false,
+	}
+	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	var found bool
+	for _, m := range secondMsgs {
+		if m.Role == "user" && strings.Contains(m.Content, "Tool run_echo") {
+			if strings.Contains(m.Content, "[tool output truncated:") {
+				found = true
+				if len(m.Content) >= len(largeOut) {
+					t.Fatalf("hermes tool-result message was not reduced; got=%d want<%d", len(m.Content), len(largeOut))
+				}
+				break
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("expected truncated user tool-result message; messages=%+v", secondMsgs)
 	}
 }
 

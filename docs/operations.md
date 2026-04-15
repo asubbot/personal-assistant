@@ -48,6 +48,28 @@ Examples:
 - Daily files (naming convention implemented in `internal/llmlog`).
 - Retention: **`paths.llm_log_retention_days`**; pruning runs when summarization is invoked (including via `-summarize`).
 
+### Token usage checks
+
+To compare token usage before/after config or prompt changes, summarize one day of logs:
+
+```bash
+python3 - <<'PY'
+import json, pathlib
+p=pathlib.Path('.data/llm_logs/llm-2026-04-15.jsonl')
+rows=[json.loads(l) for l in p.read_text().splitlines() if l.strip()]
+pts=[r.get('usage',{}).get('prompt_tokens',0) for r in rows]
+tts=[r.get('usage',{}).get('total_tokens',0) for r in rows]
+def p95(v):
+    if not v:
+        return 0
+    i=max(0, min(len(v)-1, int(round(0.95*(len(v)-1)))))
+    return sorted(v)[i]
+print('entries', len(rows))
+print('prompt max', max(pts), 'p95', p95(pts), 'avg', round(sum(pts)/len(pts),1))
+print('total  max', max(tts), 'p95', p95(tts), 'avg', round(sum(tts)/len(tts),1))
+PY
+```
+
 ## Scheduler
 
 If `paths.scheduled_tasks_path` points to a non-empty valid task list, the scheduler starts with the bot. Task names appear in logs when jobs run. The Telegram adapter can be used as notifier for `notify` actions when `telegram.notify_chat_id` is configured appropriately.

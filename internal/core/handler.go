@@ -37,6 +37,7 @@ const (
 	defaultVectorSearchTopK      = 10   // tests: explicit handler.vectorSearchTopK when simulating production defaults
 	logTruncateMaxLen            = 2000 // max chars per message/response when logging at DEBUG (REQ-01.021)
 	maxToolRounds                = 10   // max request–tool-result rounds to avoid infinite loop (REQ-04.006)
+	maxToolResultPromptBytes     = 8 << 10
 )
 
 // genRequestID returns a short unique id for LLM log entries (16 hex chars from 8 random bytes).
@@ -446,6 +447,22 @@ func copyOptsNoTools(o *llm.CompletionOptions) *llm.CompletionOptions {
 	}
 }
 
+func truncateToolResultForPrompt(content string) string {
+	if len(content) <= maxToolResultPromptBytes {
+		return content
+	}
+	limit := maxToolResultPromptBytes
+	for limit > 0 && !utf8.ValidString(content[:limit]) {
+		limit--
+	}
+	if limit < 1 {
+		return "[tool output truncated: content omitted]"
+	}
+	truncated := content[:limit]
+	omitted := len(content) - len(truncated)
+	return fmt.Sprintf("%s\n\n[tool output truncated: %d bytes omitted]", truncated, omitted)
+}
+
 func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, textToolMode bool) ([]llm.Message, bool) {
 	qualifyingFailure := false
 	if textToolMode {
@@ -484,10 +501,10 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 			}
 		}
 		if textToolMode {
-			line := fmt.Sprintf("Tool %s (call_id %s) result:\n%s", tc.Name, tc.ID, content)
+			line := fmt.Sprintf("Tool %s (call_id %s) result:\n%s", tc.Name, tc.ID, truncateToolResultForPrompt(content))
 			messages = append(messages, llm.Message{Role: "user", Content: line})
 		} else {
-			messages = append(messages, llm.Message{Role: "tool", Content: content, ToolCallID: tc.ID})
+			messages = append(messages, llm.Message{Role: "tool", Content: truncateToolResultForPrompt(content), ToolCallID: tc.ID})
 		}
 	}
 	return messages, qualifyingFailure

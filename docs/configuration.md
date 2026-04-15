@@ -50,6 +50,16 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 - **`write_memory`** — **optional** (EP-016) for limits only. **`max_append_bytes`** and **`max_file_bytes`** bound each appended entry and the per-day **`notes.md`** file size (validated at load; zeros are normalized to documented defaults). The native **`write_memory`** tool is a core feature and is always registered in normal bot startup; startup fails fast if required runtime dependencies are missing (**`paths.memory_dir`**, notes vector table **`vec_notes`**, embedding provider). If the block is omitted, documented defaults are used.
 - **`log_redaction`** — **required**; `additional_patterns` may be an empty array. Each pattern has `id`, `regex`, `replacement`; IDs must not collide with built-in redactor IDs.
 
+## Cost-aware profile (recommended)
+
+If prompt usage spikes (especially after large tool outputs), start with this conservative runtime profile:
+
+- `conversation_context.max_dynamic_system_runes`: `5000`
+- `conversation_context.vector_search_top_k`: `4`
+- `conversation_session.max_session_exchanges`: `4`
+
+This keeps retrieval and session carry-over useful, while reducing average and peak prompt size in Telegram turns.
+
 ## Automatic memory summarization and read_memory (EP-002)
 
 - In **bot mode**, when **`paths.memory_dir`**, **`paths.llm_log_dir`**, embedding, and the vector index are available, a background worker always runs automatic day/month/year summarization (previous calendar day at **01:00** local `pa_timezone`, month/year rollups on the first local day of the month/year at **01:00**, tick **60s**, job timeout **1800s**, reconciliation scan **90** days; not configurable) and startup catch-up (see epic **EP-002**). Interactive Telegram turns take precedence over background jobs when both are pending.
