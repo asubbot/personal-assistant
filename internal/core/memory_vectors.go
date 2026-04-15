@@ -1,6 +1,9 @@
 package core
 
-import "pa/internal/vector"
+import (
+	"errors"
+	"pa/internal/vector"
+)
 
 // MemoryVectors holds EP-016 split sqlite-vec tables. Legacy is vec_items for summary-prefix search only; fields may be nil.
 type MemoryVectors struct {
@@ -32,6 +35,7 @@ func (m *MemoryVectors) Close() error {
 		return nil
 	}
 	seen := make(map[vector.Store]struct{})
+	var errs []error
 	for _, s := range []vector.Store{m.Summaries, m.Turns, m.Notes, m.Legacy} {
 		if s == nil {
 			continue
@@ -40,7 +44,9 @@ func (m *MemoryVectors) Close() error {
 			continue
 		}
 		seen[s] = struct{}{}
-		_ = s.Close()
+		if err := s.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil
+	return errors.Join(errs...)
 }

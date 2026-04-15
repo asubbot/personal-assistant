@@ -211,27 +211,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
 	}
 	registerWebToolsIfEnabled(cfg, toolRegistry, logger)
-	if memoryStore != nil {
-		span, outBytes := 31, 256*1024
-		if rm := cfg.ReadMemory; rm != nil {
-			if rm.MaxSpanDays != 0 {
-				span = rm.MaxSpanDays
-			}
-			if rm.MaxOutputBytes != 0 {
-				outBytes = rm.MaxOutputBytes
-			}
-		}
-		toolRegistry.Register(tools.NewReadMemoryTool(memoryStore, span, outBytes))
-		maxAppend := 64 * 1024
-		maxFile := 5 * 1024 * 1024
-		if wm := cfg.WriteMemory; wm != nil {
-			maxAppend = wm.MaxAppendBytes
-			maxFile = wm.MaxFileBytes
-		}
-		if memVec != nil && memVec.Notes != nil && embedder != nil {
-			toolRegistry.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, maxAppend, maxFile))
-		}
-	}
+	registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder)
 	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
 		defer cleanup()
 	}
@@ -710,6 +690,53 @@ func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *
 	reg.Register(tools.NewWebSearchTool(cfg.WebTools, webHTTP, nil))
 	reg.Register(tools.NewWebFetchTool(&cfg.WebTools.Fetch, webHTTP))
 	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider)
+}
+
+func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memoryStore *memory.Store, memVec *core.MemoryVectors, embedder embedding.Embedder) {
+	if reg == nil || memoryStore == nil {
+		return
+	}
+	span, outBytes := readMemoryLimits(cfg)
+	reg.Register(tools.NewReadMemoryTool(memoryStore, span, outBytes))
+
+	// EP-016 explicit opt-in: write_memory registers only when the write_memory block is present.
+	if !writeMemoryEnabled(cfg, memVec, embedder) {
+		return
+	}
+	maxAppend, maxFile := writeMemoryLimits(cfg.WriteMemory)
+	reg.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, maxAppend, maxFile))
+}
+
+func readMemoryLimits(cfg *config.Config) (span, outBytes int) {
+	span, outBytes = 31, 256*1024
+	if cfg == nil || cfg.ReadMemory == nil {
+		return span, outBytes
+	}
+	if cfg.ReadMemory.MaxSpanDays != 0 {
+		span = cfg.ReadMemory.MaxSpanDays
+	}
+	if cfg.ReadMemory.MaxOutputBytes != 0 {
+		outBytes = cfg.ReadMemory.MaxOutputBytes
+	}
+	return span, outBytes
+}
+
+func writeMemoryEnabled(cfg *config.Config, memVec *core.MemoryVectors, embedder embedding.Embedder) bool {
+	return cfg != nil && cfg.WriteMemory != nil && memVec != nil && memVec.Notes != nil && embedder != nil
+}
+
+func writeMemoryLimits(wm *config.WriteMemoryConfig) (maxAppend, maxFile int) {
+	maxAppend, maxFile = 64*1024, 5*1024*1024
+	if wm == nil {
+		return maxAppend, maxFile
+	}
+	if wm.MaxAppendBytes != 0 {
+		maxAppend = wm.MaxAppendBytes
+	}
+	if wm.MaxFileBytes != 0 {
+		maxFile = wm.MaxFileBytes
+	}
+	return maxAppend, maxFile
 }
 
 // clearConversationContext deletes turn rows from vec_turns and legacy vec_items. vec_summaries, vec_notes, and vec_tools are unchanged.

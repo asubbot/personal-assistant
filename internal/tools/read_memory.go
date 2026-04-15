@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// ReadMemoryTool reads day summaries from memory_dir for ISO date or inclusive from–to range (EP-002).
+// ReadMemoryTool reads day memory blocks (automatic summary + manual notes) for ISO date or inclusive from–to range (EP-002, EP-016).
 type ReadMemoryTool struct {
 	store       *memory.Store
 	maxSpanDays int
@@ -25,7 +25,7 @@ func NewReadMemoryTool(store *memory.Store, maxSpanDays, maxOutputBytes int) *Re
 func (t *ReadMemoryTool) Name() string { return "read_memory" }
 
 func (t *ReadMemoryTool) Description() string {
-	return "Read long-term memory day summaries from the assistant memory store. Use either a single ISO date (YYYY-MM-DD) or from and to (inclusive range). Dates are interpreted in pa_timezone."
+	return "Read long-term memory day blocks (automatic summary and manual notes) from the assistant memory store. Use either a single ISO date (YYYY-MM-DD) or from and to (inclusive range). Dates are interpreted in pa_timezone."
 }
 
 func (t *ReadMemoryTool) ParamsSchema() []ParamSpec {

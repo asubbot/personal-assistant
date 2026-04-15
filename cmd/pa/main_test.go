@@ -6,8 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"pa/internal/config"
+	"pa/internal/core"
+	"pa/internal/memory"
 	"pa/internal/toolcatalog"
 	patools "pa/internal/tools"
+	"pa/internal/vector"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"strings"
@@ -41,6 +44,55 @@ func TestRegisterWebToolsIfEnabled_RegistersBothTools(t *testing.T) {
 	}
 	if _, ok := reg.Get("web_fetch"); !ok {
 		t.Fatal("expected web_fetch in registry")
+	}
+}
+
+type stubEmbedder struct{}
+
+func (stubEmbedder) Embed(context.Context, string) ([]float32, error) {
+	return []float32{0, 0, 0, 0}, nil
+}
+
+type noopVectorStore struct{}
+
+func (noopVectorStore) Add(context.Context, string, []float32, string) error { return nil }
+func (noopVectorStore) Delete(context.Context, string) error                 { return nil }
+func (noopVectorStore) Clear(context.Context) error                          { return nil }
+func (noopVectorStore) Search(context.Context, []float32, int) ([]vector.SearchResult, error) {
+	return nil, nil
+}
+func (noopVectorStore) Exists(context.Context, string) (bool, error) { return false, nil }
+func (noopVectorStore) Close() error                                 { return nil }
+
+// Covers AC-16.022: write_memory registers only with explicit write_memory config block.
+func TestRegisterMemoryToolsIfEnabled_WriteMemoryRequiresConfigBlock(t *testing.T) {
+	store, err := memory.NewStore(t.TempDir(), time.UTC)
+	if err != nil {
+		t.Fatalf("memory.NewStore: %v", err)
+	}
+	memVec := &core.MemoryVectors{Notes: noopVectorStore{}}
+	embedder := stubEmbedder{}
+
+	cfgNoWrite := &config.Config{
+		ReadMemory: &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
+	}
+	regNoWrite := patools.NewRegistry()
+	registerMemoryToolsIfEnabled(cfgNoWrite, regNoWrite, store, memVec, embedder)
+	if _, ok := regNoWrite.Get("read_memory"); !ok {
+		t.Fatal("expected read_memory in registry")
+	}
+	if _, ok := regNoWrite.Get("write_memory"); ok {
+		t.Fatal("write_memory must not register when cfg.write_memory is omitted")
+	}
+
+	cfgWrite := &config.Config{
+		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
+		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
+	}
+	regWrite := patools.NewRegistry()
+	registerMemoryToolsIfEnabled(cfgWrite, regWrite, store, memVec, embedder)
+	if _, ok := regWrite.Get("write_memory"); !ok {
+		t.Fatal("expected write_memory in registry when cfg.write_memory is present")
 	}
 }
 
