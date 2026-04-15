@@ -813,6 +813,7 @@ func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
 	}
 }
 
+// Covers AC-04.012: changed tool-loop prompt behavior is covered by unit tests.
 func TestTruncateToolResultForPrompt(t *testing.T) {
 	small := "ok"
 	if got := truncateToolResultForPrompt(small); got != small {
@@ -831,6 +832,7 @@ func TestTruncateToolResultForPrompt(t *testing.T) {
 	}
 }
 
+// Covers AC-04.004: tool-result loop continues with tool outputs passed to follow-up completion.
 func TestHandleMessage_toolResultLoop_largeToolOutput_truncatedForFollowUp(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -1610,6 +1612,7 @@ func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 	}
 }
 
+// Covers AC-04.023: text-based (Hermes) path uses the same tool-result follow-up loop semantics.
 func TestHandleMessage_textBasedHermes_largeToolOutput_truncatedForFollowUp(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
