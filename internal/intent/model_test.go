@@ -62,6 +62,8 @@ func TestModel_UnparseableResponse(t *testing.T) {
 	}
 }
 
+// Covers AC-17.011
+// Supporting AC-17.008
 func TestModel_ThinkBlockStripped(t *testing.T) {
 	cases := []struct {
 		name    string
