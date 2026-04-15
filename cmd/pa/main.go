@@ -726,7 +726,7 @@ func writeMemoryEnabled(cfg *config.Config, memVec *core.MemoryVectors, embedder
 }
 
 func writeMemoryLimits(wm *config.WriteMemoryConfig) (maxAppend, maxFile int) {
-	maxAppend, maxFile = 64*1024, 5*1024*1024
+	maxAppend, maxFile = config.WriteMemoryDefaultMaxAppendBytes, config.WriteMemoryDefaultMaxFileBytes
 	if wm == nil {
 		return maxAppend, maxFile
 	}

@@ -742,9 +742,9 @@ func (h *conversationHandler) gatherSplitTableChunks(ctx context.Context, queryE
 		r, err := mv.Notes.Search(ctx, queryEmbedding, topK)
 		if err != nil {
 			h.logger.Error("vector search notes", "error", err)
-			return nil
+		} else {
+			chunks = append(chunks, h.labeledChunksFromResults(r)...)
 		}
-		chunks = append(chunks, h.labeledChunksFromResults(r)...)
 	}
 	sr, err := mergeSummarySearch(ctx, mv.Summaries, mv.Legacy, queryEmbedding, topK)
 	if err != nil {
@@ -814,6 +814,7 @@ func (h *conversationHandler) indexTurn(ctx context.Context, userText, reply str
 		return err
 	}
 	sum := sha256.Sum256([]byte(canonicalizeTurnPair(userText, reply)))
+	// First 12 bytes of the digest (24 hex chars) keep ids short; collision risk for same-day dedup is negligible.
 	id := fmt.Sprintf("turn:%s:%x", dateStr, sum[:12])
 	_ = h.memVec.Turns.Delete(ctx, id)
 	return h.memVec.Turns.Add(ctx, id, emb, chunk)

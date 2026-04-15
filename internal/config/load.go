@@ -176,10 +176,10 @@ func validateWriteMemory(c *Config) error {
 	}
 	wm := c.WriteMemory
 	if wm.MaxAppendBytes == 0 {
-		wm.MaxAppendBytes = 64 * 1024
+		wm.MaxAppendBytes = WriteMemoryDefaultMaxAppendBytes
 	}
 	if wm.MaxFileBytes == 0 {
-		wm.MaxFileBytes = 5 * 1024 * 1024
+		wm.MaxFileBytes = WriteMemoryDefaultMaxFileBytes
 	}
 	if wm.MaxAppendBytes < 256 || wm.MaxAppendBytes > 1024*1024 {
 		return errors.New("config: write_memory.max_append_bytes must be in 256..1048576")

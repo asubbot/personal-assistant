@@ -9,6 +9,12 @@ import (
 // ConfigFileName is the name of the main config file inside the config directory (PA_CONFIG_DIR).
 const ConfigFileName = "config.json"
 
+// Defaults for write_memory limits when the JSON block omits zero values (EP-016); shared with cmd/pa and validateWriteMemory.
+const (
+	WriteMemoryDefaultMaxAppendBytes = 64 * 1024
+	WriteMemoryDefaultMaxFileBytes   = 5 * 1024 * 1024
+)
+
 // Config holds application configuration loaded from JSON.
 type Config struct {
 	Version             int                        `json:"version"`

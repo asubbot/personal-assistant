@@ -33,7 +33,7 @@ func VectorChunkLabel(id string) string {
 	case strings.HasPrefix(id, VectorIDPrefixYear):
 		return "summary:year"
 	default:
-		return "turn"
+		return "unknown"
 	}
 }
 

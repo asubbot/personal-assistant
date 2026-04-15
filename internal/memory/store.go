@@ -212,6 +212,7 @@ func buildDayNoteEntry(text, kind string, nowUTC time.Time, maxAppend int) (stri
 }
 
 // AppendDayNote appends one entry to notes.md: first line UTC RFC3339, optional kind= line, then text (EP-016).
+// Size is checked after ReadDayNotes then before append; concurrent writers could race (acceptable for a single bot process).
 func (s *Store) AppendDayNote(ctx context.Context, day time.Time, text, kind string, nowUTC time.Time, maxAppend, maxFile int) error {
 	if s == nil {
 		return fmt.Errorf("memory: nil store")
