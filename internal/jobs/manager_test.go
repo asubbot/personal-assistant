@@ -283,3 +283,106 @@ func TestManager_AuditLog_RuntimeUnavailable(t *testing.T) {
 		}
 	}
 }
+
+// Covers AC-20.001, AC-20.002, AC-20.003: strict NL create request is parsed, persisted, and confirmed.
+func TestManager_HandleNaturalLanguageCreate_StrictTemplateCreatesJob(t *testing.T) {
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+	m.SetDefaultTimeZone("Europe/Berlin")
+
+	reply, handled, err := m.HandleNaturalLanguageCreate(
+		context.Background(),
+		11,
+		22,
+		"Collect an AI news digest and send it at 09:30 every day",
+	)
+	if err != nil || !handled {
+		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+	}
+	for _, token := range []string{"Scheduled job created.", "schedule: 30 9 * * *", "timezone: Europe/Berlin", "instruction: Collect an AI news digest"} {
+		if !strings.Contains(reply, token) {
+			t.Fatalf("reply missing %q: %q", token, reply)
+		}
+	}
+
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("jobs count = %d, want 1", len(items))
+	}
+	if items[0].DeliveryChatID != 22 {
+		t.Fatalf("delivery_chat_id = %d, want 22", items[0].DeliveryChatID)
+	}
+	if items[0].TimeZone != "Europe/Berlin" {
+		t.Fatalf("timezone = %q, want Europe/Berlin", items[0].TimeZone)
+	}
+}
+
+// Covers AC-20.004: malformed strict request returns deterministic guidance and creates no job.
+func TestManager_HandleNaturalLanguageCreate_MalformedRejectedNoSideEffects(t *testing.T) {
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+
+	reply, handled, err := m.HandleNaturalLanguageCreate(
+		context.Background(),
+		11,
+		22,
+		"Collect an AI news digest and send it at 9 every day",
+	)
+	if err != nil || !handled {
+		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+	}
+	if !strings.Contains(reply, "Invalid schedule format.") {
+		t.Fatalf("reply = %q", reply)
+	}
+
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("jobs count = %d, want 0", len(items))
+	}
+}
+
+// Covers AC-20.009, AC-20.008: fallback path creates job from explicit free-form send-first request and audits creation_path.
+func TestManager_HandleNaturalLanguageCreate_FallbackCreatesJob(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, logger)
+	m.SetDefaultTimeZone("UTC")
+
+	reply, handled, err := m.HandleNaturalLanguageCreate(
+		context.Background(),
+		77,
+		88,
+		"send me AI news digest at 08:15 every day",
+	)
+	if err != nil || !handled {
+		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+	}
+	if !strings.Contains(reply, "schedule: 15 8 * * *") {
+		t.Fatalf("reply = %q", reply)
+	}
+
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("jobs count = %d, want 1", len(items))
+	}
+	if items[0].Instruction != "AI news digest" {
+		t.Fatalf("instruction = %q, want %q", items[0].Instruction, "AI news digest")
+	}
+
+	logText := buf.String()
+	for _, token := range []string{"operation=create_nl", "outcome=success", "creation_path=native_tool_fallback"} {
+		if !strings.Contains(logText, token) {
+			t.Fatalf("missing %q in logs: %s", token, logText)
+		}
+	}
+}

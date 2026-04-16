@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"pa/internal/core"
 	"pa/internal/jobs"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,22 +23,50 @@ type jobsCommandHandler struct {
 }
 
 func (h *jobsCommandHandler) HandleMessage(ctx context.Context, userID int64, sessionKey string, text string) (string, error) {
-	mgr, ready, initFailed, handled := h.lookupManager(text)
-	if handled {
-		if !ready {
-			return "Scheduler is initializing. Please retry shortly.", nil
-		}
-		if initFailed {
-			return "Scheduler is unavailable due to initialization error.", nil
-		}
-		if mgr == nil {
-			return "Scheduler management is not configured.", nil
-		}
-		if reply, managerHandled, err := mgr.HandleCommand(ctx, userID, text); managerHandled || err != nil {
-			return reply, err
-		}
+	if reply, handled, err := h.handleJobsCommand(ctx, userID, text); handled || err != nil {
+		return reply, err
+	}
+	if reply, handled, err := h.handleNaturalLanguageCreate(ctx, userID, sessionKey, text); handled || err != nil {
+		return reply, err
 	}
 	return h.base.HandleMessage(ctx, userID, sessionKey, text)
+}
+
+func (h *jobsCommandHandler) handleJobsCommand(ctx context.Context, userID int64, text string) (string, bool, error) {
+	mgr, ready, initFailed, handled := h.lookupManager(text)
+	if !handled {
+		return "", false, nil
+	}
+	if !ready {
+		return "Scheduler is initializing. Please retry shortly.", true, nil
+	}
+	if initFailed {
+		return "Scheduler is unavailable due to initialization error.", true, nil
+	}
+	if mgr == nil {
+		return "Scheduler management is not configured.", true, nil
+	}
+	reply, managerHandled, err := mgr.HandleCommand(ctx, userID, text)
+	return reply, managerHandled || err != nil, err
+}
+
+func (h *jobsCommandHandler) handleNaturalLanguageCreate(ctx context.Context, userID int64, sessionKey string, text string) (string, bool, error) {
+	if !looksLikeNaturalLanguageCreateRequest(text) {
+		return "", false, nil
+	}
+	mgr, ready, initFailed := h.lookupNaturalLanguageCreateManager()
+	if !ready {
+		return "Scheduler is initializing. Please retry shortly.", true, nil
+	}
+	if initFailed {
+		return "Scheduler is unavailable due to initialization error.", true, nil
+	}
+	if mgr == nil {
+		return "Scheduler management is not configured.", true, nil
+	}
+	deliveryChatID := parseDeliveryChatID(sessionKey, userID)
+	reply, managerHandled, err := mgr.HandleNaturalLanguageCreate(ctx, userID, deliveryChatID, text)
+	return reply, managerHandled || err != nil, err
 }
 
 func (h *jobsCommandHandler) lookupManager(text string) (mgr *jobs.Manager, ready bool, initFailed bool, handled bool) {
@@ -59,6 +88,26 @@ func isJobsCommandToken(token string) bool {
 		return true
 	}
 	return strings.HasPrefix(lower, "/jobs@")
+}
+
+func looksLikeNaturalLanguageCreateRequest(text string) bool {
+	return jobs.LooksLikeNaturalLanguageCreateRequest(text)
+}
+
+func parseDeliveryChatID(sessionKey string, fallback int64) int64 {
+	v, err := strconv.ParseInt(strings.TrimSpace(sessionKey), 10, 64)
+	if err != nil || v == 0 {
+		return fallback
+	}
+	return v
+}
+
+func (h *jobsCommandHandler) lookupNaturalLanguageCreateManager() (mgr *jobs.Manager, ready bool, initFailed bool) {
+	if h.state == nil {
+		return nil, false, false
+	}
+	mgr, ready, initFailed = h.state.snapshot()
+	return mgr, ready, initFailed
 }
 
 type jobsRuntimeState struct {
@@ -160,7 +209,7 @@ func startJobsRuntimeLoop(ctx context.Context, rt *jobs.Runtime, logger *slog.Lo
 	}()
 }
 
-func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath string, sender chatSender, baseHandler core.MessageHandler, logger *slog.Logger) {
+func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath string, defaultTimeZone string, sender chatSender, baseHandler core.MessageHandler, logger *slog.Logger) {
 	go func() {
 		openCtx := context.WithoutCancel(ctx)
 		//nolint:contextcheck // jobs.Open currently does not accept context.
@@ -188,6 +237,7 @@ func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath s
 			Logger:     logger,
 		})
 		manager := jobs.NewManager(st, runtime, logger)
+		manager.SetDefaultTimeZone(defaultTimeZone)
 		startJobsRuntimeLoop(ctx, runtime, logger)
 		state.setReady(manager)
 		go func() {

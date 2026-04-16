@@ -27,6 +27,7 @@
 | [EP-017](epics/EP-017/ep-scope.md) | Intent Classifier for Prompt Optimization | DONE | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-017/ep-audit-report.md) |
 | [EP-018](epics/EP-018/ep-scope.md) | Tiered Prompt Cost Reduction | DONE | 73.8% | [ep-audit-report (2026-04-15)](epics/EP-018/ep-audit-report.md) |
 | [EP-019](epics/EP-019/ep-scope.md) | Scheduled Agent Jobs and Legacy Scheduler Replacement | DONE | 73.8% | [ep-audit-report (2026-04-16)](epics/EP-019/ep-audit-report.md) |
+| [EP-020](epics/EP-020/ep-scope.md) | Natural-Language Scheduled Job Creation from Telegram | DONE | 73.8% | [ep-audit-report (2026-04-16)](epics/EP-020/ep-audit-report.md) |
 
 ## Notes
 

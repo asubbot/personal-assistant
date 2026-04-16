@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -15,22 +17,38 @@ type RuntimeAPI interface {
 
 // Manager serves Telegram management commands for scheduled jobs.
 type Manager struct {
-	store   *Store
-	runtime RuntimeAPI
-	logger  *slog.Logger
-	now     func() time.Time
+	store           *Store
+	runtime         RuntimeAPI
+	logger          *slog.Logger
+	defaultTimeZone string
+	createTool      *CreateScheduledJobTool
+	now             func() time.Time
 }
 
 func NewManager(store *Store, runtime RuntimeAPI, logger *slog.Logger) *Manager {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Manager{
-		store:   store,
-		runtime: runtime,
-		logger:  logger,
-		now:     func() time.Time { return time.Now().UTC() },
+	mgr := &Manager{
+		store:           store,
+		runtime:         runtime,
+		logger:          logger,
+		defaultTimeZone: "UTC",
+		now:             func() time.Time { return time.Now().UTC() },
 	}
+	mgr.createTool = NewCreateScheduledJobTool(mgr)
+	return mgr
+}
+
+func (m *Manager) SetDefaultTimeZone(tz string) {
+	if m == nil {
+		return
+	}
+	tz = strings.TrimSpace(tz)
+	if tz == "" {
+		return
+	}
+	m.defaultTimeZone = tz
 }
 
 // HandleCommand accepts `/jobs ...` commands.
@@ -53,6 +71,132 @@ func (m *Manager) HandleCommand(ctx context.Context, userID int64, text string) 
 		return spec.usage, true, nil
 	}
 	return spec.run(ctx, userID, args)
+}
+
+// HandleNaturalLanguageCreate handles explicit NL create requests in regular chat flow.
+func (m *Manager) HandleNaturalLanguageCreate(ctx context.Context, userID int64, deliveryChatID int64, text string) (string, bool, error) {
+	req, _, ok := parseNaturalLanguageCreateRequest(text)
+	if ok {
+		reply, _, err := m.CreateScheduledJobFromSpec(ctx, userID, deliveryChatID, req.Instruction, req.Hour, req.Minute, "", "deterministic_parser")
+		return reply, true, err
+	}
+	if !LooksLikeNaturalLanguageCreateRequest(text) {
+		return "", false, nil
+	}
+	if m.createTool == nil {
+		m.audit(userID, "", "create_nl", "fallback_unavailable", "creation_path", "native_tool_fallback")
+		return "Unable to create schedule from this message. Use: <instruction> and send it at HH:MM every day", true, nil
+	}
+	reply, err := m.createTool.Run(ctx, map[string]any{
+		"text":             text,
+		"actor_user_id":    userID,
+		"delivery_chat_id": deliveryChatID,
+	})
+	if err != nil {
+		return "", true, err
+	}
+	return reply, true, nil
+}
+
+func (m *Manager) CreateScheduledJobFromSpec(
+	ctx context.Context,
+	userID int64,
+	deliveryChatID int64,
+	instruction string,
+	hour int,
+	minute int,
+	timezone string,
+	creationPath string,
+) (string, Job, error) {
+	creationPath = strings.TrimSpace(creationPath)
+	if creationPath == "" {
+		creationPath = "deterministic_parser"
+	}
+	instruction = strings.TrimSpace(instruction)
+	if reply, ok := m.validateCreateSpec(userID, instruction, hour, minute, creationPath); !ok {
+		return reply, Job{}, nil
+	}
+
+	now := m.now().UTC()
+	tz, target := m.resolveCreateDefaults(timezone, deliveryChatID, userID)
+	scheduleExpr := fmt.Sprintf("%d %d * * *", minute, hour)
+	created, next, err := m.persistCreateSpec(ctx, userID, instruction, hour, minute, tz, target, now, creationPath)
+	if err != nil {
+		return "", Job{}, err
+	}
+
+	m.audit(userID, created.ID, "create_nl", "success", "creation_path", creationPath, "parsed_schedule", scheduleExpr)
+	reply := fmt.Sprintf(
+		"Scheduled job created.\njob_id: %s\nschedule: %s\ntimezone: %s\nnext_run: %s\ninstruction: %s",
+		created.ID, scheduleExpr, tz, next.UTC().Format(time.RFC3339), instruction,
+	)
+	return reply, created, nil
+}
+
+func (m *Manager) validateCreateSpec(userID int64, instruction string, hour int, minute int, creationPath string) (string, bool) {
+	if instruction == "" {
+		m.audit(userID, "", "create_nl", "invalid_instruction", "creation_path", creationPath)
+		return "Instruction must be non-empty.", false
+	}
+	if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+		m.audit(userID, "", "create_nl", "invalid_time", "creation_path", creationPath)
+		return "Invalid schedule format. Use: <instruction> and send it at HH:MM every day", false
+	}
+	return "", true
+}
+
+func (m *Manager) resolveCreateDefaults(timezone string, deliveryChatID int64, userID int64) (string, int64) {
+	tz := strings.TrimSpace(timezone)
+	if tz == "" {
+		tz = m.defaultTimeZone
+	}
+	if strings.TrimSpace(tz) == "" {
+		tz = "UTC"
+	}
+	target := deliveryChatID
+	if target == 0 {
+		target = userID
+	}
+	return tz, target
+}
+
+func (m *Manager) persistCreateSpec(
+	ctx context.Context,
+	userID int64,
+	instruction string,
+	hour int,
+	minute int,
+	timezone string,
+	target int64,
+	now time.Time,
+	creationPath string,
+) (Job, time.Time, error) {
+	name := fmt.Sprintf("nl-%d-%02d%02d", now.Unix(), hour, minute)
+	scheduleExpr := fmt.Sprintf("%d %d * * *", minute, hour)
+	created, err := m.store.CreateJob(ctx, JobInput{
+		Name:           name,
+		ScheduleExpr:   scheduleExpr,
+		TimeZone:       timezone,
+		Instruction:    instruction,
+		DeliveryChatID: target,
+		Status:         StatusActive,
+		OverlapPolicy:  OverlapSingleInstance,
+		TimeoutPolicy:  TimeoutCancelAfter,
+	})
+	if err != nil {
+		m.audit(userID, "", "create_nl", "internal_error", "creation_path", creationPath)
+		return Job{}, time.Time{}, err
+	}
+	next, err := ComputeNextRun(created, now)
+	if err != nil {
+		m.audit(userID, created.ID, "create_nl", "internal_error", "creation_path", creationPath)
+		return Job{}, time.Time{}, err
+	}
+	if err := m.store.SetJobNextRun(ctx, created.ID, &next); err != nil {
+		m.audit(userID, created.ID, "create_nl", "internal_error", "creation_path", creationPath)
+		return Job{}, time.Time{}, err
+	}
+	return created, next, nil
 }
 
 type jobsCommandSpec struct {
@@ -133,6 +277,34 @@ func isJobsCommandToken(token string) bool {
 		return true
 	}
 	return strings.HasPrefix(lower, "/jobs@")
+}
+
+type naturalLanguageCreateRequest struct {
+	Instruction string
+	Hour        int
+	Minute      int
+}
+
+var nlCreateRegex = regexp.MustCompile(`(?i)^\s*(.+?)\s+and\s+send\s+it\s+at\s+([01]?\d|2[0-3]):([0-5]\d)(?:\s+every\s+day)?\s*$`)
+
+func parseNaturalLanguageCreateRequest(text string) (naturalLanguageCreateRequest, bool, bool) {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return naturalLanguageCreateRequest{}, false, false
+	}
+	match := nlCreateRegex.FindStringSubmatch(trimmed)
+	if len(match) == 4 {
+		hour, _ := strconv.Atoi(match[2])
+		minute, _ := strconv.Atoi(match[3])
+		return naturalLanguageCreateRequest{
+			Instruction: strings.TrimSpace(match[1]),
+			Hour:        hour,
+			Minute:      minute,
+		}, false, true
+	}
+	lower := strings.ToLower(trimmed)
+	malformed := strings.Contains(lower, "send it at") || strings.Contains(lower, "every day at")
+	return naturalLanguageCreateRequest{}, malformed, false
 }
 
 func (m *Manager) list(ctx context.Context, userID int64) (string, bool, error) {
@@ -301,15 +473,16 @@ func (m *Manager) helpText() string {
 	}, "\n")
 }
 
-func (m *Manager) audit(actorID int64, jobID, operation, outcome string) {
+func (m *Manager) audit(actorID int64, jobID, operation, outcome string, extra ...any) {
 	if m == nil || m.logger == nil {
 		return
 	}
-	m.logger.Info(
-		"jobs audit",
+	attrs := []any{
 		"actor_user_id", actorID,
 		"job_id", jobID,
 		"operation", operation,
 		"outcome", outcome,
-	)
+	}
+	attrs = append(attrs, extra...)
+	m.logger.Info("jobs audit", attrs...)
 }

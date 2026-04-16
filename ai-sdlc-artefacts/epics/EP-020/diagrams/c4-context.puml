@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-020 C4 Level 1 - NL Scheduled Job Creation
+
+Person(user, "Authorized Telegram User")
+System_Ext(telegram, "Telegram Bot API", "Message transport")
+System(pa, "PersonalAssistant", "NL parsing, job creation, scheduler runtime")
+System_Ext(llm, "LLM Provider", "Agent-turn execution")
+SystemDb(jobdb, "Jobs SQLite", "Persisted scheduled jobs")
+
+Rel(user, telegram, "Sends NL creation message")
+Rel(telegram, pa, "Delivers updates")
+Rel(pa, jobdb, "Creates and reads jobs")
+Rel(pa, llm, "Executes scheduled agent turns")
+Rel(pa, telegram, "Sends creation confirmation and scheduled results")
+
+@enduml

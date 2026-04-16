@@ -260,7 +260,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 			state: state,
 		}
 		if sender, ok := adapter.(chatSender); ok {
-			initJobsRuntimeAsync(ctx, state, cfg.Paths.JobsDBPath, sender, baseHandler, logger)
+			initJobsRuntimeAsync(ctx, state, cfg.Paths.JobsDBPath, cfg.PATimezone, sender, baseHandler, logger)
 		} else {
 			err := fmt.Errorf("adapter does not support direct chat sending")
 			logger.Warn("jobs runtime delivery disabled", "error", err)

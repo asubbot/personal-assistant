@@ -140,3 +140,103 @@ func TestJobsCommandHandler_StrictJobsCommandPrefix(t *testing.T) {
 		t.Fatalf("reply = %q", reply)
 	}
 }
+
+// Covers AC-20.009: send-first explicit schedule-intent message is routed to fallback create flow.
+func TestJobsCommandHandler_NLCreateFallbackRouting(t *testing.T) {
+	base := &mockMessageHandler{reply: "base ok"}
+	state := &jobsRuntimeState{}
+	h := &jobsCommandHandler{base: base, state: state}
+
+	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
+	st, err := jobs.Open(dbPath)
+	if err != nil {
+		t.Fatalf("jobs.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	mgr := jobs.NewManager(st, nil, slog.New(slog.DiscardHandler))
+	state.setReady(mgr)
+
+	reply, err := h.HandleMessage(context.Background(), 101, "777", "send me AI news digest at 08:15 every day")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if !strings.Contains(reply, "Scheduled job created.") {
+		t.Fatalf("reply = %q", reply)
+	}
+	if base.text != "" {
+		t.Fatalf("base handler should not be used for create path, got text=%q", base.text)
+	}
+
+	listReply, err := h.HandleMessage(context.Background(), 101, "777", "/jobs list")
+	if err != nil {
+		t.Fatalf("HandleMessage list: %v", err)
+	}
+	if !strings.Contains(listReply, "Scheduled jobs:") {
+		t.Fatalf("list reply = %q", listReply)
+	}
+}
+
+// Covers AC-20.007: authorized non-matching conversational message does not create jobs.
+func TestJobsCommandHandler_NLCreateNonMatchingBypassesCreation(t *testing.T) {
+	base := &mockMessageHandler{reply: "base reply"}
+	state := &jobsRuntimeState{}
+	h := &jobsCommandHandler{base: base, state: state}
+
+	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
+	st, err := jobs.Open(dbPath)
+	if err != nil {
+		t.Fatalf("jobs.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	state.setReady(jobs.NewManager(st, nil, slog.New(slog.DiscardHandler)))
+
+	reply, err := h.HandleMessage(context.Background(), 1, "42", "what is new in AI today?")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if reply != "base reply" {
+		t.Fatalf("reply = %q, want base reply", reply)
+	}
+
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("jobs count = %d, want 0", len(items))
+	}
+}
+
+// Covers AC-20.004, AC-20.007: malformed schedule-intent message is routed to deterministic rejection and creates no job.
+func TestJobsCommandHandler_NLCreateMalformedRoutedToDeterministicRejection(t *testing.T) {
+	base := &mockMessageHandler{reply: "base reply"}
+	state := &jobsRuntimeState{}
+	h := &jobsCommandHandler{base: base, state: state}
+
+	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
+	st, err := jobs.Open(dbPath)
+	if err != nil {
+		t.Fatalf("jobs.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	state.setReady(jobs.NewManager(st, nil, slog.New(slog.DiscardHandler)))
+
+	reply, err := h.HandleMessage(context.Background(), 1, "42", "collect AI digest and send it at 9 every day")
+	if err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if !strings.Contains(reply, "Invalid schedule format.") {
+		t.Fatalf("reply = %q", reply)
+	}
+	if base.text != "" {
+		t.Fatalf("base handler should not be used for malformed create intent, got text=%q", base.text)
+	}
+
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("jobs count = %d, want 0", len(items))
+	}
+}

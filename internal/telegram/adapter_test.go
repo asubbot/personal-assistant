@@ -571,13 +571,13 @@ func TestHandleUpdate_emptyText_sendsRejectionMessage(t *testing.T) {
 	}
 }
 
-// Supporting AC-01.001 (US-01): disallowed user gets "not allowed" message, handler not called.
+// Supporting AC-01.001 (US-01), AC-20.007: disallowed user gets "not allowed" message and cannot trigger NL creation flow.
 func TestHandleUpdate_disallowedUser(t *testing.T) {
 	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
 	sender := &mockSender{}
 	handler := &mockHandler{}
 	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
-		Message: &models.Message{Text: "hello", Chat: models.Chat{ID: 1}, From: &models.User{ID: 999}},
+		Message: &models.Message{Text: "send me AI news digest at 09:00 every day", Chat: models.Chat{ID: 1}, From: &models.User{ID: 999}},
 	},
 	)
 	if handler.called {
