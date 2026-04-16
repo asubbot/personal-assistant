@@ -1,9 +1,11 @@
 package telegram
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"pa/internal/config"
@@ -326,6 +328,81 @@ func TestSendMessage_notifyChatIDZero_returnsError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "cannot notify") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// Covers AC-19.007: explicit target chat notification validates sender state.
+func TestSendMessageToChat_invalidState_returnsError(t *testing.T) {
+	ad := &Adapter{}
+	if err := ad.SendMessageToChat(context.Background(), 123, "test"); err == nil {
+		t.Fatal("expected error when bot is nil")
+	}
+	ad = &Adapter{notifyChatID: 1}
+	if err := ad.SendMessageToChat(context.Background(), 0, "test"); err == nil {
+		t.Fatal("expected error when target chat id is 0")
+	}
+}
+
+// Covers AC-19.018: unauthorized management operation name is extracted for audit logging.
+func TestUnauthorizedManagementOperation_Parse(t *testing.T) {
+	if got := unauthorizedManagementOperation("/jobs pause job_1"); got != "management_pause" {
+		t.Fatalf("got %q", got)
+	}
+	if got := unauthorizedManagementOperation("/jobs"); got != "management_unknown" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+// Covers AC-19.018: management command detection accepts only /jobs and /jobs@bot.
+func TestIsJobsCommandToken_StrictPrefix(t *testing.T) {
+	if !isJobsCommandToken("/jobs list") {
+		t.Fatal("expected /jobs to be recognized")
+	}
+	if !isJobsCommandToken("/jobs@pa_bot list") {
+		t.Fatal("expected /jobs@... to be recognized")
+	}
+	if isJobsCommandToken("/jobsx list") {
+		t.Fatal("did not expect /jobsx to be recognized")
+	}
+}
+
+// Covers AC-19.018: unauthorized management command is rejected and audited.
+func TestHandleUpdate_disallowedManagementCommand_Audited(t *testing.T) {
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "/jobs list", Chat: models.Chat{ID: 1}, From: &models.User{ID: 999}},
+	})
+
+	logText := buf.String()
+	if !strings.Contains(logText, "jobs audit") || !strings.Contains(logText, "unauthorized_rejected") {
+		t.Fatalf("audit log missing, got: %s", logText)
+	}
+}
+
+// Covers AC-19.018: /jobs-like prefixes (e.g. /jobsx) are not audited as management operations.
+func TestHandleUpdate_disallowedNonManagementLikePrefix_NotAudited(t *testing.T) {
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+
+	ad := &Adapter{allowedUserIDs: map[int64]struct{}{123: {}}, token: ""}
+	sender := &mockSender{}
+	handler := &mockHandler{}
+	ad.handleUpdate(context.Background(), sender, handler, &models.Update{
+		Message: &models.Message{Text: "/jobsx list", Chat: models.Chat{ID: 1}, From: &models.User{ID: 999}},
+	})
+
+	logText := buf.String()
+	if strings.Contains(logText, "jobs audit") {
+		t.Fatalf("unexpected jobs audit log for /jobsx, got: %s", logText)
 	}
 }
 

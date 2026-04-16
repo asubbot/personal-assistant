@@ -23,7 +23,7 @@
     "vector_index_path": "/d/pa_vectors.sqlite",
     "llm_log_dir": "/d",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "",
+    "jobs_db_path": "jobs.sqlite",
     "tool_catalog_path": "valid_tools.yaml"
   },
   "embedding": {

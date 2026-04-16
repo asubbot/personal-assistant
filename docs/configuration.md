@@ -11,7 +11,6 @@ Start from the checked-in templates in **`config.examples/`** (copy into **`.con
 - **[config.examples/config.example.json](../config.examples/config.example.json)** → `.config/config.json`
 - **[config.examples/known_hosts.example](../config.examples/known_hosts.example)** → `.config/known_hosts` (required when `nodes` is non-empty; populate with host keys, e.g. `ssh-keyscan`)
 - **[config.examples/nas_allowlist.example](../config.examples/nas_allowlist.example)** → `.config/nas_allowlist` when using node allowlists
-- **[config.examples/scheduled_tasks.example.json](../config.examples/scheduled_tasks.example.json)** → `.config/scheduled_tasks.json` when using scheduled tasks
 - **[config.examples/tools.yaml](../config.examples/tools.yaml)** → `.config/tools.yaml` (tool catalog path in JSON is relative to `PA_CONFIG_DIR`)
 
 ## Environment variables
@@ -20,8 +19,8 @@ These are read at process start; they control how **relative paths** in JSON are
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `PA_CONFIG_DIR` | `./.config` | Directory containing `config.json`. Also the base for **relative** `command_allowlist_path`, `scheduled_tasks_path`, `ssh_known_hosts_path`, `tool_catalog_path`. |
-| `PA_DATA_DIR` | `.` | Base for **relative** `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. |
+| `PA_CONFIG_DIR` | `./.config` | Directory containing `config.json`. Also the base for **relative** `command_allowlist_path`, `ssh_known_hosts_path`, `tool_catalog_path`. |
+| `PA_DATA_DIR` | `.` | Base for **relative** `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, `jobs_db_path`. |
 | `PA_SECRETS_DIR` | `.` | Base for **relative** `token_path`, `users_path`, LLM/embedding `api_key_path`, node `private_key_path`. |
 | `PA_LOG_LEVEL` | `info` | Log level for application output (`slog`). Invalid values fall back to `info`. At **`debug`**, the conversation handler logs full LLM request/response (sensitive — use only when needed). |
 
@@ -40,7 +39,7 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 - **`telegram`** — `token_path`, `users_path`, optional `notify_chat_id`, `max_message_length`.
 - **`llm_providers`** — ordered list; at least one provider is required. Each entry has `type`, `endpoint`, `model`, optional `api_key_path`, `supports_tools`.
 - **`embedding`** — separate provider for memory embeddings (vector index).
-- **`paths`** — `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, **`llm_log_retention_days`** (required, ≥ 1), `scheduled_tasks_path`, `ssh_known_hosts_path`, `tool_catalog_path`.
+- **`paths`** — `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, **`llm_log_retention_days`** (required, ≥ 1), `jobs_db_path`, `ssh_known_hosts_path`, `tool_catalog_path`.
 - **`nodes`** — named nodes with `host`, `port`, `dedicated_user`, `auth.private_key_path`, `command_allowlist_path`. The allowlist file is one pattern per line: exact command string, or a line whose **only** `*` is the **final** character (prefix wildcard; the prefix is the text before `*`, including any trailing space — e.g. `docker images *` requires an argument after `images`, while `docker images*` matches bare `docker images`). Lines with bare `*`, multiple `*`, or `*` not at the end fail load. Executed commands must also satisfy the remote command character policy (letters, numbers, Mn/Mc, fixed ASCII punctuation including space and `"` — see [nas_allowlist.example](../config.examples/nas_allowlist.example) header); tab and shell metacharacters are rejected before SSH. EP-009 `create_tool` validates a whitelisted `docker run` prefix and a 30s timeout substring; operators SHOULD add Docker resource flags (e.g. `--memory=256m`, `--cpus=0.5`) in templates for production sandboxes. When **two or more** nodes are configured, each must use a **different** private key file after resolving `PA_SECRETS_DIR` and `filepath.Clean` (including no two nodes pointing at the same file via symlink or hard link); otherwise config load fails fast.
 - **`tools`** — **required** object (use `{}` minimum). Optional `text_based_enabled`; optional **`always_include`**: array of catalog or allowed-native tool ids merged into every LLM turn’s tool set (validated at load; EP-013). Optional **`dynamic_selection`** (EP-018): object with **`enabled`** (bool) and **`max_tools_for_llm_request`** (int). When **`enabled`** is true, **`max_tools_for_llm_request`** must be **≥ 1** and **≥** the count of distinct valid `always_include` tool ids in the catalog or native allowlist (no default). **`TierFull`** applies the cap after merge; **`TierFullLite`** applies it only when **`text_based_enabled`** is true (runtime gate). When **`enabled`** is false, **`max_tools_for_llm_request`** may be zero. Optional **`llm_escalation`** (`enabled`, `max_per_user_message`, `baseline_index`). When `enabled` is true: at least two `llm_providers`, valid `baseline_index`, and **`max_per_user_message` ≥ 1**. Optional **`create_tool_secret_patterns`**: array of Go `regexp` strings (RE2). If present, each pattern must compile at config load (fail fast on invalid regex). When non-empty, the native **`create_tool`** tool rejects persisted tool definitions whose concatenated fields match any pattern (see EP-009).
 - **`tool_pre_selection`** — **required**; `tool_search_top_k`, `tool_min_count`, and `tool_fallback_cap` must each be **≥ 1** (with documented upper caps to catch typos). No implicit defaults.
@@ -77,9 +76,11 @@ This keeps retrieval and session carry-over useful, while reducing average and p
 - LLM JSONL logs use one file per **calendar day in `pa_timezone`** (`llm-YYYY-MM-DD.jsonl`), aligned with day summaries under `memory_dir`.
 - Sample runtime skills (copy each package under your configured **`paths.skills_dir`** when **`runtime_skills.enabled`** is true): **[memory-retrieval](../config.examples/skills/memory-retrieval/SKILL.md)** (`read_memory`); skills may list **`write_memory`** alongside **`read_memory`** under EP-013 native-tool validation (see **`internal/config/runtime_skills.go`** allowlist). **[web-source-research](../config.examples/skills/web-source-research/SKILL.md)** (`web_fetch`, `web_search`, `run_on_node`) for bounded website and GitHub research.
 
-## Scheduled tasks
+## Scheduled jobs migration note
 
-If `paths.scheduled_tasks_path` is non-empty, the file must exist and contain a JSON array of tasks (unique non-empty `name`, `schedule`, `action`, `params`). The scheduler starts only when there is at least one task. Duplicate names cause load failure.
+- `paths.jobs_db_path` is the new path reserved for the EP-019 scheduled jobs database (SQLite).
+- Legacy scheduler configuration fields are rejected at config load.
+- The legacy file-based scheduled task list is not supported anymore.
 
 ## Tool catalog
 

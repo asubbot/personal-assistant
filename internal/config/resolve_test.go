@@ -15,12 +15,12 @@ func TestResolvePaths_relativePaths_joinedWithBases(t *testing.T) {
 			UsersPath: "telegram_users.json",
 		},
 		Paths: Paths{
-			MemoryDir:          "memory",
-			LogPath:            "pa.log",
-			VectorIndexPath:    "pa_vectors.sqlite",
-			LLMLogDir:          "llm_logs",
-			ScheduledTasksPath: "scheduled_tasks.json",
-			SSHKnownHostsPath:  "known_hosts",
+			MemoryDir:         "memory",
+			LogPath:           "pa.log",
+			VectorIndexPath:   "pa_vectors.sqlite",
+			LLMLogDir:         "llm_logs",
+			JobsDBPath:        "jobs.sqlite",
+			SSHKnownHostsPath: "known_hosts",
 		},
 		LLMProviders: []LLMProvider{
 			{Type: "openai", Endpoint: "https://api.openai.com", APIKeyPath: "openai_key", Model: "gpt-4"},
@@ -56,7 +56,7 @@ func TestResolvePaths_relativePaths_joinedWithBases(t *testing.T) {
 		{cfg.Paths.LogPath, filepath.Join("/data", "pa.log"), "LogPath"},
 		{cfg.Paths.VectorIndexPath, filepath.Join("/data", "pa_vectors.sqlite"), "VectorIndexPath"},
 		{cfg.Paths.LLMLogDir, filepath.Join("/data", "llm_logs"), "LLMLogDir"},
-		{cfg.Paths.ScheduledTasksPath, filepath.Join(configDir, "scheduled_tasks.json"), "ScheduledTasksPath"},
+		{cfg.Paths.JobsDBPath, filepath.Join("/data", "jobs.sqlite"), "JobsDBPath"},
 		{cfg.Paths.SSHKnownHostsPath, filepath.Join(configDir, "known_hosts"), "SSHKnownHostsPath"},
 		{cfg.LLMProviders[0].APIKeyPath, filepath.Join("/run/secrets", "openai_key"), "LLM APIKeyPath"},
 		{cfg.Embedding.APIKeyPath, filepath.Join("/run/secrets", "openai_key"), "Embedding APIKeyPath"},
@@ -111,7 +111,7 @@ func TestResolvePaths_absolutePaths_unchanged(t *testing.T) {
 func TestResolvePaths_emptyPath_unchanged(t *testing.T) {
 	cfg := &Config{
 		Telegram:  Telegram{TokenPath: "/t", UsersPath: ""},
-		Paths:     Paths{MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "", SSHKnownHostsPath: ""},
+		Paths:     Paths{MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "", SSHKnownHostsPath: ""},
 		Embedding: &EmbeddingProvider{Type: "ollama", Endpoint: "x", Model: "m", Dimensions: 1},
 		Nodes:     map[string]Node{},
 	}
@@ -119,8 +119,8 @@ func TestResolvePaths_emptyPath_unchanged(t *testing.T) {
 	if cfg.Telegram.UsersPath != "" {
 		t.Errorf("UsersPath = %q, want empty", cfg.Telegram.UsersPath)
 	}
-	if cfg.Paths.ScheduledTasksPath != "" {
-		t.Errorf("ScheduledTasksPath = %q, want empty", cfg.Paths.ScheduledTasksPath)
+	if cfg.Paths.JobsDBPath != "" {
+		t.Errorf("JobsDBPath = %q, want empty", cfg.Paths.JobsDBPath)
 	}
 	if cfg.Paths.SSHKnownHostsPath != "" {
 		t.Errorf("SSHKnownHostsPath = %q, want empty", cfg.Paths.SSHKnownHostsPath)

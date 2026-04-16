@@ -1,0 +1,16 @@
+{
+  "profiles": [
+    {
+      "name": "baseline",
+      "job_count": 200,
+      "samples": 20,
+      "p95_threshold_ms": 1000
+    },
+    {
+      "name": "ci",
+      "job_count": 100,
+      "samples": 15,
+      "p95_threshold_ms": 1000
+    }
+  ]
+}

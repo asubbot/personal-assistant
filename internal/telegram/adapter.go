@@ -79,6 +79,14 @@ func (a *Adapter) SendMessage(ctx context.Context, text string) error {
 	return sendLongOutboundText(ctx, a.bot, a.notifyChatID, text)
 }
 
+// SendMessageToChat sends a text message to an explicit chat id.
+func (a *Adapter) SendMessageToChat(ctx context.Context, chatID int64, text string) error {
+	if a.bot == nil || chatID == 0 {
+		return fmt.Errorf("telegram: cannot notify target chat (bot not started or no chat id)")
+	}
+	return sendLongOutboundText(ctx, a.bot, chatID, text)
+}
+
 // Run starts long polling and blocks until ctx is cancelled. Incoming text messages from allowed users are passed to handler; replies are sent back.
 func (a *Adapter) Run(ctx context.Context, handler core.MessageHandler) error {
 	if handler == nil {
@@ -162,6 +170,15 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender telegramOutbound, han
 	text := strings.TrimSpace(msg.Text)
 	userID := msg.From.ID
 	if _, ok := a.allowedUserIDs[userID]; !ok {
+		if isJobsCommandToken(text) {
+			slog.Default().Info(
+				"jobs audit",
+				"actor_user_id", userID,
+				"job_id", "",
+				"operation", unauthorizedManagementOperation(text),
+				"outcome", "unauthorized_rejected",
+			)
+		}
 		if err := sendLongOutboundText(ctx, sender, msg.Chat.ID, "You are not allowed to use this bot."); err != nil {
 			slog.Default().Warn("telegram send failed", "op", "disallowed_notice", "chat_id", msg.Chat.ID, "error", err)
 		}
@@ -196,4 +213,24 @@ func (a *Adapter) handleUpdate(ctx context.Context, sender telegramOutbound, han
 			slog.Default().Warn("telegram send failed", "op", "reply", "chat_id", msg.Chat.ID, "error", serr)
 		}
 	}
+}
+
+func isJobsCommandToken(text string) bool {
+	fields := strings.Fields(strings.TrimSpace(text))
+	if len(fields) == 0 {
+		return false
+	}
+	token := strings.ToLower(fields[0])
+	if token == "/jobs" {
+		return true
+	}
+	return strings.HasPrefix(token, "/jobs@")
+}
+
+func unauthorizedManagementOperation(text string) string {
+	fields := strings.Fields(strings.TrimSpace(text))
+	if len(fields) < 2 {
+		return "management_unknown"
+	}
+	return "management_" + strings.ToLower(fields[1])
 }

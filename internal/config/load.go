@@ -31,51 +31,81 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
 	}
+	if err := rejectLegacyScheduledTasksPath(data); err != nil {
+		return nil, err
+	}
 
 	var raw Config
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-
-	if err := validate(&raw); err != nil {
+	if err := prepareConfig(&raw, path); err != nil {
 		return nil, err
 	}
-	if err := compileCreateToolSecretPatterns(&raw); err != nil {
-		return nil, err
+	return &raw, nil
+}
+
+func prepareConfig(raw *Config, path string) error {
+	if err := validate(raw); err != nil {
+		return err
+	}
+	if err := compileCreateToolSecretPatterns(raw); err != nil {
+		return err
 	}
 	raw.PATimezone = strings.TrimSpace(raw.PATimezone)
 
-	ResolvePaths(&raw, path)
+	ResolvePaths(raw, path)
 
-	if err := validateAfterResolvePaths(&raw); err != nil {
-		return nil, err
+	if err := validateAfterResolvePaths(raw); err != nil {
+		return err
 	}
 
 	// Validate users file if set (path is now resolved).
 	if raw.Telegram.UsersPath != "" {
 		if _, err := LoadTelegramUsers(raw.Telegram.UsersPath); err != nil {
-			return nil, fmt.Errorf("telegram users file %s: %w", raw.Telegram.UsersPath, err)
+			return fmt.Errorf("telegram users file %s: %w", raw.Telegram.UsersPath, err)
 		}
 	}
 
 	// Load tool catalog (path is required); fail fast on parse or schema error.
 	cat, err := toolcatalog.Load(raw.Paths.ToolCatalogPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	raw.ToolCatalog = cat
 
-	if err := validateToolsAlwaysInclude(&raw); err != nil {
-		return nil, err
+	if err := validateToolsAlwaysInclude(raw); err != nil {
+		return err
 	}
-	if err := validateToolDynamicSelection(&raw); err != nil {
-		return nil, err
+	if err := validateToolDynamicSelection(raw); err != nil {
+		return err
 	}
-	if err := finalizeRuntimeSkills(&raw); err != nil {
-		return nil, err
+	if err := finalizeRuntimeSkills(raw); err != nil {
+		return err
 	}
+	return nil
+}
 
-	return &raw, nil
+func rejectLegacyScheduledTasksPath(data []byte) error {
+	if !json.Valid(data) {
+		// Parsing error will be returned by the main unmarshal path.
+		return nil
+	}
+	var root map[string]json.RawMessage
+	_ = json.Unmarshal(data, &root)
+	pathsRaw, ok := root["paths"]
+	if !ok {
+		return nil
+	}
+	if !json.Valid(pathsRaw) {
+		return nil
+	}
+	var paths map[string]json.RawMessage
+	_ = json.Unmarshal(pathsRaw, &paths)
+	if _, hasLegacy := paths["scheduled_tasks_path"]; hasLegacy {
+		return errors.New("config: paths.scheduled_tasks_path is not supported; use paths.jobs_db_path")
+	}
+	return nil
 }
 
 func validate(c *Config) error {
@@ -437,6 +467,9 @@ func validatePaths(c *Config) error {
 	}
 	if c.Paths.LLMLogRetentionDays < 1 {
 		return errors.New("config: paths.llm_log_retention_days must be >= 1")
+	}
+	if strings.TrimSpace(c.Paths.JobsDBPath) == "" {
+		return errors.New("config: paths.jobs_db_path is required")
 	}
 	if len(c.Nodes) > 0 && strings.TrimSpace(c.Paths.SSHKnownHostsPath) == "" {
 		return errors.New("config: paths.ssh_known_hosts_path is required when nodes are configured")

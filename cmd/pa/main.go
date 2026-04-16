@@ -20,7 +20,6 @@ import (
 	"pa/internal/memory"
 	"pa/internal/memoryjob"
 	"pa/internal/noderunner"
-	"pa/internal/scheduler"
 	"pa/internal/skillindex"
 	"pa/internal/ssh"
 	"pa/internal/summarize"
@@ -215,9 +214,6 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	if err := registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder); err != nil {
 		return err
 	}
-	if cleanup := startSchedulerIfConfigured(cfg, adapter, toolRegistry, logger); cleanup != nil {
-		defer cleanup()
-	}
 
 	defer func() {
 		if memJob != nil {
@@ -231,10 +227,49 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		return err
 	}
 
-	logger.Info("starting", "adapter", "telegram", "model", mainConversationModelName(cfg))
 	var ti core.ToolIndex = toolIndex
 	var si core.SkillIndex = skillIndex
-	return core.Run(ctx, cfg, logger, adapter, llmProviders, llmLabels, memoryStore, memVec, embedder, nodeRunner, ti, si, toolRegistry, classifier)
+	router, err := llmrouter.New(llmProviders, llmLabels, llmrouter.Config{
+		Escalation: cfg.ToolsLLMEscalation(),
+	}, logger)
+	if err != nil {
+		return err
+	}
+	baseHandler, err := core.BuildMessageHandler(
+		cfg,
+		logger,
+		core.BuildLogRedactor(cfg),
+		router,
+		memVec,
+		embedder,
+		nodeRunner,
+		ti,
+		si,
+		toolRegistry,
+		classifier,
+	)
+	if err != nil {
+		return err
+	}
+	handler := baseHandler
+
+	if cfg.Paths.JobsDBPath != "" {
+		state := &jobsRuntimeState{}
+		handler = &jobsCommandHandler{
+			base:  baseHandler,
+			state: state,
+		}
+		if sender, ok := adapter.(chatSender); ok {
+			initJobsRuntimeAsync(ctx, state, cfg.Paths.JobsDBPath, sender, baseHandler, logger)
+		} else {
+			err := fmt.Errorf("adapter does not support direct chat sending")
+			logger.Warn("jobs runtime delivery disabled", "error", err)
+			state.setInitError(err)
+		}
+	}
+
+	logger.Info("starting", "adapter", "telegram", "model", mainConversationModelName(cfg))
+	return adapter.Run(ctx, handler)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second
@@ -287,40 +322,6 @@ func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {
 		return
 	}
 	logger.Info("llm model", "model", model)
-}
-
-// startSchedulerIfConfigured loads scheduled tasks and starts the scheduler when paths.scheduled_tasks_path is set. Returns a cleanup function to call on exit, or nil.
-func startSchedulerIfConfigured(cfg *config.Config, adapter core.Adapter, toolRegistry *tools.Registry, logger *slog.Logger) func() {
-	if cfg.Paths.ScheduledTasksPath == "" {
-		return nil
-	}
-	tasks, err := scheduler.LoadTasks(cfg.Paths.ScheduledTasksPath)
-	if err != nil {
-		logger.Error("load scheduled tasks", "error", err)
-		os.Exit(1)
-	}
-	if len(tasks) == 0 {
-		return nil
-	}
-	var notifier scheduler.Notifier
-	if tg, ok := adapter.(*telegram.Adapter); ok {
-		notifier = tg
-	}
-	sched, err := scheduler.New(tasks, scheduler.Config{
-		Registry: toolRegistry,
-		Notifier: notifier,
-		Logger:   logger,
-	})
-	if err != nil {
-		logger.Error("create scheduler", "error", err)
-		os.Exit(1)
-	}
-	sched.Start()
-	logger.Info("scheduler started", "tasks", len(tasks))
-	return func() {
-		stopCtx := sched.Stop()
-		<-stopCtx.Done()
-	}
 }
 
 // runSummarize parses -summarize value (YYYY, YYYY-MM, or YYYY-MM-DD), runs the matching summarization. Caller exits on error.

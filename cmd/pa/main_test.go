@@ -211,7 +211,7 @@ var validSummarizeConfig = `{
     "vector_index_path": "vec.sqlite",
     "llm_log_dir": "llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "",
+    "jobs_db_path": "jobs.sqlite",
     "tool_catalog_path": "tools.yaml"
   },
   "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4, "batch_size": 100 },
@@ -396,7 +396,7 @@ func TestRunVerifyNodes_AllowlistLoadError_returnsError(t *testing.T) {
 		t.Fatalf("write known_hosts: %v", err)
 	}
 	// Build config JSON with nodes and ssh_known_hosts_path (paths are relative to config dir).
-	cfgJSON := strings.Replace(validSummarizeConfig, `"scheduled_tasks_path": ""`, `"scheduled_tasks_path": "", "ssh_known_hosts_path": "known_hosts"`, 1)
+	cfgJSON := strings.Replace(validSummarizeConfig, `"jobs_db_path": "jobs.sqlite"`, `"jobs_db_path": "jobs.sqlite", "ssh_known_hosts_path": "known_hosts"`, 1)
 	cfgJSON = strings.Replace(cfgJSON, `"nodes": {}`, `"nodes": { "n1": { "host": "127.0.0.1", "dedicated_user": "u", "auth": { "private_key_path": "missing_key" }, "command_allowlist_path": "`+filepath.Base(allowlistPath)+`" } }`, 1)
 	cfgPath := filepath.Join(dir, config.ConfigFileName)
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {

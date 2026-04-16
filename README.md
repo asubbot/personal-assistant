@@ -24,7 +24,6 @@ mkdir -p .config
 cp config.examples/config.example.json .config/config.json
 cp config.examples/known_hosts.example .config/known_hosts
 cp config.examples/nas_allowlist.example .config/nas_allowlist
-cp config.examples/scheduled_tasks.example.json .config/scheduled_tasks.json
 cp config.examples/tools.yaml .config/tools.yaml
 # Edit .config/config.json; fill known_hosts (e.g. ssh-keyscan); place secrets under .secrets/ (or set PA_SECRETS_DIR)
 ```
@@ -42,8 +41,8 @@ More detail: [docs/installation.md](docs/installation.md), [docs/configuration.m
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PA_CONFIG_DIR` | `./.config` | Directory containing `config.json`; base for relative allowlist, scheduled tasks, `known_hosts`, tool catalog paths. |
-| `PA_DATA_DIR` | `.` | Base for relative `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`. |
+| `PA_CONFIG_DIR` | `./.config` | Directory containing `config.json`; base for relative allowlist, `known_hosts`, tool catalog paths. |
+| `PA_DATA_DIR` | `.` | Base for relative `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, `jobs_db_path`. |
 | `PA_SECRETS_DIR` | `.` | Base for relative secret file paths (Telegram, API keys, SSH keys). |
 | `PA_LOG_LEVEL` | `info` | `slog` level; **`debug`** logs full LLM request/response in the handler. |
 
