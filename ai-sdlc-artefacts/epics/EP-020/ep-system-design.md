@@ -74,12 +74,12 @@ NL create contract (manager-level):
 
 ## Error handling
 
-- Unsupported or malformed NL syntax returns deterministic guidance and does not persist a job (REQ-20.007).
+- Unsupported or malformed NL syntax on deterministic/native-tool parser paths is escalated to base LLM fallback prompts that enforce `create_scheduled_job` tool usage, and manager path does not persist before escalation (REQ-20.007).
 - If scheduler is not ready, create requests return readiness response already used by `/jobs` path.
 - Store/runtime failures return fail-fast errors and emit audit outcome `internal_error`.
 - Deterministic parser is evaluated before fallback to keep behavior stable and predictable (REQ-20.011).
 - Native-tool fallback is evaluated only for explicit schedule-intent messages with HH:MM signal to reduce false positives (REQ-20.011, REQ-20.013).
-- Deterministic guidance message for malformed syntax: expected `"<instruction> and send it at HH:MM every day"`.
+- LLM fallback uses two-step prompts for malformed explicit schedule-intent: first prompt requests `create_scheduled_job` usage; second retry prompt enforces tool call if creation markers are absent in first reply.
 
 ## Testing strategy
 
@@ -95,7 +95,7 @@ AC mapping:
 | AC-20.001 | Unit (`manager_test`) |
 | AC-20.002 | Unit (`manager_test`) |
 | AC-20.003 | Unit (`manager_test`) |
-| AC-20.004 | Unit (`manager_test`) |
+| AC-20.004 | Unit+Integration (`manager_test`, `jobs_runtime_test`) |
 | AC-20.005 | Integration (`jobs_runtime_test`) |
 | AC-20.006 | E2E (`cmd/pa` EP-020 flow test) |
 | AC-20.007 | Integration (`telegram/adapter_test`, `jobs_runtime_test`) |
@@ -112,7 +112,7 @@ AC mapping:
 | REQ-20.004 | manager applies `pa_timezone` |
 | REQ-20.005 | manager resolves delivery target from chat/session |
 | REQ-20.006 | manager returns deterministic creation confirmation |
-| REQ-20.007 | parser returns deterministic rejection with no side effect |
+| REQ-20.007 | parser non-match for malformed syntax escalates to base LLM fallback with tool-enforcement prompts; no manager-side persistence before escalation |
 | REQ-20.008 | created jobs reuse existing `/jobs` list/show APIs |
 | REQ-20.009 | existing runtime and `scheduledJobRunner` delivery path |
 | REQ-20.010 | Telegram adapter allowlist gate remains authoritative |
@@ -129,7 +129,7 @@ AC mapping:
 
 Mitigations:
 
-- Return deterministic guidance on parse failures with accepted syntax example.
+- Keep malformed explicit schedule-intent on controlled LLM fallback path with tool-enforcement prompts and no manager-side writes before escalation.
 - Emit creation audit outcomes including parsed schedule payload to support tuning.
 - Limit fallback activation to explicit schedule-intent with HH:MM and enforce single-attempt create path.
 - Track creation rejection ratio from logs; if ratio is high, expand syntax set in follow-up epic.

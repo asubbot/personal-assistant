@@ -9,7 +9,7 @@ This document defines testable acceptance criteria for natural-language schedule
 | [AC-20.001](#ac-20-001) | [REQ-20.001](ep-requirements.md#nl-request-intake), [REQ-20.002](ep-requirements.md#nl-request-intake) | Supported NL request is parsed as create operation |
 | [AC-20.002](#ac-20-002) | [REQ-20.003](ep-requirements.md#job-creation), [REQ-20.004](ep-requirements.md#job-creation), [REQ-20.005](ep-requirements.md#job-creation) | Created job is persisted with active status, timezone, and delivery target |
 | [AC-20.003](#ac-20-003) | [REQ-20.006](ep-requirements.md#user-feedback-safety-and-compatibility) | Creation confirmation is deterministic and includes required fields |
-| [AC-20.004](#ac-20-004) | [REQ-20.007](ep-requirements.md#user-feedback-safety-and-compatibility) | Malformed request is rejected with no job side effects |
+| [AC-20.004](#ac-20-004) | [REQ-20.007](ep-requirements.md#user-feedback-safety-and-compatibility) | Malformed request is escalated to LLM create fallback path |
 | [AC-20.005](#ac-20-005) | [REQ-20.008](ep-requirements.md#user-feedback-safety-and-compatibility) | NL-created jobs are visible/manageable via /jobs |
 | [AC-20.006](#ac-20-006) | [REQ-20.009](ep-requirements.md#runtime-security-and-observability) | Created job executes and delivers output |
 | [AC-20.007](#ac-20-007) | [REQ-20.010](ep-requirements.md#runtime-security-and-observability), [REQ-20.011](ep-requirements.md#runtime-security-and-observability) | Unauthorized and non-matching messages do not create jobs |
@@ -36,7 +36,7 @@ Then the reply SHALL contain Job ID, schedule, timezone, and next run timestamp.
 <a id="ac-20-004"></a>**AC-20.004** (Trace: REQ-20.007)  
 Given a request with malformed time syntax  
 When the message is processed  
-Then the system SHALL return deterministic guidance and SHALL NOT create any job.
+Then the system SHALL escalate the message to the base LLM fallback with explicit `create_scheduled_job` tool instruction and SHALL NOT persist a job before that escalation.
 
 <a id="ac-20-005"></a>**AC-20.005** (Trace: REQ-20.008)  
 Given a job created from NL request  

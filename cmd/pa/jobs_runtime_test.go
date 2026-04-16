@@ -229,7 +229,7 @@ func TestJobsCommandHandler_NLCreateNonMatchingBypassesCreation(t *testing.T) {
 	}
 }
 
-// Covers AC-20.007: malformed schedule-intent message without strict/fallback match is passed to base handler.
+// Covers AC-20.004, AC-20.007: malformed schedule-intent message without strict/fallback match is passed to base handler.
 func TestJobsCommandHandler_NLCreateMalformedFallsThroughToBase(t *testing.T) {
 	base := &mockMessageHandler{reply: "base reply"}
 	state := &jobsRuntimeState{}
@@ -259,7 +259,7 @@ func TestJobsCommandHandler_NLCreateMalformedFallsThroughToBase(t *testing.T) {
 	_ = st
 }
 
-// Covers AC-20.007: LLM fallback retries with explicit tool-call requirement when first reply lacks create confirmation.
+// Covers AC-20.004, AC-20.007: LLM fallback retries with explicit tool-call requirement when first reply lacks create confirmation.
 func TestJobsCommandHandler_NLCreateMalformedRetriesFallbackPrompt(t *testing.T) {
 	base := &sequentialMockMessageHandler{
 		replies: []string{

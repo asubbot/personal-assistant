@@ -48,7 +48,7 @@ flowchart LR
 | REQ-20.004 | FR | Job Creation | Apply pa_timezone to created jobs |
 | REQ-20.005 | FR | Job Creation | Set delivery target to current Telegram chat |
 | REQ-20.006 | FR | User Feedback | Return deterministic creation confirmation |
-| REQ-20.007 | FR | Validation and Safety | Reject malformed creation requests |
+| REQ-20.007 | FR | Validation and Safety | Escalate malformed explicit schedule-intent requests to LLM tool path |
 | REQ-20.008 | FR | Management Compatibility | Created jobs are manageable with existing /jobs commands |
 | REQ-20.009 | FR | Runtime Delivery | Created jobs execute and deliver on schedule |
 | REQ-20.010 | NFR | Security and Access | Unauthorized users cannot create jobs |
@@ -86,7 +86,7 @@ WHEN a job is created from a Telegram request, THE PersonalAssistant System SHAL
 WHEN a job is created successfully, THE PersonalAssistant System SHALL return a deterministic creation confirmation containing Job ID, schedule, timezone, and next run timestamp.
 
 **REQ-20.007** (Unwanted event)  
-IF a creation request has unsupported or malformed time syntax, THEN THE PersonalAssistant System SHALL return a deterministic guidance message and SHALL NOT create a job.
+IF a creation request has malformed time syntax for deterministic and native-tool parser paths, THEN THE PersonalAssistant System SHALL escalate handling to the base LLM flow with `create_scheduled_job` tool instruction and SHALL NOT persist a job before that escalation.
 
 **REQ-20.008** (Ubiquitous)  
 THE PersonalAssistant System SHALL expose jobs created by natural-language requests through existing `/jobs` management operations.

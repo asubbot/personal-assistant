@@ -320,7 +320,7 @@ func TestManager_HandleNaturalLanguageCreate_StrictTemplateCreatesJob(t *testing
 	}
 }
 
-// Supports AC-20.007: malformed strict request falls through to base handler path (not handled by manager).
+// Covers AC-20.004, AC-20.007: malformed strict request falls through to base handler path (not handled by manager).
 func TestManager_HandleNaturalLanguageCreate_MalformedFallsThrough(t *testing.T) {
 	st := openTestStore(t)
 	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))

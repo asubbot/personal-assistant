@@ -39,3 +39,21 @@ Iteration-1 issues are resolved. Hybrid creation (deterministic-first, native-to
 ### Findings
 
 None.
+
+---
+
+## Review iteration 3
+
+**Review date:** 2026-04-16  
+**Stage 10 iteration:** 3 of max 5  
+**Scope:** Restored LLM malformed-intent fallback enforcement flow (`cmd/pa/jobs_runtime.go`, `internal/jobs/create_context.go`, `internal/jobs/create_scheduled_job_tool.go`) and matching tests/docs  
+**Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 0 | Minor: 0 | Nit: 0 | Suggestion: 0  
+**Gate:** Pass
+
+### Summary
+
+Restored fallback enforcement flow is internally consistent: malformed explicit schedule-intent requests escalate to base LLM prompts that enforce `create_scheduled_job`, context wiring for actor/chat is present, and AC trace coverage remains complete.
+
+### Findings
+
+None.

@@ -5,11 +5,11 @@
 **Plan:** [ep-implementation-plan.md](ep-implementation-plan.md)  
 **Acceptance criteria:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md)  
 **Requirements:** [ep-requirements.md](ep-requirements.md)  
-**Code review gate:** [ep-code-review.md](ep-code-review.md) — iteration 2 **Pass**
+**Code review gate:** [ep-code-review.md](ep-code-review.md) — iteration 3 **Pass**
 
 ## Summary
 
-EP-020 implementation is complete against the approved implementation plan (all seven tasks done). Stage 10 gate is closed with no open Blocker/Major/Medium/Minor findings after iteration 2. `make check` and `./bin/validate EP-020` both pass. Total project statement coverage from the same quality run is **73.8%**.
+EP-020 implementation is complete against the approved implementation plan (all seven tasks done). Stage 10 gate is closed with no open Blocker/Major/Medium/Minor findings after iteration 3. Malformed explicit schedule-intent path is validated as LLM fallback escalation with tool-enforcement prompts. `make check` and `./bin/validate EP-020` both pass. Total project statement coverage from the same quality run is **73.8%**.
 
 ## Implementation vs plan
 
@@ -50,7 +50,7 @@ EP-020 implementation is complete against the approved implementation plan (all 
 
 ## Quality gate
 
-- Stage 10 code review gate: **Pass** ([ep-code-review.md](ep-code-review.md), iteration 2).
+- Stage 10 code review gate: **Pass** ([ep-code-review.md](ep-code-review.md), iteration 3).
 - `make check`: **Pass**.
 - `./bin/validate EP-020`: **Pass**.
 

@@ -8,7 +8,7 @@
 
 - [x] **1. Implement deterministic NL create parser and creation API in jobs manager**
   - Add strict syntax matching for MVP phrase shape (`<instruction> and send it at HH:MM every day`).
-  - Add deterministic success/rejection responses, path marker, and creation audit outcomes.
+  - Add deterministic success responses, malformed-path fallthrough for base LLM fallback, path marker, and creation audit outcomes.
   - _Requirements:_ [REQ-20.001](ep-requirements.md#nl-request-intake), [REQ-20.002](ep-requirements.md#nl-request-intake), [REQ-20.006](ep-requirements.md#user-feedback-safety-and-compatibility), [REQ-20.007](ep-requirements.md#user-feedback-safety-and-compatibility), [REQ-20.011](ep-requirements.md#runtime-security-and-observability), [REQ-20.012](ep-requirements.md#runtime-security-and-observability)
   - _Acceptance Criteria:_ [AC-20.001](ep-acceptance-criteria.md#ac-20-001), [AC-20.003](ep-acceptance-criteria.md#ac-20-003), [AC-20.004](ep-acceptance-criteria.md#ac-20-004), [AC-20.008](ep-acceptance-criteria.md#ac-20-008)
   - **Verification:** manager unit tests pass for success/malformed/non-match/audit.
@@ -30,6 +30,7 @@
 - [x] **4. Extend message routing to invoke hybrid NL create flow safely**
   - In `jobsCommandHandler`, detect NL-create intent and route to manager while preserving existing `/jobs` command behavior.
   - Ensure deterministic parser is attempted before fallback tool path.
+  - For malformed explicit schedule-intent non-matches, escalate to base LLM fallback with retry prompt that enforces `create_scheduled_job`.
   - Keep readiness/init-failed behavior consistent with scheduler gate.
   - _Requirements:_ [REQ-20.001](ep-requirements.md#nl-request-intake), [REQ-20.011](ep-requirements.md#runtime-security-and-observability)
   - _Acceptance Criteria:_ [AC-20.001](ep-acceptance-criteria.md#ac-20-001), [AC-20.007](ep-acceptance-criteria.md#ac-20-007)
