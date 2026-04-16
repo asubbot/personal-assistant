@@ -166,7 +166,7 @@ type Telegram struct {
 	TokenPath        string `json:"token_path"`
 	UsersPath        string `json:"users_path"`
 	MaxMessageLength int    `json:"max_message_length"` // max message length in runes; 0 = no limit; over-length messages rejected
-	NotifyChatID     int64  `json:"notify_chat_id"`     // optional; chat ID for scheduler "notify" action (e.g. first admin); 0 = use first allowed user
+	NotifyChatID     int64  `json:"notify_chat_id"`     // optional; default target chat for operator-facing notifications
 }
 
 // LLMProvider holds one LLM provider configuration (order = priority).
@@ -186,17 +186,17 @@ type LLMProvider struct {
 	DefaultResponseFormat string  `json:"default_response_format"` // required; "text" or "json_object"
 }
 
-// Paths holds paths for memory, logs, vector index, scheduled tasks, and optional tool catalog.
+// Paths holds paths for memory, logs, vector index, scheduled jobs, and optional tool catalog.
 type Paths struct {
 	MemoryDir           string `json:"memory_dir"`
 	LogPath             string `json:"log_path"`
 	VectorIndexPath     string `json:"vector_index_path"`
 	LLMLogDir           string `json:"llm_log_dir"`
 	LLMLogRetentionDays int    `json:"llm_log_retention_days"` // Required. Delete llm-YYYY-MM-DD.jsonl older than N days (UTC). Must be >= 1; validated at load (fail fast).
-	ScheduledTasksPath  string `json:"scheduled_tasks_path"`
-	SSHKnownHostsPath   string `json:"ssh_known_hosts_path"` // Required when nodes are configured. OpenSSH known_hosts file for host key verification.
-	ToolCatalogPath     string `json:"tool_catalog_path"`    // Required. Path to tool catalog YAML file; catalog is loaded at startup (fail fast on parse/schema error).
-	SkillsDir           string `json:"skills_dir,omitempty"` // Optional. Runtime skill packages root (subdirectory per skill); required when runtime_skills.enabled.
+	JobsDBPath          string `json:"jobs_db_path"`           // Required. SQLite path for scheduled jobs runtime (EP-019).
+	SSHKnownHostsPath   string `json:"ssh_known_hosts_path"`   // Required when nodes are configured. OpenSSH known_hosts file for host key verification.
+	ToolCatalogPath     string `json:"tool_catalog_path"`      // Required. Path to tool catalog YAML file; catalog is loaded at startup (fail fast on parse/schema error).
+	SkillsDir           string `json:"skills_dir,omitempty"`   // Optional. Runtime skill packages root (subdirectory per skill); required when runtime_skills.enabled.
 }
 
 // Node holds SSH node configuration.

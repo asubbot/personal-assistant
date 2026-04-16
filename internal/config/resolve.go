@@ -8,8 +8,8 @@ import (
 
 // ResolvePaths updates path fields in cfg by joining relative paths with the appropriate base.
 // Three bases (Variant A): config dir from configFilePath, PA_DATA_DIR, PA_SECRETS_DIR.
-// - Config dir = filepath.Dir(configFilePath): command_allowlist_path, scheduled_tasks_path.
-// - PA_DATA_DIR (env; default "."): memory_dir, log_path, vector_index_path, llm_log_dir.
+// - Config dir = filepath.Dir(configFilePath): command_allowlist_path.
+// - PA_DATA_DIR (env; default "."): memory_dir, log_path, vector_index_path, llm_log_dir, jobs_db_path.
 // - PA_SECRETS_DIR (env; default "."): token_path, users_path, api_key_path (LLM and embedding), private_key_path.
 // Paths that are absolute (filepath.IsAbs) are left unchanged.
 func ResolvePaths(cfg *Config, configFilePath string) {
@@ -24,7 +24,7 @@ func ResolvePaths(cfg *Config, configFilePath string) {
 	cfg.Paths.LogPath = resolve(dataDir, cfg.Paths.LogPath)
 	cfg.Paths.VectorIndexPath = resolve(dataDir, cfg.Paths.VectorIndexPath)
 	cfg.Paths.LLMLogDir = resolve(dataDir, cfg.Paths.LLMLogDir)
-	cfg.Paths.ScheduledTasksPath = resolve(configDir, cfg.Paths.ScheduledTasksPath)
+	cfg.Paths.JobsDBPath = resolve(dataDir, cfg.Paths.JobsDBPath)
 	cfg.Paths.SSHKnownHostsPath = resolve(configDir, cfg.Paths.SSHKnownHostsPath)
 	cfg.Paths.ToolCatalogPath = resolve(configDir, cfg.Paths.ToolCatalogPath)
 	cfg.Paths.SkillsDir = resolve(configDir, cfg.Paths.SkillsDir)

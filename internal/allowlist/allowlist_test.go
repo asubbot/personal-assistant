@@ -72,7 +72,7 @@ func TestNewChecker_sameFileSharedByNodes(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -108,7 +108,7 @@ func mustNewChecker(t *testing.T) *Checker {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -140,7 +140,7 @@ func TestNewChecker_rejectsBareStarPattern(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -175,7 +175,7 @@ func TestNewChecker_rejectsLineThatTrimsToBareStar(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -206,7 +206,7 @@ func TestNewChecker_rejectsMultipleTrailingStars(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -240,7 +240,7 @@ func TestNewChecker_rejectsLineEndingWithTwoStarsOnly(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -273,7 +273,7 @@ func TestNewChecker_rejectsEntireFileWhenMixedWithInvalidPattern(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -308,7 +308,7 @@ func TestNewChecker_singleTrailingStarPatternLoadsAndMatches(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -345,7 +345,7 @@ func TestNewChecker_rejectsTripleTrailingStars(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {
@@ -379,7 +379,7 @@ func TestNewChecker_rejectsStarNotOnlyAtEnd(t *testing.T) {
 			{Type: "ollama", Endpoint: "http://x", Model: "m"},
 		},
 		Paths: config.Paths{
-			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", ScheduledTasksPath: "",
+			MemoryDir: "/d", LogPath: "/d", VectorIndexPath: "/d", LLMLogDir: "/d", JobsDBPath: "",
 		},
 		Nodes: map[string]config.Node{
 			"n1": {

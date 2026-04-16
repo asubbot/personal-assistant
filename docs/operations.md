@@ -70,9 +70,23 @@ print('total  max', max(tts), 'p95', p95(tts), 'avg', round(sum(tts)/len(tts),1)
 PY
 ```
 
-## Scheduler
+## Scheduled jobs
 
-If `paths.scheduled_tasks_path` points to a non-empty valid task list, the scheduler starts with the bot. Task names appear in logs when jobs run. The Telegram adapter can be used as notifier for `notify` actions when `telegram.notify_chat_id` is configured appropriately.
+- Runtime uses `paths.jobs_db_path` (`jobs.sqlite`) for persisted jobs.
+- Legacy scheduler configuration fields are rejected at config load.
+- Telegram management commands: `/jobs list`, `/jobs show <id>`, `/jobs pause <id>`, `/jobs resume <id>`, `/jobs run-now <id>`, `/jobs delete <id>`, `/jobs confirm-delete <id> <token>`.
+
+### List responsiveness acceptance harness (profile-based)
+
+Thresholds are defined outside runtime config in:
+
+- `tests/integration/testdata/ep019/list_responsiveness_profiles.json`
+
+Run the acceptance check for a selected profile:
+
+```bash
+PA_LIST_RESPONSIVENESS_PROFILE=baseline go test -tags=integration ./tests/integration/... -run TestEP019_ListResponsiveness_ProfileAcceptance
+```
 
 ## LLM escalation (optional)
 

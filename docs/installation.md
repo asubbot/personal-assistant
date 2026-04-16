@@ -38,11 +38,12 @@ mkdir -p .config
 cp config.examples/config.example.json .config/config.json
 cp config.examples/known_hosts.example .config/known_hosts
 cp config.examples/nas_allowlist.example .config/nas_allowlist
-cp config.examples/scheduled_tasks.example.json .config/scheduled_tasks.json
 cp config.examples/tools.yaml .config/tools.yaml
 ```
 
 The **`.config/`** directory is **gitignored**; committed templates live under **`config.examples/`**. Adjust paths and nodes; populate `known_hosts` (e.g. `ssh-keyscan`). See [configuration.md](configuration.md).
+
+EP-019 note: scheduler persistence uses `paths.jobs_db_path` (default example value: `jobs.sqlite`, resolved under `PA_DATA_DIR`).
 
 ## First run
 

@@ -1,0 +1,41 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title EP-019 — C4 C2 Containers
+
+Person(operator, "Authorized Operator", "Uses Telegram to manage scheduled jobs.")
+
+System_Boundary(pa_boundary, "PersonalAssistant System") {
+  Container(telegram_adapter, "Telegram Adapter", "Go", "Receives commands and sends responses/deliveries.")
+  Container(job_management, "Job Management Service", "Go", "Handles list/show/pause/resume/run-now/delete/confirm-delete.")
+  Container(scheduler_runtime, "Scheduler Runtime", "Go", "Evaluates cron schedules and triggers runs.")
+  Container(job_executor, "Job Executor", "Go", "Runs scheduled jobs via standard agent-turn pipeline.")
+  Container(job_store, "Job Store", "SQLite (jobs.sqlite)", "Persists jobs, run history, delete challenges.")
+  Container(config_loader, "Configuration Loader", "Go", "Validates new schema and rejects legacy scheduled_tasks.")
+  Container(audit_logger, "Audit Logger", "Go", "Records management and lifecycle events.")
+}
+
+System_Ext(telegram_api, "Telegram Bot API", "Messaging transport.")
+System_Ext(llm_provider, "LLM Provider", "Executes model requests.")
+System_Ext(tool_runtime, "Tool Runtime / Nodes", "Executes tool actions.")
+System_Ext(memory_vector, "Memory + Vector Store", "Existing memory and retrieval storage.")
+
+Rel(operator, telegram_api, "Sends management commands")
+Rel(telegram_api, telegram_adapter, "Delivers incoming updates")
+Rel(telegram_adapter, job_management, "Routes management commands")
+Rel(job_management, scheduler_runtime, "Controls job lifecycle")
+Rel(job_management, job_store, "Reads/writes job state")
+Rel(job_management, audit_logger, "Writes management audit events")
+Rel(scheduler_runtime, job_store, "Loads jobs and writes run state")
+Rel(scheduler_runtime, job_executor, "Starts job runs")
+Rel(job_executor, llm_provider, "Agent-turn model requests")
+Rel(job_executor, tool_runtime, "Tool invocation")
+Rel(job_executor, memory_vector, "Read/write memory context")
+Rel(job_executor, telegram_adapter, "Returns run outcome for delivery")
+Rel(telegram_adapter, telegram_api, "Sends replies and run outcomes")
+Rel(config_loader, scheduler_runtime, "Provides validated scheduler config")
+Rel(config_loader, job_management, "Provides validated management config")
+
+@enduml

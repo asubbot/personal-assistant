@@ -1,0 +1,23 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_LEFT_RIGHT()
+
+title EP-019 — C4 C1 System Context
+
+Person(operator, "Authorized Operator", "Uses Telegram commands to inspect and manage scheduled jobs.")
+System_Ext(telegram, "Telegram Bot API", "Messaging transport for operator commands and job result delivery.")
+System_Ext(llm, "LLM Provider", "Processes agent-turn prompts for scheduled jobs.")
+System_Ext(tool_runtime, "Tool Runtime / Nodes", "Executes tool calls that can be used by scheduled agent turns.")
+System_Ext(memory_store, "Memory + Vector Store", "Stores long-term memory and retrieval index.")
+
+System(pa, "PersonalAssistant System", "Telegram assistant with scheduler, job store, orchestration, and delivery.")
+
+Rel(operator, telegram, "Sends management commands and receives responses", "Telegram")
+Rel(telegram, pa, "Forwards updates and receives bot messages", "Bot API")
+Rel(pa, llm, "Sends completion requests", "HTTPS")
+Rel(pa, tool_runtime, "Invokes tools and node actions", "Internal / SSH")
+Rel(pa, memory_store, "Reads and writes memory context", "Filesystem / DB")
+Rel(pa, telegram, "Delivers scheduled run outcomes and command replies", "Bot API")
+
+@enduml

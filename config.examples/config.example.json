@@ -62,7 +62,7 @@
     "vector_index_path": "pa_vectors.sqlite",
     "llm_log_dir": "llm_logs",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "scheduled_tasks.json",
+    "jobs_db_path": "jobs.sqlite",
     "ssh_known_hosts_path": "known_hosts",
     "tool_catalog_path": "tools.yaml",
     "skills_dir": "skills"

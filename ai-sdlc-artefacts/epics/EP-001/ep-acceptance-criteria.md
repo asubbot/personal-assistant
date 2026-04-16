@@ -195,7 +195,7 @@ Given a task configured with a schedule (time or interval), When the scheduled t
 
 ---
 
-<a id="ac-01-021"></a>**AC-01.021** ([REQ-01.009](ep-requirements.md#scheduler-and-tools))
+<a id="ac-01-021"></a>**AC-01.021** ([REQ-01.009](ep-requirements.md#scheduler-and-tools)) — **DEFERRED** (legacy scheduler replaced by EP-019)
 
 Given a task that would violate the security model, When the scheduler would run it, Then the system does not execute the violating action (and may log or report).
 
@@ -215,7 +215,7 @@ Given an invalid or out-of-schema input for a tool, When the core would invoke i
 
 ---
 
-<a id="ac-01-024"></a>**AC-01.024** ([REQ-01.011](ep-requirements.md#extensibility-and-architecture))
+<a id="ac-01-024"></a>**AC-01.024** ([REQ-01.011](ep-requirements.md#extensibility-and-architecture)) — **DEFERRED** (legacy scheduler extension path removed by EP-019)
 
 Given a new node or tool added via the designated configuration or extension mechanism, When the core is restarted (or hot-reloaded where supported), Then the new node or tool is loaded and used without rebuilding the core image.
 
@@ -281,7 +281,7 @@ Given the configuration is invalid or incomplete (e.g. config file missing or in
 
 ---
 
-<a id="ac-01-034"></a>**AC-01.034** ([REQ-01.009](ep-requirements.md#scheduler-and-tools))
+<a id="ac-01-034"></a>**AC-01.034** ([REQ-01.009](ep-requirements.md#scheduler-and-tools)) — **DEFERRED** (legacy file-based tasks removed by EP-019)
 
 Given the scheduled tasks file is missing, path is empty, JSON is invalid, or task names are duplicate or empty, When the core loads tasks, Then the system returns an empty list or reports a clear error and does not start invalid tasks.
 

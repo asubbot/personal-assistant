@@ -55,11 +55,16 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 	if err != nil {
 		return err
 	}
-	handler, err := newRunConversationHandler(cfg, logger, redactor, router, memVec, embedder, nodeRunner, toolIndex, skillIndex, nativeRegistry, classifier)
+	handler, err := BuildMessageHandler(cfg, logger, redactor, router, memVec, embedder, nodeRunner, toolIndex, skillIndex, nativeRegistry, classifier)
 	if err != nil {
 		return err
 	}
 	return adapter.Run(ctx, handler)
+}
+
+// BuildMessageHandler constructs a configured conversational message handler.
+func BuildMessageHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, router *llmrouter.Router, memVec *MemoryVectors, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry, classifier intent.Classifier) (MessageHandler, error) {
+	return newRunConversationHandler(cfg, logger, redactor, router, memVec, embedder, nodeRunner, toolIndex, skillIndex, nativeRegistry, classifier)
 }
 
 func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor func(string) string, router *llmrouter.Router, memVec *MemoryVectors, embedder embedding.Embedder, nodeRunner NodeRunner, toolIndex ToolIndex, skillIndex SkillIndex, nativeRegistry *tools.Registry, classifier intent.Classifier) (*conversationHandler, error) {

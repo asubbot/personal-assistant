@@ -8,18 +8,18 @@ import (
 	"testing"
 )
 
-// Supporting AC-01.005 (US-03): valid config with empty or omitted scheduled_tasks_path loads.
-func TestLoad_ValidConfig_EmptyScheduledTasksPath(t *testing.T) {
+// Supporting AC-19.019: valid config with explicit jobs_db_path loads.
+func TestLoad_ValidConfig_JobsDBPath(t *testing.T) {
 	path := filepath.Join("testdata", "valid_no_users.json")
 	cfg, err := Load(path)
 	if err != nil {
-		t.Fatalf("Load(config with empty scheduled_tasks_path): unexpected error: %v", err)
+		t.Fatalf("Load(config with jobs_db_path): unexpected error: %v", err)
 	}
 	if cfg == nil {
-		t.Fatal("Load(config with empty scheduled_tasks_path): got nil config")
+		t.Fatal("Load(config with jobs_db_path): got nil config")
 	}
-	if cfg.Paths.ScheduledTasksPath != "" {
-		t.Errorf("Load(config with empty scheduled_tasks_path): ScheduledTasksPath = %q, want empty", cfg.Paths.ScheduledTasksPath)
+	if cfg.Paths.JobsDBPath == "" {
+		t.Errorf("Load(config with jobs_db_path): JobsDBPath is empty")
 	}
 }
 
@@ -147,7 +147,39 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-19.019: legacy paths.scheduled_tasks_path is rejected even when other fields are valid.
+func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
+	cfgDir := t.TempDir()
+	configPath := filepath.Join(cfgDir, "config.json")
+	content := `{
+  "version": 1,
+  "telegram": { "token_path": "/t", "users_path": "" },
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "legacy.json", "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "nodes": {},
+  "tools": { "text_based_enabled": false },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+}`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(configPath)
+	if err == nil {
+		t.Fatal("Load(config with legacy scheduled_tasks_path): expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "scheduled_tasks_path") {
+		t.Fatalf("Load(config with legacy scheduled_tasks_path): error = %v, want scheduled_tasks_path mention", err)
+	}
+}
+
 // EP-008 REQ-08.001: boundary default_temperature (0 and 2) loads successfully — within [0,2] validation.
+// Covers AC-08.001: provider default_temperature accepts boundary values.
 func TestLoad_LLMProviderDefaults_boundaryTemperature_loads(t *testing.T) {
 	for _, name := range []string{"llm_default_temperature_zero.json", "llm_default_temperature_two.json"} {
 		t.Run(name, func(t *testing.T) {
@@ -238,7 +270,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	    "vector_index_path": "/data/pa.sqlite",
 	    "llm_log_dir": "/data/llm",
 	    "llm_log_retention_days": 7,
-	    "scheduled_tasks_path": "",
+	    "jobs_db_path": "jobs.sqlite",
 	    "tool_catalog_path": "nonexistent_catalog.yaml"
 	  },
 	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100 },
@@ -341,7 +373,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
   "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "", "tool_catalog_path": "tools.yaml" },
+  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
   "nodes": {},
   "tools": { "text_based_enabled": false },
@@ -384,7 +416,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
     "vector_index_path": "` + cfgDir + `/pa_vectors.sqlite",
     "llm_log_dir": "` + cfgDir + `",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "",
+    "jobs_db_path": "jobs.sqlite",
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "` + knownHostsRel + `"
   },
@@ -519,7 +551,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
     "vector_index_path": "` + cfgDir + `/v.sqlite",
     "llm_log_dir": "` + cfgDir + `",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "",
+    "jobs_db_path": "jobs.sqlite",
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "known_hosts"
   },
@@ -585,7 +617,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
     "vector_index_path": "` + cfgDir + `/v.sqlite",
     "llm_log_dir": "` + cfgDir + `",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "",
+    "jobs_db_path": "jobs.sqlite",
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "known_hosts"
   },
@@ -653,7 +685,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
     "vector_index_path": "` + cfgDir + `/v.sqlite",
     "llm_log_dir": "` + cfgDir + `",
     "llm_log_retention_days": 7,
-    "scheduled_tasks_path": "",
+    "jobs_db_path": "jobs.sqlite",
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "known_hosts"
   },

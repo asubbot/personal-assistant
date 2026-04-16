@@ -1,0 +1,25 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-020 C4 Level 2 - NL Job Creation Containers
+
+Person(user, "Authorized Telegram User")
+System_Ext(telegram_api, "Telegram Bot API")
+
+System_Boundary(pa, "PersonalAssistant") {
+  Container(telegram_adapter, "Telegram Adapter", "Go", "Authorizes users and forwards messages")
+  Container(message_router, "Message Router", "Go", "Routes /jobs and NL creation before default chat path")
+  Container(jobs_manager, "Jobs Manager", "Go", "Parses NL creation requests and persists jobs")
+  Container(jobs_runtime, "Jobs Runtime", "Go", "Evaluates due jobs and triggers runs")
+  ContainerDb(job_store, "Jobs SQLite", "SQLite", "jobs + job_runs + delete_challenges")
+}
+
+Rel(user, telegram_api, "Sends chat messages")
+Rel(telegram_api, telegram_adapter, "Update")
+Rel(telegram_adapter, message_router, "Forward text")
+Rel(message_router, jobs_manager, "NL create or /jobs management")
+Rel(jobs_manager, job_store, "Create/read/update jobs")
+Rel(jobs_runtime, job_store, "Load/evaluate due jobs")
+Rel(jobs_runtime, telegram_api, "Deliver scheduled results")
+
+@enduml
