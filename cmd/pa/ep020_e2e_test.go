@@ -10,11 +10,17 @@ import (
 	"time"
 )
 
-func mustCreateJobViaFallback(t *testing.T, ctx context.Context, manager *jobs.Manager, userID int64, chatID int64, text string) {
+func mustCreateJobViaExplicitTool(t *testing.T, ctx context.Context, manager *jobs.Manager, userID int64, chatID int64, instruction string, hour, minute int) {
 	t.Helper()
-	createReply, handled, err := manager.HandleNaturalLanguageCreate(ctx, userID, chatID, text)
-	if err != nil || !handled {
-		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+	tool := jobs.NewCreateScheduledJobTool(manager)
+	cctx := jobs.WithCreateContext(ctx, userID, chatID)
+	createReply, err := tool.Run(cctx, map[string]any{
+		"instruction": instruction,
+		"hour":        float64(hour),
+		"minute":      float64(minute),
+	})
+	if err != nil {
+		t.Fatalf("create tool: %v", err)
 	}
 	if !strings.Contains(createReply, "Scheduled job created.") {
 		t.Fatalf("create reply = %q", createReply)
@@ -80,7 +86,7 @@ func newRuntimeBoundManager(store *jobs.Store, sender *mockChatSender) *jobs.Man
 	return jobs.NewManager(store, runtime, slog.New(slog.DiscardHandler))
 }
 
-// Covers AC-20.005, AC-20.006: NL-created job is manageable with /jobs and delivers output on run-now.
+// Covers AC-20.001, AC-20.002, AC-20.003, AC-20.005, AC-20.006, AC-20.008: job created via native tool path is manageable with /jobs and delivers on run-now.
 func TestEP020_E2E_CreateManageRunNowDelivery(t *testing.T) {
 	ctx := context.Background()
 	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"))
@@ -91,7 +97,7 @@ func TestEP020_E2E_CreateManageRunNowDelivery(t *testing.T) {
 
 	_, manager, sender := buildRuntimeAndManager(store)
 	manager.SetDefaultTimeZone("UTC")
-	mustCreateJobViaFallback(t, ctx, manager, 555, 101, "send me AI news digest at 09:00 every day")
+	mustCreateJobViaExplicitTool(t, ctx, manager, 555, 101, "AI news digest", 9, 0)
 	jobID := mustListJobID(t, ctx, manager, 555)
 	mustShowInstruction(t, ctx, manager, 555, jobID, "AI news digest")
 
@@ -99,7 +105,7 @@ func TestEP020_E2E_CreateManageRunNowDelivery(t *testing.T) {
 	mustRunNowAndWaitDelivery(t, ctx, manager, 555, jobID, sender, "AI digest ready")
 }
 
-// Covers AC-20.001, AC-20.005, AC-20.006: strict-template NL create is manageable via /jobs and delivers on run-now.
+// Covers AC-20.001, AC-20.002, AC-20.003, AC-20.005, AC-20.006, AC-20.008: explicit create spec is manageable via /jobs and delivers on run-now.
 func TestEP020_E2E_StrictTemplateCreateManageRunNowDelivery(t *testing.T) {
 	ctx := context.Background()
 	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"))
@@ -111,9 +117,9 @@ func TestEP020_E2E_StrictTemplateCreateManageRunNowDelivery(t *testing.T) {
 	_, manager, sender := buildRuntimeAndManager(store)
 	manager.SetDefaultTimeZone("UTC")
 
-	createReply, handled, err := manager.HandleNaturalLanguageCreate(ctx, 555, 101, "Collect an AI news digest and send it at 09:00 every day")
-	if err != nil || !handled {
-		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+	createReply, _, err := manager.CreateScheduledJobFromSpec(ctx, 555, 101, "Collect an AI news digest", 9, 0, "", "e2e_explicit")
+	if err != nil {
+		t.Fatalf("CreateScheduledJobFromSpec: %v", err)
 	}
 	if !strings.Contains(createReply, "Scheduled job created.") {
 		t.Fatalf("create reply = %q", createReply)

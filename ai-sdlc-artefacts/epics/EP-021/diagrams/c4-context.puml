@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-021 C4 Level 1 - Scheduler routing via main handler
+
+Person(user, "Telegram User")
+System_Ext(telegram, "Telegram Bot API", "Message transport")
+System(pa, "PersonalAssistant", "Tiered LLM, tools, runtime skills, jobs wrapper")
+SystemDb(jobdb, "Jobs SQLite", "Scheduled jobs")
+
+Rel(user, telegram, "Sends chat and /jobs commands")
+Rel(telegram, pa, "Delivers updates")
+Rel(pa, jobdb, "Persists jobs when tool creates them")
+Rel(pa, telegram, "Replies and job output")
+
+@enduml

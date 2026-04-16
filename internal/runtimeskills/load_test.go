@@ -4,6 +4,7 @@ import (
 	"os"
 	"pa/internal/toolcatalog"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -76,6 +77,30 @@ func TestValidateToolRefs_readMemoryNative(t *testing.T) {
 	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
 	pkgs := []*Package{{ID: "memory-retrieval", Tools: []string{"read_memory"}}}
 	allow := []string{"run_on_node", "create_tool", "read_memory"}
+	if err := ValidateToolRefs(pkgs, cat, allow); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Covers EP-021 AC-21.007: example scheduled-jobs skill lists create_scheduled_job and validates against native allowlist.
+func TestEP021_exampleScheduledJobsSkill_validateRefs(t *testing.T) {
+	_, thisFile, _, _ := runtime.Caller(0)
+	repoRoot := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", ".."))
+	raw, err := os.ReadFile(filepath.Join(repoRoot, "config.examples", "skills", "scheduled-jobs", "SKILL.md"))
+	if err != nil {
+		t.Fatalf("read example skill: %v", err)
+	}
+	root := t.TempDir()
+	writeSkill(t, root, "scheduled-jobs", string(raw))
+	pkgs, err := LoadDir(root)
+	if err != nil {
+		t.Fatalf("LoadDir: %v", err)
+	}
+	if len(pkgs) != 1 || pkgs[0].ID != "scheduled-jobs" {
+		t.Fatalf("pkgs = %+v", pkgs)
+	}
+	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
+	allow := []string{"run_on_node", "create_tool", "read_memory", "write_memory", "create_scheduled_job"}
 	if err := ValidateToolRefs(pkgs, cat, allow); err != nil {
 		t.Fatal(err)
 	}

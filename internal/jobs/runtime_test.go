@@ -202,3 +202,19 @@ func TestRuntime_RunNow_RecordsRunNowTrigger(t *testing.T) {
 		t.Fatalf("last.TriggerType = %q, want run_now", last.TriggerType)
 	}
 }
+
+// Covers AC-19.009 (Trace: REQ-19.009): NewRuntime applies a positive default RunTimeout when omitted so job runs use a bounded execution window.
+func TestNewRuntime_DefaultRunTimeoutFiveMinutes(t *testing.T) {
+	st := openTestStore(t)
+	for _, timeout := range []time.Duration{0, -1 * time.Second} {
+		t.Run(timeout.String(), func(t *testing.T) {
+			rt := NewRuntime(st, runnerFunc(func(ctx context.Context, job Job) error { return nil }), RuntimeConfig{
+				RunTimeout: timeout,
+				Now:        func() time.Time { return time.Now().UTC() },
+			})
+			if rt.cfg.RunTimeout != 5*time.Minute {
+				t.Fatalf("RunTimeout = %v, want 5m", rt.cfg.RunTimeout)
+			}
+		})
+	}
+}

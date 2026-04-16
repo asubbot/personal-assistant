@@ -24,59 +24,10 @@ type jobsCommandHandler struct {
 
 func (h *jobsCommandHandler) HandleMessage(ctx context.Context, userID int64, sessionKey string, text string) (string, error) {
 	ctxForBase := jobs.WithCreateContext(ctx, userID, parseDeliveryChatID(sessionKey, userID))
-	nlCreateIntent := looksLikeNaturalLanguageCreateRequest(text)
 	if reply, handled, err := h.handleJobsCommand(ctx, userID, text); handled || err != nil {
 		return reply, err
 	}
-	if reply, handled, err := h.handleNaturalLanguageCreate(ctx, userID, sessionKey, text); handled || err != nil {
-		return reply, err
-	}
-	if !nlCreateIntent {
-		return h.base.HandleMessage(ctxForBase, userID, sessionKey, text)
-	}
-	return h.runLLMCreateFallback(ctxForBase, userID, sessionKey, text)
-}
-
-func llmCreateFallbackPrompt(userText string) string {
-	return strings.TrimSpace(strings.Join([]string{
-		"You are handling a schedule creation request.",
-		"Use the create_scheduled_job tool to create one job from this request.",
-		"Do not suggest external cron/jobs setup.",
-		"If creation fails due to missing or ambiguous time details, ask one concise clarifying question.",
-		"Original user request:",
-		userText,
-	}, "\n"))
-}
-
-func llmCreateFallbackRetryPrompt(userText string, firstReply string) string {
-	return strings.TrimSpace(strings.Join([]string{
-		"You did not create the scheduled job yet.",
-		"Now you MUST call create_scheduled_job tool.",
-		"Do not explain alternatives and do not mention limitations of scheduler.",
-		"After tool result, return the tool output.",
-		"Original user request:",
-		userText,
-		"Previous assistant reply (incorrect for this flow):",
-		firstReply,
-	}, "\n"))
-}
-
-func (h *jobsCommandHandler) runLLMCreateFallback(ctx context.Context, userID int64, sessionKey string, userText string) (string, error) {
-	firstReply, err := h.base.HandleMessage(ctx, userID, sessionKey, llmCreateFallbackPrompt(userText))
-	if err != nil {
-		return "", err
-	}
-	if looksLikeCreateSuccessReply(firstReply) {
-		return firstReply, nil
-	}
-	return h.base.HandleMessage(ctx, userID, sessionKey, llmCreateFallbackRetryPrompt(userText, firstReply))
-}
-
-func looksLikeCreateSuccessReply(reply string) bool {
-	trimmed := strings.ToLower(strings.TrimSpace(reply))
-	return strings.Contains(trimmed, "scheduled job created") &&
-		strings.Contains(trimmed, "job_id:") &&
-		strings.Contains(trimmed, "schedule:")
+	return h.base.HandleMessage(ctxForBase, userID, sessionKey, text)
 }
 
 func (h *jobsCommandHandler) handleJobsCommand(ctx context.Context, userID int64, text string) (string, bool, error) {
@@ -94,25 +45,6 @@ func (h *jobsCommandHandler) handleJobsCommand(ctx context.Context, userID int64
 		return "Scheduler management is not configured.", true, nil
 	}
 	reply, managerHandled, err := mgr.HandleCommand(ctx, userID, text)
-	return reply, managerHandled || err != nil, err
-}
-
-func (h *jobsCommandHandler) handleNaturalLanguageCreate(ctx context.Context, userID int64, sessionKey string, text string) (string, bool, error) {
-	if !looksLikeNaturalLanguageCreateRequest(text) {
-		return "", false, nil
-	}
-	mgr, ready, initFailed := h.lookupNaturalLanguageCreateManager()
-	if !ready {
-		return "Scheduler is initializing. Please retry shortly.", true, nil
-	}
-	if initFailed {
-		return "Scheduler is unavailable due to initialization error.", true, nil
-	}
-	if mgr == nil {
-		return "Scheduler management is not configured.", true, nil
-	}
-	deliveryChatID := parseDeliveryChatID(sessionKey, userID)
-	reply, managerHandled, err := mgr.HandleNaturalLanguageCreate(ctx, userID, deliveryChatID, text)
 	return reply, managerHandled || err != nil, err
 }
 
@@ -137,24 +69,12 @@ func isJobsCommandToken(token string) bool {
 	return strings.HasPrefix(lower, "/jobs@")
 }
 
-func looksLikeNaturalLanguageCreateRequest(text string) bool {
-	return jobs.LooksLikeNaturalLanguageCreateRequest(text)
-}
-
 func parseDeliveryChatID(sessionKey string, fallback int64) int64 {
 	v, err := strconv.ParseInt(strings.TrimSpace(sessionKey), 10, 64)
 	if err != nil || v == 0 {
 		return fallback
 	}
 	return v
-}
-
-func (h *jobsCommandHandler) lookupNaturalLanguageCreateManager() (mgr *jobs.Manager, ready bool, initFailed bool) {
-	if h.state == nil {
-		return nil, false, false
-	}
-	mgr, ready, initFailed = h.state.snapshot()
-	return mgr, ready, initFailed
 }
 
 type jobsRuntimeState struct {
@@ -280,7 +200,7 @@ func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath s
 			logger:  logger,
 		}
 		runtime := jobs.NewRuntime(st, runner, jobs.RuntimeConfig{
-			RunTimeout: 30 * time.Second,
+			RunTimeout: 5 * time.Minute,
 			Logger:     logger,
 		})
 		manager := jobs.NewManager(st, runtime, logger)

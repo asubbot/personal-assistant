@@ -2,6 +2,7 @@ package config
 
 import (
 	"slices"
+	"strings"
 )
 
 // RuntimeSkillsConfig enables runtime SKILL.md packages and tool-vector caps (EP-013).
@@ -19,6 +20,9 @@ func AllowedNativeToolIDs(c *Config) []string {
 	out := []string{"run_on_node", "create_tool", "read_memory", "write_memory"}
 	if c.WebTools != nil && c.WebTools.Enabled {
 		out = append(out, "web_search", "web_fetch")
+	}
+	if strings.TrimSpace(c.Paths.JobsDBPath) != "" {
+		out = append(out, "create_scheduled_job")
 	}
 	return out
 }

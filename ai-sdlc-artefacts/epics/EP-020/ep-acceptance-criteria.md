@@ -33,7 +33,7 @@ Given a successful creation
 When reply is returned to Telegram  
 Then the reply SHALL contain Job ID, schedule, timezone, and next run timestamp.
 
-<a id="ac-20-004"></a>**AC-20.004** (Trace: REQ-20.007)  
+<a id="ac-20-004"></a>**AC-20.004** (Trace: REQ-20.007) — **DEFERRED** — superseded by **EP-021** (Telegram wrapper no longer performs LLM fallback escalation; malformed NL is handled only in the main handler path).  
 Given a request with malformed time syntax  
 When the message is processed  
 Then the system SHALL escalate the message to the base LLM fallback with explicit `create_scheduled_job` tool instruction and SHALL NOT persist a job before that escalation.
@@ -58,7 +58,7 @@ Given a creation attempt is processed
 When audit logs are inspected  
 Then each event SHALL include actor_user_id, operation, outcome, and job_id when available.
 
-<a id="ac-20-009"></a>**AC-20.009** (Trace: REQ-20.013, REQ-20.006)  
+<a id="ac-20-009"></a>**AC-20.009** (Trace: REQ-20.013, REQ-20.006) — **DEFERRED** — superseded by **EP-021** (native `create_scheduled_job` uses explicit parameters; REQ-20.013 “fallback after strict non-match” is retired).  
 Given an authorized user sends an explicit schedule-intent message that does not match strict template and contains HH:MM time  
 When the message is processed  
 Then the system SHALL create one job via native-tool fallback and SHALL return deterministic creation confirmation fields.

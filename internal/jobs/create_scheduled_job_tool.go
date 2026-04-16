@@ -2,17 +2,14 @@ package jobs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"pa/internal/tools"
-	"regexp"
-	"strconv"
 	"strings"
 )
 
-var ErrCreateScheduledJobNoMatch = errors.New("jobs: create_scheduled_job: no matching pattern")
+const creationPathNativeToolExplicit = "native_tool_explicit"
 
-// CreateScheduledJobTool is a native fallback tool for explicit schedule-intent free-form create requests.
+// CreateScheduledJobTool is the native tool for creating a daily scheduled job with explicit parameters.
 type CreateScheduledJobTool struct {
 	manager       *Manager
 	managerLookup func() *Manager
@@ -29,15 +26,17 @@ func NewCreateScheduledJobToolWithLookup(lookup func() *Manager) *CreateSchedule
 func (t *CreateScheduledJobTool) Name() string { return "create_scheduled_job" }
 
 func (t *CreateScheduledJobTool) Description() string {
-	return "Create a scheduled job from explicit schedule-intent text when strict NL parser does not match."
+	return "Create one daily scheduled agent job. Requires explicit instruction text and local clock hour (0-23) and minute (0-59). Schedule is minute hour * * * (daily). Optional timezone overrides the server default. Do not use for one-off messages with no recurring schedule."
 }
 
 func (t *CreateScheduledJobTool) ParamsSchema() []tools.ParamSpec {
 	return []tools.ParamSpec{
-		{Name: "text", Required: true, Type: "string"},
+		{Name: "instruction", Required: true, Type: "string"},
+		{Name: "hour", Required: true, Type: "number"},
+		{Name: "minute", Required: true, Type: "number"},
+		{Name: "timezone", Required: false, Type: "string"},
 		{Name: "actor_user_id", Required: false, Type: "number"},
 		{Name: "delivery_chat_id", Required: false, Type: "number"},
-		{Name: "timezone", Required: false, Type: "string"},
 	}
 }
 
@@ -49,12 +48,44 @@ func (t *CreateScheduledJobTool) Run(ctx context.Context, params map[string]any)
 	if err := tools.ValidateParams(t.ParamsSchema(), params); err != nil {
 		return "", err
 	}
+	args, soft, err := parseCreateScheduledJobArgs(ctx, params)
+	if err != nil {
+		return "", err
+	}
+	if soft != "" {
+		return soft, nil
+	}
+	reply, _, err := manager.CreateScheduledJobFromSpec(
+		ctx,
+		args.actorUserID,
+		args.deliveryChatID,
+		args.instruction,
+		args.hour,
+		args.minute,
+		args.timezone,
+		creationPathNativeToolExplicit,
+	)
+	return reply, err
+}
 
-	text, _ := params["text"].(string)
-	text = strings.TrimSpace(text)
+type createScheduledJobArgs struct {
+	instruction    string
+	hour, minute   int
+	timezone       string
+	actorUserID    int64
+	deliveryChatID int64
+}
+
+// parseCreateScheduledJobArgs returns soft validation text (non-empty, err nil) or a hard error (e.g. missing actor).
+func parseCreateScheduledJobArgs(ctx context.Context, params map[string]any) (createScheduledJobArgs, string, error) {
+	instruction, _ := params["instruction"].(string)
+	instruction = strings.TrimSpace(instruction)
+	hour, hourOK := intFromParam(params["hour"])
+	minute, minuteOK := intFromParam(params["minute"])
+	timezone, _ := params["timezone"].(string)
+	timezone = strings.TrimSpace(timezone)
 	actorUserID := int64FromAny(params["actor_user_id"])
 	deliveryChatID := int64FromAny(params["delivery_chat_id"])
-	timezone, _ := params["timezone"].(string)
 	if actorUserID == 0 {
 		actorUserID = CreateContextActorUserID(ctx)
 	}
@@ -62,24 +93,25 @@ func (t *CreateScheduledJobTool) Run(ctx context.Context, params map[string]any)
 		deliveryChatID = CreateContextDeliveryChatID(ctx)
 	}
 	if actorUserID == 0 {
-		return "", fmt.Errorf("jobs: create_scheduled_job: actor_user_id is required")
+		return createScheduledJobArgs{}, "", fmt.Errorf("jobs: create_scheduled_job: actor_user_id is required")
 	}
-
-	req, ok := parseFallbackNaturalLanguageCreateRequest(text)
-	if !ok {
-		return "", ErrCreateScheduledJobNoMatch
+	if instruction == "" {
+		return createScheduledJobArgs{}, "Instruction must be non-empty.", nil
 	}
-	reply, _, err := manager.CreateScheduledJobFromSpec(
-		ctx,
-		actorUserID,
-		deliveryChatID,
-		req.Instruction,
-		req.Hour,
-		req.Minute,
-		timezone,
-		"native_tool_fallback",
-	)
-	return reply, err
+	if !hourOK || !minuteOK {
+		return createScheduledJobArgs{}, "hour and minute must be integers in range (hour 0-23, minute 0-59).", nil
+	}
+	if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+		return createScheduledJobArgs{}, "Invalid schedule: hour must be 0-23 and minute must be 0-59.", nil
+	}
+	return createScheduledJobArgs{
+		instruction:    instruction,
+		hour:           hour,
+		minute:         minute,
+		timezone:       timezone,
+		actorUserID:    actorUserID,
+		deliveryChatID: deliveryChatID,
+	}, "", nil
 }
 
 func (t *CreateScheduledJobTool) resolveManager() *Manager {
@@ -95,54 +127,17 @@ func (t *CreateScheduledJobTool) resolveManager() *Manager {
 	return t.managerLookup()
 }
 
-var (
-	// Example: "collect AI digest and send me it at 09:00 every day"
-	fallbackCreateRegexInstructionFirst = regexp.MustCompile(`(?i)^\s*(.+?)\s+(?:and\s+)?send(?:\s+it|\s+me|\s+me\s+it)?\s+at\s+([01]?\d|2[0-3]):([0-5]\d)(?:\s+(?:every\s+day|daily))?\s*$`)
-	// Example: "send me AI digest at 09:00 every day"
-	fallbackCreateRegexSendFirst = regexp.MustCompile(`(?i)^\s*send(?:\s+it|\s+me|\s+me\s+it)?\s+(.+?)\s+at\s+([01]?\d|2[0-3]):([0-5]\d)(?:\s+(?:every\s+day|daily))?\s*$`)
-	explicitScheduleIntentRegex  = regexp.MustCompile(`(?i)\bsend\b.*\bat\b`)
-)
-
-func LooksLikeNaturalLanguageCreateRequest(text string) bool {
-	trimmed := strings.TrimSpace(text)
-	if trimmed == "" {
-		return false
+func intFromParam(v any) (int, bool) {
+	switch x := v.(type) {
+	case int:
+		return x, true
+	case int64:
+		return int(x), true
+	case float64:
+		return int(x), true
+	default:
+		return 0, false
 	}
-	return explicitScheduleIntentRegex.MatchString(trimmed)
-}
-
-func parseFallbackNaturalLanguageCreateRequest(text string) (naturalLanguageCreateRequest, bool) {
-	trimmed := strings.TrimSpace(text)
-	if trimmed == "" || !LooksLikeNaturalLanguageCreateRequest(trimmed) {
-		return naturalLanguageCreateRequest{}, false
-	}
-	if req, ok := parseCreateByPattern(trimmed, fallbackCreateRegexInstructionFirst); ok {
-		return req, true
-	}
-	if req, ok := parseCreateByPattern(trimmed, fallbackCreateRegexSendFirst); ok {
-		return req, true
-	}
-	return naturalLanguageCreateRequest{}, false
-}
-
-func parseCreateByPattern(text string, pattern *regexp.Regexp) (naturalLanguageCreateRequest, bool) {
-	m := pattern.FindStringSubmatch(text)
-	if len(m) != 4 {
-		return naturalLanguageCreateRequest{}, false
-	}
-	hour, _ := strconv.Atoi(m[2])
-	minute, _ := strconv.Atoi(m[3])
-	return naturalLanguageCreateRequest{
-		Instruction: normalizeFallbackInstruction(m[1]),
-		Hour:        hour,
-		Minute:      minute,
-	}, true
-}
-
-func normalizeFallbackInstruction(instruction string) string {
-	v := strings.TrimSpace(instruction)
-	v = strings.Trim(v, " .,:;!?")
-	return v
 }
 
 func int64FromAny(v any) int64 {

@@ -284,20 +284,24 @@ func TestManager_AuditLog_RuntimeUnavailable(t *testing.T) {
 	}
 }
 
-// Covers AC-20.001, AC-20.002, AC-20.003: strict NL create request is parsed, persisted, and confirmed.
-func TestManager_HandleNaturalLanguageCreate_StrictTemplateCreatesJob(t *testing.T) {
+// Covers EP-021 AC-21.004: CreateScheduledJobFromSpec persists daily job with confirmation (replaces strict NL path).
+func TestManager_CreateScheduledJobFromSpec_DirectCreatesJob(t *testing.T) {
 	st := openTestStore(t)
 	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
 	m.SetDefaultTimeZone("Europe/Berlin")
 
-	reply, handled, err := m.HandleNaturalLanguageCreate(
+	reply, _, err := m.CreateScheduledJobFromSpec(
 		context.Background(),
 		11,
 		22,
-		"Collect an AI news digest and send it at 09:30 every day",
+		"Collect an AI news digest",
+		9,
+		30,
+		"",
+		"test_explicit",
 	)
-	if err != nil || !handled {
-		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+	if err != nil {
+		t.Fatalf("CreateScheduledJobFromSpec: %v", err)
 	}
 	for _, token := range []string{"Scheduled job created.", "schedule: 30 9 * * *", "timezone: Europe/Berlin", "instruction: Collect an AI news digest"} {
 		if !strings.Contains(reply, token) {
@@ -320,27 +324,24 @@ func TestManager_HandleNaturalLanguageCreate_StrictTemplateCreatesJob(t *testing
 	}
 }
 
-// Covers AC-20.004, AC-20.007: malformed strict request falls through to base handler path (not handled by manager).
-func TestManager_HandleNaturalLanguageCreate_MalformedFallsThrough(t *testing.T) {
+// Covers EP-021 AC-21.005: explicit tool rejects invalid clock with message and nil error.
+func TestCreateScheduledJobTool_InvalidHourReturnsMessageNoError(t *testing.T) {
 	st := openTestStore(t)
 	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+	tool := NewCreateScheduledJobTool(m)
 
-	reply, handled, err := m.HandleNaturalLanguageCreate(
-		context.Background(),
-		11,
-		22,
-		"Collect an AI news digest and send it at 9 every day",
-	)
+	reply, err := tool.Run(context.Background(), map[string]any{
+		"instruction":   "Do something",
+		"hour":          float64(25),
+		"minute":        float64(0),
+		"actor_user_id": float64(1),
+	})
 	if err != nil {
-		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+		t.Fatalf("Run err = %v, want nil", err)
 	}
-	if handled {
-		t.Fatalf("handled = %v, want false", handled)
+	if !strings.Contains(reply, "Invalid schedule") {
+		t.Fatalf("reply = %q", reply)
 	}
-	if reply != "" {
-		t.Fatalf("reply = %q, want empty", reply)
-	}
-
 	items, err := st.ListJobs(context.Background())
 	if err != nil {
 		t.Fatalf("ListJobs: %v", err)
@@ -350,47 +351,35 @@ func TestManager_HandleNaturalLanguageCreate_MalformedFallsThrough(t *testing.T)
 	}
 }
 
-// Covers AC-20.009, AC-20.008: fallback path creates job from explicit free-form send-first request and audits creation_path.
-func TestManager_HandleNaturalLanguageCreate_FallbackCreatesJob(t *testing.T) {
+// Covers EP-021 AC-21.004, AC-21.009: native tool creates job and logs creation_path=native_tool_explicit.
+func TestCreateScheduledJobTool_CreatesJobAndAuditsPath(t *testing.T) {
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, nil))
 	st := openTestStore(t)
 	m := NewManager(st, &runtimeStub{}, logger)
 	m.SetDefaultTimeZone("UTC")
+	tool := NewCreateScheduledJobTool(m)
 
-	reply, handled, err := m.HandleNaturalLanguageCreate(
-		context.Background(),
-		77,
-		88,
-		"send me AI news digest at 08:15 every day",
-	)
-	if err != nil || !handled {
-		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
+	reply, err := tool.Run(context.Background(), map[string]any{
+		"instruction":      "AI news digest",
+		"hour":             float64(8),
+		"minute":           float64(15),
+		"actor_user_id":    float64(77),
+		"delivery_chat_id": float64(88),
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
 	}
 	if !strings.Contains(reply, "schedule: 15 8 * * *") {
 		t.Fatalf("reply = %q", reply)
 	}
-
-	items, err := st.ListJobs(context.Background())
-	if err != nil {
-		t.Fatalf("ListJobs: %v", err)
-	}
-	if len(items) != 1 {
-		t.Fatalf("jobs count = %d, want 1", len(items))
-	}
-	if items[0].Instruction != "AI news digest" {
-		t.Fatalf("instruction = %q, want %q", items[0].Instruction, "AI news digest")
-	}
-
 	logText := buf.String()
-	for _, token := range []string{"operation=create_nl", "outcome=success", "creation_path=native_tool_fallback"} {
-		if !strings.Contains(logText, token) {
-			t.Fatalf("missing %q in logs: %s", token, logText)
-		}
+	if !strings.Contains(logText, "creation_path=native_tool_explicit") {
+		t.Fatalf("logs: %s", logText)
 	}
 }
 
-// Covers AC-20.007: native fallback tool reads actor and delivery ids from context when params omit them.
+// Covers EP-021 AC-21.004: native tool reads actor and delivery ids from context when params omit them.
 func TestCreateScheduledJobTool_UsesContextActorAndDelivery(t *testing.T) {
 	st := openTestStore(t)
 	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
@@ -399,7 +388,9 @@ func TestCreateScheduledJobTool_UsesContextActorAndDelivery(t *testing.T) {
 
 	ctx := WithCreateContext(context.Background(), 401, 777)
 	reply, err := tool.Run(ctx, map[string]any{
-		"text": "send me AI digest at 10:20 every day",
+		"instruction": "AI digest",
+		"hour":        float64(10),
+		"minute":      float64(20),
 	})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -417,5 +408,165 @@ func TestCreateScheduledJobTool_UsesContextActorAndDelivery(t *testing.T) {
 	}
 	if items[0].DeliveryChatID != 777 {
 		t.Fatalf("delivery_chat_id = %d, want 777", items[0].DeliveryChatID)
+	}
+}
+
+// Covers EP-021 AC-21.005 (Trace: REQ-21.010): empty instruction returns a soft message and does not persist a job.
+func TestCreateScheduledJobTool_EmptyInstructionReturnsMessageNoError(t *testing.T) {
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+	tool := NewCreateScheduledJobTool(m)
+
+	reply, err := tool.Run(context.Background(), map[string]any{
+		"instruction":   "   ",
+		"hour":          float64(10),
+		"minute":        float64(0),
+		"actor_user_id": float64(1),
+	})
+	if err != nil {
+		t.Fatalf("Run err = %v, want nil", err)
+	}
+	if !strings.Contains(reply, "Instruction must be non-empty") {
+		t.Fatalf("reply = %q", reply)
+	}
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("jobs count = %d, want 0", len(items))
+	}
+}
+
+// Covers EP-021 AC-21.005 (Trace: REQ-21.010): schema rejects non-number hour before schedule parsing (tools layer).
+func TestCreateScheduledJobTool_StringHourFailsValidateParams(t *testing.T) {
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+	tool := NewCreateScheduledJobTool(m)
+
+	_, err := tool.Run(context.Background(), map[string]any{
+		"instruction":   "Do something",
+		"hour":          "9",
+		"minute":        float64(0),
+		"actor_user_id": float64(1),
+	})
+	if err == nil || !strings.Contains(err.Error(), `param "hour" must be number`) {
+		t.Fatalf("err = %v, want tools hour type error", err)
+	}
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("jobs count = %d, want 0", len(items))
+	}
+}
+
+// Covers EP-021 AC-21.005: parseCreateScheduledJobArgs soft path when hour is not int/int64/float64 (e.g. future callers bypassing ValidateParams).
+func TestParseCreateScheduledJobArgs_NonNumericHourReturnsSoftMessage(t *testing.T) {
+	ctx := WithCreateContext(context.Background(), 1, 2)
+	args, soft, err := parseCreateScheduledJobArgs(ctx, map[string]any{
+		"instruction": "x",
+		"hour":        uint(9),
+		"minute":      float64(0),
+	})
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if soft == "" {
+		t.Fatalf("want soft message, got args=%+v", args)
+	}
+	if !strings.Contains(soft, "hour and minute must be integers") {
+		t.Fatalf("soft = %q", soft)
+	}
+}
+
+// Covers EP-021 AC-21.004 (Trace: REQ-21.004, REQ-21.009): optional timezone param is persisted and audit keeps native_tool_explicit.
+func TestCreateScheduledJobTool_ExplicitTimezoneInReplyAndStore(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, logger)
+	m.SetDefaultTimeZone("UTC")
+	tool := NewCreateScheduledJobTool(m)
+
+	reply, err := tool.Run(context.Background(), map[string]any{
+		"instruction":      "Digest",
+		"hour":             float64(7),
+		"minute":           float64(45),
+		"timezone":         "Europe/Paris",
+		"actor_user_id":    float64(2),
+		"delivery_chat_id": float64(3),
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !strings.Contains(reply, "timezone: Europe/Paris") || !strings.Contains(reply, "schedule: 45 7 * * *") {
+		t.Fatalf("reply = %q", reply)
+	}
+	logText := buf.String()
+	if !strings.Contains(logText, "creation_path=native_tool_explicit") {
+		t.Fatalf("audit log missing creation_path: %s", logText)
+	}
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("jobs count = %d, want 1", len(items))
+	}
+	if items[0].TimeZone != "Europe/Paris" {
+		t.Fatalf("job timezone = %q, want Europe/Paris", items[0].TimeZone)
+	}
+}
+
+// Covers EP-021 AC-21.004: CreateScheduledJobToolWithLookup resolves the manager from callback (same as cmd/pa wiring).
+func TestCreateScheduledJobToolWithLookup_UsesCallbackManager(t *testing.T) {
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+	m.SetDefaultTimeZone("UTC")
+	tool := NewCreateScheduledJobToolWithLookup(func() *Manager { return m })
+
+	reply, err := tool.Run(context.Background(), map[string]any{
+		"instruction":   "Task",
+		"hour":          float64(12),
+		"minute":        float64(0),
+		"actor_user_id": float64(5),
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !strings.Contains(reply, "Scheduled job created.") {
+		t.Fatalf("reply = %q", reply)
+	}
+}
+
+// Covers EP-021 AC-21.004: lookup returning nil surfaces configuration error (no panic).
+func TestCreateScheduledJobToolWithLookup_NilManagerReturnsError(t *testing.T) {
+	tool := NewCreateScheduledJobToolWithLookup(func() *Manager { return nil })
+	_, err := tool.Run(context.Background(), map[string]any{
+		"instruction":   "Task",
+		"hour":          float64(1),
+		"minute":        float64(0),
+		"actor_user_id": float64(1),
+	})
+	if err == nil || !strings.Contains(err.Error(), "not configured") {
+		t.Fatalf("err = %v, want not configured", err)
+	}
+}
+
+// Covers EP-021 AC-21.004: missing actor_user_id and create context yields a hard error from the tool path.
+func TestCreateScheduledJobTool_MissingActorReturnsError(t *testing.T) {
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+	tool := NewCreateScheduledJobTool(m)
+
+	_, err := tool.Run(context.Background(), map[string]any{
+		"instruction": "Task",
+		"hour":        float64(1),
+		"minute":      float64(0),
+	})
+	if err == nil || !strings.Contains(err.Error(), "actor_user_id is required") {
+		t.Fatalf("err = %v, want actor_user_id is required", err)
 	}
 }

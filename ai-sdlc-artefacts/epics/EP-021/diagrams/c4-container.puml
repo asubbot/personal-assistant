@@ -1,0 +1,26 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-021 C4 Level 2 - Containers
+
+Person(user, "Telegram User")
+System_Ext(telegram, "Telegram Bot API", "Messages")
+
+System_Boundary(pa, "PersonalAssistant") {
+    Container(jobs_wrap, "jobsCommandHandler", "Go", "/jobs commands; WithCreateContext; delegates chat to core")
+    Container(core, "conversationHandler", "Go", "Intent tier, RAG, tool loop; optional skills on full")
+    Container(skills, "Runtime skills", "optional EP-013", "Playbook when enabled and selected")
+    ContainerDb(jobdb, "jobs.sqlite", "SQLite", "Job store")
+}
+
+System_Ext(llm, "LLM Provider", "Completions and tools")
+
+Rel(user, telegram, "Uses")
+Rel(telegram, jobs_wrap, "Webhook / long poll")
+Rel(jobs_wrap, core, "HandleMessage for non-/jobs")
+Rel(jobs_wrap, jobdb, "/jobs list etc.")
+Rel(core, llm, "Completions")
+Rel(core, skills, "Optional: select packages (full tier)")
+Rel(core, jobdb, "Via create_scheduled_job native tool")
+
+@enduml

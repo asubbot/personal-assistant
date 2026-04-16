@@ -36,7 +36,7 @@ type Runtime struct {
 
 func NewRuntime(store *Store, runner Runner, cfg RuntimeConfig) *Runtime {
 	if cfg.RunTimeout <= 0 {
-		cfg.RunTimeout = 30 * time.Second
+		cfg.RunTimeout = 5 * time.Minute
 	}
 	if cfg.Now == nil {
 		cfg.Now = func() time.Time { return time.Now().UTC() }

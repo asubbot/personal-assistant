@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -21,7 +19,6 @@ type Manager struct {
 	runtime         RuntimeAPI
 	logger          *slog.Logger
 	defaultTimeZone string
-	createTool      *CreateScheduledJobTool
 	now             func() time.Time
 }
 
@@ -36,7 +33,6 @@ func NewManager(store *Store, runtime RuntimeAPI, logger *slog.Logger) *Manager 
 		defaultTimeZone: "UTC",
 		now:             func() time.Time { return time.Now().UTC() },
 	}
-	mgr.createTool = NewCreateScheduledJobTool(mgr)
 	return mgr
 }
 
@@ -71,34 +67,6 @@ func (m *Manager) HandleCommand(ctx context.Context, userID int64, text string) 
 		return spec.usage, true, nil
 	}
 	return spec.run(ctx, userID, args)
-}
-
-// HandleNaturalLanguageCreate handles explicit NL create requests in regular chat flow.
-func (m *Manager) HandleNaturalLanguageCreate(ctx context.Context, userID int64, deliveryChatID int64, text string) (string, bool, error) {
-	req, _, ok := parseNaturalLanguageCreateRequest(text)
-	if ok {
-		reply, _, err := m.CreateScheduledJobFromSpec(ctx, userID, deliveryChatID, req.Instruction, req.Hour, req.Minute, "", "deterministic_parser")
-		return reply, true, err
-	}
-	if !LooksLikeNaturalLanguageCreateRequest(text) {
-		return "", false, nil
-	}
-	if m.createTool == nil {
-		m.audit(userID, "", "create_nl", "fallback_unavailable", "creation_path", "native_tool_fallback")
-		return "Unable to create schedule from this message. Use: <instruction> and send it at HH:MM every day", true, nil
-	}
-	reply, err := m.createTool.Run(ctx, map[string]any{
-		"text":             text,
-		"actor_user_id":    userID,
-		"delivery_chat_id": deliveryChatID,
-	})
-	if err != nil {
-		if errors.Is(err, ErrCreateScheduledJobNoMatch) {
-			return "", false, nil
-		}
-		return "", true, err
-	}
-	return reply, true, nil
 }
 
 func (m *Manager) CreateScheduledJobFromSpec(
@@ -280,34 +248,6 @@ func isJobsCommandToken(token string) bool {
 		return true
 	}
 	return strings.HasPrefix(lower, "/jobs@")
-}
-
-type naturalLanguageCreateRequest struct {
-	Instruction string
-	Hour        int
-	Minute      int
-}
-
-var nlCreateRegex = regexp.MustCompile(`(?i)^\s*(.+?)\s+and\s+send\s+it\s+at\s+([01]?\d|2[0-3]):([0-5]\d)(?:\s+every\s+day)?\s*$`)
-
-func parseNaturalLanguageCreateRequest(text string) (naturalLanguageCreateRequest, bool, bool) {
-	trimmed := strings.TrimSpace(text)
-	if trimmed == "" {
-		return naturalLanguageCreateRequest{}, false, false
-	}
-	match := nlCreateRegex.FindStringSubmatch(trimmed)
-	if len(match) == 4 {
-		hour, _ := strconv.Atoi(match[2])
-		minute, _ := strconv.Atoi(match[3])
-		return naturalLanguageCreateRequest{
-			Instruction: strings.TrimSpace(match[1]),
-			Hour:        hour,
-			Minute:      minute,
-		}, false, true
-	}
-	lower := strings.ToLower(trimmed)
-	malformed := strings.Contains(lower, "send it at") || strings.Contains(lower, "every day at")
-	return naturalLanguageCreateRequest{}, malformed, false
 }
 
 func (m *Manager) list(ctx context.Context, userID int64) (string, bool, error) {
