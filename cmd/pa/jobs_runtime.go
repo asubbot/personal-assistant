@@ -23,13 +23,60 @@ type jobsCommandHandler struct {
 }
 
 func (h *jobsCommandHandler) HandleMessage(ctx context.Context, userID int64, sessionKey string, text string) (string, error) {
+	ctxForBase := jobs.WithCreateContext(ctx, userID, parseDeliveryChatID(sessionKey, userID))
+	nlCreateIntent := looksLikeNaturalLanguageCreateRequest(text)
 	if reply, handled, err := h.handleJobsCommand(ctx, userID, text); handled || err != nil {
 		return reply, err
 	}
 	if reply, handled, err := h.handleNaturalLanguageCreate(ctx, userID, sessionKey, text); handled || err != nil {
 		return reply, err
 	}
-	return h.base.HandleMessage(ctx, userID, sessionKey, text)
+	if !nlCreateIntent {
+		return h.base.HandleMessage(ctxForBase, userID, sessionKey, text)
+	}
+	return h.runLLMCreateFallback(ctxForBase, userID, sessionKey, text)
+}
+
+func llmCreateFallbackPrompt(userText string) string {
+	return strings.TrimSpace(strings.Join([]string{
+		"You are handling a schedule creation request.",
+		"Use the create_scheduled_job tool to create one job from this request.",
+		"Do not suggest external cron/jobs setup.",
+		"If creation fails due to missing or ambiguous time details, ask one concise clarifying question.",
+		"Original user request:",
+		userText,
+	}, "\n"))
+}
+
+func llmCreateFallbackRetryPrompt(userText string, firstReply string) string {
+	return strings.TrimSpace(strings.Join([]string{
+		"You did not create the scheduled job yet.",
+		"Now you MUST call create_scheduled_job tool.",
+		"Do not explain alternatives and do not mention limitations of scheduler.",
+		"After tool result, return the tool output.",
+		"Original user request:",
+		userText,
+		"Previous assistant reply (incorrect for this flow):",
+		firstReply,
+	}, "\n"))
+}
+
+func (h *jobsCommandHandler) runLLMCreateFallback(ctx context.Context, userID int64, sessionKey string, userText string) (string, error) {
+	firstReply, err := h.base.HandleMessage(ctx, userID, sessionKey, llmCreateFallbackPrompt(userText))
+	if err != nil {
+		return "", err
+	}
+	if looksLikeCreateSuccessReply(firstReply) {
+		return firstReply, nil
+	}
+	return h.base.HandleMessage(ctx, userID, sessionKey, llmCreateFallbackRetryPrompt(userText, firstReply))
+}
+
+func looksLikeCreateSuccessReply(reply string) bool {
+	trimmed := strings.ToLower(strings.TrimSpace(reply))
+	return strings.Contains(trimmed, "scheduled job created") &&
+		strings.Contains(trimmed, "job_id:") &&
+		strings.Contains(trimmed, "schedule:")
 }
 
 func (h *jobsCommandHandler) handleJobsCommand(ctx context.Context, userID int64, text string) (string, bool, error) {

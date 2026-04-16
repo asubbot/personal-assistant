@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"pa/internal/tools"
 	"regexp"
@@ -9,13 +10,20 @@ import (
 	"strings"
 )
 
+var ErrCreateScheduledJobNoMatch = errors.New("jobs: create_scheduled_job: no matching pattern")
+
 // CreateScheduledJobTool is a native fallback tool for explicit schedule-intent free-form create requests.
 type CreateScheduledJobTool struct {
-	manager *Manager
+	manager       *Manager
+	managerLookup func() *Manager
 }
 
 func NewCreateScheduledJobTool(manager *Manager) *CreateScheduledJobTool {
 	return &CreateScheduledJobTool{manager: manager}
+}
+
+func NewCreateScheduledJobToolWithLookup(lookup func() *Manager) *CreateScheduledJobTool {
+	return &CreateScheduledJobTool{managerLookup: lookup}
 }
 
 func (t *CreateScheduledJobTool) Name() string { return "create_scheduled_job" }
@@ -27,14 +35,15 @@ func (t *CreateScheduledJobTool) Description() string {
 func (t *CreateScheduledJobTool) ParamsSchema() []tools.ParamSpec {
 	return []tools.ParamSpec{
 		{Name: "text", Required: true, Type: "string"},
-		{Name: "actor_user_id", Required: true, Type: "number"},
+		{Name: "actor_user_id", Required: false, Type: "number"},
 		{Name: "delivery_chat_id", Required: false, Type: "number"},
 		{Name: "timezone", Required: false, Type: "string"},
 	}
 }
 
 func (t *CreateScheduledJobTool) Run(ctx context.Context, params map[string]any) (string, error) {
-	if t == nil || t.manager == nil {
+	manager := t.resolveManager()
+	if t == nil || manager == nil {
 		return "", fmt.Errorf("jobs: create_scheduled_job: not configured")
 	}
 	if err := tools.ValidateParams(t.ParamsSchema(), params); err != nil {
@@ -46,13 +55,21 @@ func (t *CreateScheduledJobTool) Run(ctx context.Context, params map[string]any)
 	actorUserID := int64FromAny(params["actor_user_id"])
 	deliveryChatID := int64FromAny(params["delivery_chat_id"])
 	timezone, _ := params["timezone"].(string)
+	if actorUserID == 0 {
+		actorUserID = CreateContextActorUserID(ctx)
+	}
+	if deliveryChatID == 0 {
+		deliveryChatID = CreateContextDeliveryChatID(ctx)
+	}
+	if actorUserID == 0 {
+		return "", fmt.Errorf("jobs: create_scheduled_job: actor_user_id is required")
+	}
 
 	req, ok := parseFallbackNaturalLanguageCreateRequest(text)
 	if !ok {
-		t.manager.audit(actorUserID, "", "create_nl", "invalid_syntax", "creation_path", "native_tool_fallback")
-		return "Invalid schedule format. Use: <instruction> and send it at HH:MM every day", nil
+		return "", ErrCreateScheduledJobNoMatch
 	}
-	reply, _, err := t.manager.CreateScheduledJobFromSpec(
+	reply, _, err := manager.CreateScheduledJobFromSpec(
 		ctx,
 		actorUserID,
 		deliveryChatID,
@@ -63,6 +80,19 @@ func (t *CreateScheduledJobTool) Run(ctx context.Context, params map[string]any)
 		"native_tool_fallback",
 	)
 	return reply, err
+}
+
+func (t *CreateScheduledJobTool) resolveManager() *Manager {
+	if t == nil {
+		return nil
+	}
+	if t.manager != nil {
+		return t.manager
+	}
+	if t.managerLookup == nil {
+		return nil
+	}
+	return t.managerLookup()
 }
 
 var (

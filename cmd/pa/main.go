@@ -14,6 +14,7 @@ import (
 	"pa/internal/core"
 	"pa/internal/embedding"
 	"pa/internal/intent"
+	"pa/internal/jobs"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
@@ -199,6 +200,20 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	}
 
 	toolRegistry := tools.NewRegistry()
+	var jobsState *jobsRuntimeState
+	if cfg.Paths.JobsDBPath != "" {
+		jobsState = &jobsRuntimeState{}
+		toolRegistry.Register(jobs.NewCreateScheduledJobToolWithLookup(func() *jobs.Manager {
+			if jobsState == nil {
+				return nil
+			}
+			mgr, ready, initFailed := jobsState.snapshot()
+			if !ready || initFailed {
+				return nil
+			}
+			return mgr
+		}))
+	}
 	if nodeRunner != nil {
 		toolRegistry.Register(tools.NewRunOnNode(nodeRunner))
 	}
@@ -254,7 +269,10 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	handler := baseHandler
 
 	if cfg.Paths.JobsDBPath != "" {
-		state := &jobsRuntimeState{}
+		state := jobsState
+		if state == nil {
+			state = &jobsRuntimeState{}
+		}
 		handler = &jobsCommandHandler{
 			base:  baseHandler,
 			state: state,

@@ -93,6 +93,9 @@ func (m *Manager) HandleNaturalLanguageCreate(ctx context.Context, userID int64,
 		"delivery_chat_id": deliveryChatID,
 	})
 	if err != nil {
+		if errors.Is(err, ErrCreateScheduledJobNoMatch) {
+			return "", false, nil
+		}
 		return "", true, err
 	}
 	return reply, true, nil

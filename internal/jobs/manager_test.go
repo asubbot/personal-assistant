@@ -320,8 +320,8 @@ func TestManager_HandleNaturalLanguageCreate_StrictTemplateCreatesJob(t *testing
 	}
 }
 
-// Covers AC-20.004: malformed strict request returns deterministic guidance and creates no job.
-func TestManager_HandleNaturalLanguageCreate_MalformedRejectedNoSideEffects(t *testing.T) {
+// Supports AC-20.007: malformed strict request falls through to base handler path (not handled by manager).
+func TestManager_HandleNaturalLanguageCreate_MalformedFallsThrough(t *testing.T) {
 	st := openTestStore(t)
 	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
 
@@ -331,11 +331,14 @@ func TestManager_HandleNaturalLanguageCreate_MalformedRejectedNoSideEffects(t *t
 		22,
 		"Collect an AI news digest and send it at 9 every day",
 	)
-	if err != nil || !handled {
+	if err != nil {
 		t.Fatalf("HandleNaturalLanguageCreate err=%v handled=%v", err, handled)
 	}
-	if !strings.Contains(reply, "Invalid schedule format.") {
-		t.Fatalf("reply = %q", reply)
+	if handled {
+		t.Fatalf("handled = %v, want false", handled)
+	}
+	if reply != "" {
+		t.Fatalf("reply = %q, want empty", reply)
 	}
 
 	items, err := st.ListJobs(context.Background())
@@ -384,5 +387,35 @@ func TestManager_HandleNaturalLanguageCreate_FallbackCreatesJob(t *testing.T) {
 		if !strings.Contains(logText, token) {
 			t.Fatalf("missing %q in logs: %s", token, logText)
 		}
+	}
+}
+
+// Covers AC-20.007: native fallback tool reads actor and delivery ids from context when params omit them.
+func TestCreateScheduledJobTool_UsesContextActorAndDelivery(t *testing.T) {
+	st := openTestStore(t)
+	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
+	m.SetDefaultTimeZone("UTC")
+	tool := NewCreateScheduledJobTool(m)
+
+	ctx := WithCreateContext(context.Background(), 401, 777)
+	reply, err := tool.Run(ctx, map[string]any{
+		"text": "send me AI digest at 10:20 every day",
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !strings.Contains(reply, "Scheduled job created.") {
+		t.Fatalf("reply = %q", reply)
+	}
+
+	items, err := st.ListJobs(context.Background())
+	if err != nil {
+		t.Fatalf("ListJobs: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("jobs count = %d, want 1", len(items))
+	}
+	if items[0].DeliveryChatID != 777 {
+		t.Fatalf("delivery_chat_id = %d, want 777", items[0].DeliveryChatID)
 	}
 }
