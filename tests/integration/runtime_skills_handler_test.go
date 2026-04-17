@@ -11,6 +11,7 @@ import (
 	"pa/internal/promptmarkers"
 	"pa/internal/runtimeskills"
 	"pa/internal/skillindex"
+	"pa/internal/sqlitepragma"
 	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/vector"
@@ -31,7 +32,7 @@ func TestRuntimeSkills_handler_injectsPlaybook(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	db := filepath.Join(dir, "skills.sqlite")
-	st, err := sqlitevec.NewWithTable(db, 4, sqlitevec.TableSkills)
+	st, err := sqlitevec.NewWithTable(db, 4, sqlitevec.TableSkills, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +205,7 @@ func TestRuntimeSkills_handler_toolUnionAlwaysInclude(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	db := filepath.Join(dir, "s2.sqlite")
-	st, err := sqlitevec.NewWithTable(db, 4, sqlitevec.TableSkills)
+	st, err := sqlitevec.NewWithTable(db, 4, sqlitevec.TableSkills, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,7 +298,7 @@ func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *te
 	ctx := context.Background()
 	dir := t.TempDir()
 	db := filepath.Join(dir, "skills.sqlite")
-	st, err := sqlitevec.NewWithTable(db, 4, sqlitevec.TableSkills)
+	st, err := sqlitevec.NewWithTable(db, 4, sqlitevec.TableSkills, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}

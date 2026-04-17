@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"pa/internal/core"
 	"pa/internal/jobs"
+	"pa/internal/sqlitepragma"
 	"strconv"
 	"strings"
 	"sync"
@@ -176,11 +177,11 @@ func startJobsRuntimeLoop(ctx context.Context, rt *jobs.Runtime, logger *slog.Lo
 	}()
 }
 
-func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath string, defaultTimeZone string, sender chatSender, baseHandler core.MessageHandler, logger *slog.Logger) {
+func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath string, policy sqlitepragma.Policy, defaultTimeZone string, sender chatSender, baseHandler core.MessageHandler, logger *slog.Logger) {
 	go func() {
 		openCtx := context.WithoutCancel(ctx)
 		//nolint:contextcheck // jobs.Open currently does not accept context.
-		st, err := jobs.Open(dbPath)
+		st, err := jobs.Open(dbPath, policy)
 		if err != nil {
 			logger.Error("scheduled jobs init", "error", err)
 			state.setInitError(err)

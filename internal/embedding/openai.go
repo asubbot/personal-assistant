@@ -45,8 +45,19 @@ func NewOpenAICompatible(cfg *config.EmbeddingProvider) (*OpenAICompatible, erro
 	if batchSize <= 0 {
 		batchSize = 100
 	}
+	// HTTPTimeout is required in config.json and validated at config.Load.
+	// When EmbeddingProvider is constructed directly in tests, an empty value
+	// falls back to the documented reference value.
+	timeout := defaultTimeout
+	if s := strings.TrimSpace(cfg.HTTPTimeout); s != "" {
+		if d, err := time.ParseDuration(s); err == nil && d > 0 {
+			timeout = d
+		} else {
+			return nil, fmt.Errorf("embedding: invalid http_timeout %q: %w", cfg.HTTPTimeout, err)
+		}
+	}
 	return &OpenAICompatible{
-		client:    &http.Client{Timeout: defaultTimeout},
+		client:    &http.Client{Timeout: timeout},
 		baseURL:   baseURL,
 		apiKey:    apiKey,
 		model:     model,

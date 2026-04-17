@@ -48,8 +48,19 @@ func NewOpenAICompatible(cfg *config.LLMProvider) (*OpenAICompatible, error) {
 	if cfg.SupportsTools != nil {
 		st = *cfg.SupportsTools
 	}
+	// HTTPTimeout is required in config.json and validated at config.Load.
+	// When LLMProvider is constructed directly in tests without going through Load,
+	// an empty/invalid value falls back to the documented reference value.
+	timeout := defaultTimeout
+	if s := strings.TrimSpace(cfg.HTTPTimeout); s != "" {
+		if d, err := time.ParseDuration(s); err == nil && d > 0 {
+			timeout = d
+		} else {
+			return nil, fmt.Errorf("llm: invalid http_timeout %q: %w", cfg.HTTPTimeout, err)
+		}
+	}
 	return &OpenAICompatible{
-		client:                &http.Client{Timeout: defaultTimeout},
+		client:                &http.Client{Timeout: timeout},
 		baseURL:               baseURL,
 		apiKey:                apiKey,
 		model:                 model,

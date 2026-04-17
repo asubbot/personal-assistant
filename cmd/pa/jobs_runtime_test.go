@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"pa/internal/jobs"
+	"pa/internal/sqlitepragma"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -96,7 +97,7 @@ func TestJobsCommandHandler_ReadinessGate(t *testing.T) {
 	}
 
 	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
-	st, openErr := jobs.Open(dbPath)
+	st, openErr := jobs.Open(dbPath, sqlitepragma.RecommendedPolicy(true))
 	if openErr != nil {
 		t.Fatalf("jobs.Open: %v", openErr)
 	}
@@ -150,7 +151,7 @@ func TestJobsCommandHandler_ScheduleShapedMessageSingleBaseCall(t *testing.T) {
 	h := &jobsCommandHandler{base: base, state: state}
 
 	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
-	st, err := jobs.Open(dbPath)
+	st, err := jobs.Open(dbPath, sqlitepragma.RecommendedPolicy(true))
 	if err != nil {
 		t.Fatalf("jobs.Open: %v", err)
 	}
@@ -186,7 +187,7 @@ func TestJobsCommandHandler_NLCreateNonMatchingBypassesCreation(t *testing.T) {
 	h := &jobsCommandHandler{base: base, state: state}
 
 	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
-	st, err := jobs.Open(dbPath)
+	st, err := jobs.Open(dbPath, sqlitepragma.RecommendedPolicy(true))
 	if err != nil {
 		t.Fatalf("jobs.Open: %v", err)
 	}
@@ -217,7 +218,7 @@ func TestJobsCommandHandler_MalformedSchedulePhraseSingleBaseCall(t *testing.T) 
 	h := &jobsCommandHandler{base: base, state: state}
 
 	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
-	st, err := jobs.Open(dbPath)
+	st, err := jobs.Open(dbPath, sqlitepragma.RecommendedPolicy(true))
 	if err != nil {
 		t.Fatalf("jobs.Open: %v", err)
 	}

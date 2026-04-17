@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"pa/internal/sqlitepragma"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,14 +12,17 @@ import (
 
 const testDimensions = 4
 
+// testPolicy returns a recommended policy suitable for vector-store tests.
+func testPolicy() sqlitepragma.Policy { return sqlitepragma.RecommendedPolicy(false) }
+
 // Covers AC-01.013 (US-07): NewWithTable rejects invalid dimensions (vector store interface).
 func TestNewWithTable_dimensionsInvalid(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
-	_, err := NewWithTable(path, 0, TableTurns)
+	_, err := NewWithTable(path, 0, TableTurns, testPolicy())
 	if err == nil {
 		t.Fatal("expected error for dimensions 0")
 	}
-	_, err = NewWithTable(path, -1, TableTurns)
+	_, err = NewWithTable(path, -1, TableTurns, testPolicy())
 	if err == nil {
 		t.Fatal("expected error for negative dimensions")
 	}
@@ -29,7 +33,7 @@ func TestStore_Add_Search_topK(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableTurns)
+	store, err := NewWithTable(path, testDimensions, TableTurns, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -72,7 +76,7 @@ func TestStore_Delete_removesById(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableTurns)
+	store, err := NewWithTable(path, testDimensions, TableTurns, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -104,7 +108,7 @@ func TestStore_Clear_removesAllRows(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableTurns)
+	store, err := NewWithTable(path, testDimensions, TableTurns, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -133,7 +137,7 @@ func TestStore_Add_wrongDimensions(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableTurns)
+	store, err := NewWithTable(path, testDimensions, TableTurns, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -151,7 +155,7 @@ func TestStore_Search_persisted(t *testing.T) {
 	path := filepath.Join(dir, "pa_vectors.sqlite")
 	ctx := context.Background()
 
-	store, err := NewWithTable(path, testDimensions, TableTurns)
+	store, err := NewWithTable(path, testDimensions, TableTurns, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -167,7 +171,7 @@ func TestStore_Search_persisted(t *testing.T) {
 	}
 
 	// Reopen and search
-	store2, err := NewWithTable(path, testDimensions, TableTurns)
+	store2, err := NewWithTable(path, testDimensions, TableTurns, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable (reopen): %v", err)
 	}
@@ -186,13 +190,13 @@ func TestStore_TwoTables_SameDB(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	storeMem, err := NewWithTable(path, testDimensions, TableTurns)
+	storeMem, err := NewWithTable(path, testDimensions, TableTurns, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable(turns): %v", err)
 	}
 	defer func() { _ = storeMem.Close() }()
 
-	storeTools, err := NewWithTable(path, testDimensions, TableTools)
+	storeTools, err := NewWithTable(path, testDimensions, TableTools, testPolicy())
 	if err != nil {
 		t.Fatalf("NewWithTable(tools): %v", err)
 	}
@@ -248,7 +252,7 @@ func ep016OpenSplitTableStores(t *testing.T, path string) []*Store {
 	tables := []string{TableSummaries, TableTurns, TableNotes, TableTools}
 	var stores []*Store
 	for _, tbl := range tables {
-		st, err := NewWithTable(path, testDimensions, tbl)
+		st, err := NewWithTable(path, testDimensions, tbl, testPolicy())
 		if err != nil {
 			t.Fatalf("NewWithTable(%s): %v", tbl, err)
 		}
@@ -344,7 +348,7 @@ func twoTablesSameDB_assertBothTablesInDB(t *testing.T, ctx context.Context, pat
 func TestNewWithTable_validation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 
-	_, err := NewWithTable(path, testDimensions, "")
+	_, err := NewWithTable(path, testDimensions, "", testPolicy())
 	if err == nil {
 		t.Fatal("NewWithTable(empty table): expected error")
 	}
@@ -352,7 +356,7 @@ func TestNewWithTable_validation(t *testing.T) {
 		t.Errorf("NewWithTable(empty table): error = %v", err)
 	}
 
-	_, err = NewWithTable(path, testDimensions, "vec-items")
+	_, err = NewWithTable(path, testDimensions, "vec-items", testPolicy())
 	if err == nil {
 		t.Fatal("NewWithTable(invalid table name with hyphen): expected error")
 	}
@@ -360,7 +364,7 @@ func TestNewWithTable_validation(t *testing.T) {
 		t.Errorf("NewWithTable(invalid table): error = %v", err)
 	}
 
-	_, err = NewWithTable(path, 0, TableTools)
+	_, err = NewWithTable(path, 0, TableTools, testPolicy())
 	if err == nil {
 		t.Fatal("NewWithTable(dimensions 0): expected error")
 	}

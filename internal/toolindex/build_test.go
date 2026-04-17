@@ -3,6 +3,7 @@ package toolindex
 import (
 	"context"
 	"errors"
+	"pa/internal/sqlitepragma"
 	"pa/internal/toolcatalog"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
@@ -26,7 +27,7 @@ func TestBuild_populatesStoreAndSearchReturnsToolIds(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -71,7 +72,7 @@ func TestBuild_secondBuild_dropsStaleToolIds(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -115,7 +116,7 @@ func TestBuild_emptyCatalog_clearsStore(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -146,7 +147,7 @@ func TestIndex_Ready_afterBuildAndSetReady(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -217,7 +218,7 @@ func TestBuild_usesBatchEmbedder_whenAvailable(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -265,7 +266,7 @@ func TestBuildAndSetReady_whenBuildFails_ReadyStaysFalse(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -308,7 +309,7 @@ func TestBuild_batched_embedBatchLengthMismatch_returnsError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
 	ctx := context.Background()
 
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -334,7 +335,7 @@ func TestBuild_batched_embedBatchLengthMismatch_returnsError(t *testing.T) {
 // Covers AC-04.017: traceability for TestBuild_contextCanceled_batched_returnsContextError.
 func TestBuild_contextCanceled_batched_returnsContextError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}
@@ -362,7 +363,7 @@ func TestBuild_contextCanceled_batched_returnsContextError(t *testing.T) {
 // Covers AC-04.017: traceability for TestBuild_contextCanceled_sequential_returnsContextError.
 func TestBuild_contextCanceled_sequential_returnsContextError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "vec.db")
-	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools)
+	store, err := sqlite.NewWithTable(path, testDimensions, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable: %v", err)
 	}

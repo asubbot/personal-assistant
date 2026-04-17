@@ -59,6 +59,34 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 | **`full_lite`** | No | Yes (same rules as full) | No | Merged ranked tools + `always_include`; when **`tools.dynamic_selection.enabled`** and **`tools.text_based_enabled`**, list is filtered and capped by **`max_tools_for_llm_request`** |
 | **`full`** | Yes | Yes | Yes (when runtime skills enabled) | Same merge as EP-017; when **`tools.dynamic_selection.enabled`**, cap applies after ranking |
 - **`log_redaction`** — **required**; `additional_patterns` may be an empty array. Each pattern has `id`, `regex`, `replacement`; IDs must not collide with built-in redactor IDs.
+- **`vector_store_reliability`** / **`jobs_store_reliability`** — **required** (EP-022). Explicit per-store SQLite PRAGMA policy; see [Local SQLite stores: reliability policy](#local-sqlite-stores-reliability-policy-ep-022) below.
+- **`llm_providers[].http_timeout`**, **`embedding.http_timeout`** — **required** (EP-022). Per-request total HTTP timeout for outbound calls (Go duration literal, e.g. `"120s"`). See [Outbound HTTP timeouts](#outbound-http-timeouts-ep-022) below.
+
+### Local SQLite stores: reliability policy (EP-022)
+
+Both **`vector_store_reliability`** and **`jobs_store_reliability`** must be present; startup fails fast on missing fields or invalid values. The same four fields are required per store, and are applied as `mattn/go-sqlite3` DSN query parameters so every pooled connection re-asserts the PRAGMAs:
+
+| Field | Required | Recommended | Notes |
+|-------|----------|-------------|-------|
+| `journal_mode` | yes | `"WAL"` | Applied at database level; WAL allows one writer + many readers concurrently. |
+| `busy_timeout` | yes (Go duration, e.g. `"5s"`) | `"5s"` | Must be > 0. Re-applied per connection. |
+| `synchronous` | yes | `"NORMAL"` | Per-connection. |
+| `foreign_keys` | yes (bool) | `false` for vector, `true` for jobs | **Vector store** (`paths.vector_index_path`) MUST be `false`; **jobs store** (`paths.jobs_db_path`) MUST be `true`. Startup fails fast on mismatch. |
+
+Single-writer expectation: the product opens each SQLite file from a single process; operators MUST NOT share `vector_index_path` or `jobs_db_path` between processes. The concurrent-writer reliability is covered within one process by WAL + `busy_timeout` (tested with `-race` under `internal/reliability`).
+
+### Outbound HTTP timeouts (EP-022)
+
+Every outbound HTTP client governed by this product exposes an explicit, per-request total timeout. Missing or non-positive values fail startup:
+
+| Field | Client | Recommended |
+|-------|--------|-------------|
+| `llm_providers[].http_timeout` | LLM chat completions (`internal/llm`) | `"120s"` |
+| `embedding.http_timeout` | Embeddings client (`internal/embedding`) | `"60s"` |
+| `web_tools.search.timeout_seconds` | Web search upstream HTTP call (pre-existing; seconds as int) | `20` |
+| `web_tools.fetch.timeout_seconds` | Web fetch upstream HTTP call (pre-existing; seconds as int) | `30` |
+
+Telegram long-poll HTTP behaviour is owned by `go-telegram/bot` and is out of scope for this configuration section. SSH transport timeouts are owned by `internal/noderunner` (see the nodes section).
 
 ## Cost-aware profile (recommended)
 

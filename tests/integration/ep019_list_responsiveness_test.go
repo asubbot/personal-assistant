@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"pa/internal/jobs"
+	"pa/internal/sqlitepragma"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -93,7 +94,7 @@ func TestEP019_ListResponsiveness_ProfileAcceptance(t *testing.T) {
 		t.Fatalf("unknown PA_LIST_RESPONSIVENESS_PROFILE=%q", selected)
 	}
 
-	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"))
+	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"), sqlitepragma.RecommendedPolicy(true))
 	if err != nil {
 		t.Fatalf("jobs.Open: %v", err)
 	}

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"log/slog"
+	"pa/internal/sqlitepragma"
 	"pa/internal/vector"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
@@ -64,7 +65,7 @@ func TestGatherRetrievedChunkTexts_nonSummaryRowsDroppedFromSummaryMerge(t *test
 // Covers AC-16.013: Telegram message unix time yields event-aligned Date line in indexed turn chunk.
 func TestIndexTurn_eventAlignedDateFromTelegramContext(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "turnvec.sqlite")
-	turns, err := sqlite.NewWithTable(path, 4, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(path, 4, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +93,7 @@ func TestIndexTurn_eventAlignedDateFromTelegramContext(t *testing.T) {
 // Covers AC-16.014: without adapter timestamp, indexTurn still writes a valid ISO calendar Date line in pa_timezone.
 func TestIndexTurn_fallbackDateLineIsISOYMD(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "turnvec2.sqlite")
-	turns, err := sqlite.NewWithTable(path, 4, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(path, 4, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +127,7 @@ func TestIndexTurn_fallbackDateLineIsISOYMD(t *testing.T) {
 // Covers AC-16.015: indexing the same canonical turn twice leaves a single row for the stable id (delete-then-add upsert).
 func TestIndexTurn_twiceSameCanonicalPair_oneRow(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "turnvec3.sqlite")
-	turns, err := sqlite.NewWithTable(path, 4, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(path, 4, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}

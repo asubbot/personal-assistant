@@ -8,6 +8,7 @@ import (
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/memory"
+	"pa/internal/sqlitepragma"
 	"pa/internal/toolcatalog"
 	patools "pa/internal/tools"
 	"pa/internal/vector"
@@ -204,7 +205,7 @@ func runCLIWithConfig(t *testing.T, dir, configJSON string, args ...string) (out
 var validSummarizeConfig = `{
   "version": 1,
   "telegram": { "token_path": "t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "memory",
     "log_path": "pa.log",
@@ -214,7 +215,7 @@ var validSummarizeConfig = `{
     "jobs_db_path": "jobs.sqlite",
     "tool_catalog_path": "tools.yaml"
   },
-  "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4, "batch_size": 100 },
+  "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
   "tools": { "text_based_enabled": false },
   "log_redaction": { "additional_patterns": [] },
@@ -222,7 +223,9 @@ var validSummarizeConfig = `{
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 },
+  "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false },
+  "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 }`
 
 // runSummarizeCLI runs `go run ./cmd/pa -summarize=<value>` with minimal config in dir; expects exit 0 (e.g. skip when no data).
@@ -499,9 +502,16 @@ func TestNewToolIndex_vectorStoreFails_returnsError(t *testing.T) {
 }
 
 func testClearContextConfig(vectorPath string) *config.Config {
+	fkFalse := false
 	return &config.Config{
 		Embedding: &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10},
 		Paths:     config.Paths{VectorIndexPath: vectorPath},
+		VectorStoreReliability: &config.SQLiteStoreReliabilityConfig{
+			JournalMode: "WAL",
+			BusyTimeout: "5s",
+			Synchronous: "NORMAL",
+			ForeignKeys: &fkFalse,
+		},
 	}
 }
 
@@ -512,7 +522,7 @@ func TestClearConversationContext_vecTurnsEmptyAfterClear(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "vec.sqlite")
 
-	turns, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable turns: %v", err)
 	}
@@ -527,7 +537,7 @@ func TestClearConversationContext_vecTurnsEmptyAfterClear(t *testing.T) {
 		t.Fatalf("clearConversationContext: %v", err)
 	}
 
-	turns2, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
+	turns2, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}
@@ -548,7 +558,7 @@ func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "both.sqlite")
 
-	turns, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable turns: %v", err)
 	}
@@ -559,7 +569,7 @@ func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
 		t.Fatalf("Close turns: %v", err)
 	}
 
-	tools, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools)
+	tools, err := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("NewWithTable tools: %v", err)
 	}
@@ -574,14 +584,14 @@ func TestClearConversationContext_vecToolsUnchanged(t *testing.T) {
 		t.Fatalf("clearConversationContext: %v", err)
 	}
 
-	turns2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns)
+	turns2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	defer func() { _ = turns2.Close() }()
 	rTurns, _ := turns2.Search(ctx, []float32{1, 0, 0, 0}, 10)
 	if len(rTurns) != 0 {
 		t.Errorf("vec_turns: want 0 after clear, got %d", len(rTurns))
 	}
 
-	tools2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools)
+	tools2, _ := sqlite.NewWithTable(dbPath, 4, sqlite.TableTools, sqlitepragma.RecommendedPolicy(false))
 	defer func() { _ = tools2.Close() }()
 	rTools, err := tools2.Search(ctx, []float32{0, 1, 0, 0}, 10)
 	if err != nil {

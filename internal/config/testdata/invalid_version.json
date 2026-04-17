@@ -13,7 +13,8 @@
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
       "supports_json_mode": true,
-      "default_response_format": "text"
+      "default_response_format": "text",
+      "http_timeout": "60s"
     }
   ],
   "paths": {
@@ -30,7 +31,8 @@
     "endpoint": "http://x",
     "model": "m",
     "dimensions": 768,
-    "batch_size": 100
+    "batch_size": 100,
+    "http_timeout": "60s"
   },
   "nodes": {},
   "tools": {
@@ -48,5 +50,17 @@
   "conversation_context": {
     "max_dynamic_system_runes": 4000,
     "vector_search_top_k": 10
+  },
+  "vector_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": false
+  },
+  "jobs_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": true
   }
 }

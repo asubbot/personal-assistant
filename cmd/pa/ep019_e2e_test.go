@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"pa/internal/jobs"
+	"pa/internal/sqlitepragma"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -116,7 +117,7 @@ func mustListExcludes(t *testing.T, ctx context.Context, manager *jobs.Manager, 
 // Covers AC-19.023: end-to-end flow delivers digest, lists job, and removes it via delete confirmation.
 func TestEP019_E2E_DigestListDeleteLifecycle(t *testing.T) {
 	ctx := context.Background()
-	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"))
+	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"), sqlitepragma.RecommendedPolicy(true))
 	if err != nil {
 		t.Fatalf("jobs.Open: %v", err)
 	}
