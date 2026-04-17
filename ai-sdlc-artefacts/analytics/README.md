@@ -17,6 +17,7 @@ Reports are produced with the project skill [`ai-sdlc/specification/skills/proje
 | PA distributed tooling vision | [pa-distributed-tooling-vision/pa-distributed-tooling-vision.md](pa-distributed-tooling-vision/pa-distributed-tooling-vision.md) |
 | PA runtime skills vs tools (RU) | [pa-runtime-skills-tools/pa-runtime-skills-tools.md](pa-runtime-skills-tools/pa-runtime-skills-tools.md) — модель runtime skills/tools, аналогия OpenClaw, договорённости для эпика |
 | Awesome Harness Engineering (curated list) | [awesome-harness-engineering/awesome-harness-engineering.md](awesome-harness-engineering/awesome-harness-engineering.md) — briefing: harness primitives, README section map, PA mapping |
+| PA architecture review | [../pa-architecture-review.md](../pa-architecture-review.md) — code-grounded architecture review with C4 diagrams and strengths/weaknesses/risks (English; lives in artefacts root) |
 
 ## Similar projects on GitHub (for further research)
 
