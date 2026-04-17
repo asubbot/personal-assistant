@@ -1,0 +1,27 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-023 C4 Level 2 — Containers (create_tool catalog path)
+
+Person(user, "Telegram User")
+System_Ext(telegram, "Telegram Bot API", "")
+System_Ext(llm, "LLM Provider", "")
+
+System_Boundary(pa, "PersonalAssistant") {
+    Container(core, "Core / Handler", "Go", "Conversation loop, tool dispatch")
+    Container(tools, "Native tools", "Go", "create_tool implementation")
+    Container(tc, "toolcatalog", "Go", "YAML load, append, validate")
+    Container(ti, "toolindex", "Go", "vec_tools embeddings")
+    ContainerDb(catfile, "Catalog YAML file", "File", "tools.yaml")
+}
+
+Rel(user, telegram, "Uses")
+Rel(telegram, core, "HTTPS")
+Rel(core, llm, "HTTPS")
+Rel(llm, core, "tool calls")
+Rel(core, tools, "invoke create_tool")
+Rel(tools, tc, "Append + post-Load")
+Rel(tc, catfile, "atomic replace, fsync")
+Rel(tools, ti, "Upsert after validated persist")
+
+@enduml

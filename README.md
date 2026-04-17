@@ -35,6 +35,14 @@ PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./pa
 
 More detail: [docs/installation.md](docs/installation.md), [docs/configuration.md](docs/configuration.md).
 
+### Tool catalog durability (`create_tool`)
+
+When the LLM uses the native **`create_tool`** tool, PersonalAssistant updates the YAML catalog at `paths.tool_catalog_path` using:
+
+1. **Same-directory atomic replace** — a complete new file body is written to a temporary file in the same directory as the catalog, then renamed over the existing path so readers do not observe a partial YAML document mid-write.
+2. **Explicit `Sync`** — the temporary file data is synced to stable storage before rename, and the parent directory is synced after rename so the directory entry for the catalog file is persisted.
+3. **Post-write validation** — immediately after replace, the process re-loads the catalog with the same `toolcatalog.Load` entry point used at startup. If that validation fails, the previous catalog bytes are restored and the new tool is not applied to the in-memory catalog or tool vector index.
+
 ---
 
 ## Environment variables (summary)

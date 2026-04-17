@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-023 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Atomic catalog writes for create_tool |
 | **Description** | Make the native create_tool flow write the tool catalog atomically with post-write validation so a failed write never leaves the catalog half-valid, and the in-memory catalog plus tool vector index only advance after a validated write. |
 | **First version date** | 2026-04-17 |

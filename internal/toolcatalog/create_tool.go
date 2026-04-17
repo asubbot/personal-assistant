@@ -11,6 +11,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// test hooks (non-nil only from tests in this package)
+var (
+	testRenameHook      func(oldpath, newpath string) error
+	testPostMarshalHook func([]byte) []byte
+	testOnTempDataSync  func()
+	testOnDirSync       func()
+)
+
 // Whitelisted template prefixes for create_tool (REQ-09.009).
 const (
 	createToolPrefixBridge = "docker run --rm --network bridge"
@@ -38,7 +46,78 @@ func ValidateSandboxResourceSubstrings(template string) error {
 	return nil
 }
 
-// AppendToolToCatalogFile reads YAML at absPath, appends one tool, and replaces the file atomically (same dir temp + rename).
+func renameCatalog(oldpath, newpath string) error {
+	if testRenameHook != nil {
+		return testRenameHook(oldpath, newpath)
+	}
+	return os.Rename(oldpath, newpath)
+}
+
+func syncParentDir(dir string) error {
+	f, err := os.Open(dir)
+	if err != nil {
+		return fmt.Errorf("toolcatalog: open dir for sync: %w", err)
+	}
+	if testOnDirSync != nil {
+		testOnDirSync()
+	}
+	syncErr := f.Sync()
+	closeErr := f.Close()
+	if syncErr != nil {
+		return fmt.Errorf("toolcatalog: sync dir: %w", syncErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("toolcatalog: close dir: %w", closeErr)
+	}
+	return nil
+}
+
+// atomicReplaceContent writes content to absPath using same-directory temp file, data sync, rename, then parent dir sync.
+func atomicReplaceContent(absPath string, content []byte) error {
+	dir := filepath.Dir(absPath)
+	tmp, err := os.CreateTemp(dir, ".pa-tool-catalog-*.yaml")
+	if err != nil {
+		return fmt.Errorf("toolcatalog: temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	cleanup := func() { _ = os.Remove(tmpPath) }
+	if _, err := tmp.Write(content); err != nil {
+		cleanup()
+		_ = tmp.Close()
+		return fmt.Errorf("toolcatalog: write temp: %w", err)
+	}
+	if err := tmp.Sync(); err != nil {
+		cleanup()
+		_ = tmp.Close()
+		return fmt.Errorf("toolcatalog: sync temp data: %w", err)
+	}
+	if testOnTempDataSync != nil {
+		testOnTempDataSync()
+	}
+	if err := tmp.Close(); err != nil {
+		cleanup()
+		return fmt.Errorf("toolcatalog: close temp: %w", err)
+	}
+	if err := renameCatalog(tmpPath, absPath); err != nil {
+		cleanup()
+		return fmt.Errorf("toolcatalog: atomic replace: %w", err)
+	}
+	if err := syncParentDir(dir); err != nil {
+		return err
+	}
+	return nil
+}
+
+// RestoreCatalogFile writes snapshot bytes to absPath using the same atomic replace path as create_tool catalog updates.
+func RestoreCatalogFile(absPath string, snapshot []byte) error {
+	if absPath == "" {
+		return errors.New("toolcatalog: catalog path is empty")
+	}
+	return atomicReplaceContent(absPath, snapshot)
+}
+
+// AppendToolToCatalogFile reads YAML at absPath, appends one tool, replaces the file atomically with sync,
+// validates with Load, and restores the pre-call bytes if validation fails.
 func AppendToolToCatalogFile(absPath string, tool *Tool) error {
 	if absPath == "" {
 		return errors.New("toolcatalog: catalog path is empty")
@@ -49,12 +128,12 @@ func AppendToolToCatalogFile(absPath string, tool *Tool) error {
 	if err := validateTool(tool, 0); err != nil {
 		return err
 	}
-	data, err := os.ReadFile(absPath)
+	snapshot, err := os.ReadFile(absPath)
 	if err != nil {
 		return fmt.Errorf("toolcatalog: read catalog: %w", err)
 	}
 	var raw rawCatalog
-	if err := yaml.Unmarshal(data, &raw); err != nil {
+	if err := yaml.Unmarshal(snapshot, &raw); err != nil {
 		return fmt.Errorf("toolcatalog: parse catalog: %w", err)
 	}
 	raw.Tools = append(raw.Tools, *tool)
@@ -63,23 +142,17 @@ func AppendToolToCatalogFile(absPath string, tool *Tool) error {
 	if err != nil {
 		return fmt.Errorf("toolcatalog: marshal catalog: %w", err)
 	}
-	dir := filepath.Dir(absPath)
-	tmp, err := os.CreateTemp(dir, ".pa-tool-catalog-*.yaml")
-	if err != nil {
-		return fmt.Errorf("toolcatalog: temp file: %w", err)
+	if testPostMarshalHook != nil {
+		out = testPostMarshalHook(out)
 	}
-	tmpPath := tmp.Name()
-	_, werr := tmp.Write(out)
-	if cerr := tmp.Close(); cerr != nil && werr == nil {
-		werr = cerr
+	if err := atomicReplaceContent(absPath, out); err != nil {
+		return err
 	}
-	if werr != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("toolcatalog: write temp: %w", werr)
-	}
-	if err := os.Rename(tmpPath, absPath); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("toolcatalog: atomic replace: %w", err)
+	if _, err := Load(absPath); err != nil {
+		if rerr := atomicReplaceContent(absPath, snapshot); rerr != nil {
+			return fmt.Errorf("toolcatalog: post-write validate: %w (restore: %w)", err, rerr)
+		}
+		return fmt.Errorf("toolcatalog: post-write validate: %w", err)
 	}
 	return nil
 }

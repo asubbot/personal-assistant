@@ -1,0 +1,19 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-023 C4 Level 1 — Atomic catalog writes (create_tool)
+
+Person(user, "Telegram User")
+System_Ext(telegram, "Telegram Bot API", "Message transport")
+System_Ext(llm, "LLM Provider", "Tool calls including create_tool")
+System(pa, "PersonalAssistant", "Go process pa: create_tool, toolcatalog, toolindex")
+System_Ext(disk, "Catalog file on disk", "YAML tool catalog (paths.tool_catalog_path)")
+
+Rel(user, telegram, "Sends messages")
+Rel(telegram, pa, "Delivers updates")
+Rel(pa, telegram, "Replies")
+Rel(llm, pa, "Invokes create_tool")
+Rel(pa, disk, "Atomic replace + fsync + post-write Load")
+Rel(pa, llm, "Uses embeddings for tool index")
+
+@enduml
