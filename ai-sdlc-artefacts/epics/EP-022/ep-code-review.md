@@ -57,3 +57,52 @@ Core of the epic — `internal/sqlitepragma`, DSN-based per-connection PRAGMA po
 - `go-telegram/bot` long-poll HTTP timeouts remain out of scope.
 - Config keeps string-typed durations; any future consumer bypassing `Load` must re-validate.
 - `busy_timeout` upper bound is only a docs recommendation; no loader-enforced ceiling.
+
+---
+
+## Review iteration 2
+
+**Review date:** 2026-04-17
+**Stage 10 iteration:** 2 of max 5
+**Scope:** commit `62d1240` on branch `epic/EP-022-reliability-hardening` vs previous tip `64d61a3`. 15 files / +444 −178. Focus on iteration-1 finding closure.
+**Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 0 | Minor: 0 | Suggestion: 0
+**Gate:** Pass — every iteration-1 finding is closed with traceable evidence; no regressions observed in the delta.
+
+### Summary
+
+The remediation commit surgically closes all twelve iteration-1 findings (B1, M1–M3, Med1–Med4, Min1–Min3, S1) and introduces no new logic outside the agreed scope. Web-tools HTTP client is now bounded by `web_tools.http_timeout` with Load-time validation and construction-time fail-fast; `defaultTimeout` constants are deleted from both `internal/llm` and `internal/embedding` in favour of a local `parseHTTPTimeout` helper that rejects empty / invalid / zero values. Dedicated unit tests for AC-22.004/005/007/008 exist with `// Covers AC-22.NNN` trace comments. `ToPolicy` switches to documented panic-on-invariant-violation semantics, with the design deviation (string-typed JSON durations) explicitly justified in godoc. The concurrent-write test uses per-writer atomic counters and asserts the full iteration budget, so a stalled writer now fails the test instead of silently passing.
+
+### Iteration 1 finding status
+
+| ID | Status | Evidence (file:line or commit ref) |
+|----|--------|-------------------------------------|
+| B1 | Closed | `internal/config/webtools.go` L15–L19 adds `HTTPTimeout` field with EP-022 docstring; L59–L61 adds `validateHTTPTimeout("web_tools.http_timeout", w.HTTPTimeout)`. `cmd/pa/main.go` L230–L232 returns the error from `registerWebToolsIfEnabled`; L713–L717 parses `cfg.WebTools.HTTPTimeout` and errors on invalid/non-positive; L722 sets `&http.Client{Timeout: timeout}`. `cmd/pa/main_test.go` L38 adds `HTTPTimeout: "30s"`; L40–L43 asserts the error path. `docs/configuration.md` L82–L88 documents `web_tools.http_timeout` as required. |
+| M1 | Closed | `internal/llm/openai.go` L15 — `defaultTimeout` constant deleted; L30–L45 adds `parseHTTPTimeout` that errors on empty / unparsable / `<=0`; L66–L69 replaces silent fallback with `parseHTTPTimeout(cfg.HTTPTimeout)` + `return nil, err`. Identical pattern in `internal/embedding/openai.go` L15 (constant deleted), L26–L41 (helper), L63–L66 (wiring). No hidden defaults remain. |
+| M2 | Closed | `internal/llm/openai_test.go` L844–L901 adds `TestNewOpenAICompatible_HTTPTimeout_{AppliedToClient,InvalidRejected,ZeroRejected,EmptyRejected}` covering AC-22.004 / AC-22.007 / AC-22.008. `internal/embedding/openai_test.go` L416–L463 adds the mirror suite for AC-22.005 / AC-22.007 / AC-22.008. `internal/config/webtools_test.go` L102–L131 adds `TestValidateWebTools_httpTimeout_requiredAndPositive` covering AC-22.006 / AC-22.008 (empty / invalid / zero / valid cases). |
+| M3 | Closed | All new tests carry `// Covers AC-22.NNN` trace comments: `internal/llm/openai_test.go` L572, L590, L605, L619; `internal/embedding/openai_test.go` L192, L207, L219, L231; `internal/config/webtools_test.go` L103; `internal/reliability/concurrent_write_test.go` L22 (`AC-22.010`). |
+| Med1 | Closed | `internal/config/config.go` L64–L76 ToPolicy godoc now explicitly documents the string-vs-`time.Duration` JSON boundary as an intentional deviation from ep-system-design.md, with rationale (readable JSON round-trip, no per-field `UnmarshalJSON`, re-parse only at the few consumer sites). |
+| Med2 | Closed | `internal/config/config.go` L77–L93: nil receiver, nil `ForeignKeys`, and `time.ParseDuration` failure each `panic` with an explicit "Load should have rejected this" message. The godoc L64–L71 declares the post-Load contract. The cascade on call sites is addressed in `cmd/pa/main_test.go` L487–L493 where `TestNewToolIndex_vectorStoreFails_returnsError` now populates `VectorStoreReliability`. |
+| Med3 | Closed | `internal/reliability/concurrent_write_test.go` L15–L18 imports `strconv` + `sync/atomic`; L21–L24 comment and `const iterations = 200`; L64–L66 uses a single 30s `context.WithTimeout` (no race between deadline and `time.After`); L73–L82 passes per-writer `*int64` counters; L89–L96 asserts each writer reached `iterations` and fails otherwise; writers now forward `ctx.Err()` into `errCh` instead of swallowing it (L111–L114, L126–L129). |
+| Med4 | Closed | `docs/configuration.md` L82–L88 adds a "Required" column, lists `web_tools.http_timeout` as required when `web_tools.enabled=true`, and the explanatory paragraph immediately below explicitly states `search/fetch.timeout_seconds` are per-operation context timeouts and **not** a substitute. |
+| Min1 | Closed | `internal/llm/openai.go` L37–L44 error messages name the field: `"llm: http_timeout is required"`, `"llm: http_timeout invalid duration %q: %w"`, `"llm: http_timeout must be > 0, got %s"`. Symmetric wording in `internal/embedding/openai.go` L32–L39. |
+| Min2 | Closed | `internal/reliability/concurrent_write_test.go` L111, L131 now use `strconv.Itoa`; the hand-rolled `itoa` helper (previous L146–L168) is deleted. |
+| Min3 | Closed | `internal/sqlitepragma/policy.go` L77–L82 adds a comment explicitly documenting the deliberate `_foreign_keys=off` DSN encoding for the vec0 store (vec0 virtual tables reject FK enforcement) and its role in keeping `VerifyOnOpen` symmetric. |
+| S1 | N/A (suggestion) | Addressed via Go-literal tests in `openai_test.go` / `webtools_test.go` rather than JSON fixtures. Equivalent AC coverage. |
+| S2 | Closed | `internal/reliability/concurrent_write_test.go` L96 logs per-writer iteration counts via `t.Logf`. |
+
+### New findings
+
+None.
+
+### Verification notes
+
+- `make check` assumed green per the stage-9/10 gate; no obviously high-complexity new function introduced (parseHTTPTimeout helpers are ~10 LOC each; `registerWebToolsIfEnabled` adds one branch; `ToPolicy` fan-out of three panic sites is well under gocyclo 12).
+- Imports remain gofumpt-grouped (stdlib then project) in all edited files; `strconv` added alphabetically to `concurrent_write_test.go`.
+- Config JSON boundary is explicit: `validateHTTPTimeout` is now invoked for all three outbound HTTP clients (llm, embedding, web_tools) at Load; no fallback invents a timeout silently.
+- ToPolicy panic contract is safe in practice — all call sites (`cmd/pa/main.go` L283, L404, L464, L520, L577, L595, L612, L828) receive configs that have already passed `config.Load`, and the test-only direct constructor in `TestNewToolIndex_vectorStoreFails_returnsError` has been updated to supply a valid `VectorStoreReliability` block.
+- AC-22.010 test now fails loudly on stall: every writer must reach `iterations=200`; `ctx.Err()` is reported rather than swallowed; `time.After` safety-net race removed.
+- Trace-comment convention satisfied on every new test added in the commit.
+
+### Gate decision
+
+**Pass → proceed to Stage 11 (closeout).** All iteration-1 blockers, majors, mediums, and minors are closed with file:line evidence; no regressions detected in the delta commit.
