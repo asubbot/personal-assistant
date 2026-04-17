@@ -35,11 +35,14 @@ func TestRegisterWebToolsIfEnabled_RegistersBothTools(t *testing.T) {
 				MaxBodyBytes:   1024,
 				MaxRedirects:   3,
 			},
+			HTTPTimeout: "30s",
 		},
 	}
 	reg := patools.NewRegistry()
 	logger := slog.New(slog.DiscardHandler)
-	registerWebToolsIfEnabled(cfg, reg, logger)
+	if err := registerWebToolsIfEnabled(cfg, reg, logger); err != nil {
+		t.Fatalf("registerWebToolsIfEnabled: %v", err)
+	}
 	if _, ok := reg.Get("web_search"); !ok {
 		t.Fatal("expected web_search in registry")
 	}
@@ -483,10 +486,14 @@ func TestNewToolIndex_vectorStoreFails_returnsError(t *testing.T) {
 	logger := testLogger(t)
 	// Path under a directory we do not create so sqlite open fails.
 	badPath := filepath.Join(t.TempDir(), "nonexistent", "sub", "vec.db")
+	fkFalse := false
 	cfg := &config.Config{
 		ToolCatalog: &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		Embedding:   &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10},
 		Paths:       config.Paths{VectorIndexPath: badPath},
+		VectorStoreReliability: &config.SQLiteStoreReliabilityConfig{
+			JournalMode: "WAL", BusyTimeout: "5s", Synchronous: "NORMAL", ForeignKeys: &fkFalse,
+		},
 	}
 
 	idx, err := newToolIndex(cfg, nil, logger)

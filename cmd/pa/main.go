@@ -225,7 +225,9 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	if cfg.ToolCatalog != nil {
 		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
 	}
-	registerWebToolsIfEnabled(cfg, toolRegistry, logger)
+	if err := registerWebToolsIfEnabled(cfg, toolRegistry, logger); err != nil {
+		return err
+	}
 	if err := registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder); err != nil {
 		return err
 	}
@@ -708,19 +710,24 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	return adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, nil
 }
 
-func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) {
+func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) error {
 	if cfg == nil || cfg.WebTools == nil || !cfg.WebTools.Enabled {
-		return
+		return nil
+	}
+	timeout, err := time.ParseDuration(strings.TrimSpace(cfg.WebTools.HTTPTimeout))
+	if err != nil || timeout <= 0 {
+		return fmt.Errorf("web tools: invalid http_timeout %q (validated at config.Load; unreachable unless bypassed)", cfg.WebTools.HTTPTimeout)
 	}
 	webHTTP := &http.Client{
-		Timeout: 0,
+		Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 	reg.Register(tools.NewWebSearchTool(cfg.WebTools, webHTTP, nil))
 	reg.Register(tools.NewWebFetchTool(&cfg.WebTools.Fetch, webHTTP))
-	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider)
+	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider, "http_timeout", timeout)
+	return nil
 }
 
 func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memoryStore *memory.Store, memVec *core.MemoryVectors, embedder embedding.Embedder) error {

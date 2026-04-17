@@ -12,14 +12,22 @@ import (
 	"pa/internal/sqlitepragma"
 	vectorsqlite "pa/internal/vector/sqlite"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// Covers AC-22.010: with the PRAGMA policy applied, concurrent writers across
-// vector tables and the jobs store do not return SQLITE_BUSY / database is locked.
+// iterations is the per-writer work budget. The test asserts that every writer
+// completed the full budget (AC-22.010: no busy/locked under contention).
+const iterations = 200
+
+// Covers AC-22.010 (EP-022): with the PRAGMA policy applied, concurrent writers
+// across vector tables and the jobs store complete their full iteration budget
+// without SQLITE_BUSY / database is locked, and are not silently aborted by
+// the deadline safety net.
 func TestConcurrentWrites_NoBusyErrors(t *testing.T) {
 	dir := t.TempDir()
 	vecPath := filepath.Join(dir, "vec.sqlite")
@@ -53,67 +61,72 @@ func TestConcurrentWrites_NoBusyErrors(t *testing.T) {
 	}
 	defer func() { _ = jobsStore.Close() }()
 
-	deadline := time.Now().Add(4 * time.Second)
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	// Generous deadline so writers reliably complete on slow CI; the test fails
+	// if any writer does not reach its iteration budget.
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	const iterations = 200
 
 	errCh := make(chan error, 4)
 	var wg sync.WaitGroup
 	wg.Add(4)
 
-	go runVectorWriter(ctx, &wg, errCh, "summ", summ, iterations)
-	go runVectorWriter(ctx, &wg, errCh, "turn", turns, iterations)
-	go runVectorWriter(ctx, &wg, errCh, "tool", tools, iterations)
-	go runJobsWriter(ctx, &wg, errCh, jobsStore, iterations)
-
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(5 * time.Second):
-		t.Fatalf("concurrent writers did not complete within 5s budget")
+	counts := map[string]*int64{
+		"summ": new(int64),
+		"turn": new(int64),
+		"tool": new(int64),
+		"jobs": new(int64),
 	}
 
+	go runVectorWriter(ctx, &wg, errCh, "summ", summ, counts["summ"])
+	go runVectorWriter(ctx, &wg, errCh, "turn", turns, counts["turn"])
+	go runVectorWriter(ctx, &wg, errCh, "tool", tools, counts["tool"])
+	go runJobsWriter(ctx, &wg, errCh, jobsStore, counts["jobs"])
+
+	wg.Wait()
 	close(errCh)
+
 	for e := range errCh {
 		if isBusyOrLocked(e) {
-			t.Fatalf("SQLITE_BUSY / database is locked observed: %v", e)
+			t.Fatalf("SQLITE_BUSY / database is locked observed (AC-22.010): %v", e)
 		}
 		t.Fatalf("writer error: %v", e)
 	}
+
+	for label, c := range counts {
+		got := atomic.LoadInt64(c)
+		if got != iterations {
+			t.Fatalf("writer %q completed %d/%d iterations (AC-22.010: every writer must complete its full budget)", label, got, iterations)
+		}
+		t.Logf("writer %q completed %d iterations", label, got)
+	}
 }
 
-func runVectorWriter(ctx context.Context, wg *sync.WaitGroup, errCh chan<- error, label string, st *vectorsqlite.Store, iterations int) {
+func runVectorWriter(ctx context.Context, wg *sync.WaitGroup, errCh chan<- error, label string, st *vectorsqlite.Store, done *int64) {
 	defer wg.Done()
 	embed := []float32{0.1, 0.2, 0.3, 0.4}
 	for i := 0; i < iterations; i++ {
 		if ctx.Err() != nil {
+			errCh <- ctx.Err()
 			return
 		}
-		id := label + "-" + itoa(i)
+		id := label + "-" + strconv.Itoa(i)
 		if err := st.Add(ctx, id, embed, "text-"+id); err != nil {
-			if ctx.Err() == nil {
-				errCh <- err
-			}
+			errCh <- err
 			return
 		}
+		atomic.AddInt64(done, 1)
 	}
 }
 
-func runJobsWriter(ctx context.Context, wg *sync.WaitGroup, errCh chan<- error, st *jobs.Store, iterations int) {
+func runJobsWriter(ctx context.Context, wg *sync.WaitGroup, errCh chan<- error, st *jobs.Store, done *int64) {
 	defer wg.Done()
 	for i := 0; i < iterations; i++ {
 		if ctx.Err() != nil {
+			errCh <- ctx.Err()
 			return
 		}
 		_, err := st.CreateJob(ctx, jobs.JobInput{
-			Name:           "job-" + itoa(i),
+			Name:           "job-" + strconv.Itoa(i),
 			ScheduleExpr:   "once:2099-01-01T00:00:00Z",
 			TimeZone:       "UTC",
 			Instruction:    "noop",
@@ -123,11 +136,10 @@ func runJobsWriter(ctx context.Context, wg *sync.WaitGroup, errCh chan<- error, 
 			TimeoutPolicy:  "fail",
 		})
 		if err != nil {
-			if ctx.Err() == nil {
-				errCh <- err
-			}
+			errCh <- err
 			return
 		}
+		atomic.AddInt64(done, 1)
 	}
 }
 
@@ -141,28 +153,4 @@ func isBusyOrLocked(err error) bool {
 	return strings.Contains(m, "SQLITE_BUSY") ||
 		strings.Contains(m, "database is locked") ||
 		strings.Contains(m, "database table is locked")
-}
-
-// itoa avoids strconv import noise for a test-only helper.
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	neg := false
-	if i < 0 {
-		neg = true
-		i = -i
-	}
-	var b [20]byte
-	pos := len(b)
-	for i > 0 {
-		pos--
-		b[pos] = byte('0' + i%10)
-		i /= 10
-	}
-	if neg {
-		pos--
-		b[pos] = '-'
-	}
-	return string(b[pos:])
 }

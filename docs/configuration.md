@@ -79,12 +79,13 @@ Single-writer expectation: the product opens each SQLite file from a single proc
 
 Every outbound HTTP client governed by this product exposes an explicit, per-request total timeout. Missing or non-positive values fail startup:
 
-| Field | Client | Recommended |
-|-------|--------|-------------|
-| `llm_providers[].http_timeout` | LLM chat completions (`internal/llm`) | `"120s"` |
-| `embedding.http_timeout` | Embeddings client (`internal/embedding`) | `"60s"` |
-| `web_tools.search.timeout_seconds` | Web search upstream HTTP call (pre-existing; seconds as int) | `20` |
-| `web_tools.fetch.timeout_seconds` | Web fetch upstream HTTP call (pre-existing; seconds as int) | `30` |
+| Field | Client | Recommended | Required |
+|-------|--------|-------------|----------|
+| `llm_providers[].http_timeout` | LLM chat completions (`internal/llm`) | `"120s"` | yes |
+| `embedding.http_timeout` | Embeddings client (`internal/embedding`) | `"60s"` | yes |
+| `web_tools.http_timeout` | Shared `*http.Client` used by `web_search` upstream calls (DuckDuckGo / Brave) and `web_fetch` (`internal/tools`) — per-request **total** timeout | `"30s"` | yes when `web_tools.enabled=true` |
+
+`web_tools.search.timeout_seconds` and `web_tools.fetch.timeout_seconds` are per-operation context timeouts on the tool caller side and are **not** a substitute for `web_tools.http_timeout`, which bounds the whole outbound HTTP request including connection setup, TLS, and body read.
 
 Telegram long-poll HTTP behaviour is owned by `go-telegram/bot` and is out of scope for this configuration section. SSH transport timeouts are owned by `internal/noderunner` (see the nodes section).
 

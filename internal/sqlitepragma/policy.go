@@ -74,6 +74,10 @@ func BuildDSN(path string, p Policy) (string, error) {
 	q.Set("_journal_mode", p.JournalMode)
 	q.Set("_busy_timeout", fmt.Sprintf("%d", p.BusyTimeout.Milliseconds()))
 	q.Set("_synchronous", p.Synchronous)
+	// Encode ForeignKeys explicitly in both directions. The vector store must
+	// stay FK=off because vec0 virtual tables reject FK enforcement; writing
+	// "off" makes the policy observable in logs and VerifyOnOpen symmetric
+	// for both stores.
 	if p.ForeignKeys {
 		q.Set("_foreign_keys", "on")
 	} else {

@@ -12,10 +12,7 @@ import (
 	"time"
 )
 
-const (
-	openAIEmbeddingsPath = "/embeddings"
-	defaultTimeout       = 30 * time.Second
-)
+const openAIEmbeddingsPath = "/embeddings"
 
 // OpenAICompatible is an OpenAI-compatible embeddings API client (e.g. OpenAI, Ollama with embedding models).
 type OpenAICompatible struct {
@@ -24,6 +21,24 @@ type OpenAICompatible struct {
 	apiKey    string
 	model     string
 	batchSize int // max texts per API request (from config); EmbedBatch chunks internally
+}
+
+// parseHTTPTimeout enforces the fail-fast contract for embedding.http_timeout
+// at the construction site (EP-022, REQ-22.004). The value is also validated at
+// config.Load; re-validating here guards direct struct construction in tests.
+func parseHTTPTimeout(raw string) (time.Duration, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, fmt.Errorf("embedding: http_timeout is required")
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("embedding: http_timeout invalid duration %q: %w", raw, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("embedding: http_timeout must be > 0, got %s", d)
+	}
+	return d, nil
 }
 
 // NewOpenAICompatible builds an embedder from EmbeddingProvider config.
@@ -45,16 +60,9 @@ func NewOpenAICompatible(cfg *config.EmbeddingProvider) (*OpenAICompatible, erro
 	if batchSize <= 0 {
 		batchSize = 100
 	}
-	// HTTPTimeout is required in config.json and validated at config.Load.
-	// When EmbeddingProvider is constructed directly in tests, an empty value
-	// falls back to the documented reference value.
-	timeout := defaultTimeout
-	if s := strings.TrimSpace(cfg.HTTPTimeout); s != "" {
-		if d, err := time.ParseDuration(s); err == nil && d > 0 {
-			timeout = d
-		} else {
-			return nil, fmt.Errorf("embedding: invalid http_timeout %q: %w", cfg.HTTPTimeout, err)
-		}
+	timeout, err := parseHTTPTimeout(cfg.HTTPTimeout)
+	if err != nil {
+		return nil, err
 	}
 	return &OpenAICompatible{
 		client:    &http.Client{Timeout: timeout},

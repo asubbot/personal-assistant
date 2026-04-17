@@ -62,21 +62,35 @@ type SQLiteStoreReliabilityConfig struct {
 }
 
 // ToPolicy returns the sqlitepragma.Policy represented by this config block.
-// Validation (required fields, parse duration, non-nil foreign_keys) is performed at config Load.
+// Callers must only invoke this after config.Load has succeeded: Load enforces
+// required fields, duration parseability, and non-nil foreign_keys. This
+// method therefore panics on any invariant violation — the panic documents an
+// unreachable code path when the config is obtained through the public Load
+// entry point.
+//
+// Design deviation from ep-system-design.md: the config struct keeps
+// `busy_timeout` and `http_timeout` as JSON strings (validated Go durations)
+// rather than typed `time.Duration` fields. Reason: keeping the JSON
+// boundary string-typed avoids a custom UnmarshalJSON on every duration
+// field and preserves round-trip readability of `config.json` dumps. The
+// parsed duration is re-derived at the few consumer sites through this
+// method (stores) or `parseHTTPTimeout` helpers (llm/embedding).
 func (c *SQLiteStoreReliabilityConfig) ToPolicy() sqlitepragma.Policy {
 	if c == nil {
-		return sqlitepragma.Policy{}
+		panic("config: SQLiteStoreReliabilityConfig is nil (Load should have rejected this)")
 	}
-	d, _ := time.ParseDuration(strings.TrimSpace(c.BusyTimeout))
-	fk := false
-	if c.ForeignKeys != nil {
-		fk = *c.ForeignKeys
+	if c.ForeignKeys == nil {
+		panic("config: SQLiteStoreReliabilityConfig.foreign_keys is nil (Load should have rejected this)")
+	}
+	d, err := time.ParseDuration(strings.TrimSpace(c.BusyTimeout))
+	if err != nil {
+		panic(fmt.Sprintf("config: SQLiteStoreReliabilityConfig.busy_timeout %q not parseable (Load should have rejected this): %v", c.BusyTimeout, err))
 	}
 	return sqlitepragma.Policy{
 		JournalMode: c.JournalMode,
 		BusyTimeout: d,
 		Synchronous: c.Synchronous,
-		ForeignKeys: fk,
+		ForeignKeys: *c.ForeignKeys,
 	}
 }
 

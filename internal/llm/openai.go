@@ -12,10 +12,7 @@ import (
 	"time"
 )
 
-const (
-	openAICompletionsPath = "/chat/completions"
-	defaultTimeout        = 60 * time.Second
-)
+const openAICompletionsPath = "/chat/completions"
 
 // OpenAICompatible is an OpenAI-compatible HTTP chat completions provider (OpenAI, Ollama with /v1, etc.).
 type OpenAICompatible struct {
@@ -28,6 +25,24 @@ type OpenAICompatible struct {
 	defaultTemperature    float64
 	defaultMaxTokens      int
 	defaultResponseFormat string // "text" or "json_object"
+}
+
+// parseHTTPTimeout enforces the fail-fast contract for llm_providers[].http_timeout
+// at the construction site (EP-022, REQ-22.003). The value is also validated at
+// config.Load; re-validating here guards direct struct construction in tests.
+func parseHTTPTimeout(raw string) (time.Duration, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return 0, fmt.Errorf("llm: http_timeout is required")
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("llm: http_timeout invalid duration %q: %w", raw, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("llm: http_timeout must be > 0, got %s", d)
+	}
+	return d, nil
 }
 
 // NewOpenAICompatible builds a provider from config. Reads API key from api_key_path when set (e.g. for openai/openai-compatible).
@@ -48,16 +63,9 @@ func NewOpenAICompatible(cfg *config.LLMProvider) (*OpenAICompatible, error) {
 	if cfg.SupportsTools != nil {
 		st = *cfg.SupportsTools
 	}
-	// HTTPTimeout is required in config.json and validated at config.Load.
-	// When LLMProvider is constructed directly in tests without going through Load,
-	// an empty/invalid value falls back to the documented reference value.
-	timeout := defaultTimeout
-	if s := strings.TrimSpace(cfg.HTTPTimeout); s != "" {
-		if d, err := time.ParseDuration(s); err == nil && d > 0 {
-			timeout = d
-		} else {
-			return nil, fmt.Errorf("llm: invalid http_timeout %q: %w", cfg.HTTPTimeout, err)
-		}
+	timeout, err := parseHTTPTimeout(cfg.HTTPTimeout)
+	if err != nil {
+		return nil, err
 	}
 	return &OpenAICompatible{
 		client:                &http.Client{Timeout: timeout},
