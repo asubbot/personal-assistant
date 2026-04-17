@@ -782,6 +782,7 @@ func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) (intent.Clas
 			DefaultMaxTokens:      ic.ModelStage.DefaultMaxTokens,
 			DefaultResponseFormat: "text",
 			SupportsTools:         boolPtr(false),
+			HTTPTimeout:           ic.ModelStage.HTTPTimeout,
 		}
 		provider, err := llm.NewProvider(provCfg)
 		if err != nil {

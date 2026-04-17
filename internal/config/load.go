@@ -696,6 +696,9 @@ func validateICModelStage(ms *ClassificationModelConfig) error {
 			return fmt.Errorf("config: intent_classifier.model_stage.timeout: %w", err)
 		}
 	}
+	if err := validateHTTPTimeout("intent_classifier.model_stage.http_timeout", ms.HTTPTimeout); err != nil {
+		return err
+	}
 	return nil
 }
 

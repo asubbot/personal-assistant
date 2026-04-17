@@ -240,6 +240,11 @@ type ClassificationModelConfig struct {
 	DefaultTemperature float64 `json:"default_temperature"`
 	DefaultMaxTokens   int     `json:"default_max_tokens"`
 	Timeout            string  `json:"timeout,omitempty"`
+	// HTTPTimeout is the total per-request timeout for the outbound classifier LLM call
+	// (EP-022, REQ-22.003). Required when model_stage.enabled; Go duration literal (e.g. "30s").
+	// Distinct from Timeout, which bounds the per-classification context deadline inside
+	// ModelClassifier. Both are independent and both may be set.
+	HTTPTimeout string `json:"http_timeout"`
 }
 
 // EmbeddingProvider is the dedicated provider for vector store embeddings (separate from chat LLM).
