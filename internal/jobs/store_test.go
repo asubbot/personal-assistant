@@ -3,15 +3,18 @@ package jobs
 import (
 	"context"
 	"errors"
+	"pa/internal/sqlitepragma"
 	"path/filepath"
 	"testing"
 	"time"
 )
 
+func testPolicy() sqlitepragma.Policy { return sqlitepragma.RecommendedPolicy(true) }
+
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "jobs.sqlite")
-	st, err := Open(path)
+	st, err := Open(path, testPolicy())
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -107,7 +110,7 @@ func TestStore_CreateGetListUpdateDelete(t *testing.T) {
 func TestStore_Reopen_PreservesJobs(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "jobs.sqlite")
-	st, err := Open(path)
+	st, err := Open(path, testPolicy())
 	if err != nil {
 		t.Fatalf("Open(1): %v", err)
 	}
@@ -126,7 +129,7 @@ func TestStore_Reopen_PreservesJobs(t *testing.T) {
 	}
 	_ = st.Close()
 
-	st2, err := Open(path)
+	st2, err := Open(path, testPolicy())
 	if err != nil {
 		t.Fatalf("Open(2): %v", err)
 	}

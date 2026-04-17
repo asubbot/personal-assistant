@@ -4,6 +4,7 @@ import (
 	"context"
 	"pa/internal/embedding"
 	"pa/internal/memory"
+	"pa/internal/sqlitepragma"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"strings"
@@ -82,7 +83,7 @@ func TestWriteMemoryTool_indexesNotesVector(t *testing.T) {
 		t.Fatal(err)
 	}
 	vecPath := filepath.Join(t.TempDir(), "notes.sqlite")
-	notesVec, err := sqlite.NewWithTable(vecPath, 4, sqlite.TableNotes)
+	notesVec, err := sqlite.NewWithTable(vecPath, 4, sqlite.TableNotes, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}

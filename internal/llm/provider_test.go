@@ -26,6 +26,7 @@ func TestNewProvider_supportedTypes(t *testing.T) {
 				DefaultMaxTokens:      1024,
 				SupportsJSONMode:      true,
 				DefaultResponseFormat: "text",
+				HTTPTimeout:           "60s",
 			}
 			if typ != "ollama" {
 				cfg.APIKeyPath = keyPath

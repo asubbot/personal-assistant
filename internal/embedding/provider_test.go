@@ -21,10 +21,11 @@ func TestNewEmbedder_nilConfig_returnsError(t *testing.T) {
 // Covers AC-01.033 (US-19): NewEmbedder(unsupported type) returns error (startup validation).
 func TestNewEmbedder_unsupportedType_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
-		Type:       "custom",
-		Endpoint:   "http://localhost",
-		Model:      "m",
-		Dimensions: 768,
+		Type:        "custom",
+		Endpoint:    "http://localhost",
+		Model:       "m",
+		Dimensions:  768,
+		HTTPTimeout: "30s",
 	}
 	_, err := NewEmbedder(cfg)
 	if err == nil {
@@ -41,10 +42,11 @@ func TestNewEmbedder_supportedTypes_returnsEmbedder(t *testing.T) {
 	for _, typ := range types {
 		t.Run(typ, func(t *testing.T) {
 			cfg := &config.EmbeddingProvider{
-				Type:       typ,
-				Endpoint:   "http://localhost:11434",
-				Model:      "nomic-embed-text",
-				Dimensions: 768,
+				Type:        typ,
+				Endpoint:    "http://localhost:11434",
+				Model:       "nomic-embed-text",
+				Dimensions:  768,
+				HTTPTimeout: "30s",
 			}
 			emb, err := NewEmbedder(cfg)
 			if err != nil {
@@ -60,11 +62,12 @@ func TestNewEmbedder_supportedTypes_returnsEmbedder(t *testing.T) {
 // Covers AC-01.033 (US-19): NewEmbedder(openai, missing API key file) returns error (startup validation).
 func TestNewEmbedder_openaiWithAPIKeyPath_missingFile_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
-		Type:       "openai",
-		Endpoint:   "https://api.openai.com/v1",
-		APIKeyPath: filepath.Join(t.TempDir(), "nonexistent"),
-		Model:      "text-embedding-3-small",
-		Dimensions: 1536,
+		Type:        "openai",
+		Endpoint:    "https://api.openai.com/v1",
+		APIKeyPath:  filepath.Join(t.TempDir(), "nonexistent"),
+		Model:       "text-embedding-3-small",
+		Dimensions:  1536,
+		HTTPTimeout: "30s",
 	}
 	_, err := NewEmbedder(cfg)
 	if err == nil {

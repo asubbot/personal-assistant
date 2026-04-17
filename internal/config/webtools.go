@@ -12,6 +12,11 @@ type WebToolsConfig struct {
 	Enabled bool            `json:"enabled"`
 	Search  WebSearchConfig `json:"search"`
 	Fetch   WebFetchConfig  `json:"fetch"`
+	// HTTPTimeout is the per-request total timeout for the shared outbound
+	// *http.Client used by web_search upstream calls and web_fetch (EP-022,
+	// REQ-22.008). Required Go duration literal, e.g. "30s". Fail-fast at
+	// config.Load when web_tools.enabled is true.
+	HTTPTimeout string `json:"http_timeout"`
 }
 
 // WebSearchConfig configures web_search (EP-011).
@@ -51,6 +56,13 @@ func validateWebTools(c *Config) error {
 	if err := validateWebToolsNumericBounds(w); err != nil {
 		return err
 	}
+	if err := validateHTTPTimeout("web_tools.http_timeout", w.HTTPTimeout); err != nil {
+		return err
+	}
+	return validateWebSearchProviders(w)
+}
+
+func validateWebSearchProviders(w *WebToolsConfig) error {
 	primary, err := parseWebSearchProvider(w.Search.Provider, "provider")
 	if err != nil {
 		return err

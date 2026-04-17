@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"pa/internal/sqlitepragma"
 	"pa/internal/vector"
 	"sync"
 
@@ -52,17 +53,31 @@ func validateTableName(table string) error {
 // NewWithTable opens or creates a SQLite database at dbPath and returns a vector store for the given table.
 // Use TableSummaries/TableTurns/TableNotes for memory stores and TableTools for tool index.
 // Same dbPath allows multiple tables in one DB file.
-func NewWithTable(dbPath string, dimensions int, table string) (*Store, error) {
+//
+// policy must have ForeignKeys=false for the vector store (it has no FK schema);
+// see EP-022 for the PRAGMA policy applied on every new connection.
+func NewWithTable(dbPath string, dimensions int, table string, policy sqlitepragma.Policy) (*Store, error) {
 	if dimensions <= 0 {
 		return nil, fmt.Errorf("vector/sqlite: dimensions must be positive, got %d", dimensions)
 	}
 	if err := validateTableName(table); err != nil {
 		return nil, err
 	}
+	if policy.ForeignKeys {
+		return nil, fmt.Errorf("vector/sqlite: policy.ForeignKeys must be false (vector store has no FK schema)")
+	}
 	initAuto()
-	db, err := sql.Open("sqlite3", dbPath)
+	dsn, err := sqlitepragma.BuildDSN(dbPath, policy)
+	if err != nil {
+		return nil, fmt.Errorf("vector/sqlite: build dsn: %w", err)
+	}
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("vector/sqlite: open db: %w", err)
+	}
+	if err := sqlitepragma.VerifyOnOpen(context.Background(), db, policy); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("vector/sqlite: verify pragma: %w", err)
 	}
 	s := &Store{db: db, dimensions: dimensions, table: table}
 	if err := s.createTable(); err != nil {

@@ -1,0 +1,22 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-022 C4 Level 1 - Reliability hardening for local stores and outbound HTTP
+
+Person(user, "Telegram User")
+System_Ext(telegram, "Telegram Bot API", "Message transport")
+System_Ext(llm, "LLM and embedding providers", "HTTPS")
+System_Ext(web, "Web search and fetch", "HTTPS")
+System(pa, "PersonalAssistant", "Single Go process 'pa'")
+SystemDb(vecdb, "Vector SQLite", "vec_turns, vec_summaries, vec_notes, vec_tools, vec_skills")
+SystemDb(jobdb, "Jobs SQLite", "Scheduled jobs store")
+
+Rel(user, telegram, "Sends messages")
+Rel(telegram, pa, "Delivers updates (HTTPS)")
+Rel(pa, telegram, "Replies (HTTPS, bounded timeout)")
+Rel(pa, llm, "Chat completions and embeddings (HTTPS, bounded timeout)")
+Rel(pa, web, "Search and fetch (HTTPS, bounded timeout)")
+Rel(pa, vecdb, "Read and write with PRAGMA policy, single-writer per file")
+Rel(pa, jobdb, "Read and write with PRAGMA policy, single-writer per file")
+
+@enduml

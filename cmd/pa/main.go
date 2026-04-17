@@ -225,7 +225,9 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	if cfg.ToolCatalog != nil {
 		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
 	}
-	registerWebToolsIfEnabled(cfg, toolRegistry, logger)
+	if err := registerWebToolsIfEnabled(cfg, toolRegistry, logger); err != nil {
+		return err
+	}
 	if err := registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder); err != nil {
 		return err
 	}
@@ -278,7 +280,7 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 			state: state,
 		}
 		if sender, ok := adapter.(chatSender); ok {
-			initJobsRuntimeAsync(ctx, state, cfg.Paths.JobsDBPath, cfg.PATimezone, sender, baseHandler, logger)
+			initJobsRuntimeAsync(ctx, state, cfg.Paths.JobsDBPath, cfg.JobsStoreReliability.ToPolicy(), cfg.PATimezone, sender, baseHandler, logger)
 		} else {
 			err := fmt.Errorf("adapter does not support direct chat sending")
 			logger.Warn("jobs runtime delivery disabled", "error", err)
@@ -399,7 +401,7 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -459,7 +461,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -515,7 +517,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -572,7 +574,7 @@ func newToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.
 	if cfg.ToolCatalog == nil {
 		return nil, fmt.Errorf("tool catalog is required")
 	}
-	toolVectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTools)
+	toolVectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTools, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return nil, err
 	}
@@ -590,7 +592,7 @@ func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog
 	if cfg.RuntimeSkills == nil || !cfg.RuntimeSkills.Enabled || len(cfg.RuntimeSkillPackages) == 0 {
 		return nil, nil
 	}
-	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSkills)
+	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSkills, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return nil, err
 	}
@@ -607,16 +609,17 @@ func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog
 func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
 	dim := cfg.Embedding.Dimensions
 	path := cfg.Paths.VectorIndexPath
-	summ, err := sqlite.NewWithTable(path, dim, sqlite.TableSummaries)
+	vecPolicy := cfg.VectorStoreReliability.ToPolicy()
+	summ, err := sqlite.NewWithTable(path, dim, sqlite.TableSummaries, vecPolicy)
 	if err != nil {
 		return nil, err
 	}
-	turns, err := sqlite.NewWithTable(path, dim, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(path, dim, sqlite.TableTurns, vecPolicy)
 	if err != nil {
 		_ = summ.Close()
 		return nil, err
 	}
-	notes, err := sqlite.NewWithTable(path, dim, sqlite.TableNotes)
+	notes, err := sqlite.NewWithTable(path, dim, sqlite.TableNotes, vecPolicy)
 	if err != nil {
 		_ = summ.Close()
 		_ = turns.Close()
@@ -707,19 +710,24 @@ func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
 	return adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, nil
 }
 
-func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) {
+func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) error {
 	if cfg == nil || cfg.WebTools == nil || !cfg.WebTools.Enabled {
-		return
+		return nil
+	}
+	timeout, err := time.ParseDuration(strings.TrimSpace(cfg.WebTools.HTTPTimeout))
+	if err != nil || timeout <= 0 {
+		return fmt.Errorf("web tools: invalid http_timeout %q (validated at config.Load; unreachable unless bypassed)", cfg.WebTools.HTTPTimeout)
 	}
 	webHTTP := &http.Client{
-		Timeout: 0,
+		Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 	reg.Register(tools.NewWebSearchTool(cfg.WebTools, webHTTP, nil))
 	reg.Register(tools.NewWebFetchTool(&cfg.WebTools.Fetch, webHTTP))
-	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider)
+	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider, "http_timeout", timeout)
+	return nil
 }
 
 func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memoryStore *memory.Store, memVec *core.MemoryVectors, embedder embedding.Embedder) error {
@@ -817,7 +825,7 @@ func clearConversationContext(cfg *config.Config) error {
 		return fmt.Errorf("clear context: mkdir: %w", err)
 	}
 	ctx := context.Background()
-	turns, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTurns, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return err
 	}

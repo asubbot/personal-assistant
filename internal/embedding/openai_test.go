@@ -9,15 +9,17 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Supporting AC-01.013 (US-07): embedding provider construction — ollama-style config without API key succeeds.
 func TestNewOpenAICompatible_validConfig_noAPIKey(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
-		Type:       "ollama",
-		Endpoint:   "http://localhost:11434",
-		Model:      "nomic-embed-text",
-		Dimensions: 768,
+		Type:        "ollama",
+		Endpoint:    "http://localhost:11434",
+		Model:       "nomic-embed-text",
+		Dimensions:  768,
+		HTTPTimeout: "30s",
 	}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
@@ -31,10 +33,11 @@ func TestNewOpenAICompatible_validConfig_noAPIKey(t *testing.T) {
 // Covers AC-01.033 (US-19): embedding provider — empty model returns error (startup validation).
 func TestNewOpenAICompatible_emptyModel_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
-		Type:       "ollama",
-		Endpoint:   "http://localhost:11434",
-		Model:      "",
-		Dimensions: 768,
+		Type:        "ollama",
+		Endpoint:    "http://localhost:11434",
+		Model:       "",
+		Dimensions:  768,
+		HTTPTimeout: "30s",
 	}
 	_, err := NewOpenAICompatible(cfg)
 	if err == nil {
@@ -48,11 +51,12 @@ func TestNewOpenAICompatible_emptyModel_returnsError(t *testing.T) {
 // Covers AC-01.033 (US-19): embedding provider — missing API key file returns error (startup validation).
 func TestNewOpenAICompatible_missingAPIKeyFile_returnsError(t *testing.T) {
 	cfg := &config.EmbeddingProvider{
-		Type:       "openai",
-		Endpoint:   "https://api.openai.com/v1",
-		APIKeyPath: filepath.Join(t.TempDir(), "nonexistent"),
-		Model:      "text-embedding-3-small",
-		Dimensions: 1536,
+		Type:        "openai",
+		Endpoint:    "https://api.openai.com/v1",
+		APIKeyPath:  filepath.Join(t.TempDir(), "nonexistent"),
+		Model:       "text-embedding-3-small",
+		Dimensions:  1536,
+		HTTPTimeout: "30s",
 	}
 	_, err := NewOpenAICompatible(cfg)
 	if err == nil {
@@ -71,11 +75,12 @@ func TestNewOpenAICompatible_validAPIKeyFile_succeeds(t *testing.T) {
 		t.Fatalf("setup: %v", err)
 	}
 	cfg := &config.EmbeddingProvider{
-		Type:       "openai",
-		Endpoint:   "https://api.openai.com/v1",
-		APIKeyPath: keyPath,
-		Model:      "text-embedding-3-small",
-		Dimensions: 1536,
+		Type:        "openai",
+		Endpoint:    "https://api.openai.com/v1",
+		APIKeyPath:  keyPath,
+		Model:       "text-embedding-3-small",
+		Dimensions:  1536,
+		HTTPTimeout: "30s",
 	}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
@@ -101,7 +106,7 @@ func TestOpenAICompatible_Embed_success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -136,7 +141,7 @@ func TestOpenAICompatible_EmbedBatch_success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -159,7 +164,7 @@ func TestOpenAICompatible_EmbedBatch_success(t *testing.T) {
 
 // Covers AC-04.017: EmbedBatch empty input returns nil, nil.
 func TestOpenAICompatible_EmbedBatch_empty_returnsNilNil(t *testing.T) {
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: "http://localhost:11434", Model: "m", Dimensions: 3}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: "http://localhost:11434", Model: "m", Dimensions: 3, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -195,7 +200,7 @@ func TestOpenAICompatible_EmbedBatch_chunking_multipleRequests_orderPreserved(t 
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 2}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 2, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -226,7 +231,7 @@ func TestOpenAICompatible_EmbedBatch_apiError_returnsError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 10}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 10, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -250,7 +255,7 @@ func TestOpenAICompatible_EmbedBatch_contextCanceled_returnsError(t *testing.T) 
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 10}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, BatchSize: 10, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -277,7 +282,7 @@ func TestOpenAICompatible_EmbedBatch_single_returnsOneVector(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 3, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -303,7 +308,7 @@ func TestOpenAICompatible_Embed_emptyData_returnsError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -327,7 +332,7 @@ func TestOpenAICompatible_Embed_apiError_returnsError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -351,7 +356,7 @@ func TestOpenAICompatible_Embed_invalidJSON_returnsError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -374,7 +379,7 @@ func TestOpenAICompatible_Embed_contextCanceled_returnsError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: server.URL, Model: "m", Dimensions: 768, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -394,7 +399,7 @@ func TestOpenAICompatible_Embed_contextCanceled_returnsError(t *testing.T) {
 
 // Covers AC-01.037 (US-07): Embed error path — unreachable server returns error; system does not crash.
 func TestOpenAICompatible_Embed_serverUnreachable_returnsError(t *testing.T) {
-	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: "http://127.0.0.1:19999", Model: "m", Dimensions: 768}
+	cfg := &config.EmbeddingProvider{Type: "ollama", Endpoint: "http://127.0.0.1:19999", Model: "m", Dimensions: 768, HTTPTimeout: "30s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -406,5 +411,56 @@ func TestOpenAICompatible_Embed_serverUnreachable_returnsError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "request") && !strings.Contains(err.Error(), "connection") && !strings.Contains(err.Error(), "refused") {
 		t.Logf("Embed: error = %v", err)
+	}
+}
+
+// Covers AC-22.005 (EP-022): embedding http_timeout is propagated to *http.Client.Timeout.
+func TestNewOpenAICompatible_HTTPTimeout_AppliedToClient(t *testing.T) {
+	cfg := &config.EmbeddingProvider{
+		Type: "ollama", Endpoint: "http://localhost:11434", Model: "m",
+		Dimensions: 3, HTTPTimeout: "45s",
+	}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+	if got, want := p.client.Timeout, 45*time.Second; got != want {
+		t.Fatalf("client.Timeout = %s, want %s", got, want)
+	}
+}
+
+// Covers AC-22.007 (EP-022): invalid embedding http_timeout rejected at construction.
+func TestNewOpenAICompatible_HTTPTimeout_InvalidRejected(t *testing.T) {
+	cfg := &config.EmbeddingProvider{
+		Type: "ollama", Endpoint: "http://localhost:11434", Model: "m",
+		Dimensions: 3, HTTPTimeout: "not-a-duration",
+	}
+	_, err := NewOpenAICompatible(cfg)
+	if err == nil || !strings.Contains(err.Error(), "http_timeout") {
+		t.Fatalf("expected http_timeout error, got %v", err)
+	}
+}
+
+// Covers AC-22.008 (EP-022): zero embedding http_timeout rejected.
+func TestNewOpenAICompatible_HTTPTimeout_ZeroRejected(t *testing.T) {
+	cfg := &config.EmbeddingProvider{
+		Type: "ollama", Endpoint: "http://localhost:11434", Model: "m",
+		Dimensions: 3, HTTPTimeout: "0s",
+	}
+	_, err := NewOpenAICompatible(cfg)
+	if err == nil || !strings.Contains(err.Error(), "http_timeout") {
+		t.Fatalf("expected http_timeout error, got %v", err)
+	}
+}
+
+// Covers AC-22.008 (EP-022): empty embedding http_timeout rejected.
+func TestNewOpenAICompatible_HTTPTimeout_EmptyRejected(t *testing.T) {
+	cfg := &config.EmbeddingProvider{
+		Type: "ollama", Endpoint: "http://localhost:11434", Model: "m",
+		Dimensions: 3, HTTPTimeout: "",
+	}
+	_, err := NewOpenAICompatible(cfg)
+	if err == nil || !strings.Contains(err.Error(), "http_timeout") {
+		t.Fatalf("expected http_timeout error, got %v", err)
 	}
 }

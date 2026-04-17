@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"pa/internal/jobs"
+	"pa/internal/sqlitepragma"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -89,7 +90,7 @@ func newRuntimeBoundManager(store *jobs.Store, sender *mockChatSender) *jobs.Man
 // Covers AC-20.001, AC-20.002, AC-20.003, AC-20.005, AC-20.006, AC-20.008: job created via native tool path is manageable with /jobs and delivers on run-now.
 func TestEP020_E2E_CreateManageRunNowDelivery(t *testing.T) {
 	ctx := context.Background()
-	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"))
+	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"), sqlitepragma.RecommendedPolicy(true))
 	if err != nil {
 		t.Fatalf("jobs.Open: %v", err)
 	}
@@ -108,7 +109,7 @@ func TestEP020_E2E_CreateManageRunNowDelivery(t *testing.T) {
 // Covers AC-20.001, AC-20.002, AC-20.003, AC-20.005, AC-20.006, AC-20.008: explicit create spec is manageable via /jobs and delivers on run-now.
 func TestEP020_E2E_StrictTemplateCreateManageRunNowDelivery(t *testing.T) {
 	ctx := context.Background()
-	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"))
+	store, err := jobs.Open(filepath.Join(t.TempDir(), "jobs.sqlite"), sqlitepragma.RecommendedPolicy(true))
 	if err != nil {
 		t.Fatalf("jobs.Open: %v", err)
 	}

@@ -13,7 +13,8 @@
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
       "supports_json_mode": true,
-      "default_response_format": "text"
+      "default_response_format": "text",
+      "http_timeout": "60s"
     }
   ],
   "paths": {
@@ -29,7 +30,8 @@
     "type": "ollama",
     "endpoint": "http://localhost:11434",
     "model": "nomic-embed-text",
-    "dimensions": 768
+    "dimensions": 768,
+    "http_timeout": "60s"
   },
   "nodes": {},
   "tools": {
@@ -55,5 +57,17 @@
   "write_memory": {
     "max_append_bytes": 65536,
     "max_file_bytes": 5242880
+  },
+  "vector_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": false
+  },
+  "jobs_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": true
   }
 }

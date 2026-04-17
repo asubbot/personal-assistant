@@ -1,9 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"pa/internal/runtimeskills"
+	"pa/internal/sqlitepragma"
 	"pa/internal/toolcatalog"
 	"regexp"
+	"strings"
+	"time"
 )
 
 // ConfigFileName is the name of the main config file inside the config directory (PA_CONFIG_DIR).
@@ -42,6 +46,93 @@ type Config struct {
 	WriteMemory *WriteMemoryConfig `json:"write_memory"`
 	// IntentClassifier is optional; when enabled, classifies messages into complexity tiers before prompt assembly (EP-017).
 	IntentClassifier *IntentClassifierConfig `json:"intent_classifier,omitempty"`
+	// VectorStoreReliability is required; configures SQLite PRAGMA policy for the vector store (EP-022, REQ-22.001).
+	VectorStoreReliability *SQLiteStoreReliabilityConfig `json:"vector_store_reliability"`
+	// JobsStoreReliability is required; configures SQLite PRAGMA policy for the scheduled-jobs store (EP-022, REQ-22.002).
+	JobsStoreReliability *SQLiteStoreReliabilityConfig `json:"jobs_store_reliability"`
+}
+
+// SQLiteStoreReliabilityConfig is the explicit per-store PRAGMA policy for Local SQLite Stores (EP-022).
+// Every field must be set in JSON; the loader fails fast on missing or invalid values (no hidden defaults).
+type SQLiteStoreReliabilityConfig struct {
+	JournalMode string `json:"journal_mode"` // e.g. "WAL"; required
+	BusyTimeout string `json:"busy_timeout"` // Go duration literal, e.g. "5s"; > 0 required
+	Synchronous string `json:"synchronous"`  // e.g. "NORMAL"; required
+	ForeignKeys *bool  `json:"foreign_keys"` // required; vector store must be false, jobs store must be true
+}
+
+// ToPolicy returns the sqlitepragma.Policy represented by this config block.
+// Callers must only invoke this after config.Load has succeeded: Load enforces
+// required fields, duration parseability, and non-nil foreign_keys. This
+// method therefore panics on any invariant violation — the panic documents an
+// unreachable code path when the config is obtained through the public Load
+// entry point.
+//
+// Design deviation from ep-system-design.md: the config struct keeps
+// `busy_timeout` and `http_timeout` as JSON strings (validated Go durations)
+// rather than typed `time.Duration` fields. Reason: keeping the JSON
+// boundary string-typed avoids a custom UnmarshalJSON on every duration
+// field and preserves round-trip readability of `config.json` dumps. The
+// parsed duration is re-derived at the few consumer sites through this
+// method (stores) or `parseHTTPTimeout` helpers (llm/embedding).
+func (c *SQLiteStoreReliabilityConfig) ToPolicy() sqlitepragma.Policy {
+	if c == nil {
+		panic("config: SQLiteStoreReliabilityConfig is nil (Load should have rejected this)")
+	}
+	if c.ForeignKeys == nil {
+		panic("config: SQLiteStoreReliabilityConfig.foreign_keys is nil (Load should have rejected this)")
+	}
+	d, err := time.ParseDuration(strings.TrimSpace(c.BusyTimeout))
+	if err != nil {
+		panic(fmt.Sprintf("config: SQLiteStoreReliabilityConfig.busy_timeout %q not parseable (Load should have rejected this): %v", c.BusyTimeout, err))
+	}
+	return sqlitepragma.Policy{
+		JournalMode: c.JournalMode,
+		BusyTimeout: d,
+		Synchronous: c.Synchronous,
+		ForeignKeys: *c.ForeignKeys,
+	}
+}
+
+// validateSQLiteStoreReliability validates a per-store reliability block. storeName is used in error messages.
+// wantForeignKeys is the required value for foreign_keys (jobs store: true; vector store: false).
+func validateSQLiteStoreReliability(store string, c *SQLiteStoreReliabilityConfig, wantForeignKeys bool) error {
+	if c == nil {
+		return fmt.Errorf("%s_store_reliability: block is required", store)
+	}
+	if strings.TrimSpace(c.JournalMode) == "" {
+		return fmt.Errorf("%s_store_reliability.journal_mode: required", store)
+	}
+	if strings.TrimSpace(c.BusyTimeout) == "" {
+		return fmt.Errorf("%s_store_reliability.busy_timeout: required", store)
+	}
+	d, err := time.ParseDuration(strings.TrimSpace(c.BusyTimeout))
+	if err != nil {
+		return fmt.Errorf("%s_store_reliability.busy_timeout: invalid duration %q: %w", store, c.BusyTimeout, err)
+	}
+	if d <= 0 {
+		return fmt.Errorf("%s_store_reliability.busy_timeout: must be > 0, got %s", store, d)
+	}
+	if strings.TrimSpace(c.Synchronous) == "" {
+		return fmt.Errorf("%s_store_reliability.synchronous: required", store)
+	}
+	if c.ForeignKeys == nil {
+		return fmt.Errorf("%s_store_reliability.foreign_keys: required (true or false)", store)
+	}
+	if *c.ForeignKeys != wantForeignKeys {
+		return fmt.Errorf("%s_store_reliability.foreign_keys: must be %t for %s store", store, wantForeignKeys, store)
+	}
+	return nil
+}
+
+// ValidateVectorStoreReliability validates the vector store reliability block (foreign_keys must be false).
+func (c *Config) ValidateVectorStoreReliability() error {
+	return validateSQLiteStoreReliability("vector", c.VectorStoreReliability, false)
+}
+
+// ValidateJobsStoreReliability validates the jobs store reliability block (foreign_keys must be true).
+func (c *Config) ValidateJobsStoreReliability() error {
+	return validateSQLiteStoreReliability("jobs", c.JobsStoreReliability, true)
 }
 
 // ReadMemoryConfig limits the native read_memory tool (EP-002). The tool is always registered when memory is configured.
@@ -159,6 +250,10 @@ type EmbeddingProvider struct {
 	Model      string `json:"model"`      // embedding model name
 	Dimensions int    `json:"dimensions"` // embedding vector size; must match model output
 	BatchSize  int    `json:"batch_size"` // required; max texts per batch for tool index embedding (REQ-04.021); must be 1–1000
+	// HTTPTimeout is the total per-request timeout for outbound embedding calls (EP-022, REQ-22.004).
+	// Required in config.json (Go duration literal, e.g. "60s"). When the struct is constructed directly
+	// in tests without going through config.Load, an empty value falls back to a documented reference.
+	HTTPTimeout string `json:"http_timeout"`
 }
 
 // Telegram holds Telegram bot configuration.
@@ -184,6 +279,10 @@ type LLMProvider struct {
 	DefaultMaxTokens      int     `json:"default_max_tokens"`      // required; provider default for completion requests (>= 1)
 	SupportsJSONMode      bool    `json:"supports_json_mode"`      // required; when true, provider supports response_format: json_object
 	DefaultResponseFormat string  `json:"default_response_format"` // required; "text" or "json_object"
+	// HTTPTimeout is the total per-request timeout for outbound LLM calls (EP-022, REQ-22.003).
+	// Required in config.json (Go duration literal, e.g. "120s"). When the struct is constructed
+	// directly in tests, an empty value falls back to a documented reference.
+	HTTPTimeout string `json:"http_timeout"`
 }
 
 // Paths holds paths for memory, logs, vector index, scheduled jobs, and optional tool catalog.

@@ -154,9 +154,9 @@ func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "legacy.json", "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
   "tools": { "text_based_enabled": false },
   "log_redaction": { "additional_patterns": [] },
@@ -164,7 +164,7 @@ func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -263,7 +263,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	cfgJSON := `{
 	  "version": 1,
 	  "telegram": { "token_path": "/run/secrets/token", "users_path": "" },
-	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" } ],
+	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" } ],
 	  "paths": {
 	    "memory_dir": "/data/memory",
 	    "log_path": "/data/pa.log",
@@ -273,7 +273,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	    "jobs_db_path": "jobs.sqlite",
 	    "tool_catalog_path": "nonexistent_catalog.yaml"
 	  },
-	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100 },
+	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
 	  "nodes": {},
 	  "tools": { "text_based_enabled": false },
 	  "log_redaction": { "additional_patterns": [] },
@@ -281,7 +281,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
 	  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
 	  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 	}`
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
 		t.Fatal(err)
@@ -372,9 +372,9 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
   "tools": { "text_based_enabled": false },
   "log_redaction": { "additional_patterns": [] },
@@ -382,7 +382,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -409,7 +409,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -420,7 +420,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "` + knownHostsRel + `"
   },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {
     "n1": {
       "host": "host.example.com",
@@ -435,7 +435,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -544,7 +544,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -555,7 +555,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "known_hosts"
   },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" }
@@ -566,7 +566,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -610,7 +610,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -621,7 +621,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "known_hosts"
   },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "key1" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "key2" }, "command_allowlist_path": "allow.txt" }
@@ -632,7 +632,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -678,7 +678,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -689,7 +689,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
     "tool_catalog_path": "tools.yaml",
     "ssh_known_hosts_path": "known_hosts"
   },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100 },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "real" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "alias" }, "command_allowlist_path": "allow.txt" }
@@ -700,7 +700,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
