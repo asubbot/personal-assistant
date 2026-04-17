@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-022 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Reliability hardening for local SQLite stores and outbound HTTP timeouts |
 | **Description** | Tighten reliability of local state (sqlite-vec and jobs DB) and outbound HTTP by setting explicit SQLite PRAGMAs, documenting the single-writer expectation, and auditing every outbound HTTP client for a bounded timeout. |
 | **First version date** | 2026-04-17 |
