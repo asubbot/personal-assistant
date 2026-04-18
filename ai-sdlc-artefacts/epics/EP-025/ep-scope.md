@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-025 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Test layout cleanup: E2E separation |
 | **Description** | Move end-to-end tests out of the main binary package into a dedicated end-to-end directory, gate them with a build tag, and split the make targets so unit and end-to-end coverage are reported separately. |
 | **First version date** | 2026-04-17 |

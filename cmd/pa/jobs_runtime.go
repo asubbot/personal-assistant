@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log/slog"
 	"pa/internal/core"
 	"pa/internal/jobs"
@@ -106,54 +104,6 @@ func (s *jobsRuntimeState) snapshot() (*jobs.Manager, bool, bool) {
 	return s.manager, s.ready, s.initErr != nil
 }
 
-type scheduledJobRunner struct {
-	handler core.MessageHandler
-	sender  chatSender
-	logger  *slog.Logger
-}
-
-func (r *scheduledJobRunner) Run(ctx context.Context, job jobs.Job) error {
-	if r.handler == nil {
-		return fmt.Errorf("scheduled job runner: handler is nil")
-	}
-	logger := r.logger
-	if logger == nil {
-		logger = slog.Default()
-	}
-	sessionKey := fmt.Sprintf("scheduled-job:%s", job.ID)
-	reply, err := r.handler.HandleMessage(ctx, job.DeliveryChatID, sessionKey, job.Instruction)
-	notifyCtx := context.WithoutCancel(ctx)
-	if err != nil {
-		if r.sender != nil {
-			msg := fmt.Sprintf("Scheduled job %s failed (%s).", job.ID, classifyJobFailure(err))
-			if sendErr := r.sender.SendMessageToChat(notifyCtx, job.DeliveryChatID, msg); sendErr != nil {
-				logger.Warn("scheduled job failure notification", "job_id", job.ID, "error", sendErr)
-			}
-		}
-		logger.Info("jobs audit", "actor_user_id", 0, "job_id", job.ID, "operation", "delivery", "outcome", "failure_notified")
-		return err
-	}
-	if r.sender != nil {
-		body := strings.TrimSpace(reply)
-		if body == "" {
-			body = "(empty response)"
-		}
-		msg := fmt.Sprintf("Scheduled job %s result:\n%s", job.ID, body)
-		if sendErr := r.sender.SendMessageToChat(notifyCtx, job.DeliveryChatID, msg); sendErr != nil {
-			logger.Warn("scheduled job result notification", "job_id", job.ID, "error", sendErr)
-		}
-	}
-	logger.Info("jobs audit", "actor_user_id", 0, "job_id", job.ID, "operation", "delivery", "outcome", "success_notified")
-	return nil
-}
-
-func classifyJobFailure(err error) string {
-	if errors.Is(err, context.DeadlineExceeded) {
-		return "timeout"
-	}
-	return "execution_error"
-}
-
 func startJobsRuntimeLoop(ctx context.Context, rt *jobs.Runtime, logger *slog.Logger) {
 	if rt == nil {
 		return
@@ -195,11 +145,7 @@ func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath s
 			return
 		}
 		logger.Info("scheduled jobs runtime enabled", "jobs_db_path", dbPath, "jobs_loaded", len(all))
-		runner := &scheduledJobRunner{
-			handler: baseHandler,
-			sender:  sender,
-			logger:  logger,
-		}
+		runner := jobs.NewDeliveryRunner(baseHandler, sender, logger)
 		runtime := jobs.NewRuntime(st, runner, jobs.RuntimeConfig{
 			RunTimeout: 5 * time.Minute,
 			Logger:     logger,
