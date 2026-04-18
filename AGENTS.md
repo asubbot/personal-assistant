@@ -14,7 +14,7 @@ Instructions for AI agents working in a **git-backed software repository**.
 ## Principles
 - **KISS** — prefer the smallest change that solves the problem; avoid unnecessary abstraction and scope creep.
 - **Fail fast** — detect invalid state and errors early; do not swallow failures without a clear, documented reason.
-- **Explicit JSON configuration** — product **`config.json`** must list **every** documented top-level key exactly once. The allowed set is enforced at load (`internal/config`, `validateConfigRootObjectKeys` / `ConfigRootJSONKeys`). Optional product blocks are **disabled with JSON `null`**, not by omitting the key. Unknown top-level keys are rejected. Missing keys, invalid values, or structural drift must fail **config load** so the process does not start with an implicit or partial configuration.
+- **Explicit JSON configuration** — product **`config.json`** must list **every** documented top-level key exactly once. Optional product blocks are **disabled with JSON `null`**, not by omitting the key. Unknown top-level keys are rejected. Missing keys, invalid values, or structural drift must fail **config load** so the process does not start with an implicit or partial configuration.
 - **nolint:gocyclo** - DO NOT use nolint:gocyclo
 
 ## Language
