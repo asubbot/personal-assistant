@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-026 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Core refactor: tier builders in conversation handler |
 | **Description** | Refactor the conversation handler so each prompt tier (simple, full-lite, full) is produced by an explicit builder with a single entry point, removing duplicated branches and making the tier contract testable on its own. |
 | **First version date** | 2026-04-17 |
