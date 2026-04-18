@@ -1,0 +1,18 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-025 C4 Level 1 — Test layout and E2E separation
+
+Person(dev, "Developer", "Runs make check")
+System_Ext(ci, "CI", "GitHub Actions")
+System(repo, "Repository", "Go module pa")
+System(unit, "Unit + integration tests", "go test -tags=integration")
+System(e2e, "End-to-end tests", "go test -tags=integration,e2e ./tests/e2e")
+
+Rel(dev, repo, "Edits")
+Rel(dev, unit, "make test / make coverage")
+Rel(dev, e2e, "make test-e2e")
+Rel(ci, unit, "make check (includes test-race + coverage)")
+Rel(ci, e2e, "make check (includes test-e2e)")
+
+@enduml

@@ -50,7 +50,7 @@ func (m *mockMessageHandler) HandleMessage(_ context.Context, _ int64, _ string,
 func TestScheduledJobRunner_SuccessSendsResult(t *testing.T) {
 	handler := &mockMessageHandler{reply: "Digest body"}
 	sender := &mockChatSender{}
-	r := &scheduledJobRunner{handler: handler, sender: sender}
+	r := jobs.NewDeliveryRunner(handler, sender, nil)
 	job := jobs.Job{ID: "job-1", DeliveryChatID: 7, Instruction: "collect digest"}
 
 	if err := r.Run(context.Background(), job); err != nil {
@@ -69,7 +69,7 @@ func TestScheduledJobRunner_SuccessSendsResult(t *testing.T) {
 func TestScheduledJobRunner_FailureSendsFailureClass(t *testing.T) {
 	handler := &mockMessageHandler{err: errors.New("boom")}
 	sender := &mockChatSender{}
-	r := &scheduledJobRunner{handler: handler, sender: sender}
+	r := jobs.NewDeliveryRunner(handler, sender, nil)
 	job := jobs.Job{ID: "job-2", DeliveryChatID: 9, Instruction: "collect digest"}
 
 	err := r.Run(context.Background(), job)

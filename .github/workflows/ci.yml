@@ -48,6 +48,8 @@ jobs:
             echo ""
             go tool cover -func=coverage.out | tail -1
             echo ""
+            echo "**Layers:** default \`coverage.out\` is from \`go test -tags=integration ./...\` (unit + integration, excludes \`//go:build e2e\` tests). End-to-end jobs flows run in \`make check\` via \`make test-e2e\` (\`./tests/e2e/...\`). E2E-only profile: \`make coverage-e2e\` → \`coverage-e2e.out\`."
+            echo ""
             echo "Artifact **coverage-out** contains \`coverage.out\`. View HTML locally: \`go tool cover -html=coverage.out -o coverage.html\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
