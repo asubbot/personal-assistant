@@ -1,0 +1,13 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-027 C4 Level 2 — Infrastructure vs application
+
+Container_Boundary(root, "cmd/pa") {
+  Container(inf, "buildPAInfrastructure", "paInfrastructure", "Adapter, vectors, indices, embedder")
+  Container(app, "paApplication", "Application", "LLM stack, registry, handler, jobs state")
+}
+
+Rel(app, inf, "Owns + Close")
+
+@enduml

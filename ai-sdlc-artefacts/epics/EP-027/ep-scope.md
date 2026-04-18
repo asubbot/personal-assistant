@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-027 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Composition root and application lifecycle |
 | **Description** | Split the main binary startup wiring into subsystem constructors and introduce an explicit application type that owns lifecycle and teardown, so adding a new subsystem no longer grows a single wiring function. |
 | **First version date** | 2026-04-17 |

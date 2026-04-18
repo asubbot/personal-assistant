@@ -11,8 +11,12 @@ const creationPathNativeToolExplicit = "native_tool_explicit"
 
 // CreateScheduledJobTool is the native tool for creating a daily scheduled job with explicit parameters.
 type CreateScheduledJobTool struct {
-	manager       *Manager
+	manager *Manager
+	// managerLookup returns the manager when wired without async readiness (tests, simple wiring).
 	managerLookup func() *Manager
+	// runtimeLookup returns (manager, ready, initFailed) from the same snapshot as the jobs command handler;
+	// when manager is nil, Run returns a soft user message for !ready or initFailed (EP-027).
+	runtimeLookup func() (*Manager, bool, bool)
 }
 
 func NewCreateScheduledJobTool(manager *Manager) *CreateScheduledJobTool {
@@ -21,6 +25,13 @@ func NewCreateScheduledJobTool(manager *Manager) *CreateScheduledJobTool {
 
 func NewCreateScheduledJobToolWithLookup(lookup func() *Manager) *CreateScheduledJobTool {
 	return &CreateScheduledJobTool{managerLookup: lookup}
+}
+
+// NewCreateScheduledJobToolWithRuntimeLookup wires the tool to a live jobs runtime snapshot.
+// When the manager is nil and ready is false, the tool returns a soft "initializing" message instead of a hard error.
+// When ready is true and initFailed is true, it returns a soft "unavailable" message.
+func NewCreateScheduledJobToolWithRuntimeLookup(lookup func() (*Manager, bool, bool)) *CreateScheduledJobTool {
+	return &CreateScheduledJobTool{runtimeLookup: lookup}
 }
 
 func (t *CreateScheduledJobTool) Name() string { return "create_scheduled_job" }
@@ -41,7 +52,10 @@ func (t *CreateScheduledJobTool) ParamsSchema() []tools.ParamSpec {
 }
 
 func (t *CreateScheduledJobTool) Run(ctx context.Context, params map[string]any) (string, error) {
-	manager := t.resolveManager()
+	manager, soft := t.resolveForRun()
+	if soft != "" {
+		return soft, nil
+	}
 	if t == nil || manager == nil {
 		return "", fmt.Errorf("jobs: create_scheduled_job: not configured")
 	}
@@ -114,17 +128,34 @@ func parseCreateScheduledJobArgs(ctx context.Context, params map[string]any) (cr
 	}, "", nil
 }
 
-func (t *CreateScheduledJobTool) resolveManager() *Manager {
+func (t *CreateScheduledJobTool) resolveForRun() (mgr *Manager, soft string) {
 	if t == nil {
-		return nil
+		return nil, ""
 	}
 	if t.manager != nil {
-		return t.manager
+		return t.manager, ""
+	}
+	if t.runtimeLookup != nil {
+		m, ready, failed := t.runtimeLookup()
+		if m != nil {
+			return m, ""
+		}
+		if !ready {
+			return nil, "Scheduler is initializing. Please retry shortly."
+		}
+		if failed {
+			return nil, "Scheduler is unavailable due to initialization error."
+		}
+		return nil, ""
 	}
 	if t.managerLookup == nil {
-		return nil
+		return nil, ""
 	}
-	return t.managerLookup()
+	m := t.managerLookup()
+	if m == nil {
+		return nil, ""
+	}
+	return m, ""
 }
 
 func intFromParam(v any) (int, bool) {
