@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-024 C4 Level 1 — Operator documentation and logging defaults
+
+Person(operator, "Operator", "Configures and runs PersonalAssistant")
+System_Ext(llm, "LLM APIs", "HTTPS chat completions")
+System(pa, "PersonalAssistant", "Go process pa")
+System_Ext(docs, "Operator documentation", "Markdown under docs/")
+
+Rel(operator, docs, "Reads provider roles and logging guidance")
+Rel(operator, pa, "Supplies config.json and env (PA_LOG_LEVEL, PA_ENV)")
+Rel(pa, llm, "Uses configured providers")
+Rel(docs, pa, "Describes behaviour (reference only)")
+
+@enduml

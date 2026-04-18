@@ -49,5 +49,6 @@ COPY --chmod=755 scripts/entrypoint.sh /entrypoint.sh
 COPY --from=builder /pa /pa
 COPY --chmod=755 scripts/summarize.sh /usr/local/bin/summarize.sh
 ENV PA_CONFIG_DIR=/etc/pa
+ENV PA_LOG_LEVEL=info
 ENTRYPOINT ["/entrypoint.sh"]
 CMD []

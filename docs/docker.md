@@ -64,14 +64,14 @@ Add more secret files and `secrets:` entries for any other relative `*_path` val
 
 ## Environment variables in the container
 
-Compose loads an optional **`.env`** file next to `docker-compose.yml` into the **`pa`** service (`env_file` with `required: false`). Copy **[.env.example](../.env.example)** to **`.env`** and set variables there (e.g. `PA_LOG_LEVEL=debug`). Keys listed under **`environment:`** in **`docker-compose.yml`** still **override** the same names from `.env` so container paths stay correct (`PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`).
+Compose loads an optional **`.env`** file next to `docker-compose.yml` into the **`pa`** service (`env_file` with `required: false`). Copy **[.env.example](../.env.example)** to **`.env`** and set variables there (e.g. `PA_LOG_LEVEL=debug` for trusted diagnostics). Keys listed under **`environment:`** in **`docker-compose.yml`** still **override** the same names from `.env` so container paths stay correct (`PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`). The **`pa`** service sets `PA_LOG_LEVEL=${PA_LOG_LEVEL:-info}` so the default application log level is **`info`** when you do not override it; the runtime image also ships with **`ENV PA_LOG_LEVEL=info`**. See **[llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md)** for sensitive logging behaviour.
 
 | Variable | Typical value | Notes |
 |----------|---------------|--------|
 | `PA_CONFIG_DIR` | `/etc/pa` | Set in Compose (overrides `.env`). |
 | `PA_DATA_DIR` | `/data` | Set in Compose (overrides `.env`). |
 | `PA_SECRETS_DIR` | `/run/secrets` | Set in Compose (overrides `.env`). |
-| `PA_LOG_LEVEL` | (unset → app default `info`) | From `.env` if set; use `debug` only on trusted hosts (full LLM bodies in logs). |
+| `PA_LOG_LEVEL` | `info` (default via Compose and image `ENV`) | Override from `.env` when needed; use `debug` only on trusted hosts (full LLM bodies in application logs — see [llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md)). |
 | `TZ` | e.g. `Europe/Lisbon` | **Optional but recommended** so in-container cron’s “yesterday” / “last month” / “last year” match `pa_timezone` in config. Default in entrypoint is `UTC`. |
 
 ## In-container summarization (cron)

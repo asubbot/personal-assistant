@@ -96,6 +96,22 @@ func logLevelFromEnv() slog.Level {
 	return l
 }
 
+func paEnvIsDevelopment() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("PA_ENV")), "development")
+}
+
+// warnSensitiveLLMLogging emits one WARN when application logging is at debug and PA_ENV
+// is not set to "development" (REQ-24.008). Full LLM bodies in logs are enabled at debug.
+func warnSensitiveLLMLogging(logger *slog.Logger, level slog.Level) {
+	if logger == nil || level != slog.LevelDebug {
+		return
+	}
+	if paEnvIsDevelopment() {
+		return
+	}
+	logger.Warn("sensitive diagnostic logging: PA_LOG_LEVEL=debug may log full LLM request and response bodies in application logs; treat logs as highly sensitive. Use PA_LOG_LEVEL=info in production, or set PA_ENV=development only on trusted diagnostic hosts.")
+}
+
 func main() {
 	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
@@ -107,6 +123,7 @@ func main() {
 
 	logLevel := logLevelFromEnv()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	warnSensitiveLLMLogging(logger, logLevel)
 	cfg, err := config.Load(configFilePath)
 	if err != nil {
 		logger.Error("load config", "error", err)

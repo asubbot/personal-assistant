@@ -50,3 +50,4 @@ services:
       - PA_CONFIG_DIR=/etc/pa
       - PA_DATA_DIR=/data
       - PA_SECRETS_DIR=/run/secrets
+      - PA_LOG_LEVEL=${PA_LOG_LEVEL:-info}
