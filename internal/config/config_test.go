@@ -107,7 +107,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing auth", "invalid_auth.json", "nodes.node1.auth.private_key_path is required"},
 		{"missing dedicated_user", "missing_dedicated_user.json", "nodes.n1.dedicated_user is required"},
 		{"missing command_allowlist_path", "missing_command_allowlist.json", "nodes.n1.command_allowlist_path is required"},
-		{"missing embedding", "missing_embedding.json", "embedding is required"},
+		{"missing embedding", "missing_embedding.json", "top-level key \"embedding\""},
 		{"invalid pa_timezone", "invalid_pa_timezone.json", "invalid pa_timezone"},
 		{"llm_log_retention_days < 1", "llm_log_retention_zero.json", "llm_log_retention_days must be >= 1"},
 		{"nodes without ssh_known_hosts_path", "nodes_missing_ssh_known_hosts_path.json", "paths.ssh_known_hosts_path is required when nodes are configured"},
@@ -117,12 +117,12 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing supports_tools", "missing_supports_tools.json", "supports_tools is required"}, // Covers AC-04.028 (REQ-04.034)
 		{"tools.llm_escalation enabled with one provider", "tools_llm_escalation_enabled_one_provider.json", "tools.llm_escalation.enabled requires at least two llm_providers"},
 		{"tools.llm_escalation enabled max_per_user_message zero", "tools_llm_escalation_max_zero.json", "max_per_user_message must be >= 1 when enabled"},
-		{"missing tools section", "missing_tools.json", "tools is required"},
-		{"missing read_memory", "missing_read_memory.json", "read_memory is required"},
-		{"missing write_memory", "missing_write_memory.json", "write_memory is required"},
+		{"missing tools section", "missing_tools.json", "top-level key \"tools\""},
+		{"missing read_memory", "missing_read_memory.json", "top-level key \"read_memory\""},
+		{"missing write_memory", "missing_write_memory.json", "top-level key \"write_memory\""},
 		{"dynamic_selection enabled max zero", "tools_dynamic_selection_enabled_max_zero.json", "max_tools_for_llm_request must be >= 1"},
-		{"missing log_redaction section", "missing_log_redaction.json", "log_redaction is required"},
-		{"missing pa_timezone", "missing_pa_timezone.json", "pa_timezone is required"},
+		{"missing log_redaction section", "missing_log_redaction.json", "top-level key \"log_redaction\""},
+		{"missing pa_timezone", "missing_pa_timezone.json", "top-level key \"pa_timezone\""},
 		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
 		{"conversation_context zero max runes", "conversation_context_zero.json", "max_dynamic_system_runes must be >= 1"},
 		// EP-008: reject invalid LLM default_* / supports_json_mode at load (prerequisite for REQ-08.001–008.007).
@@ -147,6 +147,17 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 }
 
+func TestLoad_UnknownTopLevelKey_ReturnsError(t *testing.T) {
+	path := filepath.Join("testdata", "unknown_root_key.json")
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "unknown top-level key") || !strings.Contains(err.Error(), "foo") {
+		t.Fatalf("Load: error = %v, want unknown top-level key mentioning foo", err)
+	}
+}
+
 // Covers AC-19.019: legacy paths.scheduled_tasks_path is rejected even when other fields are valid.
 func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
 	cfgDir := t.TempDir()
@@ -164,7 +175,7 @@ func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -281,7 +292,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
 	  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
 	  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
+	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 	}`
 	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
 		t.Fatal(err)
@@ -382,7 +393,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -435,7 +446,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("setup: %v", err)
@@ -566,7 +577,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -632,7 +643,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
@@ -700,7 +711,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatal(err)

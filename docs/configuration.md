@@ -5,6 +5,7 @@
 - The application loads **`config.json`** from the directory set by **`PA_CONFIG_DIR`** (default `./.config`).
 - The full path is always `<PA_CONFIG_DIR>/config.json`. The filename is fixed in code (`config.ConfigFileName`).
 - **Explicit keys (fail fast):** the loader does **not** back-fill omitted tuning fields with hidden defaults. Every JSON-backed knob the product validates must appear in **`config.json`** with an explicit value (for example **`read_memory`**, **`write_memory`**, and when **`runtime_skills`** is present, **`max_skills_per_turn`** and **`tool_vector_top_k_cap`**). **`PA_CONFIG_DIR` / `PA_DATA_DIR` / `PA_SECRETS_DIR`** only anchor relative paths; they do not replace missing JSON sections.
+- **Exhaustive top-level object:** the root of **`config.json`** must contain exactly the documented top-level keys (no omissions, no extras). Disabled optional sections use JSON **`null`**. The canonical key list is maintained in code (`config.ConfigRootJSONKeys()` / `config.ExplainConfigRootKeysForDocs()` for tooling and docs).
 
 Start from the checked-in templates in **`config.examples/`** (copy into **`.config/`**, which is gitignored):
 
@@ -62,6 +63,7 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 - **`log_redaction`** — **required**; `additional_patterns` may be an empty array. Each pattern has `id`, `regex`, `replacement`; IDs must not collide with built-in redactor IDs.
 - **`vector_store_reliability`** / **`jobs_store_reliability`** — **required** (EP-022). Explicit per-store SQLite PRAGMA policy; see [Local SQLite stores: reliability policy](#local-sqlite-stores-reliability-policy-ep-022) below.
 - **`llm_providers[].http_timeout`**, **`embedding.http_timeout`** — **required** (EP-022). Per-request total HTTP timeout for outbound calls (Go duration literal, e.g. `"120s"`). See [Outbound HTTP timeouts](#outbound-http-timeouts-ep-022) below.
+- **`observability_http`** — **optional** (EP-029). When the object is present, **every** field is required: `listen_address` (TCP bind, e.g. `127.0.0.1:9090`), `health_path` and `readiness_path` (absolute paths starting with `/`, must differ), and boolean `probe_llm` (when `true`, readiness performs a short completion probe against the first configured LLM provider). When the object is **absent** (JSON `null` at the root key), the process does not start an observability HTTP listener. Operator usage: [observability-http.md](observability-http.md).
 
 ### Local SQLite stores: reliability policy (EP-022)
 

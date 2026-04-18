@@ -1,0 +1,16 @@
+@startuml ep029_c4_context
+!include <C4/C4_Context>
+
+title EP-029 C4 Level 1 — Operator observability
+
+Person(operator, "Operator", "Runs Docker / k8s probes")
+System_Ext(orch, "Orchestrator", "HTTP health/readiness checks")
+
+System_Boundary(pa, "pa process") {
+  System(obs, "Observability HTTP", "Optional listener: health + readiness")
+}
+
+Rel(operator, obs, "curl / metrics")
+Rel(orch, obs, "GET health / GET readiness")
+
+@enduml

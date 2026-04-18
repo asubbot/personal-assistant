@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-029 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Health, readiness and operator observability surface |
 | **Description** | Expose an optional HTTP surface with health and readiness endpoints that depend on real process state, and emit structured lifecycle events from background workers so operators can reason about liveness without grepping logs. |
 | **First version date** | 2026-04-17 |

@@ -62,5 +62,10 @@
     "busy_timeout": "5s",
     "synchronous": "NORMAL",
     "foreign_keys": true
-  }
+  },
+  "intent_classifier": null,
+  "observability_http": null,
+  "web_tools": null,
+  "runtime_skills": null,
+  "conversation_session": null
 }

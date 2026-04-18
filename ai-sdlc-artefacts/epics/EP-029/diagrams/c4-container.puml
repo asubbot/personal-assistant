@@ -1,0 +1,19 @@
+@startuml ep029_c4_container
+!include <C4/C4_Container>
+
+title EP-029 C4 Level 2 — Containers inside pa
+
+Person(operator, "Operator", "Probes and log shipping")
+
+Container_Boundary(proc, "pa process") {
+  Container(main, "cmd/pa", "Go", "Composition root; Telegram adapter")
+  Container(obs, "Observability HTTP", "Go net/http", "Optional mux: health + readiness")
+  Container(readiness, "Readiness evaluator", "Go", "Aggregates paApplication state")
+}
+
+Rel(operator, obs, "HTTP GET", "TCP")
+Rel(main, obs, "Starts when observability_http set")
+Rel(obs, readiness, "readiness path")
+Rel(main, readiness, "evalReadiness")
+
+@enduml

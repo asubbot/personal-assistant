@@ -189,6 +189,9 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 		return err
 	}
 
+	shutdownObservability := startObservabilityHTTPServer(ctx, cfg, app, logger)
+	defer shutdownObservability()
+
 	logger.Info("starting", "adapter", "telegram", "model", mainConversationModelName(cfg))
 	return app.infra.Adapter.Run(ctx, handler)
 }
@@ -482,8 +485,9 @@ func newToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.
 	idx := toolindex.NewIndex(toolVectorStore)
 	catalog := cfg.ToolCatalog
 	go func() {
+		t0 := time.Now()
 		err := idx.BuildAndSetReady(context.Background(), catalog, embedder)
-		toolindex.LogBuildOutcome(logger, len(catalog.Tools), err)
+		toolindex.LogBuildOutcome(logger, len(catalog.Tools), time.Since(t0), err)
 	}()
 	return idx, nil
 }

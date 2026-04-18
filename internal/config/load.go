@@ -39,13 +39,16 @@ func Load(path string) (*Config, error) {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-	if err := prepareConfig(&raw, path); err != nil {
+	if err := prepareConfig(&raw, path, data); err != nil {
 		return nil, err
 	}
 	return &raw, nil
 }
 
-func prepareConfig(raw *Config, path string) error {
+func prepareConfig(raw *Config, path string, rootJSON []byte) error {
+	if err := validateConfigRootObjectKeys(rootJSON); err != nil {
+		return err
+	}
 	if err := validate(raw); err != nil {
 		return err
 	}
@@ -181,7 +184,41 @@ func validateMandatoryJSONSectionsCore(c *Config) error {
 	if err := validateLLMEscalation(c); err != nil {
 		return err
 	}
-	return validateWebTools(c)
+	if err := validateWebTools(c); err != nil {
+		return err
+	}
+	return validateObservabilityHTTP(c)
+}
+
+func validateObservabilityHTTP(c *Config) error {
+	if c == nil || c.ObservabilityHTTP == nil {
+		return nil
+	}
+	o := c.ObservabilityHTTP
+	if strings.TrimSpace(o.ListenAddress) == "" {
+		return errors.New("config: observability_http.listen_address is required when observability_http is set")
+	}
+	if err := validateObservabilityPath("observability_http.health_path", o.HealthPath); err != nil {
+		return err
+	}
+	if err := validateObservabilityPath("observability_http.readiness_path", o.ReadinessPath); err != nil {
+		return err
+	}
+	if strings.TrimSpace(o.HealthPath) == strings.TrimSpace(o.ReadinessPath) {
+		return errors.New("config: observability_http.health_path and observability_http.readiness_path must differ")
+	}
+	return nil
+}
+
+func validateObservabilityPath(field, p string) error {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return fmt.Errorf("config: %s is required when observability_http is set", field)
+	}
+	if !strings.HasPrefix(p, "/") {
+		return fmt.Errorf("config: %s must start with /", field)
+	}
+	return nil
 }
 
 func validateReadMemory(c *Config) error {

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"pa/internal/core"
 	"pa/internal/jobs"
+	"pa/internal/lifecyclelog"
 	"pa/internal/sqlitepragma"
 	"strconv"
 	"strings"
@@ -129,17 +130,20 @@ func startJobsRuntimeLoop(ctx context.Context, rt *jobs.Runtime, logger *slog.Lo
 
 func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath string, policy sqlitepragma.Policy, defaultTimeZone string, sender chatSender, baseHandler core.MessageHandler, logger *slog.Logger) {
 	go func() {
+		t0 := time.Now()
 		openCtx := context.WithoutCancel(ctx)
 		//nolint:contextcheck // jobs.Open currently does not accept context.
 		st, err := jobs.Open(dbPath, policy)
 		if err != nil {
 			logger.Error("scheduled jobs init", "error", err)
+			lifecyclelog.Error(logger, "jobs_runtime", "init", time.Since(t0), err, "lifecycle", "jobs_db_path", dbPath)
 			state.setInitError(err)
 			return
 		}
 		all, err := st.ListJobs(openCtx)
 		if err != nil {
 			logger.Error("scheduled jobs init list", "error", err)
+			lifecyclelog.Error(logger, "jobs_runtime", "init", time.Since(t0), err, "lifecycle", "jobs_db_path", dbPath)
 			_ = st.Close()
 			state.setInitError(err)
 			return
@@ -154,6 +158,7 @@ func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath s
 		manager.SetDefaultTimeZone(defaultTimeZone)
 		startJobsRuntimeLoop(ctx, runtime, logger)
 		state.setReady(manager)
+		lifecyclelog.Info(logger, "jobs_runtime", "init", time.Since(t0), "lifecycle", "jobs_db_path", dbPath, "jobs_loaded", len(all))
 		go func() {
 			<-ctx.Done()
 			_ = st.Close()

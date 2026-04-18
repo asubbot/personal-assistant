@@ -50,6 +50,17 @@ type Config struct {
 	VectorStoreReliability *SQLiteStoreReliabilityConfig `json:"vector_store_reliability"`
 	// JobsStoreReliability is required; configures SQLite PRAGMA policy for the scheduled-jobs store (EP-022, REQ-22.002).
 	JobsStoreReliability *SQLiteStoreReliabilityConfig `json:"jobs_store_reliability"`
+	// ObservabilityHTTP is optional; when non-null in JSON, the main process serves operator health/readiness HTTP (EP-029). All fields in the object are required when present (no implicit defaults).
+	ObservabilityHTTP *ObservabilityHTTPConfig `json:"observability_http,omitempty"`
+}
+
+// ObservabilityHTTPConfig enables the optional HTTP listener for health and readiness (EP-029).
+// Every field must appear in JSON when observability_http is present.
+type ObservabilityHTTPConfig struct {
+	ListenAddress string `json:"listen_address"`
+	HealthPath    string `json:"health_path"`
+	ReadinessPath string `json:"readiness_path"`
+	ProbeLLM      bool   `json:"probe_llm"`
 }
 
 // SQLiteStoreReliabilityConfig is the explicit per-store PRAGMA policy for Local SQLite Stores (EP-022).
