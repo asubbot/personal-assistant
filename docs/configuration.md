@@ -23,6 +23,7 @@ These are read at process start; they control how **relative paths** in JSON are
 | `PA_DATA_DIR` | `.` | Base for **relative** `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, `jobs_db_path`. |
 | `PA_SECRETS_DIR` | `.` | Base for **relative** `token_path`, `users_path`, LLM/embedding `api_key_path`, node `private_key_path`. |
 | `PA_LOG_LEVEL` | `info` | Log level for application output (`slog`). Invalid values fall back to `info`. At **`debug`**, the conversation handler logs full LLM request/response (sensitive — use only when needed). |
+| `PA_ENV` | (unset) | Set to `development` (case-insensitive) to acknowledge intentional **diagnostic** sessions when using `PA_LOG_LEVEL=debug` on trusted hosts; suppresses the sensitive-logging startup warning. See [llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md). |
 
 **Absolute paths** in JSON are used as-is (no joining with the bases above).
 
@@ -37,7 +38,7 @@ These are read at process start; they control how **relative paths** in JSON are
 Exact validation rules are enforced in `internal/config` at load time (fail fast).
 
 - **`telegram`** — `token_path`, `users_path`, optional `notify_chat_id`, `max_message_length`.
-- **`llm_providers`** — ordered list; at least one provider is required. Each entry has `type`, `endpoint`, `model`, optional `api_key_path`, `supports_tools`.
+- **`llm_providers`** — ordered list; at least one provider is required. Each entry has `type`, `endpoint`, `model`, optional `api_key_path`, `supports_tools`. How indices map to main chat, summarization, escalation, and how the intent classifier differs, is described in **[llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md)**.
 - **`embedding`** — separate provider for memory embeddings (vector index).
 - **`paths`** — `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, **`llm_log_retention_days`** (required, ≥ 1), `jobs_db_path`, `ssh_known_hosts_path`, `tool_catalog_path`.
 - **`nodes`** — named nodes with `host`, `port`, `dedicated_user`, `auth.private_key_path`, `command_allowlist_path`. The allowlist file is one pattern per line: exact command string, or a line whose **only** `*` is the **final** character (prefix wildcard; the prefix is the text before `*`, including any trailing space — e.g. `docker images *` requires an argument after `images`, while `docker images*` matches bare `docker images`). Lines with bare `*`, multiple `*`, or `*` not at the end fail load. Executed commands must also satisfy the remote command character policy (letters, numbers, Mn/Mc, fixed ASCII punctuation including space and `"` — see [nas_allowlist.example](../config.examples/nas_allowlist.example) header); tab and shell metacharacters are rejected before SSH. EP-009 `create_tool` validates a whitelisted `docker run` prefix and a 30s timeout substring; operators SHOULD add Docker resource flags (e.g. `--memory=256m`, `--cpus=0.5`) in templates for production sandboxes. When **two or more** nodes are configured, each must use a **different** private key file after resolving `PA_SECRETS_DIR` and `filepath.Clean` (including no two nodes pointing at the same file via symlink or hard link); otherwise config load fails fast.

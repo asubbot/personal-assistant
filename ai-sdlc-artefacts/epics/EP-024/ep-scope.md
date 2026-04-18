@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-024 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Operator documentation for provider roles and safe logging defaults |
 | **Description** | Close two operator-visible gaps: document the mapping between the LLM provider pool and the roles it serves (main chat, escalation, summarize, intent classifier), and set safe logging defaults for production so that verbose LLM I/O is opt-in and explicit. |
 | **First version date** | 2026-04-17 |

@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-024 C4 Level 2 — Containers (documentation and startup policy)
+
+Person(operator, "Operator", "Reads docs, sets env")
+Container_Boundary(c1, "Repository") {
+  Container(docs_tree, "docs/", "Markdown", "Provider roles + logging policy")
+  Container(docker_files, "Docker / Compose", "Container defaults", "PA_LOG_LEVEL=info")
+  Container(pa_bin, "pa binary", "Go", "Startup log policy; LLM routing")
+}
+System_Ext(llm, "LLM APIs", "HTTPS")
+
+Rel(operator, docs_tree, "Reads", "HTTPS / git checkout")
+Rel(operator, docker_files, "Deploys", "compose up")
+Rel(docker_files, pa_bin, "Runs", "ENV PA_LOG_LEVEL=info")
+Rel(operator, pa_bin, "Configures", "config.json + secrets")
+Rel(pa_bin, llm, "Calls", "llm_providers + optional classifier provider")
+
+@enduml
