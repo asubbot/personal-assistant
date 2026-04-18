@@ -14,24 +14,20 @@ import (
 	"pa/internal/core"
 	"pa/internal/embedding"
 	"pa/internal/intent"
-	"pa/internal/jobs"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
 	"pa/internal/memory"
-	"pa/internal/memoryjob"
 	"pa/internal/noderunner"
 	"pa/internal/skillindex"
 	"pa/internal/ssh"
 	"pa/internal/summarize"
-	"pa/internal/telegram"
 	"pa/internal/toolindex"
 	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -161,35 +157,18 @@ func main() {
 	}
 }
 
-// runServer sets up adapter, stores, LLM, scheduler and runs the core until context is canceled.
-//
-//nolint:gocyclo // sequential startup wiring and teardown branches
+// runServer constructs the application from config, then runs the adapter until context is canceled.
 func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error {
-	adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, err := setup(cfg, configPath, logger)
+	app, err := newPAApplication(cfg, configPath, logger)
 	if err != nil {
 		return err
 	}
-	warnIfNodesSSHUnreachable(context.Background(), cfg, logger)
-	defer func() {
-		if memVec != nil {
-			if closeErr := memVec.Close(); closeErr != nil {
-				logger.Error("close memory vector stores", "error", closeErr)
-			}
-		}
-		if toolIndex != nil {
-			if closeErr := toolIndex.Close(); closeErr != nil {
-				logger.Error("close tool index", "error", closeErr)
-			}
-		}
-		if skillIndex != nil {
-			if closeErr := skillIndex.Close(); closeErr != nil {
-				logger.Error("close skill index", "error", closeErr)
-			}
-		}
-	}()
+	defer app.Close()
+	defer app.stopMemorySummarization()
 
-	llmProviders, llmLabels, summarizeLLM, err := buildAppLLM(cfg, logger)
-	if err != nil {
+	warnIfNodesSSHUnreachable(context.Background(), cfg, logger)
+
+	if err := app.startLLMProviders(); err != nil {
 		return err
 	}
 	logLLMStartupInfo(cfg, logger)
@@ -197,116 +176,21 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	var memJob *memoryjob.Runner
-	if memoryStore != nil && strings.TrimSpace(cfg.Paths.LLMLogDir) != "" &&
-		embedder != nil && memVec != nil && memVec.Summaries != nil {
-		paLoc, locErr := config.PALocation(cfg)
-		if locErr != nil {
-			return fmt.Errorf("memory summarization pa_timezone: %w", locErr)
-		}
-		memJob = memoryjob.Start(ctx, memoryjob.Deps{
-			Cfg:         cfg,
-			Loc:         paLoc,
-			Memory:      memoryStore,
-			Vector:      memVec.Summaries,
-			Embedder:    embedder,
-			LLMProvider: summarizeLLM,
-			Logger:      logger,
-		})
-		logger.Info("memory summarization worker started")
-	}
-
-	toolRegistry := tools.NewRegistry()
-	var jobsState *jobsRuntimeState
-	if cfg.Paths.JobsDBPath != "" {
-		jobsState = &jobsRuntimeState{}
-		toolRegistry.Register(jobs.NewCreateScheduledJobToolWithLookup(func() *jobs.Manager {
-			if jobsState == nil {
-				return nil
-			}
-			mgr, ready, initFailed := jobsState.snapshot()
-			if !ready || initFailed {
-				return nil
-			}
-			return mgr
-		}))
-	}
-	if nodeRunner != nil {
-		toolRegistry.Register(tools.NewRunOnNode(nodeRunner))
-	}
-	absCatalog, err := filepath.Abs(cfg.Paths.ToolCatalogPath)
-	if err != nil {
-		return fmt.Errorf("tool catalog path: %w", err)
-	}
-	var createToolMu sync.Mutex
-	if cfg.ToolCatalog != nil {
-		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
-	}
-	if err := registerWebToolsIfEnabled(cfg, toolRegistry, logger); err != nil {
-		return err
-	}
-	if err := registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder); err != nil {
+	if err := app.maybeStartMemorySummarization(ctx); err != nil {
 		return err
 	}
 
-	defer func() {
-		if memJob != nil {
-			memJob.Stop()
-			<-memJob.Done()
-		}
-	}()
-
-	classifier, err := buildIntentClassifier(cfg, logger)
+	toolRegistry, err := app.buildToolRegistry()
 	if err != nil {
 		return err
 	}
-
-	var ti core.ToolIndex = toolIndex
-	var si core.SkillIndex = skillIndex
-	router, err := llmrouter.New(llmProviders, llmLabels, llmrouter.Config{
-		Escalation: cfg.ToolsLLMEscalation(),
-	}, logger)
+	handler, err := app.buildMessageHandler(ctx, toolRegistry)
 	if err != nil {
 		return err
-	}
-	baseHandler, err := core.BuildMessageHandler(
-		cfg,
-		logger,
-		core.BuildLogRedactor(cfg),
-		router,
-		memVec,
-		embedder,
-		nodeRunner,
-		ti,
-		si,
-		toolRegistry,
-		classifier,
-	)
-	if err != nil {
-		return err
-	}
-	handler := baseHandler
-
-	if cfg.Paths.JobsDBPath != "" {
-		state := jobsState
-		if state == nil {
-			state = &jobsRuntimeState{}
-		}
-		handler = &jobsCommandHandler{
-			base:  baseHandler,
-			state: state,
-		}
-		if sender, ok := adapter.(chatSender); ok {
-			initJobsRuntimeAsync(ctx, state, cfg.Paths.JobsDBPath, cfg.JobsStoreReliability.ToPolicy(), cfg.PATimezone, sender, baseHandler, logger)
-		} else {
-			err := fmt.Errorf("adapter does not support direct chat sending")
-			logger.Warn("jobs runtime delivery disabled", "error", err)
-			state.setInitError(err)
-		}
 	}
 
 	logger.Info("starting", "adapter", "telegram", "model", mainConversationModelName(cfg))
-	return adapter.Run(ctx, handler)
+	return app.infra.Adapter.Run(ctx, handler)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second
@@ -647,84 +531,6 @@ func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
 		Turns:     turns,
 		Notes:     notes,
 	}, nil
-}
-
-// setup creates adapter, memory store, memory vector bundle, embedder, and optional node runner from config. Caller must close memVec via MemoryVectors.Close.
-//
-//nolint:gocyclo // many optional subsystems; each branch is independent
-func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
-	adapter core.Adapter,
-	memoryStore *memory.Store,
-	memVec *core.MemoryVectors,
-	embedder embedding.Embedder,
-	nodeRunner core.NodeRunner,
-	toolIndex *toolindex.Index,
-	skillIndex *skillindex.Index,
-	err error,
-) {
-	adapter, err = telegram.NewAdapter(cfg, configPath)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	if cfg.Paths.MemoryDir != "" {
-		if mkErr := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); mkErr != nil {
-			return nil, nil, nil, nil, nil, nil, nil, mkErr
-		}
-		loc, locErr := config.PALocation(cfg)
-		if locErr != nil {
-			return nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("memory store timezone: %w", locErr)
-		}
-		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir, loc)
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, nil, err
-		}
-	}
-
-	embedder, err = embedding.NewEmbedder(cfg.Embedding)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
-	if mkErr := os.MkdirAll(vecDir, 0o755); mkErr != nil {
-		return nil, nil, nil, nil, nil, nil, nil, mkErr
-	}
-	memVec, err = openMemoryVectorBundle(cfg)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	toolIndex, err = newToolIndex(cfg, embedder, logger)
-	if err != nil {
-		if memVec != nil {
-			_ = memVec.Close()
-		}
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	skillIndex, err = newSkillIndex(cfg, embedder, logger)
-	if err != nil {
-		if toolIndex != nil {
-			_ = toolIndex.Close()
-		}
-		if memVec != nil {
-			_ = memVec.Close()
-		}
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	if len(cfg.Nodes) > 0 {
-		al, alErr := allowlist.NewChecker(cfg)
-		if alErr != nil {
-			return nil, nil, nil, nil, nil, nil, nil, alErr
-		}
-		nr := noderunner.New(cfg, al, logger)
-		nr.SetLogRedactor(core.BuildLogRedactor(cfg))
-		nodeRunner = nr
-	}
-
-	return adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, nil
 }
 
 func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) error {
