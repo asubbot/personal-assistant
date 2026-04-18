@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-026 C4 Level 1 — Tier assembly in core
+
+Person(dev, "Developer", "Maintains handler")
+System_Ext(llm, "LLM providers", "Completion + tools")
+
+System_Boundary(core, "pa internal/core") {
+  System(h, "Conversation handler", "HandleMessage orchestrates tier builders")
+}
+
+Rel(dev, h, "Tests / refactors")
+Rel(h, llm, "Router completion")
+
+@enduml

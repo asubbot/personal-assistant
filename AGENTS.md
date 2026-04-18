@@ -15,6 +15,7 @@ Instructions for AI agents working in a **git-backed software repository**.
 - **KISS** — prefer the smallest change that solves the problem; avoid unnecessary abstraction and scope creep.
 - **Fail fast** — detect invalid state and errors early; do not swallow failures without a clear, documented reason.
 - **Explicit JSON configuration** — any product configurations (for example **`config.json`**) must spell out every application tuning knob the operator relies on. Code must not silently invent or normalize omitted fields** (no hidden defaults at load for JSON-backed behaviour).
+- **nolint:gocyclo** - DO NOT use nolint:gocyclo
 
 ## Language
 - All code comments, UI/user-facing messages in the product, and commit messages must be in English.
