@@ -1,0 +1,15 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-026 C4 Level 2 — Tier main LLM prompt assembly
+
+Container_Boundary(core, "internal/core") {
+  Container(hm, "HandleMessage", "Orchestrator", "Classify → base messages → tier builder → complete")
+  Container(tb, "Tier builders", "buildTier*MainPrompt", "Full / FullLite / Simple params")
+  Container(tail, "Tail + options", "mergeTail…", "Tools, dynamic cap, completion options")
+}
+
+Rel(hm, tb, "Dispatches by intent.Tier")
+Rel(tb, tail, "Full & FullLite")
+
+@enduml

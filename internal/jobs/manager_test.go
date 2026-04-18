@@ -555,6 +555,36 @@ func TestCreateScheduledJobToolWithLookup_NilManagerReturnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-27.004. Supporting AC-27.006: exercised under full make check.
+func TestCreateScheduledJobTool_RuntimeLookup_NotReadyReturnsSoft(t *testing.T) {
+	tool := NewCreateScheduledJobToolWithRuntimeLookup(func() (*Manager, bool, bool) {
+		return nil, false, false
+	})
+	reply, err := tool.Run(context.Background(), map[string]any{})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	const want = "Scheduler is initializing. Please retry shortly."
+	if reply != want {
+		t.Fatalf("reply = %q, want %q", reply, want)
+	}
+}
+
+// Covers AC-27.004. Supporting AC-27.006: exercised under full make check.
+func TestCreateScheduledJobTool_RuntimeLookup_InitFailedReturnsSoft(t *testing.T) {
+	tool := NewCreateScheduledJobToolWithRuntimeLookup(func() (*Manager, bool, bool) {
+		return nil, true, true
+	})
+	reply, err := tool.Run(context.Background(), map[string]any{})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	const want = "Scheduler is unavailable due to initialization error."
+	if reply != want {
+		t.Fatalf("reply = %q, want %q", reply, want)
+	}
+}
+
 // Covers EP-021 AC-21.004: missing actor_user_id and create context yields a hard error from the tool path.
 func TestCreateScheduledJobTool_MissingActorReturnsError(t *testing.T) {
 	st := openTestStore(t)

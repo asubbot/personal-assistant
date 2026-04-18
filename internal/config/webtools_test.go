@@ -27,7 +27,8 @@ func TestValidateWebTools_enabled_InvalidBounds(t *testing.T) {
 			CacheTTLSeconds: 60,
 			CacheMaxEntries: 10,
 		},
-		Fetch: WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		Fetch:       WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		HTTPTimeout: "30s",
 	}}
 	if err := validateWebTools(c); err == nil || !strings.Contains(err.Error(), "timeout_seconds") {
 		t.Fatalf("want timeout_seconds error, got %v", err)
@@ -43,7 +44,8 @@ func TestValidateWebTools_braveMissingKeyPath(t *testing.T) {
 			BraveAPIKeyPath: "",
 			TimeoutSeconds:  10, CacheTTLSeconds: 60, CacheMaxEntries: 10,
 		},
-		Fetch: WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		Fetch:       WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		HTTPTimeout: "30s",
 	}}
 	if err := validateWebTools(c); err == nil || !strings.Contains(err.Error(), "brave_api_key_path") {
 		t.Fatalf("want brave_api_key_path error, got %v", err)
@@ -58,7 +60,8 @@ func TestValidateWebTools_duckduckgo_OK(t *testing.T) {
 			Provider:       "duckduckgo",
 			TimeoutSeconds: 10, CacheTTLSeconds: 60, CacheMaxEntries: 10,
 		},
-		Fetch: WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		Fetch:       WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		HTTPTimeout: "30s",
 	}}
 	if err := validateWebTools(c); err != nil {
 		t.Fatal(err)
@@ -74,7 +77,8 @@ func TestValidateWebTools_fallbackSameAsPrimary(t *testing.T) {
 			FallbackProvider: "duckduckgo",
 			TimeoutSeconds:   10, CacheTTLSeconds: 60, CacheMaxEntries: 10,
 		},
-		Fetch: WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		Fetch:       WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		HTTPTimeout: "30s",
 	}}
 	if err := validateWebTools(c); err == nil || !strings.Contains(err.Error(), "fallback_provider") {
 		t.Fatalf("want fallback_provider error, got %v", err)
@@ -91,9 +95,39 @@ func TestValidateWebTools_ddgPrimaryBraveFallback_missingKeyPath(t *testing.T) {
 			BraveAPIKeyPath:  "",
 			TimeoutSeconds:   10, CacheTTLSeconds: 60, CacheMaxEntries: 10,
 		},
-		Fetch: WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		Fetch:       WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+		HTTPTimeout: "30s",
 	}}
 	if err := validateWebTools(c); err == nil || !strings.Contains(err.Error(), "brave_api_key_path") {
 		t.Fatalf("want brave_api_key_path error, got %v", err)
+	}
+}
+
+// Covers AC-22.006, AC-22.008 (EP-022): web_tools.http_timeout must be present and a positive Go duration.
+func TestValidateWebTools_httpTimeout_requiredAndPositive(t *testing.T) {
+	base := &Config{WebTools: &WebToolsConfig{
+		Enabled: true,
+		Search: WebSearchConfig{
+			Provider:       "duckduckgo",
+			TimeoutSeconds: 10, CacheTTLSeconds: 60, CacheMaxEntries: 10,
+		},
+		Fetch: WebFetchConfig{TimeoutSeconds: 30, MaxBodyBytes: 1024, MaxRedirects: 3},
+	}}
+
+	base.WebTools.HTTPTimeout = ""
+	if err := validateWebTools(base); err == nil || !strings.Contains(err.Error(), "http_timeout") {
+		t.Fatalf("empty http_timeout: want http_timeout error, got %v", err)
+	}
+	base.WebTools.HTTPTimeout = "not-a-duration"
+	if err := validateWebTools(base); err == nil || !strings.Contains(err.Error(), "http_timeout") {
+		t.Fatalf("invalid http_timeout: want http_timeout error, got %v", err)
+	}
+	base.WebTools.HTTPTimeout = "0s"
+	if err := validateWebTools(base); err == nil || !strings.Contains(err.Error(), "http_timeout") {
+		t.Fatalf("zero http_timeout: want http_timeout error, got %v", err)
+	}
+	base.WebTools.HTTPTimeout = "30s"
+	if err := validateWebTools(base); err != nil {
+		t.Fatalf("valid http_timeout: unexpected error %v", err)
 	}
 }

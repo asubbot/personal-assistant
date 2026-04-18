@@ -41,7 +41,7 @@ func TestValidateSandboxResourceSubstrings(t *testing.T) {
 	}
 }
 
-// Covers AC-09.011: append twice yields valid YAML with two tools.
+// Covers AC-09.011, AC-23.001, AC-23.003: append twice yields valid YAML with two tools; durable replace path.
 func TestAppendToolToCatalogFile_twice(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "tools.yaml")

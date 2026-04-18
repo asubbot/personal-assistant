@@ -11,6 +11,11 @@ coverage.html
 /pa
 bin/
 
+# Local vector index files at repo root (dev / accidental cwd)
+/pa_vectors.sqlite
+/pa_vectors.sqlite-shm
+/pa_vectors.sqlite-wal
+
 # Built CLI binaries (e.g. make validate → bin/validate)
 /bin/
 

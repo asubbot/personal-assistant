@@ -31,7 +31,8 @@
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
       "supports_json_mode": true,
-      "default_response_format": "text"
+      "default_response_format": "text",
+      "http_timeout": "60s"
     },
     {
       "type": "ollama",
@@ -42,7 +43,8 @@
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
       "supports_json_mode": true,
-      "default_response_format": "text"
+      "default_response_format": "text",
+      "http_timeout": "60s"
     },
     {
       "type": "openai",
@@ -53,7 +55,8 @@
       "default_temperature": 0.3,
       "default_max_tokens": 4096,
       "supports_json_mode": true,
-      "default_response_format": "text"
+      "default_response_format": "text",
+      "http_timeout": "120s"
     }
   ],
   "paths": {
@@ -73,7 +76,8 @@
     "api_key_path": "openai_api_key.txt",
     "model": "text-embedding-3-small",
     "dimensions": 1536,
-    "batch_size": 100
+    "batch_size": 100,
+    "http_timeout": "120s"
   },
   "nodes": {
     "nas": {
@@ -112,5 +116,21 @@
     "enabled": false,
     "max_skills_per_turn": 2,
     "tool_vector_top_k_cap": 20
+  },
+  "web_tools": null,
+  "conversation_session": null,
+  "intent_classifier": null,
+  "observability_http": null,
+  "vector_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": false
+  },
+  "jobs_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": true
   }
 }

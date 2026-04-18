@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-025 C4 Level 2 — Packages and tags
+
+Container_Boundary(repo, "pa repository") {
+  Container(cmd, "cmd/pa", "Main binary", "Unit tests; jobs runtime")
+  Container(ij, "internal/jobs", "Jobs domain", "DeliveryRunner + tests")
+  Container(te, "tests/e2e", "E2E package", "//go:build e2e scenarios")
+  Container(ti, "tests/integration", "Integration", "Docker-backed")
+}
+
+Rel(cmd, ij, "Uses")
+Rel(te, ij, "Imports for job flows")
+
+@enduml

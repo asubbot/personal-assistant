@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+
+title EP-027 C4 Level 1 — Composition root
+
+Person(op, "Operator", "Runs pa binary")
+System_Ext(tg, "Telegram", "Messages")
+
+System_Boundary(pa, "cmd/pa") {
+  System(app, "paApplication", "Composition root + lifecycle")
+}
+
+Rel(op, app, "Starts / stops")
+Rel(app, tg, "Adapter.Run")
+
+@enduml

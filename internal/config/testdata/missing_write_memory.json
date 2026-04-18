@@ -13,7 +13,8 @@
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
       "supports_json_mode": true,
-      "default_response_format": "text"
+      "default_response_format": "text",
+      "http_timeout": "60s"
     }
   ],
   "paths": {
@@ -30,7 +31,8 @@
     "endpoint": "http://localhost:11434",
     "model": "nomic-embed-text",
     "dimensions": 768,
-    "batch_size": 100
+    "batch_size": 100,
+    "http_timeout": "60s"
   },
   "nodes": {},
   "tools": {
@@ -52,5 +54,22 @@
   "read_memory": {
     "max_span_days": 31,
     "max_output_bytes": 262144
-  }
+  },
+  "vector_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": false
+  },
+  "jobs_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": true
+  },
+  "intent_classifier": null,
+  "observability_http": null,
+  "web_tools": null,
+  "runtime_skills": null,
+  "conversation_session": null
 }

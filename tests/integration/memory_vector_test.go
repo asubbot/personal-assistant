@@ -8,6 +8,7 @@ import (
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/llm"
+	"pa/internal/sqlitepragma"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,7 @@ const vectorTestDimensions = 4
 func TestVectorStore_injectsPastContext(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "pa_vectors.sqlite")
-	vecStore, err := sqlite.NewWithTable(path, vectorTestDimensions, sqlite.TableTurns)
+	vecStore, err := sqlite.NewWithTable(path, vectorTestDimensions, sqlite.TableTurns, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatalf("vector store New: %v", err)
 	}

@@ -3,6 +3,7 @@ package skillindex
 import (
 	"context"
 	"pa/internal/runtimeskills"
+	"pa/internal/sqlitepragma"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"testing"
@@ -21,7 +22,7 @@ func TestBuildAndSearch(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	db := filepath.Join(dir, "v.db")
-	st, err := sqlite.NewWithTable(db, 4, sqlite.TableSkills)
+	st, err := sqlite.NewWithTable(db, 4, sqlite.TableSkills, sqlitepragma.RecommendedPolicy(false))
 	if err != nil {
 		t.Fatal(err)
 	}

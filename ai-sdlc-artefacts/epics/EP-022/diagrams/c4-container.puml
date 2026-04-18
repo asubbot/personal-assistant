@@ -1,0 +1,47 @@
+@startuml
+!include <C4/C4_Container>
+
+title EP-022 C4 Level 2 - Reliability hardening (containers and stores)
+
+Person(user, "Telegram User")
+System_Ext(telegram, "Telegram Bot API", "HTTPS")
+System_Ext(llmapi, "LLM providers", "HTTPS (OpenAI-compatible / Ollama)")
+System_Ext(embapi, "Embedding provider", "HTTPS")
+System_Ext(webapi, "Web search and fetch", "HTTPS")
+
+System_Boundary(pa, "PersonalAssistant process (pa)") {
+  Container(core, "internal/core", "Go", "Conversation handler, tool loop")
+  Container(llm, "internal/llm", "Go", "LLM provider clients (HTTP timeout from config)")
+  Container(embed, "internal/embedding", "Go", "Embedding clients (HTTP timeout from config)")
+  Container(tgadp, "internal/telegram", "Go", "Telegram adapter")
+  Container(tools, "internal/tools", "Go", "Web search and fetch (HTTP timeout from config)")
+  Container(jobs, "internal/jobs", "Go", "Scheduler runtime and store")
+  Container(vec, "internal/vector/sqlite", "Go", "Vector store opens")
+  Container(cfg, "internal/config", "Go", "Fail-fast load of PRAGMA and HTTP timeout settings")
+  Container(sqlpragma, "internal/sqlitepragma", "Go (new)", "Shared PRAGMA policy applied on every sqlite open")
+}
+
+ContainerDb(vecdb, "Vector SQLite", "vec_turns, vec_summaries, vec_notes, vec_tools, vec_skills")
+ContainerDb(jobdb, "Jobs SQLite", "scheduled jobs store")
+
+Rel(user, telegram, "Messages")
+Rel(telegram, tgadp, "HTTPS updates")
+Rel(tgadp, core, "Deliver message")
+Rel(core, llm, "Complete")
+Rel(core, embed, "Embed")
+Rel(core, tools, "Run web tools")
+Rel(llm, llmapi, "HTTPS, bounded timeout")
+Rel(embed, embapi, "HTTPS, bounded timeout")
+Rel(tools, webapi, "HTTPS, bounded timeout")
+Rel(core, vec, "Read and write")
+Rel(core, jobs, "Read and write")
+Rel(vec, sqlpragma, "ApplyOnOpen(db)")
+Rel(jobs, sqlpragma, "ApplyOnOpen(db)")
+Rel(sqlpragma, vecdb, "PRAGMA journal_mode, busy_timeout, synchronous")
+Rel(sqlpragma, jobdb, "PRAGMA journal_mode, busy_timeout, synchronous, foreign_keys")
+Rel(cfg, llm, "http_timeout")
+Rel(cfg, embed, "http_timeout")
+Rel(cfg, tools, "http_timeout")
+Rel(cfg, sqlpragma, "pragma policy")
+
+@enduml

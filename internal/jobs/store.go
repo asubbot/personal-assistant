@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"pa/internal/sqlitepragma"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -79,10 +80,25 @@ type DeleteChallenge struct {
 	CreatedAt         time.Time
 }
 
-func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite3", path)
+// Open opens the scheduled-jobs SQLite database and applies the PRAGMA policy
+// on every new connection via the DSN; see EP-022.
+//
+// policy must have ForeignKeys=true for the jobs store (FK cascades are required).
+func Open(path string, policy sqlitepragma.Policy) (*Store, error) {
+	if !policy.ForeignKeys {
+		return nil, fmt.Errorf("jobs: policy.ForeignKeys must be true (jobs store relies on FK cascades)")
+	}
+	dsn, err := sqlitepragma.BuildDSN(path, policy)
+	if err != nil {
+		return nil, fmt.Errorf("jobs: build dsn: %w", err)
+	}
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("jobs: open db: %w", err)
+	}
+	if err := sqlitepragma.VerifyOnOpen(context.Background(), db, policy); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("jobs: verify pragma: %w", err)
 	}
 	st := &Store{db: db}
 	if err := st.initSchema(context.Background()); err != nil {
@@ -103,7 +119,6 @@ func (s *Store) Close() error {
 
 func (s *Store) initSchema(ctx context.Context) error {
 	stmts := []string{
-		`PRAGMA foreign_keys = ON`,
 		`CREATE TABLE IF NOT EXISTS schema_migrations (
 			version INTEGER PRIMARY KEY,
 			applied_at TEXT NOT NULL

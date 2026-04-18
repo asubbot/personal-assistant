@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"pa/internal/config"
 	"pa/internal/embedding"
 	"pa/internal/toolcatalog"
@@ -15,7 +16,7 @@ import (
 	"sync"
 )
 
-// CreateToolTool implements the native create_tool for EP-009 (REQ-09.008–013, REQ-09.017).
+// CreateToolTool implements the native create_tool for EP-009 (REQ-09.008–013, REQ-09.017) and EP-023 catalog durability (REQ-23.005–007).
 type CreateToolTool struct {
 	mu          sync.Locker
 	catalog     *toolcatalog.Catalog
@@ -153,12 +154,22 @@ func (c *CreateToolTool) lockedCreate(ctx context.Context, id, indexText, templa
 		Arguments:    argRules,
 		SystemPrompt: sysPrompt,
 	}
+	snapshot, err := os.ReadFile(c.catalogPath)
+	if err != nil {
+		return "", fmt.Errorf("tools: create_tool: read catalog: %w", err)
+	}
 	if err := toolcatalog.AppendToolToCatalogFile(c.catalogPath, newTool); err != nil {
 		return "", fmt.Errorf("tools: create_tool: persist catalog: %w", err)
 	}
 	c.catalog.Tools[id] = newTool
-	if err := toolindex.UpsertToolEmbedding(ctx, c.toolIndex, c.embedder, newTool); err != nil && c.logger != nil {
-		c.logger.Error("create_tool: tool index embed failed", "tool_id", id, "error", err)
+	if c.embedder != nil && c.toolIndex != nil {
+		if err := toolindex.UpsertToolEmbedding(ctx, c.toolIndex, c.embedder, newTool); err != nil {
+			delete(c.catalog.Tools, id)
+			if rerr := toolcatalog.RestoreCatalogFile(c.catalogPath, snapshot); rerr != nil {
+				return "", fmt.Errorf("tools: create_tool: index: %w (catalog rollback: %w)", err, rerr)
+			}
+			return "", fmt.Errorf("tools: create_tool: index: %w", err)
+		}
 	}
 	return fmt.Sprintf("Created tool %q successfully.", id), nil
 }

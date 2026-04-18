@@ -9,6 +9,7 @@ import (
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/embedding"
+	"pa/internal/lifecyclelog"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/memory"
@@ -262,11 +263,17 @@ func (r *Runner) drain(ctx context.Context) {
 			timeout = 30 * time.Second
 		}
 		jctx, cancel := context.WithTimeout(ctx, timeout)
+		started := time.Now()
+		lifecyclelog.Info(r.deps.Logger, "memory_job", "job_start", 0, "lifecycle", "job", it.name)
 		err := it.run(jctx)
 		cancel()
+		dur := time.Since(started)
 		if err != nil {
+			lifecyclelog.Error(r.deps.Logger, "memory_job", "job_complete", dur, err, "lifecycle", "job", it.name)
 			r.deps.Logger.Error("memory job failed", "job", it.name, "error", err)
+			continue
 		}
+		lifecyclelog.Info(r.deps.Logger, "memory_job", "job_complete", dur, "lifecycle", "job", it.name)
 	}
 }
 

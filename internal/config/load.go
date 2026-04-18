@@ -39,13 +39,16 @@ func Load(path string) (*Config, error) {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-	if err := prepareConfig(&raw, path); err != nil {
+	if err := prepareConfig(&raw, path, data); err != nil {
 		return nil, err
 	}
 	return &raw, nil
 }
 
-func prepareConfig(raw *Config, path string) error {
+func prepareConfig(raw *Config, path string, rootJSON []byte) error {
+	if err := validateConfigRootObjectKeys(rootJSON); err != nil {
+		return err
+	}
 	if err := validate(raw); err != nil {
 		return err
 	}
@@ -134,6 +137,12 @@ func validateCore(c *Config) error {
 	if err := validateNodes(c); err != nil {
 		return err
 	}
+	if err := c.ValidateVectorStoreReliability(); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+	if err := c.ValidateJobsStoreReliability(); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
 	return nil
 }
 
@@ -175,7 +184,41 @@ func validateMandatoryJSONSectionsCore(c *Config) error {
 	if err := validateLLMEscalation(c); err != nil {
 		return err
 	}
-	return validateWebTools(c)
+	if err := validateWebTools(c); err != nil {
+		return err
+	}
+	return validateObservabilityHTTP(c)
+}
+
+func validateObservabilityHTTP(c *Config) error {
+	if c == nil || c.ObservabilityHTTP == nil {
+		return nil
+	}
+	o := c.ObservabilityHTTP
+	if strings.TrimSpace(o.ListenAddress) == "" {
+		return errors.New("config: observability_http.listen_address is required when observability_http is set")
+	}
+	if err := validateObservabilityPath("observability_http.health_path", o.HealthPath); err != nil {
+		return err
+	}
+	if err := validateObservabilityPath("observability_http.readiness_path", o.ReadinessPath); err != nil {
+		return err
+	}
+	if strings.TrimSpace(o.HealthPath) == strings.TrimSpace(o.ReadinessPath) {
+		return errors.New("config: observability_http.health_path and observability_http.readiness_path must differ")
+	}
+	return nil
+}
+
+func validateObservabilityPath(field, p string) error {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return fmt.Errorf("config: %s is required when observability_http is set", field)
+	}
+	if !strings.HasPrefix(p, "/") {
+		return fmt.Errorf("config: %s must start with /", field)
+	}
+	return nil
 }
 
 func validateReadMemory(c *Config) error {
@@ -368,6 +411,25 @@ func validateEmbedding(c *Config) error {
 	if e.BatchSize < 1 || e.BatchSize > 1000 {
 		return errors.New("config: embedding.batch_size is required and must be between 1 and 1000")
 	}
+	if err := validateHTTPTimeout("embedding.http_timeout", e.HTTPTimeout); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateHTTPTimeout enforces explicit, positive Go-duration outbound HTTP timeouts (EP-022, REQ-22.003/22.004).
+func validateHTTPTimeout(field, raw string) error {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return fmt.Errorf("config: %s is required (Go duration, e.g. \"60s\")", field)
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return fmt.Errorf("config: %s invalid duration %q: %w", field, raw, err)
+	}
+	if d <= 0 {
+		return fmt.Errorf("config: %s must be > 0, got %s", field, d)
+	}
 	return nil
 }
 
@@ -448,6 +510,9 @@ func validateLLMProviderDefaults(idx int, p *LLMProvider) error {
 	}
 	if rf == "json_object" && !p.SupportsJSONMode {
 		return fmt.Errorf("config: llm_providers[%d].default_response_format=\"json_object\" requires supports_json_mode=true", idx)
+	}
+	if err := validateHTTPTimeout(fmt.Sprintf("llm_providers[%d].http_timeout", idx), p.HTTPTimeout); err != nil {
+		return err
 	}
 	return nil
 }
@@ -667,6 +732,9 @@ func validateICModelStage(ms *ClassificationModelConfig) error {
 		if _, err := time.ParseDuration(ms.Timeout); err != nil {
 			return fmt.Errorf("config: intent_classifier.model_stage.timeout: %w", err)
 		}
+	}
+	if err := validateHTTPTimeout("intent_classifier.model_stage.http_timeout", ms.HTTPTimeout); err != nil {
+		return err
 	}
 	return nil
 }

@@ -5,6 +5,7 @@
 - The application loads **`config.json`** from the directory set by **`PA_CONFIG_DIR`** (default `./.config`).
 - The full path is always `<PA_CONFIG_DIR>/config.json`. The filename is fixed in code (`config.ConfigFileName`).
 - **Explicit keys (fail fast):** the loader does **not** back-fill omitted tuning fields with hidden defaults. Every JSON-backed knob the product validates must appear in **`config.json`** with an explicit value (for example **`read_memory`**, **`write_memory`**, and when **`runtime_skills`** is present, **`max_skills_per_turn`** and **`tool_vector_top_k_cap`**). **`PA_CONFIG_DIR` / `PA_DATA_DIR` / `PA_SECRETS_DIR`** only anchor relative paths; they do not replace missing JSON sections.
+- **Exhaustive top-level object:** the root of **`config.json`** must contain exactly the documented top-level keys (no omissions, no extras). Disabled optional sections use JSON **`null`**. The canonical key list is maintained in code (`config.ConfigRootJSONKeys()` / `config.ExplainConfigRootKeysForDocs()` for tooling and docs).
 
 Start from the checked-in templates in **`config.examples/`** (copy into **`.config/`**, which is gitignored):
 
@@ -23,6 +24,7 @@ These are read at process start; they control how **relative paths** in JSON are
 | `PA_DATA_DIR` | `.` | Base for **relative** `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, `jobs_db_path`. |
 | `PA_SECRETS_DIR` | `.` | Base for **relative** `token_path`, `users_path`, LLM/embedding `api_key_path`, node `private_key_path`. |
 | `PA_LOG_LEVEL` | `info` | Log level for application output (`slog`). Invalid values fall back to `info`. At **`debug`**, the conversation handler logs full LLM request/response (sensitive — use only when needed). |
+| `PA_ENV` | (unset) | Set to `development` (case-insensitive) to acknowledge intentional **diagnostic** sessions when using `PA_LOG_LEVEL=debug` on trusted hosts; suppresses the sensitive-logging startup warning. See [llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md). |
 
 **Absolute paths** in JSON are used as-is (no joining with the bases above).
 
@@ -37,7 +39,7 @@ These are read at process start; they control how **relative paths** in JSON are
 Exact validation rules are enforced in `internal/config` at load time (fail fast).
 
 - **`telegram`** — `token_path`, `users_path`, optional `notify_chat_id`, `max_message_length`.
-- **`llm_providers`** — ordered list; at least one provider is required. Each entry has `type`, `endpoint`, `model`, optional `api_key_path`, `supports_tools`.
+- **`llm_providers`** — ordered list; at least one provider is required. Each entry has `type`, `endpoint`, `model`, optional `api_key_path`, `supports_tools`. How indices map to main chat, summarization, escalation, and how the intent classifier differs, is described in **[llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md)**.
 - **`embedding`** — separate provider for memory embeddings (vector index).
 - **`paths`** — `memory_dir`, `log_path`, `vector_index_path`, `llm_log_dir`, **`llm_log_retention_days`** (required, ≥ 1), `jobs_db_path`, `ssh_known_hosts_path`, `tool_catalog_path`.
 - **`nodes`** — named nodes with `host`, `port`, `dedicated_user`, `auth.private_key_path`, `command_allowlist_path`. The allowlist file is one pattern per line: exact command string, or a line whose **only** `*` is the **final** character (prefix wildcard; the prefix is the text before `*`, including any trailing space — e.g. `docker images *` requires an argument after `images`, while `docker images*` matches bare `docker images`). Lines with bare `*`, multiple `*`, or `*` not at the end fail load. Executed commands must also satisfy the remote command character policy (letters, numbers, Mn/Mc, fixed ASCII punctuation including space and `"` — see [nas_allowlist.example](../config.examples/nas_allowlist.example) header); tab and shell metacharacters are rejected before SSH. EP-009 `create_tool` validates a whitelisted `docker run` prefix and a 30s timeout substring; operators SHOULD add Docker resource flags (e.g. `--memory=256m`, `--cpus=0.5`) in templates for production sandboxes. When **two or more** nodes are configured, each must use a **different** private key file after resolving `PA_SECRETS_DIR` and `filepath.Clean` (including no two nodes pointing at the same file via symlink or hard link); otherwise config load fails fast.
@@ -49,7 +51,7 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 - **`pa_timezone`** — **required**; non-empty IANA name (e.g. `UTC`, `Europe/Moscow`) for assistant day boundaries, LLM log daily filenames, `memory_dir` day paths, automatic summarization, and **`read_memory`** date interpretation.
 - **`read_memory`** — **required** (EP-002). **`max_span_days`** (**1–3660**) and **`max_output_bytes`** (**1024–52428800**). The native **`read_memory`** tool is registered when **`paths.memory_dir`** is configured and the memory store initializes.
 - **`write_memory`** — **required** (EP-016). **`max_append_bytes`** (**256–1048576**) and **`max_file_bytes`** (≥ **`max_append_bytes`**, at most **52428800**) bound each appended entry and the per-day **`notes.md`** file size. The native **`write_memory`** tool is a core feature; startup fails fast if required runtime dependencies are missing (**`paths.memory_dir`**, notes vector table **`vec_notes`**, embedding provider).
-- **`intent_classifier`** — **optional** (EP-017, EP-018); two-stage intent classification to steer main LLM prompt assembly. When present and **`enabled`** is true: **`heuristic`** (optional) defines **`simple_patterns`**, **`full_patterns`**, optional **`full_lite_patterns`** (Go `regexp` strings, case-insensitive; invalid regex fails load), and **`max_simple_len`** (must be ≥ 1; messages longer in runes skip the simple tier and are treated as confident **`full`**). Match order in the heuristic stage is: length guard → simple → full → full_lite → ambiguous. **`model_stage`** (optional) configures a cheap classification LLM (`type`, `endpoint`, `api_key_path`, `model`, `default_temperature`, `default_max_tokens` ≥ 1, optional `timeout` as Go duration string e.g. `"5s"`). The cascade runs heuristic first; if ambiguous and model stage is enabled, calls the classification model (three-way tier label); on any failure defaults to **`full`**. When disabled or omitted, all messages use the full prompt path. `model_stage.api_key_path` is resolved via `PA_SECRETS_DIR`.
+- **`intent_classifier`** — **optional** (EP-017, EP-018); two-stage intent classification to steer main LLM prompt assembly. When present and **`enabled`** is true: **`heuristic`** (optional) defines **`simple_patterns`**, **`full_patterns`**, optional **`full_lite_patterns`** (Go `regexp` strings, case-insensitive; invalid regex fails load), and **`max_simple_len`** (must be ≥ 1; messages longer in runes skip the simple tier and are treated as confident **`full`**). Match order in the heuristic stage is: length guard → simple → full → full_lite → ambiguous. **`model_stage`** (optional) configures a cheap classification LLM (`type`, `endpoint`, `api_key_path`, `model`, `default_temperature`, `default_max_tokens` ≥ 1, optional `timeout` as Go duration string e.g. `"5s"`, and required **`http_timeout`** as a positive Go duration — total outbound HTTP timeout for the classifier client per EP-022 REQ-22.003; distinct from the per-classification `timeout` context deadline). The cascade runs heuristic first; if ambiguous and model stage is enabled, calls the classification model (three-way tier label); on any failure defaults to **`full`**. When disabled or omitted, all messages use the full prompt path. `model_stage.api_key_path` is resolved via `PA_SECRETS_DIR`.
 
 ### Intent tiers (EP-017 / EP-018)
 
@@ -59,6 +61,36 @@ Exact validation rules are enforced in `internal/config` at load time (fail fast
 | **`full_lite`** | No | Yes (same rules as full) | No | Merged ranked tools + `always_include`; when **`tools.dynamic_selection.enabled`** and **`tools.text_based_enabled`**, list is filtered and capped by **`max_tools_for_llm_request`** |
 | **`full`** | Yes | Yes | Yes (when runtime skills enabled) | Same merge as EP-017; when **`tools.dynamic_selection.enabled`**, cap applies after ranking |
 - **`log_redaction`** — **required**; `additional_patterns` may be an empty array. Each pattern has `id`, `regex`, `replacement`; IDs must not collide with built-in redactor IDs.
+- **`vector_store_reliability`** / **`jobs_store_reliability`** — **required** (EP-022). Explicit per-store SQLite PRAGMA policy; see [Local SQLite stores: reliability policy](#local-sqlite-stores-reliability-policy-ep-022) below.
+- **`llm_providers[].http_timeout`**, **`embedding.http_timeout`** — **required** (EP-022). Per-request total HTTP timeout for outbound calls (Go duration literal, e.g. `"120s"`). See [Outbound HTTP timeouts](#outbound-http-timeouts-ep-022) below.
+- **`observability_http`** — **optional** (EP-029). When the object is present, **every** field is required: `listen_address` (TCP bind, e.g. `127.0.0.1:9090`), `health_path` and `readiness_path` (absolute paths starting with `/`, must differ), and boolean `probe_llm` (when `true`, readiness performs a short completion probe against the first configured LLM provider). When the object is **absent** (JSON `null` at the root key), the process does not start an observability HTTP listener. Operator usage: [observability-http.md](observability-http.md).
+
+### Local SQLite stores: reliability policy (EP-022)
+
+Both **`vector_store_reliability`** and **`jobs_store_reliability`** must be present; startup fails fast on missing fields or invalid values. The same four fields are required per store, and are applied as `mattn/go-sqlite3` DSN query parameters so every pooled connection re-asserts the PRAGMAs:
+
+| Field | Required | Recommended | Notes |
+|-------|----------|-------------|-------|
+| `journal_mode` | yes | `"WAL"` | Applied at database level; WAL allows one writer + many readers concurrently. |
+| `busy_timeout` | yes (Go duration, e.g. `"5s"`) | `"5s"` | Must be > 0. Re-applied per connection. |
+| `synchronous` | yes | `"NORMAL"` | Per-connection. |
+| `foreign_keys` | yes (bool) | `false` for vector, `true` for jobs | **Vector store** (`paths.vector_index_path`) MUST be `false`; **jobs store** (`paths.jobs_db_path`) MUST be `true`. Startup fails fast on mismatch. |
+
+Single-writer expectation: the product opens each SQLite file from a single process; operators MUST NOT share `vector_index_path` or `jobs_db_path` between processes. The concurrent-writer reliability is covered within one process by WAL + `busy_timeout` (tested with `-race` under `internal/reliability`).
+
+### Outbound HTTP timeouts (EP-022)
+
+Every outbound HTTP client governed by this product exposes an explicit, per-request total timeout. Missing or non-positive values fail startup:
+
+| Field | Client | Recommended | Required |
+|-------|--------|-------------|----------|
+| `llm_providers[].http_timeout` | LLM chat completions (`internal/llm`) | `"120s"` | yes |
+| `embedding.http_timeout` | Embeddings client (`internal/embedding`) | `"60s"` | yes |
+| `web_tools.http_timeout` | Shared `*http.Client` used by `web_search` upstream calls (DuckDuckGo / Brave) and `web_fetch` (`internal/tools`) — per-request **total** timeout | `"30s"` | yes when `web_tools.enabled=true` |
+
+`web_tools.search.timeout_seconds` and `web_tools.fetch.timeout_seconds` are per-operation context timeouts on the tool caller side and are **not** a substitute for `web_tools.http_timeout`, which bounds the whole outbound HTTP request including connection setup, TLS, and body read.
+
+Telegram long-poll HTTP behaviour is owned by `go-telegram/bot` and is out of scope for this configuration section. SSH transport timeouts are owned by `internal/noderunner` (see the nodes section).
 
 ## Cost-aware profile (recommended)
 

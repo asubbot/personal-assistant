@@ -14,24 +14,20 @@ import (
 	"pa/internal/core"
 	"pa/internal/embedding"
 	"pa/internal/intent"
-	"pa/internal/jobs"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
 	"pa/internal/memory"
-	"pa/internal/memoryjob"
 	"pa/internal/noderunner"
 	"pa/internal/skillindex"
 	"pa/internal/ssh"
 	"pa/internal/summarize"
-	"pa/internal/telegram"
 	"pa/internal/toolindex"
 	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -96,6 +92,22 @@ func logLevelFromEnv() slog.Level {
 	return l
 }
 
+func paEnvIsDevelopment() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("PA_ENV")), "development")
+}
+
+// warnSensitiveLLMLogging emits one WARN when application logging is at debug and PA_ENV
+// is not set to "development" (REQ-24.008). Full LLM bodies in logs are enabled at debug.
+func warnSensitiveLLMLogging(logger *slog.Logger, level slog.Level) {
+	if logger == nil || level != slog.LevelDebug {
+		return
+	}
+	if paEnvIsDevelopment() {
+		return
+	}
+	logger.Warn("sensitive diagnostic logging: PA_LOG_LEVEL=debug may log full LLM request and response bodies in application logs; treat logs as highly sensitive. Use PA_LOG_LEVEL=info in production, or set PA_ENV=development only on trusted diagnostic hosts.")
+}
+
 func main() {
 	verifyNodes := flag.Bool("verify-nodes", false, "Verify SSH access to all configured nodes (run one allowlisted command per node and exit; do not start the bot)")
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
@@ -107,6 +119,7 @@ func main() {
 
 	logLevel := logLevelFromEnv()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	warnSensitiveLLMLogging(logger, logLevel)
 	cfg, err := config.Load(configFilePath)
 	if err != nil {
 		logger.Error("load config", "error", err)
@@ -144,35 +157,18 @@ func main() {
 	}
 }
 
-// runServer sets up adapter, stores, LLM, scheduler and runs the core until context is canceled.
-//
-//nolint:gocyclo // sequential startup wiring and teardown branches
+// runServer constructs the application from config, then runs the adapter until context is canceled.
 func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error {
-	adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, err := setup(cfg, configPath, logger)
+	app, err := newPAApplication(cfg, configPath, logger)
 	if err != nil {
 		return err
 	}
-	warnIfNodesSSHUnreachable(context.Background(), cfg, logger)
-	defer func() {
-		if memVec != nil {
-			if closeErr := memVec.Close(); closeErr != nil {
-				logger.Error("close memory vector stores", "error", closeErr)
-			}
-		}
-		if toolIndex != nil {
-			if closeErr := toolIndex.Close(); closeErr != nil {
-				logger.Error("close tool index", "error", closeErr)
-			}
-		}
-		if skillIndex != nil {
-			if closeErr := skillIndex.Close(); closeErr != nil {
-				logger.Error("close skill index", "error", closeErr)
-			}
-		}
-	}()
+	defer app.Close()
+	defer app.stopMemorySummarization()
 
-	llmProviders, llmLabels, summarizeLLM, err := buildAppLLM(cfg, logger)
-	if err != nil {
+	warnIfNodesSSHUnreachable(context.Background(), cfg, logger)
+
+	if err := app.startLLMProviders(); err != nil {
 		return err
 	}
 	logLLMStartupInfo(cfg, logger)
@@ -180,114 +176,24 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	var memJob *memoryjob.Runner
-	if memoryStore != nil && strings.TrimSpace(cfg.Paths.LLMLogDir) != "" &&
-		embedder != nil && memVec != nil && memVec.Summaries != nil {
-		paLoc, locErr := config.PALocation(cfg)
-		if locErr != nil {
-			return fmt.Errorf("memory summarization pa_timezone: %w", locErr)
-		}
-		memJob = memoryjob.Start(ctx, memoryjob.Deps{
-			Cfg:         cfg,
-			Loc:         paLoc,
-			Memory:      memoryStore,
-			Vector:      memVec.Summaries,
-			Embedder:    embedder,
-			LLMProvider: summarizeLLM,
-			Logger:      logger,
-		})
-		logger.Info("memory summarization worker started")
-	}
-
-	toolRegistry := tools.NewRegistry()
-	var jobsState *jobsRuntimeState
-	if cfg.Paths.JobsDBPath != "" {
-		jobsState = &jobsRuntimeState{}
-		toolRegistry.Register(jobs.NewCreateScheduledJobToolWithLookup(func() *jobs.Manager {
-			if jobsState == nil {
-				return nil
-			}
-			mgr, ready, initFailed := jobsState.snapshot()
-			if !ready || initFailed {
-				return nil
-			}
-			return mgr
-		}))
-	}
-	if nodeRunner != nil {
-		toolRegistry.Register(tools.NewRunOnNode(nodeRunner))
-	}
-	absCatalog, err := filepath.Abs(cfg.Paths.ToolCatalogPath)
-	if err != nil {
-		return fmt.Errorf("tool catalog path: %w", err)
-	}
-	var createToolMu sync.Mutex
-	if cfg.ToolCatalog != nil {
-		toolRegistry.Register(tools.NewCreateTool(&createToolMu, cfg.ToolCatalog, absCatalog, cfg, embedder, toolIndex, logger))
-	}
-	registerWebToolsIfEnabled(cfg, toolRegistry, logger)
-	if err := registerMemoryToolsIfEnabled(cfg, toolRegistry, memoryStore, memVec, embedder); err != nil {
+	if err := app.maybeStartMemorySummarization(ctx); err != nil {
 		return err
 	}
 
-	defer func() {
-		if memJob != nil {
-			memJob.Stop()
-			<-memJob.Done()
-		}
-	}()
-
-	classifier, err := buildIntentClassifier(cfg, logger)
+	toolRegistry, err := app.buildToolRegistry()
+	if err != nil {
+		return err
+	}
+	handler, err := app.buildMessageHandler(ctx, toolRegistry)
 	if err != nil {
 		return err
 	}
 
-	var ti core.ToolIndex = toolIndex
-	var si core.SkillIndex = skillIndex
-	router, err := llmrouter.New(llmProviders, llmLabels, llmrouter.Config{
-		Escalation: cfg.ToolsLLMEscalation(),
-	}, logger)
-	if err != nil {
-		return err
-	}
-	baseHandler, err := core.BuildMessageHandler(
-		cfg,
-		logger,
-		core.BuildLogRedactor(cfg),
-		router,
-		memVec,
-		embedder,
-		nodeRunner,
-		ti,
-		si,
-		toolRegistry,
-		classifier,
-	)
-	if err != nil {
-		return err
-	}
-	handler := baseHandler
-
-	if cfg.Paths.JobsDBPath != "" {
-		state := jobsState
-		if state == nil {
-			state = &jobsRuntimeState{}
-		}
-		handler = &jobsCommandHandler{
-			base:  baseHandler,
-			state: state,
-		}
-		if sender, ok := adapter.(chatSender); ok {
-			initJobsRuntimeAsync(ctx, state, cfg.Paths.JobsDBPath, cfg.PATimezone, sender, baseHandler, logger)
-		} else {
-			err := fmt.Errorf("adapter does not support direct chat sending")
-			logger.Warn("jobs runtime delivery disabled", "error", err)
-			state.setInitError(err)
-		}
-	}
+	shutdownObservability := startObservabilityHTTPServer(ctx, cfg, app, logger)
+	defer shutdownObservability()
 
 	logger.Info("starting", "adapter", "telegram", "model", mainConversationModelName(cfg))
-	return adapter.Run(ctx, handler)
+	return app.infra.Adapter.Run(ctx, handler)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second
@@ -399,7 +305,7 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -459,7 +365,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -515,7 +421,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 		return fmt.Errorf("summarize: mkdir vector: %w", err)
 	}
 	logger.Info("summarize: opening vector store", "path", cfg.Paths.VectorIndexPath)
-	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries)
+	vectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSummaries, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return fmt.Errorf("summarize: vector store: %w", err)
 	}
@@ -572,15 +478,16 @@ func newToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.
 	if cfg.ToolCatalog == nil {
 		return nil, fmt.Errorf("tool catalog is required")
 	}
-	toolVectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTools)
+	toolVectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTools, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return nil, err
 	}
 	idx := toolindex.NewIndex(toolVectorStore)
 	catalog := cfg.ToolCatalog
 	go func() {
+		t0 := time.Now()
 		err := idx.BuildAndSetReady(context.Background(), catalog, embedder)
-		toolindex.LogBuildOutcome(logger, len(catalog.Tools), err)
+		toolindex.LogBuildOutcome(logger, len(catalog.Tools), time.Since(t0), err)
 	}()
 	return idx, nil
 }
@@ -590,7 +497,7 @@ func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog
 	if cfg.RuntimeSkills == nil || !cfg.RuntimeSkills.Enabled || len(cfg.RuntimeSkillPackages) == 0 {
 		return nil, nil
 	}
-	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSkills)
+	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSkills, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return nil, err
 	}
@@ -607,16 +514,17 @@ func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog
 func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
 	dim := cfg.Embedding.Dimensions
 	path := cfg.Paths.VectorIndexPath
-	summ, err := sqlite.NewWithTable(path, dim, sqlite.TableSummaries)
+	vecPolicy := cfg.VectorStoreReliability.ToPolicy()
+	summ, err := sqlite.NewWithTable(path, dim, sqlite.TableSummaries, vecPolicy)
 	if err != nil {
 		return nil, err
 	}
-	turns, err := sqlite.NewWithTable(path, dim, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(path, dim, sqlite.TableTurns, vecPolicy)
 	if err != nil {
 		_ = summ.Close()
 		return nil, err
 	}
-	notes, err := sqlite.NewWithTable(path, dim, sqlite.TableNotes)
+	notes, err := sqlite.NewWithTable(path, dim, sqlite.TableNotes, vecPolicy)
 	if err != nil {
 		_ = summ.Close()
 		_ = turns.Close()
@@ -629,97 +537,24 @@ func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
 	}, nil
 }
 
-// setup creates adapter, memory store, memory vector bundle, embedder, and optional node runner from config. Caller must close memVec via MemoryVectors.Close.
-//
-//nolint:gocyclo // many optional subsystems; each branch is independent
-func setup(cfg *config.Config, configPath string, logger *slog.Logger) (
-	adapter core.Adapter,
-	memoryStore *memory.Store,
-	memVec *core.MemoryVectors,
-	embedder embedding.Embedder,
-	nodeRunner core.NodeRunner,
-	toolIndex *toolindex.Index,
-	skillIndex *skillindex.Index,
-	err error,
-) {
-	adapter, err = telegram.NewAdapter(cfg, configPath)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	if cfg.Paths.MemoryDir != "" {
-		if mkErr := os.MkdirAll(cfg.Paths.MemoryDir, 0o755); mkErr != nil {
-			return nil, nil, nil, nil, nil, nil, nil, mkErr
-		}
-		loc, locErr := config.PALocation(cfg)
-		if locErr != nil {
-			return nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("memory store timezone: %w", locErr)
-		}
-		memoryStore, err = memory.NewStore(cfg.Paths.MemoryDir, loc)
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, nil, err
-		}
-	}
-
-	embedder, err = embedding.NewEmbedder(cfg.Embedding)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	vecDir := filepath.Dir(cfg.Paths.VectorIndexPath)
-	if mkErr := os.MkdirAll(vecDir, 0o755); mkErr != nil {
-		return nil, nil, nil, nil, nil, nil, nil, mkErr
-	}
-	memVec, err = openMemoryVectorBundle(cfg)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	toolIndex, err = newToolIndex(cfg, embedder, logger)
-	if err != nil {
-		if memVec != nil {
-			_ = memVec.Close()
-		}
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	skillIndex, err = newSkillIndex(cfg, embedder, logger)
-	if err != nil {
-		if toolIndex != nil {
-			_ = toolIndex.Close()
-		}
-		if memVec != nil {
-			_ = memVec.Close()
-		}
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	if len(cfg.Nodes) > 0 {
-		al, alErr := allowlist.NewChecker(cfg)
-		if alErr != nil {
-			return nil, nil, nil, nil, nil, nil, nil, alErr
-		}
-		nr := noderunner.New(cfg, al, logger)
-		nr.SetLogRedactor(core.BuildLogRedactor(cfg))
-		nodeRunner = nr
-	}
-
-	return adapter, memoryStore, memVec, embedder, nodeRunner, toolIndex, skillIndex, nil
-}
-
-func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) {
+func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) error {
 	if cfg == nil || cfg.WebTools == nil || !cfg.WebTools.Enabled {
-		return
+		return nil
+	}
+	timeout, err := time.ParseDuration(strings.TrimSpace(cfg.WebTools.HTTPTimeout))
+	if err != nil || timeout <= 0 {
+		return fmt.Errorf("web tools: invalid http_timeout %q (validated at config.Load; unreachable unless bypassed)", cfg.WebTools.HTTPTimeout)
 	}
 	webHTTP := &http.Client{
-		Timeout: 0,
+		Timeout: timeout,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
 	}
 	reg.Register(tools.NewWebSearchTool(cfg.WebTools, webHTTP, nil))
 	reg.Register(tools.NewWebFetchTool(&cfg.WebTools.Fetch, webHTTP))
-	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider)
+	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider, "http_timeout", timeout)
+	return nil
 }
 
 func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memoryStore *memory.Store, memVec *core.MemoryVectors, embedder embedding.Embedder) error {
@@ -774,6 +609,7 @@ func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) (intent.Clas
 			DefaultMaxTokens:      ic.ModelStage.DefaultMaxTokens,
 			DefaultResponseFormat: "text",
 			SupportsTools:         boolPtr(false),
+			HTTPTimeout:           ic.ModelStage.HTTPTimeout,
 		}
 		provider, err := llm.NewProvider(provCfg)
 		if err != nil {
@@ -817,7 +653,7 @@ func clearConversationContext(cfg *config.Config) error {
 		return fmt.Errorf("clear context: mkdir: %w", err)
 	}
 	ctx := context.Background()
-	turns, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTurns)
+	turns, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTurns, cfg.VectorStoreReliability.ToPolicy())
 	if err != nil {
 		return err
 	}

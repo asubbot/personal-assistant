@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log/slog"
 	"pa/internal/core"
 	"pa/internal/jobs"
+	"pa/internal/lifecyclelog"
+	"pa/internal/sqlitepragma"
 	"strconv"
 	"strings"
 	"sync"
@@ -105,54 +105,6 @@ func (s *jobsRuntimeState) snapshot() (*jobs.Manager, bool, bool) {
 	return s.manager, s.ready, s.initErr != nil
 }
 
-type scheduledJobRunner struct {
-	handler core.MessageHandler
-	sender  chatSender
-	logger  *slog.Logger
-}
-
-func (r *scheduledJobRunner) Run(ctx context.Context, job jobs.Job) error {
-	if r.handler == nil {
-		return fmt.Errorf("scheduled job runner: handler is nil")
-	}
-	logger := r.logger
-	if logger == nil {
-		logger = slog.Default()
-	}
-	sessionKey := fmt.Sprintf("scheduled-job:%s", job.ID)
-	reply, err := r.handler.HandleMessage(ctx, job.DeliveryChatID, sessionKey, job.Instruction)
-	notifyCtx := context.WithoutCancel(ctx)
-	if err != nil {
-		if r.sender != nil {
-			msg := fmt.Sprintf("Scheduled job %s failed (%s).", job.ID, classifyJobFailure(err))
-			if sendErr := r.sender.SendMessageToChat(notifyCtx, job.DeliveryChatID, msg); sendErr != nil {
-				logger.Warn("scheduled job failure notification", "job_id", job.ID, "error", sendErr)
-			}
-		}
-		logger.Info("jobs audit", "actor_user_id", 0, "job_id", job.ID, "operation", "delivery", "outcome", "failure_notified")
-		return err
-	}
-	if r.sender != nil {
-		body := strings.TrimSpace(reply)
-		if body == "" {
-			body = "(empty response)"
-		}
-		msg := fmt.Sprintf("Scheduled job %s result:\n%s", job.ID, body)
-		if sendErr := r.sender.SendMessageToChat(notifyCtx, job.DeliveryChatID, msg); sendErr != nil {
-			logger.Warn("scheduled job result notification", "job_id", job.ID, "error", sendErr)
-		}
-	}
-	logger.Info("jobs audit", "actor_user_id", 0, "job_id", job.ID, "operation", "delivery", "outcome", "success_notified")
-	return nil
-}
-
-func classifyJobFailure(err error) string {
-	if errors.Is(err, context.DeadlineExceeded) {
-		return "timeout"
-	}
-	return "execution_error"
-}
-
 func startJobsRuntimeLoop(ctx context.Context, rt *jobs.Runtime, logger *slog.Logger) {
 	if rt == nil {
 		return
@@ -176,29 +128,28 @@ func startJobsRuntimeLoop(ctx context.Context, rt *jobs.Runtime, logger *slog.Lo
 	}()
 }
 
-func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath string, defaultTimeZone string, sender chatSender, baseHandler core.MessageHandler, logger *slog.Logger) {
+func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath string, policy sqlitepragma.Policy, defaultTimeZone string, sender chatSender, baseHandler core.MessageHandler, logger *slog.Logger) {
 	go func() {
+		t0 := time.Now()
 		openCtx := context.WithoutCancel(ctx)
 		//nolint:contextcheck // jobs.Open currently does not accept context.
-		st, err := jobs.Open(dbPath)
+		st, err := jobs.Open(dbPath, policy)
 		if err != nil {
 			logger.Error("scheduled jobs init", "error", err)
+			lifecyclelog.Error(logger, "jobs_runtime", "init", time.Since(t0), err, "lifecycle", "jobs_db_path", dbPath)
 			state.setInitError(err)
 			return
 		}
 		all, err := st.ListJobs(openCtx)
 		if err != nil {
 			logger.Error("scheduled jobs init list", "error", err)
+			lifecyclelog.Error(logger, "jobs_runtime", "init", time.Since(t0), err, "lifecycle", "jobs_db_path", dbPath)
 			_ = st.Close()
 			state.setInitError(err)
 			return
 		}
 		logger.Info("scheduled jobs runtime enabled", "jobs_db_path", dbPath, "jobs_loaded", len(all))
-		runner := &scheduledJobRunner{
-			handler: baseHandler,
-			sender:  sender,
-			logger:  logger,
-		}
+		runner := jobs.NewDeliveryRunner(baseHandler, sender, logger)
 		runtime := jobs.NewRuntime(st, runner, jobs.RuntimeConfig{
 			RunTimeout: 5 * time.Minute,
 			Logger:     logger,
@@ -207,6 +158,7 @@ func initJobsRuntimeAsync(ctx context.Context, state *jobsRuntimeState, dbPath s
 		manager.SetDefaultTimeZone(defaultTimeZone)
 		startJobsRuntimeLoop(ctx, runtime, logger)
 		state.setReady(manager)
+		lifecyclelog.Info(logger, "jobs_runtime", "init", time.Since(t0), "lifecycle", "jobs_db_path", dbPath, "jobs_loaded", len(all))
 		go func() {
 			<-ctx.Done()
 			_ = st.Close()
