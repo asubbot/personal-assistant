@@ -9,9 +9,9 @@ The `validate` tool automatically validates that all Acceptance Criteria (AC) fr
 ### Purpose
 
 Before completing an epic's audit, use this tool to ensure:
-- ✅ Every non-deferred AC-EE.NNN has traceability from a test comment (see [Test coverage declaration](#test-coverage-declaration)) or is explicitly **deferred** in `ep-acceptance-criteria.md`
+- ✅ Every in-scope AC-EE.NNN has traceability from a test comment (see [Test coverage declaration](#test-coverage-declaration)) or is explicitly marked **Obsolete** or **Deferred** in `ep-acceptance-criteria.md` (see [Excluding ACs from automation](#4-excluding-acs-from-automation-deferred-or-obsolete))
 - ✅ AC codes in tests are found via the supported comment shapes (`covers` / `supporting`, EP-N AC-, label form, REQ+AC on the same line, etc.)
-- ✅ No AC is silently missed without traceability or documented deferral
+- ✅ No AC is silently missed without traceability or a documented exclusion (**Obsolete** / **Deferred** / manual-only)
 - ✅ Every top-level `func Test…` under `tests/`, `internal/`, and `cmd/` has at least one **AC trace line** bound to it (see [Test functions must declare AC trace](#test-functions-must-declare-ac-trace-reverse-check))
 
 ### Usage
@@ -48,7 +48,7 @@ Epic       Trace%       Status
 
 ────────────────────────────────────
 
-❌ OVERALL: in-scope 96/111 traced (86.5%), automated 96 (86.5%), manual-only 0 | deferred 2 | total ACs 113
+❌ OVERALL: in-scope 96/111 traced (86.5%), automated 96 (86.5%), manual-only 0 | deferred 1 | obsolete 1 | total ACs 113
    Project-wide: Test functions with t.Skip: 0
 
 ❌ AC not covered by tests (project-wide): 15
@@ -66,7 +66,7 @@ Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.
 Action: Add a trace line (e.g. `// Covers AC-EE.NNN`) bound to each `Test*` per this document.
 ```
 
-**Trace%** is traceability **in scope** (non-deferred ACs only): `(automated + manual-only) / in_scope`. Deferred ACs are **not** counted in the numerator; they reduce `in_scope` instead of inflating the percentage.
+**Trace%** is traceability **in scope** (ACs that still require test traces): `(automated + manual-only) / in_scope`. **Deferred** and **Obsolete** ACs are **not** counted in the numerator; they reduce `in_scope` instead of inflating the percentage.
 
 When a one-line criterion is parsed from `ep-acceptance-criteria.md` (not a markdown table row), it may appear after `—` on each bullet.
 
@@ -90,11 +90,11 @@ AC Code         Criterion                                          Coverage
 ✓ AC-09.008                                                        5 tests
 ✓ AC-09.009                                                        3 tests
 ✗ AC-09.001                                                        NOT COVERED
-↷ AC-09.005                                                        DEFERRED
+↷ AC-09.005                                                        OBSOLETE
 ✎ AC-09.007                                                        MANUAL …
 ...
 
-⚠️ RESULT: in-scope 15/16 traced (93.8%), automated 14 (87.5%), manual-only 1 | deferred 1 | total ACs 18
+⚠️ RESULT: in-scope 15/16 traced (93.8%), automated 14 (87.5%), manual-only 1 | deferred 0 | obsolete 1 | total ACs 18
    Project-wide: Test functions with t.Skip: 3
 
 ❌ Missing coverage for:
@@ -102,7 +102,7 @@ AC Code         Criterion                                          Coverage
   • AC-09.006
   ...
 
-Action: Add tests for missing ACs or defer them in ep-acceptance-criteria.md
+Action: Add tests for missing ACs, or mark them **Obsolete** / **Deferred** in ep-acceptance-criteria.md (see below)
 
 ❌ Test functions without AC trace comment (project-wide): …
   • …
@@ -120,7 +120,8 @@ Action: Add tests for missing ACs or defer them in ep-acceptance-criteria.md
 {
   "epic": "EP-009",
   "total_acs": 18,
-  "deferred_acs": 1,
+  "deferred_acs": 0,
+  "obsolete_acs": 1,
   "in_scope_acs": 17,
   "automated_covered_acs": 14,
   "manual_only_traced_acs": 1,
@@ -130,7 +131,7 @@ Action: Add tests for missing ACs or defer them in ep-acceptance-criteria.md
   "tests_missing_ac_trace": ["internal/foo/bar_test.go::TestBaz"],
   "gaps": [
     {"code": "AC-09.001", "criterion": "", "status": "not_covered"},
-    {"code": "AC-09.005", "criterion": "", "status": "deferred", "reason": "Deferred in ep-acceptance-criteria.md"},
+    {"code": "AC-09.005", "criterion": "", "status": "obsolete", "reason": "Obsolete in ep-acceptance-criteria.md"},
     ...
   ],
   "ac_to_tests": {
@@ -151,10 +152,12 @@ For each epic (and for the all-epics JSON aggregate):
 
 | Field | Meaning |
 |-------|---------|
-| `in_scope_acs` | `total_acs - deferred_acs` — ACs that still require test traceability (deferred ACs are excluded from this count). |
+| `in_scope_acs` | `total_acs - deferred_acs - obsolete_acs` — ACs that still require test traceability. |
+| `deferred_acs` | ACs marked **Deferred** (or `MANUAL ONLY` / `**Status:** … Deferred …`) near the AC in `ep-acceptance-criteria.md`. |
+| `obsolete_acs` | ACs marked **Obsolete** (or `**Status:** … Obsolete …`) near the AC — criteria superseded by product refactors. |
 | `automated_covered_acs` | In-scope ACs with at least one **non-manual** test reference. |
 | `manual_only_traced_acs` | In-scope ACs where **only** manual references exist (see below). |
-| `traceability_ratio` | `(automated_covered_acs + manual_only_traced_acs) / in_scope_acs` — deferred are **not** in the numerator. |
+| `traceability_ratio` | `(automated_covered_acs + manual_only_traced_acs) / in_scope_acs` — deferred and obsolete are **not** in the numerator. |
 | `automated_ratio` | `automated_covered_acs / in_scope_acs`. |
 | `test_funcs_with_skip` | Project-wide count of `Test*` functions whose body contains `t.Skip` (direct call on `t`); scanned under `tests/`, `internal/`, `cmd/`. |
 | `tests_missing_ac_trace` | (JSON only, when non-empty) Sorted `rel/path_test.go::TestName` entries for top-level `Test*` functions without a bound AC trace line (see below). |
@@ -283,7 +286,7 @@ See [Stage 9 (Task Execution)](../specification/skills/09-task-execution.skill.m
 - `findCoverageInCodebase()` — Walk `tests/`, `internal/`, and `cmd/` for `*_test.go`; use `lineDeclaresACCoverage()` + `extractACsFromLine()` + `lineDeclaresManualTrace()` + `testFuncForTraceLine()` + `parseTestFuncsWithTSkip()`
 - `findTestsMissingACTrace()` — Second pass over the same trees: top-level `Test*` without a bound AC trace line (exit 1 + stdout list when non-empty; JSON field `tests_missing_ac_trace`)
 - `filterCoverageForEpicNum()` — Filter global map per epic
-- `generateReport()` — Build coverage report (deferred gaps; metrics use `in_scope_acs` without inflating deferred into the traceability numerator)
+- `generateReport()` — Build coverage report (deferred/obsolete gaps; metrics use `in_scope_acs` without inflating excluded ACs into the traceability numerator)
 - `validateAllEpics()` / `scanEpicsAgainstCoverage()` — one codebase scan for all epics
 - `printTable()` / `printAllEpicsHuman()` — Human-readable output
 
@@ -326,7 +329,7 @@ make validate
 make build
 ./bin/validate EP-009
 
-# If incomplete: add more tests or defer ACs
+# If incomplete: add more tests or mark ACs Obsolete/Deferred in ep-acceptance-criteria.md
 # If complete: ready for code review and audit (stages 10–11)
 ```
 
@@ -340,11 +343,18 @@ make build
 # If all covered: proceed to stages 10–11 (code review, then audit)
 ```
 
-### 4. Deferring ACs
+### 4. Excluding ACs from automation (deferred or obsolete)
 
-If an AC cannot be reasonably tested (e.g., "Docker image available"), document in `ep-acceptance-criteria.md` near the AC (e.g. `DEFERRED`, `MANUAL ONLY`, or `**Status:** … Deferred …`). The tool marks that AC as **deferred** in the report; it does **not** require a `Covers AC-…` line in tests for that AC.
+Use this when an AC must **not** fail validation for lack of `// Covers AC-…` tests.
 
-Optional: add a normal test comment if you still want traceability for partial automation, e.g. `// Covers AC-09.005` only if the test actually contributes — the validator does **not** treat `// Deferred AC-…` as a coverage marker (use markdown deferral for the defer).
+- **Deferred:** work postponed or validated outside unit tests (e.g. bootstrap gate, manual-only). Document near the AC using `**Deferred:**`, `MANUAL ONLY`, `DEFERRED`, or `**Status:** … Deferred …` on a line that also references the same `AC-EE.NNN` (or a nearby `**Status:**` line, same heuristic as before).
+- **Obsolete:** the criterion no longer applies after a **vision or refactor change** (superseded behaviour). Document near the AC using `**Obsolete:**`, `OBSOLETE`, or `**Status:** … Obsolete …` together with that `AC-EE.NNN` within a few lines (index table row or criterion heading).
+
+The tool then marks the AC as **↷ DEFERRED** or **↷ OBSOLETE** in the report and does **not** require a `Covers AC-…` line for that AC.
+
+**Important:** Do not mention other epics’ `AC-EE.NNN` codes inside an epic’s `ep-acceptance-criteria.md` except as real ACs for that file — the parser extracts every `AC-\d{2}\.\d{3}` substring.
+
+Optional: add a normal test comment if you still want traceability for partial automation — the validator does **not** treat `// Obsolete AC-…` in Go as a markdown exclusion (use `ep-acceptance-criteria.md` markers above).
 
 ## Troubleshooting
 

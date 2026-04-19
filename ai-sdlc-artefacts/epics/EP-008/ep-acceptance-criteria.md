@@ -14,9 +14,9 @@ EP-008 adds provider defaults and per-request controls for LLM **temperature**, 
 | [AC-08.002](#ac-08002) | [REQ-08.002](ep-requirements.md#temperature-configuration) | Request temperature overrides provider default |
 | [AC-08.003](#ac-08003) | [REQ-08.003](ep-requirements.md#max-tokens-configuration) | Default max_tokens appears when provider default &gt; 0 |
 | [AC-08.004](#ac-08004) | [REQ-08.004](ep-requirements.md#max-tokens-configuration) | Request max_tokens overrides provider default when &gt; 0 |
-| [AC-08.005](#ac-08005) | [REQ-08.005](ep-requirements.md#json-response-format) | ForceJSONOutput sets json_object when JSON mode supported |
-| [AC-08.006](#ac-08006) | [REQ-08.006](ep-requirements.md#json-response-format) | Explicit ResponseFormat wins over ForceJSONOutput and default |
-| [AC-08.007](#ac-08007) | [REQ-08.007](ep-requirements.md#json-response-format) | Default response format when no per-request override |
+| [AC-08.005](#ac-08005) | [REQ-08.005](ep-requirements.md#json-response-format) | **Obsolete:** `SupportsJSONMode` / `ForceJSONOutput` removed; product uses text `response_format` only. |
+| [AC-08.006](#ac-08006) | [REQ-08.006](ep-requirements.md#json-response-format) | **Obsolete:** Per-request JSON shaping via removed flags. |
+| [AC-08.007](#ac-08007) | [REQ-08.007](ep-requirements.md#json-response-format) | **Obsolete:** Default `json_object` path removed; default is text-only. |
 
 ## Acceptance criteria
 
@@ -63,7 +63,7 @@ When the OpenAICompatible provider builds a chat completion HTTP request body
 Then the request body SHALL use the CompletionOptions.MaxTokens value instead of the provider default
 ```
 
-### AC-08.005
+### AC-08.005 **Obsolete:** JSON-mode completion shaping (`json_object` via `ForceJSONOutput` / `SupportsJSONMode`) was removed from the product; see text-only `response_format` tests in `internal/llm` and config validation.
 
 **Trace:** [REQ-08.005](ep-requirements.md#json-response-format)
 
@@ -75,7 +75,7 @@ When the OpenAICompatible provider builds a chat completion HTTP request body
 Then the request body SHALL include response_format with type "json_object"
 ```
 
-### AC-08.006
+### AC-08.006 **Obsolete:** Same as AC-08.005; explicit per-request JSON overrides are out of scope for the current provider contract.
 
 **Trace:** [REQ-08.006](ep-requirements.md#json-response-format)
 
@@ -86,7 +86,7 @@ Then the request body SHALL include response_format with the type from Completio
 And the type SHALL not be taken from ForceJSONOutput or from DefaultResponseFormat when those sources would differ from CompletionOptions.ResponseFormat
 ```
 
-### AC-08.007
+### AC-08.007 **Obsolete:** Default response format is fixed to `text`; REQ-08.007 gherkin below describes the removed JSON-default behaviour.
 
 **Trace:** [REQ-08.007](ep-requirements.md#json-response-format)
 
@@ -110,9 +110,9 @@ The table below maps each AC to **primary** unit tests that assert the HTTP requ
 | AC-08.002 | `TestOpenAICompatible_buildRequest_withOverrideTemperature` | `internal/llm/openai_test.go` |
 | AC-08.003 | `TestOpenAICompatible_buildRequest_withDefaultMaxTokens` | `internal/llm/openai_test.go` |
 | AC-08.004 | `TestOpenAICompatible_buildRequest_withOverrideMaxTokens` | `internal/llm/openai_test.go` |
-| AC-08.005 | `TestOpenAICompatible_buildRequest_withForceJSONOutput_true` | `internal/llm/openai_test.go` |
-| AC-08.006 | `TestOpenAICompatible_buildRequest_withExplicitResponseFormat_overridesForceJSON`; `TestOpenAICompatible_buildRequest_explicitOverridesDefault` | `internal/llm/openai_test.go` |
-| AC-08.007 | `TestOpenAICompatible_buildRequest_withDefaultResponseFormat` (nil opts, default `json_object`); `TestOpenAICompatible_buildRequest_withoutForceJSONOutput_usesDefault` (explicit `ForceJSONOutput: false`, default `text`) | `internal/llm/openai_test.go` |
+| AC-08.005 | **OBSOLETE** (see criterion row) | — |
+| AC-08.006 | **OBSOLETE** (see criterion row) | — |
+| AC-08.007 | **OBSOLETE** (see criterion row) | — |
 
 **Additional coverage (edges, not one-to-one with a single AC):**
 
@@ -122,6 +122,6 @@ The table below maps each AC to **primary** unit tests that assert the HTTP requ
 | `TestOpenAICompatible_buildRequest_explicitJSONObject_ignoredWithoutJSONMode` | Explicit `json_object` with unsupported JSON mode falls back (implementation guard). |
 | `TestOpenAICompatible_buildRequest_emptyExplicitResponseFormatType_usesDefault`; `TestOpenAICompatible_buildRequest_emptyExplicitType_forceJSONStillApplies` | Whitespace/empty explicit `ResponseFormat.Type` and interaction with `ForceJSONOutput`. |
 | `TestLoad_LLMProviderDefaults_boundaryTemperature_loads`; `TestLoad_InvalidConfig` rows for `llm_default_*` fixtures | Config load / fail-fast for temperature, `default_max_tokens`, `default_response_format`, `supports_json_mode` (`internal/config/config_test.go`). |
-| `TestHandleMessage_textBasedHermes_twoToolRounds_preservesForceJSONOnEachComplete` (and related Hermes tests in `handler_test.go`) | Integration: handler keeps `ForceJSONOutput=true` across tool rounds so the provider can apply AC-08.005 on each completion. |
+| Text-only `response_format` / rejection of removed JSON-mode config | `internal/llm/openai_test.go`, `internal/config/config_test.go` |
 
-**Code comments:** Primary `internal/llm/openai_test.go` tests carry `// EP-008 AC-08.xxx / REQ-08.xxx` (or EP-008-only) comments above each function. Hermes integration tests in `internal/core/handler_test.go` and config validation in `internal/config/config_test.go` include EP-008 trace lines where applicable.
+**Code comments:** `internal/llm/openai_test.go` tests for temperature, max tokens, and text `response_format` carry EP-008 / REQ-08 trace lines where they still apply (AC-08.001–AC-08.004). JSON-mode ACs AC-08.005–AC-08.007 are **Obsolete** in the index above.

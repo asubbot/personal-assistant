@@ -34,7 +34,7 @@ Some requirement
 	}
 	_ = tmpFile.Close()
 
-	acs, deferred, err := parseACsFromFile(tmpFile.Name())
+	acs, excluded, err := parseACsFromFile(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("parseACsFromFile failed: %v", err)
 	}
@@ -48,8 +48,8 @@ Some requirement
 	if _, ok := acs[ACCode("AC-09.003")]; !ok {
 		t.Error("Expected AC-09.003 to be found")
 	}
-	if len(deferred) != 0 {
-		t.Errorf("Expected no deferred ACs, got %d", len(deferred))
+	if len(excluded) != 0 {
+		t.Errorf("Expected no excluded ACs, got %d", len(excluded))
 	}
 
 	t.Logf("Found %d ACs: %v", len(acs), acs)
@@ -83,7 +83,7 @@ func TestGenerateReport(t *testing.T) {
 		"AC-09.002": "Second criterion",
 		"AC-09.003": "Third criterion",
 	}
-	deferred := map[ACCode]bool{}
+	excluded := map[ACCode]acExclusionKind{}
 
 	coverage := map[ACCode][]CoverageRef{
 		"AC-09.001": {{Ref: "tests/test.go::TestFunc1", Manual: false}},
@@ -91,7 +91,7 @@ func TestGenerateReport(t *testing.T) {
 		// AC-09.003 has no coverage
 	}
 
-	r := generateReport("EP-009", acs, deferred, coverage)
+	r := generateReport("EP-009", acs, excluded, coverage)
 
 	if r.Epic != "EP-009" {
 		t.Errorf("Epic = %s, want EP-009", r.Epic)
@@ -132,14 +132,14 @@ func TestGenerateReport_FullCoverage(t *testing.T) {
 		"AC-09.001": "First criterion",
 		"AC-09.002": "Second criterion",
 	}
-	deferred := map[ACCode]bool{}
+	excluded := map[ACCode]acExclusionKind{}
 
 	coverage := map[ACCode][]CoverageRef{
 		"AC-09.001": {{Ref: "tests/test.go::TestFunc1", Manual: false}},
 		"AC-09.002": {{Ref: "tests/test.go::TestFunc2", Manual: false}},
 	}
 
-	r := generateReport("EP-009", acs, deferred, coverage)
+	r := generateReport("EP-009", acs, excluded, coverage)
 
 	if r.AutomatedCoveredACs+r.ManualOnlyTracedACs != r.InScopeACs {
 		t.Errorf("traced = %d, want in-scope %d (full coverage)", r.AutomatedCoveredACs+r.ManualOnlyTracedACs, r.InScopeACs)
@@ -160,8 +160,8 @@ func TestGenerateReport_DeferredAC(t *testing.T) {
 		"AC-09.002": "Second criterion",
 		"AC-09.003": "Third criterion",
 	}
-	deferred := map[ACCode]bool{
-		"AC-09.003": true,
+	excluded := map[ACCode]acExclusionKind{
+		"AC-09.003": acExclusionDeferred,
 	}
 
 	coverage := map[ACCode][]CoverageRef{
@@ -169,10 +169,13 @@ func TestGenerateReport_DeferredAC(t *testing.T) {
 		"AC-09.002": {{Ref: "tests/test.go::TestFunc2", Manual: false}},
 	}
 
-	r := generateReport("EP-009", acs, deferred, coverage)
+	r := generateReport("EP-009", acs, excluded, coverage)
 
 	if r.DeferredACs != 1 {
 		t.Errorf("DeferredACs = %d, want 1", r.DeferredACs)
+	}
+	if r.ObsoleteACs != 0 {
+		t.Errorf("ObsoleteACs = %d, want 0", r.ObsoleteACs)
 	}
 	if r.InScopeACs != 2 {
 		t.Errorf("InScopeACs = %d, want 2", r.InScopeACs)
@@ -182,6 +185,29 @@ func TestGenerateReport_DeferredAC(t *testing.T) {
 	}
 	if hasBlockingGaps(r) {
 		t.Error("Expected no blocking gaps when uncovered AC is deferred")
+	}
+}
+
+func TestGenerateReport_ObsoleteAC(t *testing.T) {
+	acs := map[ACCode]string{
+		"AC-09.001": "First",
+		"AC-09.002": "Second",
+	}
+	excluded := map[ACCode]acExclusionKind{
+		"AC-09.002": acExclusionObsolete,
+	}
+	coverage := map[ACCode][]CoverageRef{
+		"AC-09.001": {{Ref: "tests/x.go::TestA", Manual: false}},
+	}
+	r := generateReport("EP-009", acs, excluded, coverage)
+	if r.ObsoleteACs != 1 || r.DeferredACs != 0 {
+		t.Fatalf("ObsoleteACs=%d DeferredACs=%d, want 1 and 0", r.ObsoleteACs, r.DeferredACs)
+	}
+	if r.InScopeACs != 1 {
+		t.Fatalf("InScopeACs = %d, want 1", r.InScopeACs)
+	}
+	if hasBlockingGaps(r) {
+		t.Error("obsolete AC must not create blocking gaps")
 	}
 }
 
@@ -261,7 +287,7 @@ Then something
 	}
 	_ = tmpFile.Close()
 
-	acs, deferred, err := parseACsFromFile(tmpFile.Name())
+	acs, excluded, err := parseACsFromFile(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("parseACsFromFile failed: %v", err)
 	}
@@ -269,8 +295,37 @@ Then something
 	if len(acs) != 1 {
 		t.Fatalf("Expected 1 AC, got %d", len(acs))
 	}
-	if !deferred[ACCode("AC-09.005")] {
-		t.Fatal("Expected AC-09.005 to be marked deferred")
+	if excluded[ACCode("AC-09.005")] != acExclusionDeferred {
+		t.Fatalf("Expected AC-09.005 to be marked deferred, got %q", excluded[ACCode("AC-09.005")])
+	}
+}
+
+func TestParseACsFromFile_Obsolete(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "ac-obsolete-*.md")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+
+	content := `# EP-009 Acceptance Criteria
+
+| [AC-09.006](#ac-09-006) | REQ | **Obsolete:** superseded by refactor. |
+`
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		t.Fatalf("Failed to write temp file: %v", err)
+	}
+	_ = tmpFile.Close()
+
+	acs, excluded, err := parseACsFromFile(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("parseACsFromFile failed: %v", err)
+	}
+	if excluded[ACCode("AC-09.006")] != acExclusionObsolete {
+		t.Fatalf("want obsolete exclusion, got %q for AC-09.006", excluded[ACCode("AC-09.006")])
+	}
+	if len(acs) < 1 {
+		t.Fatalf("expected ACs parsed, got %d", len(acs))
 	}
 }
 
@@ -313,7 +368,7 @@ func TestLineDeclaresACCoverage(t *testing.T) {
 		{"// Supporting AC-06.002", true},
 		{"// supporting AC-06.002", true},
 		{"// EP-008 AC-08.001 / REQ-08.001: default_temperature", true},
-		{"// AC-04.025: tools.text_based_enabled", true},
+		{"// AC-30.013: tools.text_based_enabled rejection", true},
 		{"// each … (AC-06.005, AC-06.010 / REQ-06.013).", true},
 		{"// (AC-06.005, AC-06.006, AC-06.010 / REQ-06.013)", true},
 		{"// no keyword and no pattern", false},
@@ -417,11 +472,11 @@ func TestLineDeclaresManualTrace(t *testing.T) {
 
 func TestGenerateReport_ManualOnly(t *testing.T) {
 	acs := map[ACCode]string{"AC-09.001": "c1"}
-	deferred := map[ACCode]bool{}
+	excluded := map[ACCode]acExclusionKind{}
 	coverage := map[ACCode][]CoverageRef{
 		"AC-09.001": {{Ref: "t.go::TestX", Manual: true}},
 	}
-	r := generateReport("EP-009", acs, deferred, coverage)
+	r := generateReport("EP-009", acs, excluded, coverage)
 	if r.ManualOnlyTracedACs != 1 || r.AutomatedCoveredACs != 0 {
 		t.Fatalf("manual-only AC: got auto=%d manual=%d", r.AutomatedCoveredACs, r.ManualOnlyTracedACs)
 	}

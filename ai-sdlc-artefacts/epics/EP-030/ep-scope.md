@@ -3,9 +3,9 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-030 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Remove Hermes text-based tool path |
-| **Description** | Remove the product feature that lets the main LLM invoke tools by emitting Hermes-style `<tool_call>` blocks in free text when the first configured provider does not support native tool calling. After this epic, tool execution for the conversation path is available only through the provider tool API (native tool calls), simplifying prompts, handler logic, and observability. |
+| **Description** | Remove the product feature that lets the main LLM invoke tools by emitting Hermes-style `<tool_call>` blocks in free text when the first configured provider does not support native tool calling. After this epic, tool execution for the conversation path is available only through the provider tool API (native tool calls), simplifying prompts, handler logic, and observability. The epic also removes the per-provider `supports_json_mode` configuration flag and dependent validation / HTTP behaviour that existed primarily to support Hermes JSON hints and optional `json_object` defaults—leaving a single, text-first completion contract unless requirements specify a minimal replacement. |
 | **First version date** | 2026-04-19 |
 
 ## Glossary
@@ -13,6 +13,7 @@
 - **Hermes text path**: Conversation flow where the system instructs the model to output tool invocations as marked-up JSON inside `<tool_call>…</tool_call>` in assistant message content; the core parses that text when native tool calls are not used for the first provider.
 - **Native tool calling**: Provider and HTTP path where tool definitions are sent in the completion request and the model returns structured tool calls in the API response (not parsed from assistant prose).
 - **Text-based tools flag**: Configuration field `tools.text_based_enabled` that today gates whether the Hermes instructions and parsing path may activate together with provider capability flags.
+- **`supports_json_mode`**: Per-`llm_providers[]` boolean in product configuration; today gates use of `response_format: json_object` (including `CompletionOptions.ForceJSONOutput` on the Hermes path) and load-time rules tying `default_response_format` to JSON mode support.
 
 ## Scope (features/capabilities)
 
@@ -20,6 +21,8 @@
 - **Remove Hermes instructions from dynamic system tail** wherever they are assembled for main-turn prompts (all intent tiers and shared helpers that currently inject Hermes format text when the text path would apply).
 - **Remove or repurpose the `internal/tooltext` package** (Hermes format description, parsers, helpers used only for this path), including catalog tool helpers that exist only for Hermes prompt bodies, unless a small stable subset is still required for unrelated features (if none, delete the package).
 - **Configuration and load-time validation**: `tools.text_based_enabled` is removed from the explicit product configuration contract, or retained only if repurposed with a documented no-op or replacement semantics agreed in requirements stage—default outcome is **removal** so operators cannot enable a removed path. All documented top-level keys in `config.json` remain explicit per product rules; unknown keys stay rejected; invalid combinations fail at load.
+- **Remove `text_based_enabled` from product code**: Delete the field from typed configuration (`ToolsConfig` and JSON load/validation), from all call sites (e.g. conversation handler, tier / dynamic-tool assembly, `internal/core/run.go` wiring, tests, fixtures, `./bin/validate` and any tooling that references the key), and from operator docs—**no** remaining reads, struct fields, or `text_based_enabled` JSON keys in product source trees (`cmd/`, `internal/`, `tests/`, operator-facing `docs/`).
+- **Remove `supports_json_mode` from LLM provider configuration**: Drop the field from the documented `llm_providers[]` schema, from typed config and `config.Load` validation, from fixtures and examples, and from the OpenAI-compatible client path that branches on it (including `ForceJSONOutput` / `default_response_format` interactions defined in EP-008 that become obsolete once Hermes is gone). Requirements shall define the post-epic rule for `default_response_format` (e.g. `text` only for conversation providers, or a single implicit behaviour) so load remains fail-fast without hidden defaults.
 - **Provider contract**: Document that conversation tools require `supports_tools: true` on the first (or primary) provider used for the main turn when tools are enabled—exact wording and any fallback behaviour (e.g. clear error vs. silent omission) are fixed in requirements and acceptance criteria stages.
 - **Dynamic tool selection interaction**: Where tier or dynamic-tool logic today depends on `text_based_enabled` (for example, gating dynamic cap behaviour), behaviour is simplified or re-specified so full_lite and full tiers remain coherent without the Hermes path (parity rules for tiers defined in follow-on requirements).
 - **Observability**: Remove or replace log attributes and failure classes that refer to Hermes or `invoked_via=hermes` so traces remain accurate and grep-clean.
@@ -31,6 +34,7 @@
 - **Adding a replacement text protocol** for models without native tools (e.g. a new delimiter format)—treat as a separate epic if needed later.
 - **Changing third-party servers** (Ollama, vLLM, etc.) to add tool APIs—outside this repository.
 - **Classifier or tier naming** beyond what is strictly required to remove Hermes dependencies (large EP-017 or EP-018 refactors without linkage to this removal).
+- **Re-introducing structured JSON completions** as a first-class operator-tunable provider feature (if needed later)—out of scope unless folded into this epic’s requirements by explicit scope change.
 
 ## Success criteria
 
@@ -38,9 +42,11 @@
 - Configuration that previously relied on `text_based_enabled: true` is either rejected with a clear load error (if the key is removed) or documented migration is available; no silent partial behaviour.
 - All automated tests pass (`make check`); epic acceptance criteria validated with `./bin/validate EP-030` once criteria and traceability comments are added in the pipeline.
 - No remaining product references to the removed path in code paths exercised by tests (dead code in comments only is not sufficient—implementation and tests align with “native tools only” for tool execution on the main conversation turn).
+- Product configuration and documentation contain **no** `supports_json_mode` field on `llm_providers` entries; `make check` and AC validation pass with updated fixtures and migration notes for existing deployments.
+- The codebase and documented `config.json` schema contain **no** `tools.text_based_enabled` key or `TextBasedEnabled` field; `make check` and AC validation pass with updated fixtures and migration notes for existing deployments.
 
 ## Traceability
 
 - **Scope:** Supports reliability and maintainability goals in [scope.md](../../scope.md) (simpler core behaviour, fewer model-dependent parsing paths). Aligns with “swappable LLM backends” when combined with documented requirement for native tool support where tools are used.
 - **Strategy:** Fits [strategy.md](../../strategy.md) delivery increment **v0.01** and the rule that existing behaviour stays testable: removal is covered by updated tests and clear operator docs.
-- **Related epics:** Builds on tool and tier work described in [EP-004](../EP-004/ep-scope.md) (structured tools) and [EP-018](../EP-018/ep-scope.md) (tiers and prompt assembly that referenced Hermes gating); EP-030 narrows the product by removing one execution path rather than extending tiers.
+- **Related epics:** Builds on tool and tier work described in [EP-004](../EP-004/ep-scope.md) (structured tools) and [EP-018](../EP-018/ep-scope.md) (tiers and prompt assembly that referenced Hermes gating); EP-030 narrows the product by removing one execution path rather than extending tiers. **EP-008** (LLM parameters / JSON mode and `ForceJSONOutput`) is superseded in the parts that depend on `supports_json_mode`; this epic’s requirements shall call out which EP-008 behaviours remain vs. are removed to avoid conflicting docs.

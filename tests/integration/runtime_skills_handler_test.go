@@ -371,9 +371,9 @@ func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *te
 	}
 }
 
-// REQ-13.016: Hermes block appears before RETRIEVED_CONTEXT when text-based tools are enabled.
-// Covers AC-13.004: traceability for TestRuntimeSkills_handler_hermesBlockBeforeRetrievedMarkers.
-func TestRuntimeSkills_handler_hermesBlockBeforeRetrievedMarkers(t *testing.T) {
+// REQ-13.016: no legacy text-tool format markers; retrieved context still appears when memory retrieval runs.
+// Covers AC-13.004: traceability for TestRuntimeSkills_handler_retrievedContextWithoutHermesMarkers.
+func TestRuntimeSkills_handler_retrievedContextWithoutHermesMarkers(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	catalog := &toolcatalog.Catalog{
@@ -400,18 +400,19 @@ func TestRuntimeSkills_handler_hermesBlockBeforeRetrievedMarkers(t *testing.T) {
 		ToolSearchTopK:             10,
 		ToolMinCount:               1,
 		ToolFallbackCap:            50,
-		TextBasedEnabled:           true,
-		FirstProviderSupportsTools: false,
+		FirstProviderSupportsTools: true,
 	})
 	_, err := h.HandleMessage(ctx, 1, "", "q")
 	if err != nil {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	iH := strings.Index(sys, promptmarkers.BeginHermesToolFormat)
+	if strings.Contains(sys, "<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>") {
+		t.Fatalf("legacy text-tool format markers must not appear in system prompt")
+	}
 	iR := strings.Index(sys, promptmarkers.BeginRetrievedContext)
-	if iH < 0 || iR < 0 || iH >= iR {
-		t.Fatalf("want Hermes block before retrieved: hermes@%d retrieved@%d", iH, iR)
+	if iR < 0 {
+		t.Fatalf("want retrieved context marker, got prefix: %.200q", sys)
 	}
 }
 

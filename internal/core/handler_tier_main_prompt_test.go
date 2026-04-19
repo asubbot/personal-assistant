@@ -21,7 +21,7 @@ func TestTierMainPromptBuilders_simpleTierUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("assemble: %v", err)
 	}
-	if got.opts != nil || got.textPath || got.dynamicRan {
+	if got.opts != nil || got.dynamicRan {
 		t.Fatalf("simple tier params = %+v, want empty", got)
 	}
 	if msgs[0].Content != sysHead {
@@ -67,7 +67,7 @@ func TestTierMainPromptBuilders_explicitEntryPoints(t *testing.T) {
 	ctx := context.Background()
 	sysHead := "h"
 	msgs := []llm.Message{{Role: "system", Content: sysHead}}
-	if p := h.buildTierSimpleMainPrompt(); p.opts != nil || p.textPath || p.dynamicRan {
+	if p := h.buildTierSimpleMainPrompt(); p.opts != nil || p.dynamicRan {
 		t.Fatalf("buildTierSimpleMainPrompt = %+v", p)
 	}
 	if _, err := h.buildTierFullLiteMainPrompt(ctx, "u", sysHead, msgs); err != nil {

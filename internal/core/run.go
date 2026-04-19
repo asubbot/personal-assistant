@@ -86,7 +86,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		maxDynRunes, topK = 4000, 10
 		toolTopK, toolMin, toolCap = 10, 1, 50
 	}
-	firstSupportsTools, textBased := firstProviderTextToolFlags(cfg)
+	firstSupportsTools := baselineProviderSupportsTools(cfg)
 	byID := make(map[string]*runtimeskills.Package)
 	var rs *config.RuntimeSkillsConfig
 	var tc *config.ToolsConfig
@@ -130,7 +130,6 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		llmLog:                     llmLog,
 		model:                      model,
 		logRedactor:                redactor,
-		textBasedEnabled:           textBased,
 		firstProviderSupportsTools: firstSupportsTools,
 		sessionCfg:                 sessCfg,
 		sessionStore:               sessStore,
@@ -168,22 +167,18 @@ func openLLMLogIfConfigured(cfg *config.Config, logger *slog.Logger, redactor fu
 	return w, model, nil
 }
 
-func firstProviderTextToolFlags(cfg *config.Config) (firstSupportsTools, textBased bool) {
-	firstSupportsTools = true
+func baselineProviderSupportsTools(cfg *config.Config) bool {
 	if cfg == nil {
-		return firstSupportsTools, textBased
+		return true
 	}
 	idx := 0
 	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled && esc.BaselineIndex < len(cfg.LLMProviders) {
 		idx = esc.BaselineIndex
 	}
 	if len(cfg.LLMProviders) > idx && cfg.LLMProviders[idx].SupportsTools != nil {
-		firstSupportsTools = *cfg.LLMProviders[idx].SupportsTools
+		return *cfg.LLMProviders[idx].SupportsTools
 	}
-	if cfg.Tools != nil {
-		textBased = cfg.Tools.TextBasedEnabled
-	}
-	return firstSupportsTools, textBased
+	return true
 }
 
 // toolPreSelectionParams returns tool pre-selection from config (validated at config.Load).

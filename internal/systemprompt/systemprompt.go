@@ -38,15 +38,6 @@ func WrapToolInstructions(inner string) string {
 	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginToolInstructions, inner, promptmarkers.EndToolInstructions)
 }
 
-// WrapHermesToolFormat wraps non-empty Hermes instructions.
-func WrapHermesToolFormat(inner string) string {
-	inner = strings.TrimSpace(inner)
-	if inner == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginHermesToolFormat, inner, promptmarkers.EndHermesToolFormat)
-}
-
 // WrapRuntimeSkills wraps non-empty runtime skill playbook text.
 func WrapRuntimeSkills(inner string) string {
 	inner = strings.TrimSpace(inner)

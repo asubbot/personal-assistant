@@ -5,20 +5,17 @@ import (
 	"pa/internal/runtimeskills"
 	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
-	"pa/internal/tooltext"
 	"strings"
 	"unicode/utf8"
 )
 
 // tailFitState holds mutable pieces of the dynamic system tail (after protected head).
-// Order in the final message: TOOL_INSTRUCTIONS, HERMES, RETRIEVED_CONTEXT, RUNTIME_SKILLS (REQ-13.016).
+// Order in the final message: TOOL_INSTRUCTIONS, RETRIEVED_CONTEXT, RUNTIME_SKILLS (REQ-13.016).
 type tailFitState struct {
-	merged        []string
-	sources       map[string]toolOrigin
-	chunks        []string // vector memory chunk texts in search order
-	skills        []*runtimeskills.Package
-	includeHermes bool
-	textPath      bool
+	merged  []string
+	sources map[string]toolOrigin
+	chunks  []string // vector memory chunk texts in search order
+	skills  []*runtimeskills.Package
 }
 
 func formatRetrievedInnerFromChunks(chunks []string) string {
@@ -43,12 +40,6 @@ func (h *conversationHandler) buildDynamicTailString(st *tailFitState) string {
 			b.WriteString(systemprompt.WrapToolInstructions(block))
 		}
 	}
-	if st.textPath && st.includeHermes && h.catalog != nil {
-		inner := tooltext.InstructionsForCatalogToolsPlusNative(h.catalog, st.merged, h.nativeToolDefs())
-		if strings.TrimSpace(inner) != "" {
-			b.WriteString(systemprompt.WrapHermesToolFormat(inner))
-		}
-	}
 	b.WriteString(systemprompt.WrapRetrievedContext(formatRetrievedInnerFromChunks(st.chunks)))
 	var sb strings.Builder
 	for _, p := range st.skills {
@@ -64,8 +55,8 @@ func (h *conversationHandler) dynamicTailRunes(st *tailFitState) int {
 }
 
 // fitDynamicTailToBudget shrinks st in product order until rune count <= maxRunes or no further reduction.
-// Order: (1) whole runtime skills from lowest rank, (2) whole retrieved chunks from end, (3) Hermes block,
-// (4) catalog tool instructions: vector-only ids from end, then skill-linked (not always), then always_include,
+// Order: (1) whole runtime skills from lowest rank, (2) whole retrieved chunks from end,
+// (3) catalog tool instructions: vector-only ids from end, then skill-linked (not always), then always_include,
 // (5) remove any remaining tool id from end until fit or empty.
 func (h *conversationHandler) fitDynamicTailToBudget(ctx context.Context, st *tailFitState, maxRunes int) {
 	if maxRunes < 1 {
@@ -99,10 +90,6 @@ func trimDynamicTailOneStep(st *tailFitState) bool {
 	}
 	if len(st.chunks) > 0 {
 		st.chunks = st.chunks[:len(st.chunks)-1]
-		return true
-	}
-	if st.includeHermes {
-		st.includeHermes = false
 		return true
 	}
 	if tryRemoveToolStep4(st) {

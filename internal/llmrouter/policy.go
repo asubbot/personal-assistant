@@ -8,7 +8,7 @@ func DecideCompleteError(class FailureClass, hasNext bool) Action {
 	return ActionStop
 }
 
-// DecideToolFailure decides whether to escalate after qualifying tool/hermes failures.
+// DecideToolFailure decides whether to escalate after qualifying tool failures.
 func DecideToolFailure(st *State, escalationEnabled bool, maxEsc int, hasNext bool) Action {
 	if st == nil || !escalationEnabled {
 		return ActionStop

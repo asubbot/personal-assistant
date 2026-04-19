@@ -12,13 +12,11 @@
       "supports_tools": true,
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
-      "supports_json_mode": true,
       "default_response_format": "text",
       "http_timeout": "60s"
     }
   ],
   "tools": {
-    "text_based_enabled": false,
     "dynamic_selection": {
       "enabled": true,
       "max_tools_for_llm_request": 0

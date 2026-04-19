@@ -111,3 +111,17 @@ func TestBuildToolDefs_ArgumentsSchema_RequiredAndEnum(t *testing.T) {
 		t.Errorf("parameters.properties.level.enum = %v, want [low, high]", enum)
 	}
 }
+
+// Covers AC-30.011: native tool definitions use catalog index_text as the LLM-visible description.
+func TestBuildToolDefs_usesIndexTextForNativeDescription(t *testing.T) {
+	c := &Catalog{Tools: map[string]*Tool{
+		"tid": {ID: "tid", IndexText: "native description for LLM", Template: "x", NodeID: "n"},
+	}}
+	defs, err := BuildToolDefs(c, []string{"tid"})
+	if err != nil {
+		t.Fatalf("BuildToolDefs: %v", err)
+	}
+	if len(defs) != 1 || defs[0].Description != "native description for LLM" {
+		t.Fatalf("BuildToolDefs: %+v", defs)
+	}
+}

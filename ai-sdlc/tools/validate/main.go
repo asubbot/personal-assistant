@@ -15,6 +15,16 @@ import (
 
 type ACCode string
 
+// acExclusionKind marks an AC as out of scope for mandatory automated test traces
+// when declared in ep-acceptance-criteria.md (vision changed, superseded, or deferred work).
+type acExclusionKind string
+
+const (
+	acExclusionNone     acExclusionKind = ""
+	acExclusionDeferred acExclusionKind = "deferred"
+	acExclusionObsolete acExclusionKind = "obsolete"
+)
+
 // CoverageRef is one test function reference with optional manual-only classification.
 type CoverageRef struct {
 	Ref    string `json:"ref"`
@@ -25,6 +35,7 @@ type Report struct {
 	Epic                    string                   `json:"epic"`
 	TotalACs                int                      `json:"total_acs"`
 	DeferredACs             int                      `json:"deferred_acs"`
+	ObsoleteACs             int                      `json:"obsolete_acs"`
 	InScopeACs              int                      `json:"in_scope_acs"`
 	AutomatedCoveredACs     int                      `json:"automated_covered_acs"`
 	ManualOnlyTracedACs     int                      `json:"manual_only_traced_acs"`
@@ -40,7 +51,7 @@ type Report struct {
 type ACGap struct {
 	Code      string `json:"code"`
 	Criterion string `json:"criterion"`
-	Status    string `json:"status"` // "not_covered" | "deferred"
+	Status    string `json:"status"` // "not_covered" | "deferred" | "obsolete"
 	Reason    string `json:"reason,omitempty"`
 }
 
@@ -50,6 +61,7 @@ type EpicSummary struct {
 	TotalACs            int     `json:"total_acs"`
 	TestsCount          int     `json:"tests_count"`
 	DeferredACs         int     `json:"deferred_acs"`
+	ObsoleteACs         int     `json:"obsolete_acs"`
 	InScopeACs          int     `json:"in_scope_acs"`
 	AutomatedCoveredACs int     `json:"automated_covered_acs"`
 	ManualOnlyTracedACs int     `json:"manual_only_traced_acs"`
@@ -70,6 +82,7 @@ type AllEpicsReport struct {
 	NotCoveredCount         int                   `json:"not_covered_count"`
 	TotalACs                int                   `json:"total_acs"`
 	DeferredACs             int                   `json:"deferred_acs"`
+	ObsoleteACs             int                   `json:"obsolete_acs"`
 	InScopeACs              int                   `json:"in_scope_acs"`
 	AutomatedCoveredACs     int                   `json:"automated_covered_acs"`
 	ManualOnlyTracedACs     int                   `json:"manual_only_traced_acs"`
@@ -81,15 +94,80 @@ type AllEpicsReport struct {
 	HasGaps                 bool                  `json:"has_gaps"`
 }
 
+func mergeACExclusion(prev, next acExclusionKind) acExclusionKind {
+	if next == acExclusionObsolete || prev == acExclusionObsolete {
+		return acExclusionObsolete
+	}
+	if next == acExclusionDeferred || prev == acExclusionDeferred {
+		return acExclusionDeferred
+	}
+	return acExclusionNone
+}
+
+func acLineMentionsTarget(lineUpper, targetUpper string) bool {
+	return strings.Contains(lineUpper, targetUpper)
+}
+
+func lineImpliesObsolete(lineUpper, targetUpper string) bool {
+	if acLineMentionsTarget(lineUpper, targetUpper) && strings.Contains(lineUpper, "OBSOLETE") {
+		return true
+	}
+	return strings.Contains(lineUpper, "STATUS:") && strings.Contains(lineUpper, "OBSOLETE")
+}
+
+func lineImpliesDeferred(lineUpper, targetUpper string) bool {
+	if !acLineMentionsTarget(lineUpper, targetUpper) {
+		return strings.Contains(lineUpper, "STATUS:") && strings.Contains(lineUpper, "DEFERRED")
+	}
+	if strings.Contains(lineUpper, "DEFERRED") || strings.Contains(lineUpper, "MANUAL ONLY") {
+		return true
+	}
+	return false
+}
+
+// detectACExclusion returns whether an AC is excluded from mandatory automated traces
+// because the epic marks it **Deferred:** / **Obsolete:** / MANUAL ONLY, or **Status:** … DEFERRED/OBSOLETE,
+// within a few lines of the AC mention (same heuristic as historical "deferred" parsing).
+func detectACExclusion(lines []string, idx int, code string) acExclusionKind {
+	targetUpper := strings.ToUpper(code)
+	start := idx - 3
+	if start < 0 {
+		start = 0
+	}
+	end := idx + 6
+	if end >= len(lines) {
+		end = len(lines) - 1
+	}
+	obsolete := false
+	deferred := false
+	for i := start; i <= end; i++ {
+		lineUpper := strings.ToUpper(lines[i])
+		if lineImpliesObsolete(lineUpper, targetUpper) {
+			obsolete = true
+		}
+		if lineImpliesDeferred(lineUpper, targetUpper) {
+			deferred = true
+		}
+	}
+	if obsolete {
+		return acExclusionObsolete
+	}
+	if deferred {
+		return acExclusionDeferred
+	}
+	return acExclusionNone
+}
+
 // parseACsFromFile extracts all AC-EE.NNN codes from an acceptance criteria markdown file.
-func parseACsFromFile(path string) (map[ACCode]string, map[ACCode]bool, error) {
+// The second map marks ACs excluded from automated test requirements (**Deferred:**, **Obsolete:**, etc.).
+func parseACsFromFile(path string) (map[ACCode]string, map[ACCode]acExclusionKind, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	acs := make(map[ACCode]string)
-	deferred := make(map[ACCode]bool)
+	excluded := make(map[ACCode]acExclusionKind)
 	lines := strings.Split(string(content), "\n")
 
 	// Capture AC code in common formats:
@@ -118,13 +196,13 @@ func parseACsFromFile(path string) (map[ACCode]string, map[ACCode]bool, error) {
 				acs[ac] = criterion
 			}
 
-			if isDeferredAC(lines, i, code) {
-				deferred[ac] = true
+			if k := detectACExclusion(lines, i, code); k != acExclusionNone {
+				excluded[ac] = mergeACExclusion(excluded[ac], k)
 			}
 		}
 	}
 
-	return acs, deferred, nil
+	return acs, excluded, nil
 }
 
 // parseREQCountFromFile extracts a count of unique REQ-EE.NNN codes from ep-requirements.md.
@@ -159,30 +237,6 @@ func normalizeCriterionPreview(c string) string {
 		return c[:157] + "..."
 	}
 	return c
-}
-
-func isDeferredAC(lines []string, idx int, code string) bool {
-	targetUpper := strings.ToUpper(code)
-	start := idx - 3
-	if start < 0 {
-		start = 0
-	}
-	end := idx + 6
-	if end >= len(lines) {
-		end = len(lines) - 1
-	}
-
-	for i := start; i <= end; i++ {
-		lineUpper := strings.ToUpper(lines[i])
-		if strings.Contains(lineUpper, targetUpper) &&
-			(strings.Contains(lineUpper, "DEFERRED") || strings.Contains(lineUpper, "MANUAL ONLY")) {
-			return true
-		}
-		if strings.Contains(lineUpper, "STATUS:") && strings.Contains(lineUpper, "DEFERRED") {
-			return true
-		}
-	}
-	return false
 }
 
 // Regexes for common traceability comment shapes (see project test style).
@@ -403,7 +457,7 @@ func extractACsFromLine(line string) []ACCode {
 }
 
 // generateReport creates the AC coverage report.
-func generateReport(epic string, acs map[ACCode]string, deferred map[ACCode]bool, coverage map[ACCode][]CoverageRef) *Report {
+func generateReport(epic string, acs map[ACCode]string, excluded map[ACCode]acExclusionKind, coverage map[ACCode][]CoverageRef) *Report {
 	r := &Report{
 		Epic:     epic,
 		TotalACs: len(acs),
@@ -415,7 +469,16 @@ func generateReport(epic string, acs map[ACCode]string, deferred map[ACCode]bool
 	}
 
 	for ac := range acs {
-		if deferred[ac] {
+		switch excluded[ac] {
+		case acExclusionObsolete:
+			r.Gaps = append(r.Gaps, ACGap{
+				Code:   string(ac),
+				Status: "obsolete",
+				Reason: "Obsolete in ep-acceptance-criteria.md",
+			})
+			r.ObsoleteACs++
+			continue
+		case acExclusionDeferred:
 			r.Gaps = append(r.Gaps, ACGap{
 				Code:   string(ac),
 				Status: "deferred",
@@ -446,7 +509,7 @@ func generateReport(epic string, acs map[ACCode]string, deferred map[ACCode]bool
 		}
 	}
 
-	r.InScopeACs = r.TotalACs - r.DeferredACs
+	r.InScopeACs = r.TotalACs - r.DeferredACs - r.ObsoleteACs
 	if r.InScopeACs > 0 {
 		traced := r.AutomatedCoveredACs + r.ManualOnlyTracedACs
 		r.TraceabilityRatio = float64(traced) / float64(r.InScopeACs)
@@ -470,8 +533,11 @@ func hasBlockingGaps(r *Report) bool {
 	return false
 }
 
-func acCoverageCell(refs []CoverageRef, deferred bool) (status, testStr string) {
-	if deferred {
+func acCoverageCell(refs []CoverageRef, exclusion acExclusionKind) (status, testStr string) {
+	switch exclusion {
+	case acExclusionObsolete:
+		return "↷", "OBSOLETE"
+	case acExclusionDeferred:
 		return "↷", "DEFERRED"
 	}
 	if len(refs) == 0 {
@@ -499,7 +565,7 @@ func acCoverageCell(refs []CoverageRef, deferred bool) (status, testStr string) 
 // printTable prints a formatted table report. testFuncsWithSkip is project-wide Test* count with t.Skip.
 // testsMissingACTrace is project-wide (same list as full-repo validate), not filtered to the current epic.
 // gocycloSuppressViolations lists paths from the project-wide AGENTS.md policy scan (see findNolintGocycloViolations).
-func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, testFuncsWithSkip int, testsMissingACTrace []string, gocycloSuppressViolations []string) {
+func printTable(r *Report, acs map[ACCode]string, excluded map[ACCode]acExclusionKind, testFuncsWithSkip int, testsMissingACTrace []string, gocycloSuppressViolations []string) {
 	writeStdout("\n📋 AC Coverage Report for %s\n\n", r.Epic)
 	writeStdout("%-15s %-50s %-30s\n", "AC Code", "Criterion", "Coverage")
 	writelnStdout(strings.Repeat("─", 95))
@@ -519,7 +585,7 @@ func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, test
 		}
 
 		refs := r.Coverage[string(ac)]
-		status, testStr := acCoverageCell(refs, deferred[ac])
+		status, testStr := acCoverageCell(refs, excluded[ac])
 
 		if len(testStr) > 27 {
 			testStr = testStr[:24] + "..."
@@ -537,12 +603,12 @@ func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, test
 		coverageStr = "⚠️"
 	}
 
-	writeStdout("\n%s RESULT: in-scope %d/%d traced (%.1f%%), automated %d (%.1f%%), manual-only %d | deferred %d | total ACs %d\n",
+	writeStdout("\n%s RESULT: in-scope %d/%d traced (%.1f%%), automated %d (%.1f%%), manual-only %d | deferred %d | obsolete %d | total ACs %d\n",
 		coverageStr,
 		r.AutomatedCoveredACs+r.ManualOnlyTracedACs, r.InScopeACs, r.TraceabilityRatio*100,
 		r.AutomatedCoveredACs, r.AutomatedRatio*100,
 		r.ManualOnlyTracedACs,
-		r.DeferredACs, r.TotalACs,
+		r.DeferredACs, r.ObsoleteACs, r.TotalACs,
 	)
 	writeStdout("   Project-wide: Test functions with t.Skip: %d\n", testFuncsWithSkip)
 
@@ -553,7 +619,7 @@ func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, test
 				writeStdout("  • %s\n", gap.Code)
 			}
 		}
-		writeStdout("\nAction: Add tests for missing ACs or defer them in ep-acceptance-criteria.md\n")
+		writeStdout("\nAction: Add tests for missing ACs, or mark the AC **Obsolete** / **Deferred** in ep-acceptance-criteria.md (see VALIDATION.md)\n")
 	} else {
 		writeStdout("\n✅ All ACs covered — epic is ready for audit\n")
 	}
@@ -581,7 +647,7 @@ func scanEpicsAgainstCoverage(cwd string, epics []string, globalCoverage map[ACC
 			continue
 		}
 		reqPath := filepath.Join(cwd, "ai-sdlc-artefacts", "epics", epic, "ep-requirements.md")
-		acs, deferred, err := parseACsFromFile(acPath)
+		acs, excluded, err := parseACsFromFile(acPath)
 		if err != nil {
 			continue
 		}
@@ -593,13 +659,14 @@ func scanEpicsAgainstCoverage(cwd string, epics []string, globalCoverage map[ACC
 		}
 		epicCoverage := filterCoverageForEpicNum(globalCoverage, epicNum)
 		testsCount := uniqueTestRefsCount(epicCoverage)
-		r := generateReport(epic, acs, deferred, epicCoverage)
+		r := generateReport(epic, acs, excluded, epicCoverage)
 		results = append(results, EpicSummary{
 			Epic:                epic,
 			REQCount:            reqCount,
 			TotalACs:            r.TotalACs,
 			TestsCount:          testsCount,
 			DeferredACs:         r.DeferredACs,
+			ObsoleteACs:         r.ObsoleteACs,
 			InScopeACs:          r.InScopeACs,
 			AutomatedCoveredACs: r.AutomatedCoveredACs,
 			ManualOnlyTracedACs: r.ManualOnlyTracedACs,
@@ -667,7 +734,7 @@ func printTestsMissingACTraceHuman(testsMissingACTrace []string) {
 func printAllEpicsHuman(
 	results []EpicSummary,
 	projectNotCovered []ProjectNotCoveredAC,
-	totalACs, totalDeferred, totalInScope, totalAuto, totalManual int,
+	totalACs, totalDeferred, totalObsolete, totalInScope, totalAuto, totalManual int,
 	traceRatio, autoRatio float64,
 	testFuncsWithSkip int,
 	hasGaps bool,
@@ -701,9 +768,9 @@ func printAllEpicsHuman(
 		statusEmoji = "❌"
 	}
 
-	writeStdout("\n%s OVERALL: in-scope %d/%d traced (%.1f%%), automated %d (%.1f%%), manual-only %d | deferred %d | total ACs %d\n",
+	writeStdout("\n%s OVERALL: in-scope %d/%d traced (%.1f%%), automated %d (%.1f%%), manual-only %d | deferred %d | obsolete %d | total ACs %d\n",
 		statusEmoji, totalAuto+totalManual, totalInScope, traceRatio*100,
-		totalAuto, autoRatio*100, totalManual, totalDeferred, totalACs)
+		totalAuto, autoRatio*100, totalManual, totalDeferred, totalObsolete, totalACs)
 	writeStdout("   Project-wide: Test functions with t.Skip: %d\n", testFuncsWithSkip)
 
 	if !overallFail {
@@ -724,10 +791,11 @@ func printAllEpicsHuman(
 	os.Exit(1)
 }
 
-func aggregateEpicTotals(results []EpicSummary) (totalACs, totalDeferred, totalInScope, totalAuto, totalManual int, traceRatio, autoRatio float64) {
+func aggregateEpicTotals(results []EpicSummary) (totalACs, totalDeferred, totalObsolete, totalInScope, totalAuto, totalManual int, traceRatio, autoRatio float64) {
 	for _, res := range results {
 		totalACs += res.TotalACs
 		totalDeferred += res.DeferredACs
+		totalObsolete += res.ObsoleteACs
 		totalInScope += res.InScopeACs
 		totalAuto += res.AutomatedCoveredACs
 		totalManual += res.ManualOnlyTracedACs
@@ -736,7 +804,7 @@ func aggregateEpicTotals(results []EpicSummary) (totalACs, totalDeferred, totalI
 		traceRatio = float64(totalAuto+totalManual) / float64(totalInScope)
 		autoRatio = float64(totalAuto) / float64(totalInScope)
 	}
-	return totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio
+	return totalACs, totalDeferred, totalObsolete, totalInScope, totalAuto, totalManual, traceRatio, autoRatio
 }
 
 func writeAllEpicsJSON(allReport AllEpicsReport, hasGaps bool) {
@@ -832,7 +900,7 @@ func validateAllEpics(jsonOutput bool) {
 		return projectNotCovered[i].Code < projectNotCovered[j].Code
 	})
 
-	totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio := aggregateEpicTotals(results)
+	totalACs, totalDeferred, totalObsolete, totalInScope, totalAuto, totalManual, traceRatio, autoRatio := aggregateEpicTotals(results)
 
 	allReport := AllEpicsReport{
 		Epics:                   results,
@@ -840,6 +908,7 @@ func validateAllEpics(jsonOutput bool) {
 		NotCoveredCount:         len(projectNotCovered),
 		TotalACs:                totalACs,
 		DeferredACs:             totalDeferred,
+		ObsoleteACs:             totalObsolete,
 		InScopeACs:              totalInScope,
 		AutomatedCoveredACs:     totalAuto,
 		ManualOnlyTracedACs:     totalManual,
@@ -856,7 +925,7 @@ func validateAllEpics(jsonOutput bool) {
 		return
 	}
 
-	printAllEpicsHuman(results, projectNotCovered, totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio, testFuncsWithSkip, hasGaps, testsMissingACTrace, nolintViolations)
+	printAllEpicsHuman(results, projectNotCovered, totalACs, totalDeferred, totalObsolete, totalInScope, totalAuto, totalManual, traceRatio, autoRatio, testFuncsWithSkip, hasGaps, testsMissingACTrace, nolintViolations)
 }
 
 // getEpicNumber extracts the numeric part from "EP-009" → "09" (2 digits, not 3)
@@ -887,14 +956,14 @@ func jsonOutputRequested(flagVal bool, argvTail []string) bool {
 	return false
 }
 
-func runSingleEpicValidation(epic, epicNum, cwd string, acs map[ACCode]string, deferred map[ACCode]bool, nolintViolations []string, jsonOut bool) {
+func runSingleEpicValidation(epic, epicNum, cwd string, acs map[ACCode]string, excluded map[ACCode]acExclusionKind, nolintViolations []string, jsonOut bool) {
 	coverage, testFuncsWithSkip, testsMissingACTrace, err := findCoverageAndTestTrace(cwd)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error scanning codebase: %v\n", err)
 		os.Exit(1)
 	}
 	epicCoverage := filterCoverageForEpicNum(coverage, epicNum)
-	r := generateReport(epic, acs, deferred, epicCoverage)
+	r := generateReport(epic, acs, excluded, epicCoverage)
 	r.TestFuncsWithSkip = testFuncsWithSkip
 	r.TestsMissingACTrace = testsMissingACTrace
 	r.NolintGocycloViolations = nolintViolations
@@ -906,7 +975,7 @@ func runSingleEpicValidation(epic, epicNum, cwd string, acs map[ACCode]string, d
 		}
 		writelnStdout(string(data))
 	} else {
-		printTable(r, acs, deferred, testFuncsWithSkip, testsMissingACTrace, r.NolintGocycloViolations)
+		printTable(r, acs, excluded, testFuncsWithSkip, testsMissingACTrace, r.NolintGocycloViolations)
 	}
 	if hasBlockingGaps(r) || len(testsMissingACTrace) > 0 || len(nolintViolations) > 0 {
 		os.Exit(1)
@@ -946,13 +1015,13 @@ func validateSingleEpic(epic string, jsonOut bool) {
 		os.Exit(1)
 	}
 
-	acs, deferred, err := parseACsFromFile(acPath)
+	acs, excluded, err := parseACsFromFile(acPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing AC file: %v\n", err)
 		os.Exit(1)
 	}
 
-	runSingleEpicValidation(epic, epicNum, cwd, acs, deferred, nolintViolations, jsonOut)
+	runSingleEpicValidation(epic, epicNum, cwd, acs, excluded, nolintViolations, jsonOut)
 }
 
 func main() {

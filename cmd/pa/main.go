@@ -126,6 +126,7 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info("config loaded", "path", configFilePath)
+	warnBaselineOmitsNativeToolsWithCatalog(cfg, logger)
 
 	if *verifyNodes {
 		if err := runVerifyNodes(cfg, *verifyNodesCommand, logger); err != nil {
@@ -216,6 +217,34 @@ func warnIfNodesSSHUnreachable(ctx context.Context, cfg *config.Config, logger *
 			logger.Warn("ssh startup check failed", "node_id", nodeID, "error", err)
 		}
 	}
+}
+
+func baselineProviderSupportsTools(cfg *config.Config) bool {
+	if cfg == nil {
+		return true
+	}
+	idx := 0
+	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled && esc.BaselineIndex < len(cfg.LLMProviders) {
+		idx = esc.BaselineIndex
+	}
+	if len(cfg.LLMProviders) > idx && cfg.LLMProviders[idx].SupportsTools != nil {
+		return *cfg.LLMProviders[idx].SupportsTools
+	}
+	return true
+}
+
+// warnBaselineOmitsNativeToolsWithCatalog logs once when the baseline LLM omits native tools while the catalog defines tools (REQ-30.009).
+func warnBaselineOmitsNativeToolsWithCatalog(cfg *config.Config, logger *slog.Logger) {
+	if cfg == nil || logger == nil {
+		return
+	}
+	if baselineProviderSupportsTools(cfg) {
+		return
+	}
+	if cfg.ToolCatalog == nil || len(cfg.ToolCatalog.Tools) == 0 {
+		return
+	}
+	logger.Warn("native tool calling is disabled for the baseline LLM (supports_tools false) while the tool catalog defines tools; conversation tools will not run in completion requests")
 }
 
 // mainConversationModelName returns the configured chat model id for the active baseline provider

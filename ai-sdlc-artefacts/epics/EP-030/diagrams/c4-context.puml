@@ -1,0 +1,21 @@
+@startuml ep030_c4_context
+!include <C4/C4_Context>
+
+title EP-030 C4 Level 1 — Conversation LLM and configuration
+
+Person(user, "User", "Telegram chat")
+Person(operator, "Operator", "Maintains config.json")
+
+System_Boundary(pa, "PersonalAssistant") {
+  System(core, "Core", "Conversation handler, prompts, tool loop")
+  System(cfg, "Configuration", "Load and validate config.json")
+}
+
+System_Ext(llm, "LLM provider", "OpenAI-compatible API with native tools")
+
+Rel(operator, cfg, "Edits")
+Rel(cfg, core, "Validated config")
+Rel(user, core, "Messages via Telegram adapter")
+Rel(core, llm, "Completions with tools in API")
+
+@enduml

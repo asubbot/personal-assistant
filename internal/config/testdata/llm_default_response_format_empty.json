@@ -12,7 +12,6 @@
       "supports_tools": true,
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
-      "supports_json_mode": true,
       "default_response_format": "",
       "http_timeout": "60s"
     }
@@ -35,9 +34,7 @@
     "http_timeout": "60s"
   },
   "nodes": {},
-  "tools": {
-    "text_based_enabled": false
-  },
+  "tools": {},
   "log_redaction": {
     "additional_patterns": []
   },

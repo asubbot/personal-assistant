@@ -1,0 +1,24 @@
+@startuml ep030_c4_container
+!include <C4/C4_Container>
+
+title EP-030 C4 Level 2 — Containers
+
+Person(user, "User", "Telegram chat")
+
+System_Boundary(pa, "PersonalAssistant") {
+    Container(cmd, "cmd/pa", "Process entry, startup warnings, wiring")
+    Container(cfg, "internal/config", "Load JSON, reject removed keys, validate LLM rows")
+    Container(core, "internal/core", "Conversation handler, tiers, tool loop")
+    Container(llm, "internal/llm", "OpenAI-compatible HTTP client")
+}
+
+System_Ext(api, "LLM HTTP API", "Completions + native tools")
+
+Rel(user, cmd, "Telegram adapter")
+Rel(cmd, cfg, "Load")
+Rel(cmd, core, "Run handler")
+Rel(core, cfg, "Read limits and flags")
+Rel(core, llm, "Complete")
+Rel(llm, api, "HTTPS JSON")
+
+@enduml

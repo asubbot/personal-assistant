@@ -9,8 +9,7 @@ import (
 func TestValidateToolDynamicSelection_maxToolsBelowAlwaysIncludeFails(t *testing.T) {
 	c := &Config{
 		Tools: &ToolsConfig{
-			TextBasedEnabled: true,
-			AlwaysInclude:    []string{"a", "b"},
+			AlwaysInclude: []string{"a", "b"},
 			DynamicSelection: &ToolDynamicSelection{
 				Enabled:               true,
 				MaxToolsForLLMRequest: 1,
@@ -28,12 +27,10 @@ func TestValidateToolDynamicSelection_maxToolsBelowAlwaysIncludeFails(t *testing
 	}
 }
 
-// Covers AC-18.019: dynamic_selection.enabled does not require text_based_enabled at load;
-// full_lite applies the cap at runtime only when text_based_enabled is true.
+// Covers AC-18.019: dynamic_selection.enabled validates without legacy text-based flags.
 func TestValidateToolDynamicSelection_enabledOkWithoutTextBased(t *testing.T) {
 	c := &Config{
 		Tools: &ToolsConfig{
-			TextBasedEnabled: false,
 			DynamicSelection: &ToolDynamicSelection{
 				Enabled:               true,
 				MaxToolsForLLMRequest: 5,
@@ -64,7 +61,6 @@ func TestValidateToolDynamicSelection_okWhenDisabledFlags(t *testing.T) {
 func TestValidateToolDynamicSelection_enabledRequiresPositiveMax(t *testing.T) {
 	c := &Config{
 		Tools: &ToolsConfig{
-			TextBasedEnabled: true,
 			DynamicSelection: &ToolDynamicSelection{
 				Enabled: true,
 			},

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"log/slog"
 	"os"
@@ -208,7 +209,7 @@ func runCLIWithConfig(t *testing.T, dir, configJSON string, args ...string) (out
 var validSummarizeConfig = `{
   "version": 1,
   "telegram": { "token_path": "t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "memory",
     "log_path": "pa.log",
@@ -220,7 +221,7 @@ var validSummarizeConfig = `{
   },
   "embedding": { "type": "ollama", "endpoint": "http://127.0.0.1:11434", "model": "m", "dimensions": 4, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
-  "tools": { "text_based_enabled": false },
+  "tools": {},
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
@@ -637,3 +638,26 @@ func TestClearConversationContext_validationErrors(t *testing.T) {
 
 // Covers AC-04.012 (REQ-04.015): CI runs make check; EP-004 behaviour is covered by unit and integration tests across the repository.
 func TestEP004_makeCheckRegressionGate(t *testing.T) {}
+
+// Covers AC-30.009: startup warns when baseline LLM omits native tools but the catalog defines tools (REQ-30.009).
+func TestWarnBaselineOmitsNativeToolsWithCatalog_logsWarn(t *testing.T) {
+	st := false
+	cfg := &config.Config{
+		LLMProviders: []config.LLMProvider{{SupportsTools: &st}},
+		ToolCatalog: &toolcatalog.Catalog{
+			Tools: map[string]*toolcatalog.Tool{
+				"t1": {ID: "t1", IndexText: "d", Template: "echo x", NodeID: "nas", Arguments: []toolcatalog.ArgumentRule{}},
+			},
+		},
+	}
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	warnBaselineOmitsNativeToolsWithCatalog(cfg, logger)
+	out := buf.String()
+	if !strings.Contains(out, "WARN") {
+		t.Fatalf("expected WARN log, got: %q", out)
+	}
+	if !strings.Contains(out, "native tool calling is disabled") || !strings.Contains(out, "conversation tools will not run") {
+		t.Fatalf("expected REQ-30.009 wording, got: %q", out)
+	}
+}
