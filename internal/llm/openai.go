@@ -21,10 +21,9 @@ type OpenAICompatible struct {
 	apiKey                string
 	model                 string
 	supportsTools         bool // when false, tools are omitted from the request body
-	supportsJSONMode      bool // when true, provider supports response_format: json_object
 	defaultTemperature    float64
 	defaultMaxTokens      int
-	defaultResponseFormat string // "text" or "json_object"
+	defaultResponseFormat string // "text" (product)
 }
 
 // parseHTTPTimeout enforces the fail-fast contract for llm_providers[].http_timeout
@@ -73,7 +72,6 @@ func NewOpenAICompatible(cfg *config.LLMProvider) (*OpenAICompatible, error) {
 		apiKey:                apiKey,
 		model:                 model,
 		supportsTools:         st,
-		supportsJSONMode:      cfg.SupportsJSONMode,
 		defaultTemperature:    cfg.DefaultTemperature,
 		defaultMaxTokens:      cfg.DefaultMaxTokens,
 		defaultResponseFormat: cfg.DefaultResponseFormat,
@@ -152,29 +150,19 @@ func (p *OpenAICompatible) resolveTemperature(opts *CompletionOptions) *float64 
 	return &t
 }
 
-// resolveResponseFormat returns the effective response format: explicit ResponseFormat (when valid
-// for this provider) > ForceJSONOutput > defaultResponseFormat.
-// json_object is only emitted when supportsJSONMode is true. Empty or unknown explicit types are ignored.
-// Since defaultResponseFormat is required in config, always returns a value.
+// resolveResponseFormat returns the HTTP response_format for the provider (text-only product).
+// Explicit type "text" wins; json_object and other hints are ignored and the configured default is used.
 func (p *OpenAICompatible) resolveResponseFormat(opts *CompletionOptions) *responseFormat {
 	if opts != nil && opts.ResponseFormat != nil {
-		t := strings.TrimSpace(opts.ResponseFormat.Type)
-		switch t {
-		case "text":
+		if strings.TrimSpace(opts.ResponseFormat.Type) == "text" {
 			return &responseFormat{Type: "text"}
-		case "json_object":
-			if p.supportsJSONMode {
-				return &responseFormat{Type: "json_object"}
-			}
-			// Caller asked for JSON mode but provider does not support it — fall through.
-		default:
-			// Empty or unknown type — fall through.
 		}
 	}
-	if p.supportsJSONMode && opts != nil && opts.ForceJSONOutput {
-		return &responseFormat{Type: "json_object"}
+	rt := strings.TrimSpace(p.defaultResponseFormat)
+	if rt == "" {
+		rt = "text"
 	}
-	return &responseFormat{Type: p.defaultResponseFormat}
+	return &responseFormat{Type: rt}
 }
 
 func (p *OpenAICompatible) doRequest(ctx context.Context, body []byte) (*http.Response, error) {

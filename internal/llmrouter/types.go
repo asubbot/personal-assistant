@@ -33,7 +33,6 @@ type Phase string
 const (
 	PhaseCompleteError Phase = "complete_error"
 	PhaseToolFailure   Phase = "tool_failure"
-	PhaseHermesParse   Phase = "hermes_parse"
 )
 
 // State is mutable routing state for one user message.

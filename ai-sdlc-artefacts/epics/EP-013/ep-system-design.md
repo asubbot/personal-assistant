@@ -54,7 +54,7 @@ EP-013 adds **runtime skills** (parsed `SKILL.md` trees), a **`vec_skills`** sql
 | **`runtimeskills.ValidateToolRefs`** | Variant D vs catalog + native allowlist. | [REQ-13.006](ep-requirements.md#load-and-validation) |
 | **`skillindex.Build`** | Embed skill text; `Clear` + `Add` on `vec_skills` store. | [REQ-13.009](ep-requirements.md#vec_skills-index) |
 | **`skillindex.SearchSkillIDs`** | Top-k over `vec_skills` (same pattern as toolindex search). | [REQ-13.010](ep-requirements.md#selection-and-tool-union) |
-| **`systemprompt` helpers** | `TrustPolicy`, `WrapRetrievedContext`, `WrapToolInstructions`, `WrapHermes`, `WrapRuntimeSkills`. Assembly order inside system: trust + personality, then RETRIEVED_CONTEXT, then TOOL_INSTRUCTIONS, then HERMES, then RUNTIME_SKILLS. | [REQ-13.014](ep-requirements.md#prompt-assembly)–[REQ-13.016](ep-requirements.md#prompt-assembly) |
+| **`systemprompt` helpers** | `TrustPolicy`, `WrapRetrievedContext`, `WrapToolInstructions`, `WrapRuntimeSkills`. Assembly order inside system: trust + personality, then RETRIEVED_CONTEXT, then TOOL_INSTRUCTIONS, then RUNTIME_SKILLS. | [REQ-13.014](ep-requirements.md#prompt-assembly)–[REQ-13.016](ep-requirements.md#prompt-assembly) |
 | **`conversationHandler`** | Fields: `skillIndex`, `runtimeSkills *config.RuntimeSkillsConfig`, `skillPackages map[string]*runtimeskills.Package`; `buildToolOptions` extended; `buildSystemContent` / `appendToolBlocksToSystem` use wrappers; `indexTurn` guard. | [REQ-13.010](ep-requirements.md#selection-and-tool-union)–[REQ-13.018](ep-requirements.md#memory-indexing) |
 | **`core.SkillIndex` interface** | `Store() vector.Store`, `Ready() bool`, `Close() error` (mirrors tool index lifecycle). | [REQ-13.008](ep-requirements.md#vec_skills-index) |
 
@@ -105,7 +105,7 @@ EP-013 adds **runtime skills** (parsed `SKILL.md` trees), a **`vec_skills`** sql
 | REQ-13.013 | Branch when `!enabled` |
 | REQ-13.014 | `systemprompt.TrustPolicy` prefix |
 | REQ-13.015 | Wrap helpers in handler assembly |
-| REQ-13.016 | Call order: trust + personality → retrieved → tool → Hermes → runtime skills |
+| REQ-13.016 | Call order: trust + personality → retrieved → tool → runtime skills |
 | REQ-13.017 | `HandleMessage` builds `messages` once; tool loop mutates tail only |
 | REQ-13.018 | `indexTurn` guard |
 | REQ-13.019 | Error strings in `config` / `runtimeskills` |

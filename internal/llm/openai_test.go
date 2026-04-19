@@ -22,7 +22,7 @@ func TestOpenAICompatible_Complete_contentAsTextPartsArray(t *testing.T) {
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":[{"type":"text","text":"Hello array"}]}}],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}`))
 	}))
 	defer server.Close()
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +44,7 @@ func TestOpenAICompatible_Complete_reasoningContentFallback(t *testing.T) {
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"","reasoning_content":"Fallback text"}}],"usage":{}}`))
 	}))
 	defer server.Close()
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestOpenAICompatible_Complete_ollamaReasoningFallback(t *testing.T) {
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":null,"reasoning":"full_lite"}}],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}`))
 	}))
 	defer server.Close()
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,6 @@ func TestNewOpenAICompatible_validConfig_noAPIKey(t *testing.T) {
 		Model:                 "llama3.2",
 		DefaultTemperature:    0.3,
 		DefaultMaxTokens:      1024,
-		SupportsJSONMode:      true,
 		DefaultResponseFormat: "text",
 		HTTPTimeout:           "60s",
 	}
@@ -133,7 +132,6 @@ func TestNewOpenAICompatible_missingAPIKeyFile(t *testing.T) {
 		Model:                 "gpt-4",
 		DefaultTemperature:    0.3,
 		DefaultMaxTokens:      1024,
-		SupportsJSONMode:      true,
 		DefaultResponseFormat: "text",
 		HTTPTimeout:           "60s",
 	}
@@ -158,7 +156,7 @@ func TestOpenAICompatible_Complete_success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -191,7 +189,7 @@ func TestOpenAICompatible_Complete_emptyChoices(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +213,7 @@ func TestOpenAICompatible_Complete_apiError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +245,7 @@ func TestOpenAICompatible_Complete_502_returnsAPIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -275,7 +273,7 @@ func TestOpenAICompatible_Complete_invalidJSON(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -298,7 +296,7 @@ func TestOpenAICompatible_Complete_contextCanceled(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -318,7 +316,7 @@ func TestOpenAICompatible_Complete_contextCanceled(t *testing.T) {
 
 // Covers AC-01.036 (US-08): Complete error path — unreachable server returns error; system does not crash.
 func TestOpenAICompatible_Complete_serverUnreachable(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://127.0.0.1:19999", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://127.0.0.1:19999", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -368,7 +366,7 @@ func TestOpenAICompatible_Complete_requestIncludesTools(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -401,7 +399,7 @@ func TestOpenAICompatible_Complete_supportsToolsFalse_omitsTools(t *testing.T) {
 	defer server.Close()
 
 	f := false
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", SupportsTools: &f, DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", SupportsTools: &f, DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -425,7 +423,7 @@ func TestOpenAICompatible_Complete_responseToolCallsParsed(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: server.URL, Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -485,7 +483,7 @@ func assertBuildRequestToolMessages(t *testing.T, req *buildRequestToolMessagesR
 
 // Covers tool-result loop (AC-04.004): request body serializes Message with tool_call_id and tool_calls in OpenAI format.
 func TestOpenAICompatible_buildRequest_serializesToolMessagesAndAssistantToolCalls(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -507,7 +505,7 @@ func TestOpenAICompatible_buildRequest_serializesToolMessagesAndAssistantToolCal
 
 // EP-008 AC-08.001 / REQ-08.001: default_temperature included in HTTP body when request does not override.
 func TestOpenAICompatible_buildRequest_withDefaultTemperature(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.7, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.7, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -530,7 +528,7 @@ func TestOpenAICompatible_buildRequest_withDefaultTemperature(t *testing.T) {
 // EP-008 AC-08.002 / REQ-08.002: CompletionOptions.Temperature overrides provider default in HTTP body.
 func TestOpenAICompatible_buildRequest_withOverrideTemperature(t *testing.T) {
 	overrideTemp := 0.3
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.7, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.7, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -553,7 +551,7 @@ func TestOpenAICompatible_buildRequest_withOverrideTemperature(t *testing.T) {
 
 // EP-008 AC-08.003 / REQ-08.003: default_max_tokens in HTTP body when opts.MaxTokens is unset/zero.
 func TestOpenAICompatible_buildRequest_withDefaultMaxTokens(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -580,7 +578,7 @@ func TestOpenAICompatible_buildRequest_withDefaultMaxTokens(t *testing.T) {
 
 // EP-008 AC-08.004 / REQ-08.004: CompletionOptions.MaxTokens overrides provider default in HTTP body.
 func TestOpenAICompatible_buildRequest_withOverrideMaxTokens(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -605,114 +603,9 @@ func TestOpenAICompatible_buildRequest_withOverrideMaxTokens(t *testing.T) {
 	}
 }
 
-// EP-008 AC-08.005 / REQ-08.005: ForceJSONOutput with SupportsJSONMode adds response_format json_object.
-func TestOpenAICompatible_buildRequest_withForceJSONOutput_true(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
-	p, err := NewOpenAICompatible(cfg)
-	if err != nil {
-		t.Fatalf("NewOpenAICompatible: %v", err)
-	}
-	opts := &CompletionOptions{ForceJSONOutput: true}
-	body, err := p.buildRequest("m", []Message{{Role: "user", Content: "hi"}}, 0, opts)
-	if err != nil {
-		t.Fatalf("buildRequest: %v", err)
-	}
-	var req struct {
-		ResponseFormat *struct {
-			Type string `json:"type"`
-		} `json:"response_format"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil {
-		t.Fatalf("Unmarshal: %v", err)
-	}
-	if req.ResponseFormat == nil || req.ResponseFormat.Type != "json_object" {
-		t.Errorf("ResponseFormat = %v, want type=json_object", req.ResponseFormat)
-	}
-}
-
-// EP-008 REQ-08.005: when SupportsJSONMode is false, ForceJSONOutput does not set json_object; default format applies.
-// Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_withForceJSONOutput_false.
-func TestOpenAICompatible_buildRequest_withForceJSONOutput_false(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: false, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
-	p, err := NewOpenAICompatible(cfg)
-	if err != nil {
-		t.Fatalf("NewOpenAICompatible: %v", err)
-	}
-	opts := &CompletionOptions{ForceJSONOutput: true}
-	body, err := p.buildRequest("m", []Message{{Role: "user", Content: "hi"}}, 0, opts)
-	if err != nil {
-		t.Fatalf("buildRequest: %v", err)
-	}
-	var req struct {
-		ResponseFormat *struct {
-			Type string `json:"type"`
-		} `json:"response_format"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil {
-		t.Fatalf("Unmarshal: %v", err)
-	}
-	// When supports_json_mode=false, ForceJSONOutput is ignored and defaultResponseFormat is used
-	if req.ResponseFormat == nil || req.ResponseFormat.Type != "text" {
-		t.Errorf("ResponseFormat = %v, want type=text (default, since supports_json_mode=false)", req.ResponseFormat)
-	}
-}
-
-// EP-008 AC-08.007 / REQ-08.007: ForceJSONOutput false and no explicit ResponseFormat uses DefaultResponseFormat.
-func TestOpenAICompatible_buildRequest_withoutForceJSONOutput_usesDefault(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
-	p, err := NewOpenAICompatible(cfg)
-	if err != nil {
-		t.Fatalf("NewOpenAICompatible: %v", err)
-	}
-	opts := &CompletionOptions{ForceJSONOutput: false}
-	body, err := p.buildRequest("m", []Message{{Role: "user", Content: "hi"}}, 0, opts)
-	if err != nil {
-		t.Fatalf("buildRequest: %v", err)
-	}
-	var req struct {
-		ResponseFormat *struct {
-			Type string `json:"type"`
-		} `json:"response_format"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil {
-		t.Fatalf("Unmarshal: %v", err)
-	}
-	if req.ResponseFormat == nil || req.ResponseFormat.Type != "text" {
-		t.Errorf("ResponseFormat = %v, want type=text (default)", req.ResponseFormat)
-	}
-}
-
-// EP-008 AC-08.006 / REQ-08.006: explicit ResponseFormat overrides ForceJSONOutput in HTTP body.
-func TestOpenAICompatible_buildRequest_withExplicitResponseFormat_overridesForceJSON(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
-	p, err := NewOpenAICompatible(cfg)
-	if err != nil {
-		t.Fatalf("NewOpenAICompatible: %v", err)
-	}
-	opts := &CompletionOptions{
-		ForceJSONOutput: true,
-		ResponseFormat:  &ResponseFormat{Type: "text"},
-	}
-	body, err := p.buildRequest("m", []Message{{Role: "user", Content: "hi"}}, 0, opts)
-	if err != nil {
-		t.Fatalf("buildRequest: %v", err)
-	}
-	var req struct {
-		ResponseFormat *struct {
-			Type string `json:"type"`
-		} `json:"response_format"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil {
-		t.Fatalf("Unmarshal: %v", err)
-	}
-	if req.ResponseFormat == nil || req.ResponseFormat.Type != "text" {
-		t.Errorf("ResponseFormat = %v, want type=text (explicit override)", req.ResponseFormat)
-	}
-}
-
-// EP-008 AC-08.007 / REQ-08.007: DefaultResponseFormat in HTTP body when opts omit ResponseFormat and ForceJSONOutput.
-func TestOpenAICompatible_buildRequest_withDefaultResponseFormat(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "json_object", HTTPTimeout: "60s"}
+// Covers AC-30.007, AC-30.008: default completion path uses text response_format only; nil opts use configured default.
+func TestOpenAICompatible_buildRequest_nilOpts_usesDefaultResponseFormat(t *testing.T) {
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -729,15 +622,39 @@ func TestOpenAICompatible_buildRequest_withDefaultResponseFormat(t *testing.T) {
 	if err := json.Unmarshal(body, &req); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
-	if req.ResponseFormat == nil || req.ResponseFormat.Type != "json_object" {
-		t.Errorf("ResponseFormat = %v, want type=json_object (default)", req.ResponseFormat)
+	if req.ResponseFormat == nil || req.ResponseFormat.Type != "text" {
+		t.Errorf("ResponseFormat = %v, want type=text", req.ResponseFormat)
 	}
 }
 
-// EP-008 REQ-08.006: explicit json_object ignored when SupportsJSONMode is false; falls back to default format.
-// Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_explicitJSONObject_ignoredWithoutJSONMode.
+// Covers AC-30.008: explicit per-request ResponseFormat type text is honored in the HTTP body.
+func TestOpenAICompatible_buildRequest_explicitResponseFormatText(t *testing.T) {
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+	opts := &CompletionOptions{ResponseFormat: &ResponseFormat{Type: "text"}}
+	body, err := p.buildRequest("m", []Message{{Role: "user", Content: "hi"}}, 0, opts)
+	if err != nil {
+		t.Fatalf("buildRequest: %v", err)
+	}
+	var req struct {
+		ResponseFormat *struct {
+			Type string `json:"type"`
+		} `json:"response_format"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if req.ResponseFormat == nil || req.ResponseFormat.Type != "text" {
+		t.Errorf("ResponseFormat = %v, want type=text", req.ResponseFormat)
+	}
+}
+
+// Covers AC-30.008: json_object hint in opts is ignored; body uses text default.
 func TestOpenAICompatible_buildRequest_explicitJSONObject_ignoredWithoutJSONMode(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: false, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -763,7 +680,7 @@ func TestOpenAICompatible_buildRequest_explicitJSONObject_ignoredWithoutJSONMode
 // EP-008: whitespace-only explicit ResponseFormat.Type treated as unset; default format chain applies.
 // Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_emptyExplicitResponseFormatType_usesDefault.
 func TestOpenAICompatible_buildRequest_emptyExplicitResponseFormatType_usesDefault(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -786,18 +703,14 @@ func TestOpenAICompatible_buildRequest_emptyExplicitResponseFormatType_usesDefau
 	}
 }
 
-// EP-008: empty explicit ResponseFormat.Type with ForceJSONOutput still yields json_object when JSON mode supported.
-// Covers AC-01.036: traceability for TestOpenAICompatible_buildRequest_emptyExplicitType_forceJSONStillApplies.
-func TestOpenAICompatible_buildRequest_emptyExplicitType_forceJSONStillApplies(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
+// Covers AC-30.008: empty explicit ResponseFormat.Type falls through to configured default (text).
+func TestOpenAICompatible_buildRequest_emptyExplicitType_usesDefaultText(t *testing.T) {
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
 	}
-	opts := &CompletionOptions{
-		ForceJSONOutput: true,
-		ResponseFormat:  &ResponseFormat{Type: ""},
-	}
+	opts := &CompletionOptions{ResponseFormat: &ResponseFormat{Type: ""}}
 	body, err := p.buildRequest("m", []Message{{Role: "user", Content: "hi"}}, 0, opts)
 	if err != nil {
 		t.Fatalf("buildRequest: %v", err)
@@ -810,14 +723,14 @@ func TestOpenAICompatible_buildRequest_emptyExplicitType_forceJSONStillApplies(t
 	if err := json.Unmarshal(body, &req); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
-	if req.ResponseFormat == nil || req.ResponseFormat.Type != "json_object" {
-		t.Errorf("ResponseFormat = %v, want type=json_object (ForceJSON after empty explicit)", req.ResponseFormat)
+	if req.ResponseFormat == nil || req.ResponseFormat.Type != "text" {
+		t.Errorf("ResponseFormat = %v, want type=text", req.ResponseFormat)
 	}
 }
 
-// EP-008 AC-08.006 / REQ-08.006: explicit ResponseFormat overrides DefaultResponseFormat in HTTP body.
+// Covers AC-30.008: explicit ResponseFormat type text overrides a non-text default on the provider struct (tests only).
 func TestOpenAICompatible_buildRequest_explicitOverridesDefault(t *testing.T) {
-	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true, DefaultResponseFormat: "json_object", HTTPTimeout: "60s"}
+	cfg := &config.LLMProvider{Type: "ollama", Endpoint: "http://localhost", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "json_object", HTTPTimeout: "60s"}
 	p, err := NewOpenAICompatible(cfg)
 	if err != nil {
 		t.Fatalf("NewOpenAICompatible: %v", err)
@@ -845,7 +758,7 @@ func TestOpenAICompatible_buildRequest_explicitOverridesDefault(t *testing.T) {
 func TestNewOpenAICompatible_HTTPTimeout_AppliedToClient(t *testing.T) {
 	cfg := &config.LLMProvider{
 		Type: "ollama", Endpoint: "http://localhost", Model: "m",
-		DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true,
+		DefaultTemperature: 0.3, DefaultMaxTokens: 1024,
 		DefaultResponseFormat: "text",
 		HTTPTimeout:           "45s",
 	}
@@ -863,7 +776,7 @@ func TestNewOpenAICompatible_HTTPTimeout_AppliedToClient(t *testing.T) {
 func TestNewOpenAICompatible_HTTPTimeout_InvalidRejected(t *testing.T) {
 	cfg := &config.LLMProvider{
 		Type: "ollama", Endpoint: "http://localhost", Model: "m",
-		DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true,
+		DefaultTemperature: 0.3, DefaultMaxTokens: 1024,
 		DefaultResponseFormat: "text",
 		HTTPTimeout:           "not-a-duration",
 	}
@@ -877,7 +790,7 @@ func TestNewOpenAICompatible_HTTPTimeout_InvalidRejected(t *testing.T) {
 func TestNewOpenAICompatible_HTTPTimeout_ZeroRejected(t *testing.T) {
 	cfg := &config.LLMProvider{
 		Type: "ollama", Endpoint: "http://localhost", Model: "m",
-		DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true,
+		DefaultTemperature: 0.3, DefaultMaxTokens: 1024,
 		DefaultResponseFormat: "text",
 		HTTPTimeout:           "0s",
 	}
@@ -891,7 +804,7 @@ func TestNewOpenAICompatible_HTTPTimeout_ZeroRejected(t *testing.T) {
 func TestNewOpenAICompatible_HTTPTimeout_EmptyRejected(t *testing.T) {
 	cfg := &config.LLMProvider{
 		Type: "ollama", Endpoint: "http://localhost", Model: "m",
-		DefaultTemperature: 0.3, DefaultMaxTokens: 1024, SupportsJSONMode: true,
+		DefaultTemperature: 0.3, DefaultMaxTokens: 1024,
 		DefaultResponseFormat: "text",
 		HTTPTimeout:           "",
 	}

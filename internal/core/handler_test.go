@@ -13,7 +13,6 @@ import (
 	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/tools"
-	"pa/internal/tooltext"
 	"pa/internal/vector"
 	"strings"
 	"testing"
@@ -69,36 +68,6 @@ func (c *captureHandlerWithAttrs) Handle(_ context.Context, r slog.Record) error
 }
 func (c *captureHandlerWithAttrs) WithAttrs([]slog.Attr) slog.Handler { return c }
 func (c *captureHandlerWithAttrs) WithGroup(string) slog.Handler      { return c }
-
-func assertHermesFollowUpJSONOpts(t *testing.T, secondOpts *llm.CompletionOptions) {
-	t.Helper()
-	if secondOpts != nil && len(secondOpts.Tools) > 0 {
-		t.Error("follow-up Complete must not pass tools in opts")
-	}
-	if secondOpts == nil || !secondOpts.ForceJSONOutput {
-		t.Errorf("follow-up Complete must keep ForceJSONOutput=true (Hermes JSON hint); opts=%+v", secondOpts)
-	}
-}
-
-func assertUserToolResultMessage(t *testing.T, secondMsgs []llm.Message) {
-	t.Helper()
-	for _, m := range secondMsgs {
-		if m.Role == "user" && strings.Contains(m.Content, "run_echo") && strings.Contains(m.Content, "hello from node") {
-			return
-		}
-	}
-	t.Errorf("expected user message with tool result; messages=%+v", secondMsgs)
-}
-
-func assertHermesToolInvocationLogged(t *testing.T, cap *captureHandlerWithAttrs) {
-	t.Helper()
-	for _, r := range cap.records {
-		if r.msg == "tool invocation" && r.attrs["invoked_via"] == "hermes" {
-			return
-		}
-	}
-	t.Errorf("expected tool invocation with invoked_via=hermes; records=%+v", cap.records)
-}
 
 type mockProvider struct {
 	result *llm.CompletionResult
@@ -1071,7 +1040,7 @@ func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {
 	_ = reply
 }
 
-// Covers AC-04.013, REQ-04.016: tool invocations (id, arguments, result or error) are traceable in logs.
+// Covers AC-04.013, REQ-04.016, AC-30.010: tool invocations are traceable; invoked_via is never hermes on the native path.
 func TestHandleMessage_toolInvocation_loggedWithIdArgumentsAndResult(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
 	logger := slog.New(cap)
@@ -1376,14 +1345,15 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	emb := &mockEmbedder{vec: []float32{0.1}}
 
 	h := &conversationHandler{
-		router:          mustRouterSingle(t, provider),
-		catalog:         catalog,
-		toolIndex:       ti,
-		embedder:        emb,
-		toolSearchTopK:  10,
-		toolMinCount:    1,
-		toolFallbackCap: 50,
-		logger:          logger,
+		router:                     mustRouterSingle(t, provider),
+		catalog:                    catalog,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     logger,
+		firstProviderSupportsTools: true,
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "check server status")
@@ -1412,6 +1382,7 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	}
 }
 
+// Covers AC-30.001: with catalog tools selected, native tool defs are attached on the completion path (REQ-30.002, REQ-30.016).
 // AC-04.026 / REQ-04.032: first system message includes per-tool [id] blocks for non-empty system_prompt when tools are selected.
 func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testing.T) {
 	logger := slog.Default()
@@ -1465,6 +1436,47 @@ func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testin
 	}
 	if !strings.Contains(sys.Content, marker) {
 		t.Errorf("system message missing system_prompt body: %q", sys.Content)
+	}
+	if provider.lastOpts == nil || len(provider.lastOpts.Tools) == 0 {
+		t.Fatalf("expected native tool defs in completion options, got opts=%v", provider.lastOpts)
+	}
+}
+
+// Covers AC-30.002: assistant free-text `<tool_call>` without native tool_calls does not execute catalog tools.
+func TestHandleMessage_fakeToolCallMarkupWithoutNativeToolCalls_noToolExecution(t *testing.T) {
+	catalog := &toolcatalog.Catalog{
+		Tools: map[string]*toolcatalog.Tool{
+			"run_echo": {
+				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
+				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
+			},
+		},
+	}
+	runner := &mockNodeRunner{}
+	provider := &mockProvider{result: &llm.CompletionResult{
+		Content: `<tool_call>{"name":"run_echo","arguments":{"msg":"x"}}</tool_call>`,
+		Usage:   llm.Usage{},
+	}}
+	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
+	ti := &mockToolIndex{store: toolStore, ready: true}
+	emb := &mockEmbedder{vec: []float32{0.1}}
+	h := &conversationHandler{
+		router:                     mustRouterSingle(t, provider),
+		catalog:                    catalog,
+		nodeRunner:                 runner,
+		toolIndex:                  ti,
+		embedder:                   emb,
+		toolSearchTopK:             10,
+		toolMinCount:               1,
+		toolFallbackCap:            50,
+		logger:                     slog.Default(),
+		firstProviderSupportsTools: true,
+	}
+	if _, err := h.HandleMessage(context.Background(), 1, "", "run echo"); err != nil {
+		t.Fatalf("HandleMessage: %v", err)
+	}
+	if runner.lastCommand != "" {
+		t.Fatalf("RunOnNode must not run for markup-only assistant text; lastCommand=%q", runner.lastCommand)
 	}
 }
 
@@ -1558,430 +1570,6 @@ func TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand(t *testing
 	}
 	if !found {
 		t.Fatalf("expected catalog tool remote command rejected log; records=%+v", cap.records)
-	}
-}
-
-// REQ-04.027–029: text_based + first provider without tools → Hermes in content → execute → follow-up without tools, tool results as user.
-// EP-008 AC-08.005 (integration): follow-up Complete keeps ForceJSONOutput so OpenAICompatible can apply REQ-08.005.
-func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	runner := &mockNodeRunner{stdout: "hello from node"}
-	callCount := 0
-	var secondOpts *llm.CompletionOptions
-	var secondMsgs []llm.Message
-	provider := &mockProvider{}
-	provider.CompleteFn = func(_ context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
-		callCount++
-		if callCount == 1 {
-			return &llm.CompletionResult{
-				Content: `<tool_call>
-{"name": "run_echo", "arguments": {"msg": "hi"}}
-</tool_call>`,
-				Usage: llm.Usage{},
-			}, nil
-		}
-		secondOpts = opts
-		secondMsgs = append([]llm.Message(nil), messages...)
-		return &llm.CompletionResult{Content: "Done with echo.", Usage: llm.Usage{}}, nil
-	}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 runner,
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.New(cap),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-
-	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo")
-	if err != nil {
-		t.Fatalf("HandleMessage: %v", err)
-	}
-	if reply != "Done with echo." {
-		t.Errorf("reply = %q", reply)
-	}
-	if callCount != 2 {
-		t.Errorf("Complete calls = %d, want 2", callCount)
-	}
-	assertHermesFollowUpJSONOpts(t, secondOpts)
-	assertUserToolResultMessage(t, secondMsgs)
-	assertHermesToolInvocationLogged(t, cap)
-}
-
-// Covers AC-04.023: text-based (Hermes) path uses the same tool-result follow-up loop semantics.
-func TestHandleMessage_textBasedHermes_largeToolOutput_truncatedForFollowUp(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	largeOut := strings.Repeat("x", maxToolResultPromptBytes+1024)
-	runner := &mockNodeRunner{stdout: largeOut}
-	callCount := 0
-	var secondMsgs []llm.Message
-	provider := &mockProvider{}
-	provider.CompleteFn = func(_ context.Context, messages []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
-		callCount++
-		if callCount == 1 {
-			return &llm.CompletionResult{
-				Content: `<tool_call>
-{"name": "run_echo", "arguments": {"msg": "hi"}}
-</tool_call>`,
-				Usage: llm.Usage{},
-			}, nil
-		}
-		secondMsgs = append([]llm.Message(nil), messages...)
-		return &llm.CompletionResult{Content: "done", Usage: llm.Usage{}}, nil
-	}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 runner,
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.Default(),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
-	if err != nil {
-		t.Fatalf("HandleMessage: %v", err)
-	}
-	var found bool
-	for _, m := range secondMsgs {
-		if m.Role == "user" && strings.Contains(m.Content, "Tool run_echo") {
-			if strings.Contains(m.Content, "[tool output truncated:") {
-				found = true
-				if len(m.Content) >= len(largeOut) {
-					t.Fatalf("hermes tool-result message was not reduced; got=%d want<%d", len(m.Content), len(largeOut))
-				}
-				break
-			}
-		}
-	}
-	if !found {
-		t.Fatalf("expected truncated user tool-result message; messages=%+v", secondMsgs)
-	}
-}
-
-// EP-008 AC-08.005 (integration): multi-round Hermes path preserves ForceJSONOutput on every Complete (copyOptsNoTools).
-func TestHandleMessage_textBasedHermes_twoToolRounds_preservesForceJSONOnEachComplete(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	runner := &mockNodeRunner{stdout: "ok"}
-	callCount := 0
-	var optsPerCall []*llm.CompletionOptions
-	provider := &mockProvider{}
-	provider.CompleteFn = func(_ context.Context, _ []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
-		callCount++
-		optsPerCall = append(optsPerCall, opts)
-		switch callCount {
-		case 1:
-			return &llm.CompletionResult{
-				Content: `<tool_call>
-{"name": "run_echo", "arguments": {"msg": "first"}}
-</tool_call>`,
-				Usage: llm.Usage{},
-			}, nil
-		case 2:
-			return &llm.CompletionResult{
-				ToolCalls: []llm.ToolCall{{ID: "c2", Name: "run_echo", Arguments: `{"msg":"second"}`}},
-				Usage:     llm.Usage{},
-			}, nil
-		default:
-			return &llm.CompletionResult{Content: "All tools done.", Usage: llm.Usage{}}, nil
-		}
-	}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 runner,
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.Default(),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo twice")
-	if err != nil {
-		t.Fatalf("HandleMessage: %v", err)
-	}
-	if reply != "All tools done." {
-		t.Errorf("reply = %q", reply)
-	}
-	if callCount != 3 {
-		t.Fatalf("Complete calls = %d, want 3", callCount)
-	}
-	for i, o := range optsPerCall {
-		if o == nil || !o.ForceJSONOutput {
-			t.Errorf("Complete #%d: want ForceJSONOutput=true, opts=%+v", i+1, o)
-		}
-		if i > 0 && len(o.Tools) > 0 {
-			t.Errorf("Complete #%d: follow-up must omit tools in opts", i+1)
-		}
-	}
-}
-
-// Covers AC-01.002: traceability for TestHandleMessage_textBasedHermes_invalidMarkup_userMessage.
-func TestHandleMessage_textBasedHermes_invalidMarkup_userMessage(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	provider := &mockProvider{result: &llm.CompletionResult{Content: `<tool_call>broken`, Usage: llm.Usage{}}}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 &mockNodeRunner{},
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.Default(),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-	reply, err := h.HandleMessage(context.Background(), 1, "", "x")
-	if err != nil {
-		t.Fatalf("err = %v", err)
-	}
-	if !strings.Contains(reply, "Invalid tool call") {
-		t.Errorf("reply = %q, want user-facing invalid tool message", reply)
-	}
-}
-
-// AC-04.023: text-path first completion request includes Hermes format instructions and pre-selected tool ids in system message.
-func TestHandleMessage_textBased_systemPromptIncludesHermesAndTools(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo on node", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	var firstSystem string
-	provider := &mockProvider{}
-	provider.CompleteFn = func(_ context.Context, msgs []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
-		if len(msgs) > 0 && msgs[0].Role == "system" {
-			firstSystem = msgs[0].Content
-		}
-		return &llm.CompletionResult{Content: "No tool call here.", Usage: llm.Usage{}}, nil
-	}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 &mockNodeRunner{},
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.Default(),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-	_, err := h.HandleMessage(context.Background(), 1, "", "ping")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(firstSystem, tooltext.FormatDescription) {
-		t.Errorf("system prompt missing Hermes format description; len=%d", len(firstSystem))
-	}
-	if !strings.Contains(firstSystem, "run_echo") || !strings.Contains(firstSystem, "Echo on node") {
-		t.Errorf("system prompt missing tool run_echo description; snippet=%.200q...", firstSystem)
-	}
-}
-
-// AC-04.023/006: Hermes unknown tool id — same validation as native; no RunOnNode.
-// Covers AC-01.002: traceability for TestHandleMessage_textBasedHermes_unknownTool_noRunOnNode.
-func TestHandleMessage_textBasedHermes_unknownTool_noRunOnNode(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	runner := &mockNodeRunner{}
-	callCount := 0
-	provider := &mockProvider{}
-	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
-		callCount++
-		if callCount == 1 {
-			return &llm.CompletionResult{
-				Content: `<tool_call>{"name": "unknown_tool", "arguments": {}}</tool_call>`,
-				Usage:   llm.Usage{},
-			}, nil
-		}
-		return &llm.CompletionResult{Content: "Second round.", Usage: llm.Usage{}}, nil
-	}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 runner,
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.Default(),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-	_, err := h.HandleMessage(context.Background(), 1, "", "x")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if runner.lastCommand != "" {
-		t.Errorf("RunOnNode must not run for unknown tool; lastCommand=%q", runner.lastCommand)
-	}
-	if callCount != 2 {
-		t.Errorf("Complete calls = %d, want 2", callCount)
-	}
-}
-
-// AC-04.024: text-path response with no tool_call blocks returns plain assistant text.
-func TestHandleMessage_textBasedHermes_plainTextNoBlocks(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	want := "I will answer without using tools."
-	provider := &mockProvider{result: &llm.CompletionResult{Content: want, Usage: llm.Usage{}}}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 &mockNodeRunner{},
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.Default(),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-	reply, err := h.HandleMessage(context.Background(), 1, "", "hello")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reply != want {
-		t.Errorf("reply = %q, want %q", reply, want)
-	}
-	if len(provider.lastMessages) != 2 {
-		t.Errorf("expected single LLM round (system+user only in first call); messages len issue")
-	}
-}
-
-// Hermes follow-up after tool round: malformed second response yields error (no silent success).
-// Covers AC-01.002: traceability for TestHandleMessage_textBasedHermes_followUpMalformed_returnsError.
-func TestHandleMessage_textBasedHermes_followUpMalformed_returnsError(t *testing.T) {
-	catalog := &toolcatalog.Catalog{
-		Tools: map[string]*toolcatalog.Tool{
-			"run_echo": {
-				ID: "run_echo", IndexText: "Echo", Template: "echo {{msg}}", NodeID: "nas",
-				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
-			},
-		},
-	}
-	runner := &mockNodeRunner{stdout: "out"}
-	callCount := 0
-	provider := &mockProvider{}
-	provider.CompleteFn = func(_ context.Context, _ []llm.Message, _ *llm.CompletionOptions) (*llm.CompletionResult, error) {
-		callCount++
-		if callCount == 1 {
-			return &llm.CompletionResult{
-				Content: `<tool_call>{"name": "run_echo", "arguments": {"msg": "x"}}</tool_call>`,
-				Usage:   llm.Usage{},
-			}, nil
-		}
-		return &llm.CompletionResult{Content: `<tool_call>unclosed`, Usage: llm.Usage{}}, nil
-	}
-	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
-	ti := &mockToolIndex{store: toolStore, ready: true}
-	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
-		router:                     mustRouterSingle(t, provider),
-		catalog:                    catalog,
-		nodeRunner:                 runner,
-		toolIndex:                  ti,
-		embedder:                   emb,
-		toolSearchTopK:             10,
-		toolMinCount:               1,
-		toolFallbackCap:            50,
-		logger:                     slog.Default(),
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-	}
-	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
-	if err == nil {
-		t.Fatal("expected error from follow-up Hermes parse failure")
-	}
-	if !strings.Contains(err.Error(), "follow-up tool_call parse") {
-		t.Errorf("err = %v, want follow-up tool_call parse", err)
-	}
-	if callCount != 2 {
-		t.Errorf("Complete calls = %d, want 2", callCount)
 	}
 }
 

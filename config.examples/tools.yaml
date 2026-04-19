@@ -3,7 +3,6 @@
 # id            — Stable identifier.
 # index_text    — Short description: what the tool does. Used for the vector index (pre-selection) and as native tool-calling description.
 # system_prompt — Optional: longer rules for the model; appended to system when this tool is among the selected tools.
-# hermes_prompt — Optional: tool line text in the Hermes block; if omitted, index_text is used.
 # template      — Command on the node with {{placeholder}} arguments.
 # node_id       — Node id from config (SSH / run_on_node).
 # arguments     — Argument schema (name, type, required, …).
@@ -14,10 +13,6 @@ tools:
   - id: node_time
     index_text: Return the current date and time from the NAS node (ISO 8601).
     system_prompt: When the user asks for the current time or date on the server/NAS, call node_time. Do not invent timestamps.
-    hermes_prompt: >-
-      REQUIRED for any question about current time or date on the server/NAS: output exactly one block
-      <tool_call>{"name":"node_time","arguments":{}}</tool_call> first. Do not state a time or date in prose
-      until after you receive the tool result. Never invent or guess timestamps.
     template: "date -Iseconds"
     node_id: nas
     arguments: []
@@ -29,13 +24,6 @@ tools:
       For sonos: speaker must be the Sonos room name as the user says it (e.g. Bedroom, "Living Room").
       tail is a single CLI tail passed to the sonos script: e.g. stop, play, next, pause, status, volume 30.
       Do not add shell metacharacters. If the user is vague about the room, ask once before calling.
-    hermes_prompt: >-
-      For volume, play, pause, stop, skip, or any Sonos state change: you MUST output one or more
-      <tool_call>{"name":"sonos","arguments":{"speaker":"<room>","tail":"<action>"}}</tool_call> blocks
-      before claiming success. Do not write phrases like "Volume set to N" or "Music started" unless
-      that text comes from the tool result after the call. If the user did not name a room, ask a
-      short question in plain text only (no tool_call). Room = exact Sonos name (can be in Russian); tail = e.g. volume 5,
-      stop, play, next, pause, status. Never use XML-style tags like <sonos>.
     template: "/volume1/homes/openclaw-runner/.local/bin/sonos {{speaker}} {{tail}}"
     node_id: nas
     arguments:

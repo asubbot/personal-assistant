@@ -46,6 +46,9 @@ func Load(path string) (*Config, error) {
 }
 
 func prepareConfig(raw *Config, path string, rootJSON []byte) error {
+	if err := rejectRemovedUnsupportedConfigKeys(rootJSON); err != nil {
+		return err
+	}
 	if err := validateConfigRootObjectKeys(rootJSON); err != nil {
 		return err
 	}
@@ -85,6 +88,39 @@ func prepareConfig(raw *Config, path string, rootJSON []byte) error {
 	}
 	if err := finalizeRuntimeSkills(raw); err != nil {
 		return err
+	}
+	return nil
+}
+
+func rejectRemovedUnsupportedConfigKeys(data []byte) error {
+	if !json.Valid(data) {
+		return nil
+	}
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("config: parse: %w", err)
+	}
+	if rawTools, ok := root["tools"]; ok && len(rawTools) > 0 && string(rawTools) != "null" {
+		var tools map[string]json.RawMessage
+		if err := json.Unmarshal(rawTools, &tools); err == nil {
+			if _, has := tools["text_based_enabled"]; has {
+				return errors.New("config: tools.text_based_enabled is not supported; use llm_providers[].supports_tools true for native tool calling")
+			}
+		}
+	}
+	var stub struct {
+		LLMProviders []map[string]json.RawMessage `json:"llm_providers"`
+	}
+	if err := json.Unmarshal(data, &stub); err != nil {
+		return fmt.Errorf("config: parse (llm_providers): %w", err)
+	}
+	for i, p := range stub.LLMProviders {
+		if p == nil {
+			continue
+		}
+		if _, has := p["supports_json_mode"]; has {
+			return fmt.Errorf("config: llm_providers[%d].supports_json_mode is not supported; remove this field (response format is text-only)", i)
+		}
 	}
 	return nil
 }
@@ -266,7 +302,7 @@ func validateRuntimeSkillsNumericFields(c *Config) error {
 
 func validateTools(c *Config) error {
 	if c.Tools == nil {
-		return errors.New("config: tools is required (use {\"tools\": {}} with explicit text_based_enabled if needed)")
+		return errors.New("config: tools is required (use {\"tools\": {}} minimum)")
 	}
 	return nil
 }
@@ -503,13 +539,10 @@ func validateLLMProviderDefaults(idx int, p *LLMProvider) error {
 	}
 	rf := strings.TrimSpace(p.DefaultResponseFormat)
 	if rf == "" {
-		return fmt.Errorf("config: llm_providers[%d].default_response_format is required (\"text\" or \"json_object\")", idx)
+		return fmt.Errorf("config: llm_providers[%d].default_response_format is required (must be \"text\")", idx)
 	}
-	if rf != "text" && rf != "json_object" {
-		return fmt.Errorf("config: llm_providers[%d].default_response_format must be \"text\" or \"json_object\", got %q", idx, rf)
-	}
-	if rf == "json_object" && !p.SupportsJSONMode {
-		return fmt.Errorf("config: llm_providers[%d].default_response_format=\"json_object\" requires supports_json_mode=true", idx)
+	if rf != "text" {
+		return fmt.Errorf("config: llm_providers[%d].default_response_format must be \"text\", got %q", idx, rf)
 	}
 	if err := validateHTTPTimeout(fmt.Sprintf("llm_providers[%d].http_timeout", idx), p.HTTPTimeout); err != nil {
 		return err

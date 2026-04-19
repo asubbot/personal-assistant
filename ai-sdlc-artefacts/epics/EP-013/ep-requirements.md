@@ -19,7 +19,7 @@ This document contains the product requirements for EP-013 in EARS form, aligned
 
 ## Introduction
 
-EP-013 introduces **runtime skills** (AgentSkills-style `SKILL.md` packages), a dedicated **`vec_skills`** semantic index, **union-based tool selection** with **`always_include`** and caps, and a **single merged `role: system` message** structured with an English **trust policy**, **canonical `<<<PA_BEGIN_*>>>` / `<<<PA_END_*>>>` markers**, and bounded **runtime skill** text at the tail. Hermes and native tool-calling paths remain supported. **Skill `scripts/` execution** and **`references/`** loading are out of scope for this epic.
+EP-013 introduces **runtime skills** (AgentSkills-style `SKILL.md` packages), a dedicated **`vec_skills`** semantic index, **union-based tool selection** with **`always_include`** and caps, and a **single merged `role: system` message** structured with an English **trust policy**, **canonical `<<<PA_BEGIN_*>>>` / `<<<PA_END_*>>>` markers**, and bounded **runtime skill** text at the tail. Conversation tools use the provider **native tool-calling** path only (see EP-030). **Skill `scripts/` execution** and **`references/`** loading are out of scope for this epic.
 
 **Scope in brief**
 
@@ -96,7 +96,7 @@ flowchart LR
 | REQ-13.012 | FR | Selection | THE System SHALL apply rune budgets by dropping whole skills then whole vector-only tools |
 | REQ-13.013 | FR | Fallback | WHERE runtime skills disabled or no skill match THE System SHALL retain prior tool pre-selection behaviour |
 | REQ-13.014 | FR | Prompt | THE System SHALL prepend English trust policy before other dynamic assistant instructions in system |
-| REQ-13.015 | FR | Prompt | THE System SHALL wrap retrieved context, tool instructions, Hermes instructions, and runtime skills in canonical marker pairs |
+| REQ-13.015 | FR | Prompt | THE System SHALL wrap retrieved context, tool instructions, and runtime skills in canonical marker pairs when non-empty |
 | REQ-13.016 | FR | Prompt | THE System SHALL place retrieved context and runtime skills toward the tail of the merged system string |
 | REQ-13.017 | FR | Turn model | THE System SHALL rebuild merged system for each new user turn and keep the same merged system across tool rounds within that turn |
 | REQ-13.018 | FR | Memory | IF conversation chunk for indexing contains forbidden marker line THEN THE System SHALL reject indexing that chunk |
@@ -181,10 +181,10 @@ WHERE `runtime_skills.enabled` is false or skill semantic search yields zero ski
 *REQ-13.014–REQ-13.016*
 
 **REQ-13.014** (Ubiquitous)  
-THE System SHALL insert the agreed English trust-and-injection policy text at the beginning of the merged `role: system` content before retrieved context, tool instructions, Hermes text, and runtime skill bodies.
+THE System SHALL insert the agreed English trust-and-injection policy text at the beginning of the merged `role: system` content before retrieved context, tool instructions, and runtime skill bodies.
 
 **REQ-13.015** (Ubiquitous)  
-THE System SHALL wrap retrieved context in `<<<PA_BEGIN_RETRIEVED_CONTEXT>>>` / `<<<PA_END_RETRIEVED_CONTEXT>>>`, aggregate catalog tool instructions in `<<<PA_BEGIN_TOOL_INSTRUCTIONS>>>` / `<<<PA_END_TOOL_INSTRUCTIONS>>>`, Hermes tool-format instructions in `<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>` / `<<<PA_END_HERMES_TOOL_FORMAT>>>`, and selected runtime skill bodies in `<<<PA_BEGIN_RUNTIME_SKILLS>>>` / `<<<PA_END_RUNTIME_SKILLS>>>` when the corresponding block is non-empty.
+THE System SHALL wrap retrieved context in `<<<PA_BEGIN_RETRIEVED_CONTEXT>>>` / `<<<PA_END_RETRIEVED_CONTEXT>>>`, aggregate catalog tool instructions in `<<<PA_BEGIN_TOOL_INSTRUCTIONS>>>` / `<<<PA_END_TOOL_INSTRUCTIONS>>>`, and selected runtime skill bodies in `<<<PA_BEGIN_RUNTIME_SKILLS>>>` / `<<<PA_END_RUNTIME_SKILLS>>>` when the corresponding block is non-empty.
 
 **REQ-13.016** (Ubiquitous)  
 THE System SHALL order dynamic blocks so that retrieved context and runtime skills appear after the trust policy and tool instruction blocks inside the merged system string.

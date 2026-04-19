@@ -7,7 +7,6 @@
     "max_message_length": 200
   },
   "tools": {
-    "text_based_enabled": true,
     "always_include": [],
     "llm_escalation": {
       "enabled": true,
@@ -27,10 +26,9 @@
       "endpoint": "http://localhost:11434/v1",
       "api_key_path": "",
       "model": "llama3:8b",
-      "supports_tools": false,
+      "supports_tools": true,
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
-      "supports_json_mode": true,
       "default_response_format": "text",
       "http_timeout": "60s"
     },
@@ -39,10 +37,9 @@
       "endpoint": "http://localhost:11434/v1",
       "api_key_path": "",
       "model": "qwen3:8b",
-      "supports_tools": false,
+      "supports_tools": true,
       "default_temperature": 0.3,
       "default_max_tokens": 1024,
-      "supports_json_mode": true,
       "default_response_format": "text",
       "http_timeout": "60s"
     },
@@ -54,7 +51,6 @@
       "supports_tools": true,
       "default_temperature": 0.3,
       "default_max_tokens": 4096,
-      "supports_json_mode": true,
       "default_response_format": "text",
       "http_timeout": "120s"
     }

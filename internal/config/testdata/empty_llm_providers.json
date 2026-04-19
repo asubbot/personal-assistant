@@ -23,9 +23,7 @@
     "http_timeout": "60s"
   },
   "nodes": {},
-  "tools": {
-    "text_based_enabled": false
-  },
+  "tools": {},
   "log_redaction": {
     "additional_patterns": []
   },

@@ -31,19 +31,3 @@ func TestAggregateSystemPrompts_skipsEmpty(t *testing.T) {
 		t.Errorf("want only y block: %q", s)
 	}
 }
-
-// Covers AC-04.027: HermesBody returns hermes_prompt trimmed or falls back to index_text.
-func TestTool_HermesBody(t *testing.T) {
-	t.Run("hermes_wins", func(t *testing.T) {
-		tr := &Tool{HermesPrompt: "  H  ", IndexText: "I"}
-		if tr.HermesBody() != "H" {
-			t.Errorf("got %q", tr.HermesBody())
-		}
-	})
-	t.Run("fallback_index", func(t *testing.T) {
-		tr := &Tool{IndexText: "short"}
-		if tr.HermesBody() != "short" {
-			t.Errorf("got %q", tr.HermesBody())
-		}
-	})
-}

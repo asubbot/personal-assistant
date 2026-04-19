@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-028 |
-| **Status** | NEW |
+| **Status** | CANCEL (Not necessary for one user using model) |
 | **Title** | Per-user rate limiting and tier-aware tool round caps |
 | **Description** | Add configurable per-user rate limits on inbound messages and on tool rounds, and make the maximum tool round count a per-tier setting, so an allowed user cannot burn unbounded provider and node resources from a single message. |
 | **First version date** | 2026-04-17 |

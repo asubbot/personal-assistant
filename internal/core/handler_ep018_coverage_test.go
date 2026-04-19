@@ -9,7 +9,6 @@ import (
 	"pa/internal/config"
 	"pa/internal/intent"
 	"pa/internal/llm"
-	"pa/internal/promptmarkers"
 	"pa/internal/runtimeskills"
 	"pa/internal/toolcatalog"
 	"pa/internal/vector"
@@ -100,9 +99,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 		toolSearchTopK:             10,
 		toolMinCount:               1,
 		toolFallbackCap:            50,
-		textBasedEnabled:           true,
 		firstProviderSupportsTools: true,
-		toolsCfg:                   &config.ToolsConfig{TextBasedEnabled: true},
 		toolsDynamic:               nil,
 	}
 	hCap := &conversationHandler{
@@ -117,9 +114,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 		toolSearchTopK:             10,
 		toolMinCount:               1,
 		toolFallbackCap:            50,
-		textBasedEnabled:           true,
 		firstProviderSupportsTools: true,
-		toolsCfg:                   &config.ToolsConfig{TextBasedEnabled: true},
 		toolsDynamic: &config.ToolDynamicSelection{
 			Enabled:               true,
 			MaxToolsForLLMRequest: 2,
@@ -187,8 +182,8 @@ func TestEP018_dynamicTail_nilSkillsOmitsPlaybookText(t *testing.T) {
 	}
 }
 
-// Covers AC-18.007
-func TestEP018_fullLite_withTextTools_includesHermesBlock(t *testing.T) {
+// Covers AC-18.007 / AC-30.003: full_lite with catalog tools uses native tool defs.
+func TestEP018_fullLite_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 	cat := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
@@ -216,25 +211,19 @@ func TestEP018_fullLite_withTextTools_includesHermesBlock(t *testing.T) {
 		toolSearchTopK:             10,
 		toolMinCount:               1,
 		toolFallbackCap:            50,
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-		toolsCfg:                   &config.ToolsConfig{TextBasedEnabled: true},
+		firstProviderSupportsTools: true,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "LITEHERM echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
 	if provider.lastOpts == nil || len(provider.lastOpts.Tools) == 0 {
-		t.Fatal("expected text-based tools on completion")
-	}
-	sys := provider.lastMessages[0].Content
-	if !strings.Contains(sys, promptmarkers.BeginHermesToolFormat) {
-		t.Fatalf("expected Hermes wrapper in system message, got prefix: %.200q", sys)
+		t.Fatal("expected native tools on completion")
 	}
 }
 
-// Covers AC-18.008
-func TestEP018_fullLite_noCatalogTools_omitsHermesBlock(t *testing.T) {
+// Covers AC-18.008: without catalog tools, completion opts omit tools.
+func TestEP018_fullLite_noCatalogTools_omitsNativeTools(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	classifier := intent.NewCascadeClassifier(
 		intent.NewHeuristicClassifier(nil, nil, []string{`^LITENOTOOL`}, 100),
@@ -248,9 +237,7 @@ func TestEP018_fullLite_noCatalogTools_omitsHermesBlock(t *testing.T) {
 		vectorSearchTopK:           5,
 		classifier:                 classifier,
 		catalog:                    nil,
-		textBasedEnabled:           true,
-		firstProviderSupportsTools: false,
-		toolsCfg:                   &config.ToolsConfig{TextBasedEnabled: true},
+		firstProviderSupportsTools: true,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "LITENOTOOL")
 	if err != nil {
@@ -258,10 +245,6 @@ func TestEP018_fullLite_noCatalogTools_omitsHermesBlock(t *testing.T) {
 	}
 	if provider.lastOpts != nil {
 		t.Fatalf("expected nil opts without catalog tools, got %+v", provider.lastOpts)
-	}
-	sys := provider.lastMessages[0].Content
-	if strings.Contains(sys, promptmarkers.BeginHermesToolFormat) {
-		t.Fatalf("did not expect Hermes block without tools")
 	}
 }
 
@@ -300,9 +283,7 @@ func TestEP018_fullLite_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
 		toolSearchTopK:             10,
 		toolMinCount:               1,
 		toolFallbackCap:            50,
-		textBasedEnabled:           true,
 		firstProviderSupportsTools: true,
-		toolsCfg:                   &config.ToolsConfig{TextBasedEnabled: true},
 		toolsDynamic: &config.ToolDynamicSelection{
 			Enabled:               true,
 			MaxToolsForLLMRequest: 2,

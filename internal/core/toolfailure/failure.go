@@ -33,7 +33,7 @@ func NoEscalate(err error) error {
 	return &Failure{Escalate: false, err: err}
 }
 
-// MayEscalate wraps err as a failure that may qualify for escalation (e.g. remote exec, SSH, Hermes parse).
+// MayEscalate wraps err as a failure that may qualify for escalation (e.g. remote exec, SSH, tool parse).
 func MayEscalate(err error) error {
 	if err == nil {
 		return nil

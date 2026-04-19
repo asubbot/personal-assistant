@@ -28,7 +28,7 @@ type Config struct {
 	ToolCatalog *toolcatalog.Catalog `json:"-"`
 	// ToolPreSelection is required; all numeric fields must be >= 1 (no runtime defaults).
 	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
-	// Tools is required; use {"tools":{}} minimum. Prefer explicit text_based_enabled in JSON for clarity.
+	// Tools is required; use {"tools":{}} minimum.
 	Tools *ToolsConfig `json:"tools"`
 	// CreateToolSecretRegex is compiled at Load from tools.create_tool_secret_patterns (REQ-09.017). Nil when absent or empty.
 	CreateToolSecretRegex []*regexp.Regexp `json:"-"`
@@ -174,7 +174,6 @@ type LLMEscalationConfig struct {
 
 // ToolsConfig holds optional tool-invocation settings (REQ-04.030) and tools.llm_escalation (EP-006).
 type ToolsConfig struct {
-	TextBasedEnabled bool `json:"text_based_enabled"`
 	// AlwaysInclude lists catalog or allowed-native tool ids merged into every turn’s tool set (EP-013, REQ-13.011).
 	AlwaysInclude []string `json:"always_include,omitempty"`
 	// DynamicSelection is optional (EP-018). When present and enabled, max_tools_for_llm_request must be set in JSON (>= 1).
@@ -185,8 +184,7 @@ type ToolsConfig struct {
 }
 
 // ToolDynamicSelection configures EP-018 dynamic narrowing of the main LLM tool list.
-// When Enabled is true, TierFull applies the cap after merge; TierFullLite applies it only if
-// tools.text_based_enabled is also true (Hermes path).
+// When Enabled is true, TierFull and TierFullLite apply the cap after merge.
 type ToolDynamicSelection struct {
 	Enabled               bool `json:"enabled"`
 	MaxToolsForLLMRequest int  `json:"max_tools_for_llm_request"`
@@ -209,7 +207,7 @@ type ToolPreSelection struct {
 
 // ConversationContextConfig holds parameters for context injected into the LLM (vector search results). All fields >= 1 at load.
 type ConversationContextConfig struct {
-	// MaxDynamicSystemRunes caps the dynamic tail of the system message (after trust/marker/personality): tool instructions, Hermes, retrieved memory, runtime skills (UTF-8 runes).
+	// MaxDynamicSystemRunes caps the dynamic tail of the system message (after trust/marker/personality): tool instructions, retrieved memory, runtime skills (UTF-8 runes).
 	MaxDynamicSystemRunes int `json:"max_dynamic_system_runes"`
 	VectorSearchTopK      int `json:"vector_search_top_k"` // number of vector search results to consider (whole chunks; tail fit may drop some)
 }
@@ -282,7 +280,7 @@ type Telegram struct {
 
 // LLMProvider holds one LLM provider configuration (order = priority).
 // Model, endpoint, type, supports_tools, default_temperature, default_max_tokens (>= 1),
-// supports_json_mode, and default_response_format are required at load (fail fast; no runtime defaults for those).
+// and default_response_format are required at load (fail fast; no runtime defaults for those).
 // api_key_path is required for openai / openai-compatible; optional for ollama.
 // SupportsTools: when false, HTTP requests omit tools (REQ-04.026).
 type LLMProvider struct {
@@ -293,8 +291,7 @@ type LLMProvider struct {
 	SupportsTools         *bool   `json:"supports_tools"`
 	DefaultTemperature    float64 `json:"default_temperature"`     // required; provider default for completion requests
 	DefaultMaxTokens      int     `json:"default_max_tokens"`      // required; provider default for completion requests (>= 1)
-	SupportsJSONMode      bool    `json:"supports_json_mode"`      // required; when true, provider supports response_format: json_object
-	DefaultResponseFormat string  `json:"default_response_format"` // required; "text" or "json_object"
+	DefaultResponseFormat string  `json:"default_response_format"` // required; must be "text"
 	// HTTPTimeout is the total per-request timeout for outbound LLM calls (EP-022, REQ-22.003).
 	// Required in config.json (Go duration literal, e.g. "120s"). When the struct is constructed
 	// directly in tests, an empty value falls back to a documented reference.

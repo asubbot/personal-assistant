@@ -19,7 +19,6 @@ type Tool struct {
 	ID           string         `yaml:"id"`
 	IndexText    string         `yaml:"index_text"`              // embedding + OpenAI tool description (short)
 	SystemPrompt string         `yaml:"system_prompt,omitempty"` // appended to system when tool is selected
-	HermesPrompt string         `yaml:"hermes_prompt,omitempty"` // Hermes tool list body; empty => index_text
 	Template     string         `yaml:"template"`
 	NodeID       string         `yaml:"node_id"`
 	Arguments    []ArgumentRule `yaml:"arguments"`
@@ -111,15 +110,4 @@ func AggregateSystemPrompts(c *Catalog, ids []string) string {
 		return ""
 	}
 	return "\n\n---\nTool instructions:\n" + b.String()
-}
-
-// HermesBody returns hermes_prompt if set, otherwise index_text (for Hermes tool list lines).
-func (t *Tool) HermesBody() string {
-	if t == nil {
-		return ""
-	}
-	if s := strings.TrimSpace(t.HermesPrompt); s != "" {
-		return s
-	}
-	return strings.TrimSpace(t.IndexText)
 }

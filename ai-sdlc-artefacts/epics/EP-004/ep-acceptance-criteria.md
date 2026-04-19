@@ -46,7 +46,7 @@ This document defines epic-level acceptance criteria for **EP-004 Structured too
 | [AC-04.022](#ac-04-022) | [REQ-04.026](ep-requirements.md#tool-invocation-without-tool-calling-api) | When provider lacks Tool-calling API, system MAY support text-based tool invocation (tools in prompt, defined format) |
 | [AC-04.023](#ac-04-023) | [REQ-04.027](ep-requirements.md#tool-invocation-without-tool-calling-api), [REQ-04.028](ep-requirements.md#tool-invocation-without-tool-calling-api) | Text-based: prompt describes tools and format; parsed tool calls use same validation and execution path |
 | [AC-04.024](#ac-04-024) | [REQ-04.029](ep-requirements.md#tool-invocation-without-tool-calling-api) | Parse failure or invalid format → no execution; plain text or deterministic error to user |
-| [AC-04.025](#ac-04-025) | [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api) | Configurable enable/disable of text-based tool invocation (global) |
+| [AC-04.025](#ac-04-025) | [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api) | **Obsolete:** Global `tools.text_based_enabled` removed; product uses native tool calling only. |
 | [AC-04.026](#ac-04-026) | [REQ-04.032](ep-requirements.md#prompt-text-for-selected-tools) | Selected tools with system_prompt → text appended to system message |
 | [AC-04.027](#ac-04-027) | [REQ-04.033](ep-requirements.md#prompt-text-for-selected-tools) | Text-based list uses hermes_prompt or index_text plus parameters schema |
 | [AC-04.028](#ac-04-028) | [REQ-04.034](ep-requirements.md#provider-interface) | supports_tools required; false → no native tools in HTTP request |
@@ -279,7 +279,7 @@ And the system SHALL either treat the response as plain assistant text or surfac
 
 ---
 
-<a id="ac-04-025"></a>**AC-04.025** (Trace: [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api))
+<a id="ac-04-025"></a>**AC-04.025** (Trace: [REQ-04.030](ep-requirements.md#tool-invocation-without-tool-calling-api)) **Obsolete:** The former global `tools.text_based_enabled` flag and text-markup tool path were removed; native tool calling is the only supported path. This AC is retained for historical REQ traceability only.
 
 Given the system supports text-based tool invocation when **supports_tools** is false,  
 When the operator configures the system,  

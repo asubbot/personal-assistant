@@ -137,7 +137,6 @@ type IntegrationConversationParams struct {
 	LLMLog                     llmlog.Writer
 	Model                      string
 	LogRedactor                func(string) string
-	TextBasedEnabled           bool
 	FirstProviderSupportsTools bool
 	ConversationSession        *config.ConversationSessionConfig
 }
@@ -195,7 +194,6 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 		llmLog:                     p.LLMLog,
 		model:                      p.Model,
 		logRedactor:                p.LogRedactor,
-		textBasedEnabled:           p.TextBasedEnabled,
 		firstProviderSupportsTools: p.FirstProviderSupportsTools,
 		sessionCfg:                 sessCfg,
 		sessionStore:               sessStore,

@@ -113,7 +113,7 @@ func (r *Router) Complete(ctx context.Context, st *State, messages []llm.Message
 	}
 }
 
-// OnQualifyingFailure applies policy escalation for tool/hermes qualifying failures.
+// OnQualifyingFailure applies policy escalation for qualifying tool failures.
 func (r *Router) OnQualifyingFailure(st *State, phase Phase, failureClass string, onEvent func(Event)) bool {
 	if st == nil {
 		return false

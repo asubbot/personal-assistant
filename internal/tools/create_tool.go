@@ -48,7 +48,7 @@ func NewCreateTool(mu sync.Locker, catalog *toolcatalog.Catalog, catalogPath str
 // Name implements Tool.
 func (c *CreateToolTool) Name() string { return "create_tool" }
 
-// createToolLLMDescription is the OpenAI/Hermes tool description: rules + one canonical JSON example (quick-win for model adherence).
+// createToolLLMDescription is the OpenAI-style tool description: rules + one canonical JSON example (quick-win for model adherence).
 const createToolLLMDescription = `Create a new catalog tool that runs a Docker sandbox command on a node (SSH). Persists to tools.yaml and updates the runtime catalog.
 
 TEMPLATE (must be ONE physical line — no newline U+000A or carriage return U+000D inside the template string; multi-line Python/shell scripts will be rejected):

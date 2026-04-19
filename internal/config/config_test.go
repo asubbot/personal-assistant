@@ -90,6 +90,7 @@ func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 
 // TestLoad_InvalidOrMissingFields covers AC-01.005: config validator with invalid/missing fields (test-strategy.md §3).
 // Covers AC-04.020: embedding.batch_size required and between 1 and 1000 (invalid_embedding_batch_size, missing_embedding_batch_size cases below).
+// Covers AC-30.006: default_response_format must be text (json_object rejected at load).
 func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -125,13 +126,14 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing pa_timezone", "missing_pa_timezone.json", "top-level key \"pa_timezone\""},
 		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
 		{"conversation_context zero max runes", "conversation_context_zero.json", "max_dynamic_system_runes must be >= 1"},
-		// EP-008: reject invalid LLM default_* / supports_json_mode at load (prerequisite for REQ-08.001–008.007).
+		// EP-008: reject invalid LLM defaults and removed keys at load.
 		{"llm default_max_tokens zero", "llm_default_max_tokens_zero.json", "default_max_tokens must be >= 1"},
 		{"llm default_temperature negative", "llm_default_temperature_negative.json", "default_temperature must be in [0, 2]"},
 		{"llm default_temperature above 2", "llm_default_temperature_above_two.json", "default_temperature must be in [0, 2]"},
-		{"llm default_response_format invalid", "llm_default_response_format_invalid.json", "default_response_format must be \"text\" or \"json_object\""},
+		{"llm default_response_format invalid", "llm_default_response_format_invalid.json", "default_response_format must be \"text\""},
 		{"llm default_response_format empty", "llm_default_response_format_empty.json", "default_response_format is required"},
-		{"llm json_object without supports_json_mode", "llm_json_object_without_supports_json_mode.json", "supports_json_mode=true"},
+		{"llm default_response_format json_object rejected", "llm_json_object_without_supports_json_mode.json", "default_response_format must be \"text\""},
+		{"llm supports_json_mode rejected", "llm_supports_json_mode_rejected.json", "supports_json_mode is not supported"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,11 +167,11 @@ func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "legacy.json", "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
-  "tools": { "text_based_enabled": false },
+  "tools": {},
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
@@ -274,7 +276,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	cfgJSON := `{
 	  "version": 1,
 	  "telegram": { "token_path": "/run/secrets/token", "users_path": "" },
-	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" } ],
+	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" } ],
 	  "paths": {
 	    "memory_dir": "/data/memory",
 	    "log_path": "/data/pa.log",
@@ -286,7 +288,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	  },
 	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
 	  "nodes": {},
-	  "tools": { "text_based_enabled": false },
+	  "tools": {},
 	  "log_redaction": { "additional_patterns": [] },
 	  "pa_timezone": "UTC",
 	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
@@ -339,15 +341,75 @@ func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
 	}
 }
 
-// AC-04.025: tools.text_based_enabled loads from config JSON.
-func TestLoad_ToolsTextBasedEnabled_parsed(t *testing.T) {
-	path := filepath.Join("testdata", "valid_tools_text_based_enabled.json")
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
+// Covers AC-30.004, AC-30.013: tools.text_based_enabled is rejected at load.
+func TestLoad_ToolsTextBasedEnabled_rejected(t *testing.T) {
+	path := filepath.Join("testdata", "tools_text_based_enabled_rejected.json")
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("Load: expected error, got nil")
 	}
-	if cfg.Tools == nil || !cfg.Tools.TextBasedEnabled {
-		t.Fatalf("Tools.TextBasedEnabled = %v, want true", cfg.Tools)
+	if !strings.Contains(err.Error(), "text_based_enabled") {
+		t.Fatalf("Load: error = %v, want text_based_enabled rejection", err)
+	}
+}
+
+// Covers AC-30.005: supports_json_mode is rejected at load.
+func TestLoad_llmSupportsJSONMode_rejected(t *testing.T) {
+	_, err := Load(filepath.Join("testdata", "llm_supports_json_mode_rejected.json"))
+	if err == nil {
+		t.Fatal("Load: expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "supports_json_mode") {
+		t.Fatalf("Load: error = %v, want supports_json_mode rejection", err)
+	}
+}
+
+func configTestRepoRoot(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("go.mod not found from test working directory")
+		}
+		dir = parent
+	}
+}
+
+// Covers AC-30.003: legacy text-tool package path removed.
+func TestEP030_tooltextDirectoryAbsent(t *testing.T) {
+	p := filepath.Join(configTestRepoRoot(t), "internal", "tooltext")
+	if _, err := os.Stat(p); err == nil {
+		t.Fatalf("%s exists; internal/tooltext must not be present", p)
+	} else if !os.IsNotExist(err) {
+		t.Fatalf("stat %s: %v", p, err)
+	}
+}
+
+// Covers AC-30.012: operator docs describe native-only tools and removed configuration keys.
+func TestDocs_configuration_md_EP030(t *testing.T) {
+	p := filepath.Join(configTestRepoRoot(t), "docs", "configuration.md")
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatalf("read %s: %v", p, err)
+	}
+	s := string(b)
+	for _, needle := range []string{
+		"supports_tools",
+		"default_response_format",
+		"text_based_enabled",
+		"supports_json_mode",
+		"Native tool calling",
+	} {
+		if !strings.Contains(s, needle) {
+			t.Errorf("docs/configuration.md should mention %q for operator guidance", needle)
+		}
 	}
 }
 
@@ -383,11 +445,11 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
-  "tools": { "text_based_enabled": false },
+  "tools": {},
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
@@ -420,7 +482,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -440,7 +502,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
       "command_allowlist_path": "/allowlist.txt"
     }
   },
-  "tools": { "text_based_enabled": false },
+  "tools": {},
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
@@ -555,7 +617,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -571,7 +633,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" }
   },
-  "tools": { "text_based_enabled": false },
+  "tools": {},
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
@@ -621,7 +683,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -637,7 +699,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "key1" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "key2" }, "command_allowlist_path": "allow.txt" }
   },
-  "tools": { "text_based_enabled": false },
+  "tools": {},
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
@@ -689,7 +751,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
 	content := `{
   "version": 1,
   "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "supports_json_mode": true, "default_response_format": "text", "http_timeout": "60s" }],
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
   "paths": {
     "memory_dir": "` + cfgDir + `",
     "log_path": "` + cfgDir + `/pa.log",
@@ -705,7 +767,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "real" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "alias" }, "command_allowlist_path": "allow.txt" }
   },
-  "tools": { "text_based_enabled": false },
+  "tools": {},
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
