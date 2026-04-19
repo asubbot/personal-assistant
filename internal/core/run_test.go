@@ -18,7 +18,7 @@ func minimalConfigForRun() *config.Config {
 		LogRedaction:        &config.LogRedaction{},
 		PATimezone:          "UTC",
 		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
-		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, VectorSearchTopK: 10},
+		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, MemoryVector: config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}},
 	}
 }
 
@@ -129,7 +129,7 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 		LogRedaction:        &config.LogRedaction{},
 		PATimezone:          "UTC",
 		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
-		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, VectorSearchTopK: 10},
+		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, MemoryVector: config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}},
 	}
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}

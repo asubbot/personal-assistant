@@ -23,7 +23,7 @@ type Config struct {
 	Nodes               map[string]Node            `json:"nodes"`
 	LogRedaction        *LogRedaction              `json:"log_redaction"`        // required; additional_patterns may be empty (built-in patterns always applied)
 	PATimezone          string                     `json:"pa_timezone"`          // required; IANA name for assistant's day (e.g. UTC, Europe/Moscow); used for summarization
-	ConversationContext *ConversationContextConfig `json:"conversation_context"` // required; injected context limits (all fields must be >= 1)
+	ConversationContext *ConversationContextConfig `json:"conversation_context"` // required; injected context limits (max_dynamic_system_runes >= 1; memory_vector per-field 0..cap)
 	// ToolCatalog is the parsed tool catalog when paths.tool_catalog_path is set; nil otherwise. Populated at config load (fail fast on parse/schema error).
 	ToolCatalog *toolcatalog.Catalog `json:"-"`
 	// ToolPreSelection is required; all numeric fields must be >= 1 (no runtime defaults).
@@ -205,11 +205,18 @@ type ToolPreSelection struct {
 	ToolFallbackCap int `json:"tool_fallback_cap"` // max tools when using fallback (sorted catalog ids) (>= 1)
 }
 
-// ConversationContextConfig holds parameters for context injected into the LLM (vector search results). All fields >= 1 at load.
+// MemoryVectorConfig holds per-table top-k for automatic memory injection (vector search into the system prompt). Validated at load: each field 0..maxVectorSearchTopK; 0 disables that lane.
+type MemoryVectorConfig struct {
+	NotesTopK     int `json:"notes_top_k"`
+	SummariesTopK int `json:"summaries_top_k"`
+	TurnsTopK     int `json:"turns_top_k"`
+}
+
+// ConversationContextConfig holds parameters for context injected into the LLM (vector search results and dynamic tail budget).
 type ConversationContextConfig struct {
 	// MaxDynamicSystemRunes caps the dynamic tail of the system message (after trust/marker/personality): tool instructions, retrieved memory, runtime skills (UTF-8 runes).
-	MaxDynamicSystemRunes int `json:"max_dynamic_system_runes"`
-	VectorSearchTopK      int `json:"vector_search_top_k"` // number of vector search results to consider (whole chunks; tail fit may drop some)
+	MaxDynamicSystemRunes int                `json:"max_dynamic_system_runes"`
+	MemoryVector          MemoryVectorConfig `json:"memory_vector"`
 }
 
 // LogRedaction holds additional redaction patterns (REQ-01.028). Built-in patterns cannot be overridden (REQ-01.027).

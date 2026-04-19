@@ -431,8 +431,12 @@ _Reference material._ Application config is a single JSON file at `config.json` 
   },
   "pa_timezone": "UTC",
   "conversation_context": {
-    "injected_context_max_chars": 0,
-    "vector_search_top_k": 0
+    "max_dynamic_system_runes": 4000,
+    "memory_vector": {
+      "notes_top_k": 10,
+      "summaries_top_k": 10,
+      "turns_top_k": 10
+    }
   }
 }
 ```
@@ -466,7 +470,7 @@ _Reference material._ Application config is a single JSON file at `config.json` 
 - **paths.ssh_known_hosts_path**: **Key required** in reference configs; when `nodes` is non-empty, must be non-empty and the file must exist at load time. When `nodes` is empty, may be `""`. Resolved relative to the config directory. Populate with host keys, e.g. `ssh-keyscan -H <host> >> known_hosts` ([REQ-01.003](ep-requirements.md#nodes-and-ssh)).
 - **nodes.*.port**: **Key required**; use `22` for default SSH port or the node’s actual port (`0` in config may be treated as default 22 at runtime—prefer explicit `22` in reference files).
 - **log_redaction**: **Object required** in reference configs; `additional_patterns` is an array (may be `[]`) of `{ "id", "regex", "replacement" }` ([REQ-01.026](ep-requirements.md#secret-protection-prompt-injection--exfiltration)–[REQ-01.029](ep-requirements.md#secret-protection-prompt-injection--exfiltration)). Built-in patterns are always applied ([REQ-01.027](ep-requirements.md#secret-protection-prompt-injection--exfiltration)). Invalid pattern ids or regex refuse start ([AC-01.041](ep-acceptance-criteria.md#ac-01-041)).
-- **conversation_context**: **Object required**; use `0` for `injected_context_max_chars` and `vector_search_top_k` to mean code defaults (4000 / 10).
+- **conversation_context**: **Object required**; **`max_dynamic_system_runes`** (≥ 1) and **`memory_vector`** with **`notes_top_k`**, **`summaries_top_k`**, **`turns_top_k`** (each 0–500; 0 disables that lane’s automatic vector retrieval). See [docs/configuration.md](../../../../docs/configuration.md).
 - **versioned_state** (optional, **post-MVP/deferred**): planned git-backed state for PA-owned writes ([REQ-01.016](ep-requirements.md#version-control-and-audit)). Deferred in EP-001 and intentionally excluded from MVP implementation and validation.
 
 **Telegram users file** (e.g. `/etc/pa/telegram_users.json`): JSON array of user entries with Telegram user id, role, and optional display name. Example:

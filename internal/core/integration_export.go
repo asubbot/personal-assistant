@@ -133,7 +133,7 @@ type IntegrationConversationParams struct {
 	Logger                     *slog.Logger
 	MaxMessageLength           int
 	MaxDynamicSystemRunes      int
-	VectorSearchTopK           int
+	MemoryVector               config.MemoryVectorConfig
 	LLMLog                     llmlog.Writer
 	Model                      string
 	LogRedactor                func(string) string
@@ -158,8 +158,8 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 	if p.MaxDynamicSystemRunes == 0 {
 		p.MaxDynamicSystemRunes = 4000
 	}
-	if p.VectorSearchTopK == 0 {
-		p.VectorSearchTopK = 10
+	if p.MemoryVector.NotesTopK == 0 && p.MemoryVector.SummariesTopK == 0 && p.MemoryVector.TurnsTopK == 0 {
+		p.MemoryVector = config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}
 	}
 	mv := p.MemoryVectors
 	if mv == nil {
@@ -190,7 +190,7 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 		logger:                     p.Logger,
 		maxMessageLength:           p.MaxMessageLength,
 		maxDynamicSystemRunes:      p.MaxDynamicSystemRunes,
-		vectorSearchTopK:           p.VectorSearchTopK,
+		memoryVectorTopK:           p.MemoryVector,
 		llmLog:                     p.LLMLog,
 		model:                      p.Model,
 		logRedactor:                p.LogRedactor,

@@ -383,11 +383,18 @@ func validateConversationContext(c *Config) error {
 	if cc.MaxDynamicSystemRunes > maxMaxDynamicSystemRunes {
 		return fmt.Errorf("config: conversation_context.max_dynamic_system_runes must be <= %d", maxMaxDynamicSystemRunes)
 	}
-	if cc.VectorSearchTopK < 1 {
-		return errors.New("config: conversation_context.vector_search_top_k must be >= 1")
+	mv := cc.MemoryVector
+	if mv.NotesTopK < 0 || mv.SummariesTopK < 0 || mv.TurnsTopK < 0 {
+		return errors.New("config: conversation_context.memory_vector top_k fields must be >= 0")
 	}
-	if cc.VectorSearchTopK > maxVectorSearchTopK {
-		return fmt.Errorf("config: conversation_context.vector_search_top_k must be <= %d", maxVectorSearchTopK)
+	if mv.NotesTopK > maxVectorSearchTopK {
+		return fmt.Errorf("config: conversation_context.memory_vector.notes_top_k must be <= %d", maxVectorSearchTopK)
+	}
+	if mv.SummariesTopK > maxVectorSearchTopK {
+		return fmt.Errorf("config: conversation_context.memory_vector.summaries_top_k must be <= %d", maxVectorSearchTopK)
+	}
+	if mv.TurnsTopK > maxVectorSearchTopK {
+		return fmt.Errorf("config: conversation_context.memory_vector.turns_top_k must be <= %d", maxVectorSearchTopK)
 	}
 	return nil
 }

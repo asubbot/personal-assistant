@@ -225,7 +225,7 @@ var validSummarizeConfig = `{
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 },
   "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false },

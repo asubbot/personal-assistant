@@ -52,7 +52,11 @@
   },
   "conversation_context": {
     "max_dynamic_system_runes": 4000,
-    "vector_search_top_k": 10
+    "memory_vector": {
+      "notes_top_k": 10,
+      "summaries_top_k": 10,
+      "turns_top_k": 10
+    }
   },
   "read_memory": {
     "max_span_days": 31,

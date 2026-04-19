@@ -31,7 +31,9 @@ func ensureCoreRunConfigRequiredSections(cfg *config.Config) {
 	if cfg.ConversationContext == nil {
 		cfg.ConversationContext = &config.ConversationContextConfig{
 			MaxDynamicSystemRunes: 4000,
-			VectorSearchTopK:      10,
+			MemoryVector: config.MemoryVectorConfig{
+				NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10,
+			},
 		}
 	}
 	if cfg.ReadMemory == nil {

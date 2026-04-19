@@ -34,7 +34,6 @@ import (
 
 const (
 	defaultMaxDynamicSystemRunes = 4000 // tests: handler.maxDynamicSystemRunes when simulating production defaults
-	defaultVectorSearchTopK      = 10   // tests: explicit handler.vectorSearchTopK when simulating production defaults
 	logTruncateMaxLen            = 2000 // max chars per message/response when logging at DEBUG (REQ-01.021)
 	maxToolRounds                = 10   // max request–tool-result rounds to avoid infinite loop (REQ-04.006)
 	maxToolResultPromptBytes     = 8 << 10
@@ -75,12 +74,12 @@ type conversationHandler struct {
 	toolFallbackCap            int
 	logger                     *slog.Logger
 	maxMessageLength           int
-	maxDynamicSystemRunes      int                 // max UTF-8 runes for dynamic system tail (from config; >= 1 when using loaded config)
-	vectorSearchTopK           int                 // vector search top-K for retrieved chunks (from config; >= 1 when using loaded config)
-	llmLog                     llmlog.Writer       // optional; when set, each LLM call is logged as JSONL
-	model                      string              // configured model name for LLM log entries
-	logRedactor                func(string) string // optional; redacts content in DEBUG app logs and INFO tool-invocation logs (REQ-01.026)
-	firstProviderSupportsTools bool                // baseline LLM provider sends tools in HTTP (supports_tools)
+	maxDynamicSystemRunes      int                       // max UTF-8 runes for dynamic system tail (from config; >= 1 when using loaded config)
+	memoryVectorTopK           config.MemoryVectorConfig // per-lane vector top-K for retrieved memory chunks (from config; 0 disables lane)
+	llmLog                     llmlog.Writer             // optional; when set, each LLM call is logged as JSONL
+	model                      string                    // configured model name for LLM log entries
+	logRedactor                func(string) string       // optional; redacts content in DEBUG app logs and INFO tool-invocation logs (REQ-01.026)
+	firstProviderSupportsTools bool                      // baseline LLM provider sends tools in HTTP (supports_tools)
 	// EP-014 sliding session memory (optional).
 	sessionCfg   *config.ConversationSessionConfig
 	sessionStore *sessionWindowStore
@@ -592,9 +591,12 @@ func retrievalChunkWithLabel(label, body string) string {
 // gatherRetrievedChunkTexts returns non-empty vector memory chunk texts in search order (REQ-01.006, REQ-01.007).
 // The dynamic system tail fitter may drop trailing chunks to satisfy max_dynamic_system_runes.
 func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, userText string) []string {
-	topK := h.vectorSearchTopK
 	mv := h.memVec
+	cfgTop := h.memoryVectorTopK
 	if mv == nil || !mv.anyNonNil() || h.embedder == nil {
+		return nil
+	}
+	if cfgTop.NotesTopK == 0 && cfgTop.SummariesTopK == 0 && cfgTop.TurnsTopK == 0 {
 		return nil
 	}
 	queryEmbedding, err := h.embedder.Embed(ctx, userText)
@@ -602,7 +604,7 @@ func (h *conversationHandler) gatherRetrievedChunkTexts(ctx context.Context, use
 		h.logger.Error("embed query", "error", err)
 		return nil
 	}
-	return h.gatherSplitTableChunks(ctx, queryEmbedding, topK)
+	return h.gatherSplitTableChunks(ctx, queryEmbedding, cfgTop)
 }
 
 func (h *conversationHandler) labeledChunksFromResults(results []vector.SearchResult) []string {
@@ -617,25 +619,27 @@ func (h *conversationHandler) labeledChunksFromResults(results []vector.SearchRe
 	return chunks
 }
 
-func (h *conversationHandler) gatherSplitTableChunks(ctx context.Context, queryEmbedding []float32, topK int) []string {
+func (h *conversationHandler) gatherSplitTableChunks(ctx context.Context, queryEmbedding []float32, topK config.MemoryVectorConfig) []string {
 	mv := h.memVec
 	var chunks []string
-	if mv.Notes != nil {
-		r, err := mv.Notes.Search(ctx, queryEmbedding, topK)
+	if mv.Notes != nil && topK.NotesTopK > 0 {
+		r, err := mv.Notes.Search(ctx, queryEmbedding, topK.NotesTopK)
 		if err != nil {
 			h.logger.Error("vector search notes", "error", err)
 		} else {
 			chunks = append(chunks, h.labeledChunksFromResults(r)...)
 		}
 	}
-	sr, err := mergeSummarySearch(ctx, mv.Summaries, queryEmbedding, topK)
-	if err != nil {
-		h.logger.Error("vector search summaries", "error", err)
-		return nil
+	if topK.SummariesTopK > 0 {
+		sr, err := mergeSummarySearch(ctx, mv.Summaries, queryEmbedding, topK.SummariesTopK)
+		if err != nil {
+			h.logger.Error("vector search summaries", "error", err)
+			return nil
+		}
+		chunks = append(chunks, h.labeledChunksFromResults(sr)...)
 	}
-	chunks = append(chunks, h.labeledChunksFromResults(sr)...)
-	if mv.Turns != nil {
-		r, err := mv.Turns.Search(ctx, queryEmbedding, topK)
+	if mv.Turns != nil && topK.TurnsTopK > 0 {
+		r, err := mv.Turns.Search(ctx, queryEmbedding, topK.TurnsTopK)
 		if err != nil {
 			h.logger.Error("vector search turns", "error", err)
 			return nil

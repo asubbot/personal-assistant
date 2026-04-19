@@ -117,7 +117,7 @@ func TestRuntimeSkills_handler_toolBlocksBeforeRetrievedMarkers(t *testing.T) {
 		Embedder:                   core.IntegrationConstEmbedder{},
 		Logger:                     testDiscardLogger(),
 		MaxDynamicSystemRunes:      4000,
-		VectorSearchTopK:           5,
+		MemoryVector:               config.MemoryVectorConfig{NotesTopK: 5, SummariesTopK: 5, TurnsTopK: 5},
 		ToolSearchTopK:             10,
 		ToolMinCount:               1,
 		ToolFallbackCap:            50,
@@ -147,7 +147,7 @@ func TestRuntimeSkills_handler_trustAndRetrievedMarkers(t *testing.T) {
 		Embedder:              core.IntegrationConstEmbedder{},
 		Logger:                testDiscardLogger(),
 		MaxDynamicSystemRunes: 4000,
-		VectorSearchTopK:      5,
+		MemoryVector:          config.MemoryVectorConfig{NotesTopK: 5, SummariesTopK: 5, TurnsTopK: 5},
 	})
 	_, err := h.HandleMessage(ctx, 1, "", "hi")
 	if err != nil {
@@ -396,7 +396,7 @@ func TestRuntimeSkills_handler_retrievedContextWithToolSelection(t *testing.T) {
 		Embedder:                   core.IntegrationConstEmbedder{},
 		Logger:                     testDiscardLogger(),
 		MaxDynamicSystemRunes:      4000,
-		VectorSearchTopK:           5,
+		MemoryVector:               config.MemoryVectorConfig{NotesTopK: 5, SummariesTopK: 5, TurnsTopK: 5},
 		ToolSearchTopK:             10,
 		ToolMinCount:               1,
 		ToolFallbackCap:            50,

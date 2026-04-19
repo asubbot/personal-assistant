@@ -24,7 +24,7 @@ func TestHandleMessage_SimpleTier_NoToolsNoRAG(t *testing.T) {
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
 	}
 	reply, err := h.HandleMessage(context.Background(), 1, "", "привет")
@@ -52,7 +52,7 @@ func TestHandleMessage_FullTier_IncludesFullPromptPath(t *testing.T) {
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "напомни что было вчера")
@@ -69,7 +69,7 @@ func TestHandleMessage_ClassifierDisabled_FullPath(t *testing.T) {
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            nil,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "привет")
@@ -91,7 +91,7 @@ func TestHandleMessage_SimpleTier_SkipsToolsAndRAG(t *testing.T) {
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "привет")
@@ -112,7 +112,7 @@ func TestHandleMessage_FullTier_SameAsBaseline(t *testing.T) {
 		router:                routerWith,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
 	}
 	_, err := hWith.HandleMessage(context.Background(), 1, "", "напомни")
@@ -126,7 +126,7 @@ func TestHandleMessage_FullTier_SameAsBaseline(t *testing.T) {
 		router:                routerWithout,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            nil,
 	}
 	_, err = hWithout.HandleMessage(context.Background(), 1, "", "напомни")
@@ -164,7 +164,7 @@ func TestHandleMessage_SimpleTier_FooterOnlyMainTokens(t *testing.T) {
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
 	}
 	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
@@ -191,7 +191,7 @@ func TestHandleMessage_ClassificationLogsInfo(t *testing.T) {
 		router:                router,
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "hi")

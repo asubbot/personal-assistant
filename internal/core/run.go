@@ -76,14 +76,16 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	if err != nil {
 		return nil, err
 	}
-	var maxDynRunes, topK int
+	var maxDynRunes int
+	var memVecTopK config.MemoryVectorConfig
 	var toolTopK, toolMin, toolCap int
 	if cfg != nil {
-		maxDynRunes, topK = conversationContextParams(cfg)
+		maxDynRunes, memVecTopK = conversationContextParams(cfg)
 		toolTopK, toolMin, toolCap = toolPreSelectionParams(cfg)
 	} else {
 		// core.Run allows nil config only for narrow tests; match historical implicit defaults.
-		maxDynRunes, topK = 4000, 10
+		maxDynRunes = 4000
+		memVecTopK = config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}
 		toolTopK, toolMin, toolCap = 10, 1, 50
 	}
 	firstSupportsTools := baselineProviderSupportsTools(cfg)
@@ -126,7 +128,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		logger:                     logger,
 		maxMessageLength:           maxLen,
 		maxDynamicSystemRunes:      maxDynRunes,
-		vectorSearchTopK:           topK,
+		memoryVectorTopK:           memVecTopK,
 		llmLog:                     llmLog,
 		model:                      model,
 		logRedactor:                redactor,
@@ -187,8 +189,9 @@ func toolPreSelectionParams(cfg *config.Config) (topK, minCount, fallbackCap int
 }
 
 // conversationContextParams returns conversation context limits from config (validated at config.Load).
-func conversationContextParams(cfg *config.Config) (maxDynamicSystemRunes, vectorSearchTopK int) {
-	return cfg.ConversationContext.MaxDynamicSystemRunes, cfg.ConversationContext.VectorSearchTopK
+func conversationContextParams(cfg *config.Config) (maxDynamicSystemRunes int, memVec config.MemoryVectorConfig) {
+	cc := cfg.ConversationContext
+	return cc.MaxDynamicSystemRunes, cc.MemoryVector
 }
 
 // buildRedactor returns a redactor from built-in patterns plus config additional_patterns (REQ-01.027, REQ-01.028).

@@ -34,16 +34,10 @@
     "http_timeout": "60s"
   },
   "nodes": {},
-  "log_redaction": {
-    "additional_patterns": [
-      {
-        "id": "custom",
-        "regex": "[invalid",
-        "replacement": ""
-      }
-    ]
-  },
   "tools": {},
+  "log_redaction": {
+    "additional_patterns": []
+  },
   "pa_timezone": "UTC",
   "tool_pre_selection": {
     "tool_search_top_k": 10,
@@ -53,9 +47,9 @@
   "conversation_context": {
     "max_dynamic_system_runes": 4000,
     "memory_vector": {
-      "notes_top_k": 10,
-      "summaries_top_k": 10,
-      "turns_top_k": 10
+      "notes_top_k": 0,
+      "summaries_top_k": 0,
+      "turns_top_k": 0
     }
   },
   "read_memory": {

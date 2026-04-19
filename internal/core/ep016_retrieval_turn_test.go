@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"log/slog"
+	"pa/internal/config"
 	"pa/internal/sqlitepragma"
 	"pa/internal/vector"
 	"pa/internal/vector/sqlite"
@@ -21,7 +22,7 @@ func TestGatherRetrievedChunkTexts_splitTableOrder_notesSummaryTurn(t *testing.T
 		memVec:                &MemoryVectors{Notes: notes, Summaries: summ, Turns: turns},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		logger:                slog.New(slog.DiscardHandler),
-		vectorSearchTopK:      5,
+		memoryVectorTopK:      testMemoryVectorTopK(5),
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 	}
 	chunks := h.gatherRetrievedChunkTexts(context.Background(), "query")
@@ -47,7 +48,7 @@ func TestGatherRetrievedChunkTexts_nonSummaryRowsDroppedFromSummaryMerge(t *test
 		memVec:                &MemoryVectors{Notes: nil, Summaries: summ, Turns: turns},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		logger:                slog.New(slog.DiscardHandler),
-		vectorSearchTopK:      5,
+		memoryVectorTopK:      testMemoryVectorTopK(5),
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 	}
 	chunks := h.gatherRetrievedChunkTexts(context.Background(), "q")
@@ -156,5 +157,50 @@ func TestIndexTurn_twiceSameCanonicalPair_oneRow(t *testing.T) {
 	}
 	if len(byID) != 1 {
 		t.Fatalf("want exactly one distinct turn id, got %v (rows=%d)", byID, len(res))
+	}
+}
+
+// Covers AC-01.014: when memory_vector disables all lanes, retrieval skips embedding (no automatic context from index).
+func TestGatherRetrievedChunkTexts_allMemoryLanesZero_skipsEmbed(t *testing.T) {
+	vs := &mockVectorStore{}
+	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
+	h := &conversationHandler{
+		memVec:                SingleStoreMemoryVectors(vs),
+		embedder:              emb,
+		logger:                slog.New(slog.DiscardHandler),
+		memoryVectorTopK:      config.MemoryVectorConfig{},
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+	}
+	chunks := h.gatherRetrievedChunkTexts(context.Background(), "query")
+	if len(chunks) != 0 {
+		t.Fatalf("want no chunks, got %d: %#v", len(chunks), chunks)
+	}
+	if emb.embedCalls != 0 {
+		t.Fatalf("Embed calls = %d, want 0 when all memory_vector top_k are 0", emb.embedCalls)
+	}
+}
+
+// Covers AC-01.014: memory_vector notes/summaries top_k zero omits those vector searches; turn table still contributes hits.
+func TestGatherRetrievedChunkTexts_notesSummariesZero_onlyTurnsSearched(t *testing.T) {
+	notes := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "notes:2026-04-01:1", Text: "N"}}}
+	summ := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "summary:day:2026-04-01", Text: "S"}}}
+	turns := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:x", Text: "TURN_ONLY"}}}
+	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
+	h := &conversationHandler{
+		memVec:                &MemoryVectors{Notes: notes, Summaries: summ, Turns: turns},
+		embedder:              emb,
+		logger:                slog.New(slog.DiscardHandler),
+		memoryVectorTopK:      config.MemoryVectorConfig{NotesTopK: 0, SummariesTopK: 0, TurnsTopK: 5},
+		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
+	}
+	chunks := h.gatherRetrievedChunkTexts(context.Background(), "query")
+	if len(chunks) != 1 || !strings.Contains(chunks[0], "TURN_ONLY") {
+		t.Fatalf("want one turn chunk, got %#v", chunks)
+	}
+	if notes.searchCalls != 0 || summ.searchCalls != 0 {
+		t.Fatalf("notes searchCalls=%d summaries searchCalls=%d want 0", notes.searchCalls, summ.searchCalls)
+	}
+	if turns.searchCalls != 1 {
+		t.Fatalf("turns searchCalls=%d want 1", turns.searchCalls)
 	}
 }

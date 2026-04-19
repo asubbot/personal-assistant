@@ -27,7 +27,7 @@ func TestHandleMessage_FullLite_skipsRAGInSystemMessage(t *testing.T) {
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 200_000,
-		vectorSearchTopK:      5,
+		memoryVectorTopK:      testMemoryVectorTopK(5),
 		classifier:            classifier,
 		memVec:                &MemoryVectors{Notes: notes},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
@@ -60,7 +60,7 @@ func TestHandleMessage_FullLite_systemPromptRunesLowerThanFullWithRAG(t *testing
 			router:                r,
 			logger:                slog.Default(),
 			maxDynamicSystemRunes: 200_000,
-			vectorSearchTopK:      5,
+			memoryVectorTopK:      testMemoryVectorTopK(5),
 			classifier:            clf,
 			memVec:                &MemoryVectors{Notes: notes},
 			embedder:              embed,
@@ -110,7 +110,7 @@ func TestHandleMessage_logsMainLLMPromptAssembled(t *testing.T) {
 		router:                router,
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "hi")

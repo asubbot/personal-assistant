@@ -19,6 +19,10 @@ import (
 	"time"
 )
 
+func testMemoryVectorTopK(n int) config.MemoryVectorConfig {
+	return config.MemoryVectorConfig{NotesTopK: n, SummariesTopK: n, TurnsTopK: n}
+}
+
 // captureHandler records log records for assertion (AC-01.031, REQ-01.021).
 type captureHandler struct {
 	level   slog.Level
@@ -98,11 +102,13 @@ func (m *mockProvider) Complete(ctx context.Context, messages []llm.Message, opt
 }
 
 type mockEmbedder struct {
-	vec []float32
-	err error
+	vec        []float32
+	err        error
+	embedCalls int
 }
 
 func (m *mockEmbedder) Embed(_ context.Context, _ string) ([]float32, error) {
+	m.embedCalls++
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -114,6 +120,7 @@ type mockVectorStore struct {
 	addChunks     []string // chunks passed to Add for assertion (REQ-01.007)
 	searchResults []vector.SearchResult
 	searchErr     error
+	searchCalls   int
 }
 
 func (m *mockVectorStore) Add(_ context.Context, _ string, _ []float32, chunk string) error {
@@ -126,6 +133,7 @@ func (m *mockVectorStore) Delete(_ context.Context, _ string) error { return nil
 func (m *mockVectorStore) Clear(_ context.Context) error { return nil }
 
 func (m *mockVectorStore) Search(_ context.Context, _ []float32, _ int) ([]vector.SearchResult, error) {
+	m.searchCalls++
 	if m.searchErr != nil {
 		return nil, m.searchErr
 	}
@@ -464,7 +472,7 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-		vectorSearchTopK:      defaultVectorSearchTopK,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "what did I say about fruit?")
@@ -492,7 +500,7 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-		vectorSearchTopK:      defaultVectorSearchTopK,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "user said this")
@@ -568,7 +576,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-		vectorSearchTopK:      defaultVectorSearchTopK,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 	}
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "query")
@@ -596,7 +604,7 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-		vectorSearchTopK:      defaultVectorSearchTopK,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 	}
 	_, err = h2.HandleMessage(context.Background(), 1, "", "query")
 	if err != nil {
@@ -629,7 +637,7 @@ func TestHandleMessage_vectorSearchPrefixesSummaryDayLabel(t *testing.T) {
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-		vectorSearchTopK:      defaultVectorSearchTopK,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "what did we save?")
 	if err != nil {
@@ -674,7 +682,7 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-		vectorSearchTopK:      defaultVectorSearchTopK,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 	}
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
@@ -1194,7 +1202,7 @@ func TestHandleMessage_writeMemory_toolInvocation_redactsArguments(t *testing.T)
 		logRedactor:                redactor,
 		firstProviderSupportsTools: true,
 		maxDynamicSystemRunes:      defaultMaxDynamicSystemRunes,
-		vectorSearchTopK:           defaultVectorSearchTopK,
+		memoryVectorTopK:           testMemoryVectorTopK(10),
 	}
 	_, err = h.HandleMessage(context.Background(), 1, "", "remember this")
 	if err != nil {
@@ -1581,7 +1589,7 @@ func TestHandleMessage_sessionMemory_injectsHistoryBetweenSystemAndUser(t *testi
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
 	}
@@ -1612,7 +1620,7 @@ func TestHandleMessage_sessionDisabled_singleUserAfterSystem(t *testing.T) {
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 	}
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "chat-1", "hi"); err != nil {
@@ -1631,7 +1639,7 @@ func TestHandleMessage_sessionMemory_distinctKeysIsolated(t *testing.T) {
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
 	}
@@ -1659,7 +1667,7 @@ func TestHandleMessage_sessionMemory_capEvictsOldest(t *testing.T) {
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 1},
 		sessionStore:          newSessionWindowStore(),
 	}
@@ -1686,7 +1694,7 @@ func TestHandleMessage_sessionMemory_emptyUser_noAppend(t *testing.T) {
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
 	}
@@ -1718,7 +1726,7 @@ func TestHandleMessage_sessionMemory_overMaxLength_noAppend(t *testing.T) {
 		logger:                logger,
 		maxMessageLength:      3,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
 	}
@@ -1750,7 +1758,7 @@ func TestHandleMessage_sessionMemory_withVectorStoreEmpty_coexists(t *testing.T)
 		memVec:                SingleStoreMemoryVectors(vec),
 		embedder:              emb,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
 	}
@@ -1781,7 +1789,7 @@ func TestHandleMessage_sessionMemory_debugLogsRedactHistoryUserText(t *testing.T
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
-		vectorSearchTopK:      10,
+		memoryVectorTopK:      testMemoryVectorTopK(10),
 		logRedactor:           redact,
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),

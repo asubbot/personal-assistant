@@ -126,6 +126,8 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing pa_timezone", "missing_pa_timezone.json", "top-level key \"pa_timezone\""},
 		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
 		{"conversation_context zero max runes", "conversation_context_zero.json", "max_dynamic_system_runes must be >= 1"},
+		{"memory_vector negative notes_top_k", "conversation_memory_vector_notes_negative.json", "memory_vector top_k fields must be >= 0"},
+		{"memory_vector notes_top_k over max", "conversation_memory_vector_notes_over_max.json", "conversation_context.memory_vector.notes_top_k must be <="},
 		// EP-008: reject invalid LLM defaults and removed keys at load.
 		{"llm default_max_tokens zero", "llm_default_max_tokens_zero.json", "default_max_tokens must be >= 1"},
 		{"llm default_temperature negative", "llm_default_temperature_negative.json", "default_temperature must be in [0, 2]"},
@@ -175,7 +177,7 @@ func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
@@ -205,6 +207,22 @@ func TestLoad_LLMProviderDefaults_boundaryTemperature_loads(t *testing.T) {
 				t.Fatalf("Load(%s): unexpected config", name)
 			}
 		})
+	}
+}
+
+// Covers AC-01.014: conversation_context.memory_vector may set all lanes to zero (disables automatic semantic retrieval while keeping config valid).
+func TestLoad_ConversationContext_memoryVectorAllZeros_loads(t *testing.T) {
+	path := filepath.Join("testdata", "conversation_memory_vector_all_zero.json")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg == nil || cfg.ConversationContext == nil {
+		t.Fatal("Load: nil config")
+	}
+	mv := cfg.ConversationContext.MemoryVector
+	if mv.NotesTopK != 0 || mv.SummariesTopK != 0 || mv.TurnsTopK != 0 {
+		t.Fatalf("MemoryVector = %+v, want all zeros", mv)
 	}
 }
 
@@ -292,7 +310,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	  "log_redaction": { "additional_patterns": [] },
 	  "pa_timezone": "UTC",
 	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-	  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+	  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
 	  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
 	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 	}`
@@ -453,7 +471,7 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
@@ -506,7 +524,7 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
@@ -637,7 +655,7 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
@@ -703,7 +721,7 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
@@ -771,7 +789,7 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
   "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
-  "conversation_context": { "max_dynamic_system_runes": 4000, "vector_search_top_k": 10 },
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
 }`
