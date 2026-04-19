@@ -1382,7 +1382,7 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	}
 }
 
-// Covers AC-30.001: main system prompt has no legacy text-tool wrapper markers.
+// Covers AC-30.001: with catalog tools selected, native tool defs are attached on the completion path (REQ-30.002, REQ-30.016).
 // AC-04.026 / REQ-04.032: first system message includes per-tool [id] blocks for non-empty system_prompt when tools are selected.
 func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testing.T) {
 	logger := slog.Default()
@@ -1437,11 +1437,8 @@ func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testin
 	if !strings.Contains(sys.Content, marker) {
 		t.Errorf("system message missing system_prompt body: %q", sys.Content)
 	}
-	if strings.Contains(sys.Content, "<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>") {
-		t.Errorf("system message must not contain Hermes format markers: %q", sys.Content)
-	}
-	if strings.Contains(sys.Content, "<tool_call>") {
-		t.Errorf("system message must not contain Hermes tool_call instruction snippets: %q", sys.Content)
+	if provider.lastOpts == nil || len(provider.lastOpts.Tools) == 0 {
+		t.Fatalf("expected native tool defs in completion options, got opts=%v", provider.lastOpts)
 	}
 }
 

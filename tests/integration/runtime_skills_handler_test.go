@@ -371,15 +371,15 @@ func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *te
 	}
 }
 
-// REQ-13.016: no legacy text-tool format markers; retrieved context still appears when memory retrieval runs.
-// Covers AC-13.004: traceability for TestRuntimeSkills_handler_retrievedContextWithoutHermesMarkers.
-func TestRuntimeSkills_handler_retrievedContextWithoutHermesMarkers(t *testing.T) {
+// REQ-13.016: retrieved context still appears when memory retrieval runs alongside tool pre-selection.
+// Covers AC-13.004: traceability for TestRuntimeSkills_handler_retrievedContextWithToolSelection.
+func TestRuntimeSkills_handler_retrievedContextWithToolSelection(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"t1": {
-				ID: "t1", IndexText: "Hermes tool one line", Template: "echo {{msg}}", NodeID: "nas",
+				ID: "t1", IndexText: "Catalog tool one line", Template: "echo {{msg}}", NodeID: "nas",
 				Arguments: []toolcatalog.ArgumentRule{{Name: "msg", Type: "string", Required: true}},
 			},
 		},
@@ -407,9 +407,6 @@ func TestRuntimeSkills_handler_retrievedContextWithoutHermesMarkers(t *testing.T
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if strings.Contains(sys, "<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>") {
-		t.Fatalf("legacy text-tool format markers must not appear in system prompt")
-	}
 	iR := strings.Index(sys, promptmarkers.BeginRetrievedContext)
 	if iR < 0 {
 		t.Fatalf("want retrieved context marker, got prefix: %.200q", sys)

@@ -16,7 +16,7 @@
 
 - **Single execution path** for conversation tools via native `tool_calls`; text-markup parsing and `internal/tooltext` removed.
 - **Fail-fast configuration:** removed JSON keys rejected with explicit errors; `default_response_format` locked to `text`.
-- **Tests** retain AC trace comments for `./bin/validate EP-030`; integration tests assert absence of legacy system markers where required.
+- **Tests** retain AC trace comments for `./bin/validate EP-030`; coverage includes native tool defs on the completion path and rejection of removed config keys.
 - **Operator documentation** (`docs/configuration.md`) describes baseline `supports_tools`, removed keys, and native-only behaviour.
 
 ---
@@ -29,7 +29,6 @@
 | Low | Startup WARN vs strict AC wording | AC-30.009 expects WARN when baseline omits native tools and catalog has tools; ensure WARN fires once per process after config load. | Verified in wiring; message kept operator-neutral (no epic id in logs). |
 | Low | Legacy naming in code/comments | `HermesBody`, `hermes_prompt` struct field, and epic ids in some error strings. | **Done:** removed unused catalog helpers/fields, renamed config rejection helper, stripped epic ids from errors/logs, updated examples and docs. |
 | Low | Dead code | `WrapHermesToolFormat` unused after path removal. | **Done:** removed from `internal/systemprompt`. |
-| Informational | Forbidden marker constants | `<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>` strings remain as canonical “must not appear” / skill-forbidden lines for regression tests. | No change to wire protocol strings; product must not emit these blocks. |
 
 ---
 

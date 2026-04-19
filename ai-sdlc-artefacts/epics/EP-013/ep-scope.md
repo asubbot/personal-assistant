@@ -15,7 +15,7 @@
 - **`vec_skills`:** A dedicated sqlite-vec virtual table in the same SQLite database as existing vector tables (`vec_tools`, memory index), same embedder and embedding dimension as tools; rows keyed by stable skill id (default: skill directory name).
 - **`always_include`:** Config list of tool ids that must be eligible every turn, validated to exist in `tools.yaml` or native registry.
 - **Tool vector top-k:** Existing or configured semantic top-k over the tool index to widen the tool set beyond skill-declared ids.
-- **Canonical block markers:** Paired lines `<<<PA_BEGIN_*>>>` / `<<<PA_END_*>>>` wrapping dynamic sections inside the merged system string (retrieved context, tool instructions, Hermes block, runtime skills).
+- **Canonical block markers:** Paired lines `<<<PA_BEGIN_*>>>` / `<<<PA_END_*>>>` wrapping dynamic sections inside the merged system string (retrieved context, tool instructions, runtime skills).
 
 ## Scope (features/capabilities)
 
@@ -25,8 +25,8 @@
 - Build and maintain `vec_skills`: clear and full rebuild on startup; embed text derived from `SKILL.md` (frontmatter fields + body per epic detail); no hot-reload of skills or index without process restart.
 - Per user turn: vector-search skills for the user message; include full bodies of selected skills up to caps; compute final tool id set as union(skill-declared tools, always_include, tool_vector_top_k); apply volume budgets by dropping whole lowest-priority skills then whole tools only from vector top-k not pinned by selected skills or always_include.
 - Fallback when skills are disabled, directory empty, or vector returns no matches: retain current tool pre-selection behaviour plus `always_include` (exact fallback rules as in implementation).
-- Prompt assembly: insert English trust/injection policy block near the start of merged system (default variant B from analytics §8.4, Hermes-aware tightening where applicable); wrap dynamic sections with canonical markers in fixed order; place retrieved context in `RETRIEVED_CONTEXT` pair at the tail of system; place selected runtime skills in `RUNTIME_SKILLS` pair; do not move retrieval to a separate API message in this epic.
-- Multi-turn: rebuild retrieved block on each new user turn; do not re-retrieve between tool rounds inside the same user turn; same rule for native and Hermes histories aside from message shape.
+- Prompt assembly: insert English trust/injection policy block near the start of merged system (default variant B from analytics §8.4); wrap dynamic sections with canonical markers in fixed order; place retrieved context in `RETRIEVED_CONTEXT` pair at the tail of system; place selected runtime skills in `RUNTIME_SKILLS` pair; do not move retrieval to a separate API message in this epic.
+- Multi-turn: rebuild retrieved block on each new user turn; do not re-retrieve between tool rounds inside the same user turn; same merged `system` is reused across tool rounds within that turn (native tool-calling message shape per EP-030).
 - Memory indexing: reject persistence of user or memory text that contains an exact marker line after trim (same canonical set); align with skill load rule.
 - Automated tests: unit coverage for validation, marker collision rejection, prompt layout snapshots or structural checks, and integration paths with mocked embedder or store where practical; no requirement to run real cloud LLM in CI.
 - Explicitly out of scope for this epic: MCP as a tool source; executing `scripts/` inside skill packages; loading `references/` into prompt or `vec_skills`; provider-specific `developer` role or multi-system-message redesign (§8.5 stage 3); hot-reload of skills.
@@ -45,5 +45,5 @@
 
 - **Scope:** Advances the PersonalAssistant **Core** capability to teach tool use via operator-managed playbooks and tighter, safer prompt structure, consistent with the system description in [scope.md](../../scope.md) (orchestration, tools, vector memory, swappable LLM backends).
 - **Strategy:** Supports the **MVP** increment in [strategy.md](../../strategy.md): new behaviour remains testable (unit/integration); aligns with test strategy on traceability and prompt-injection awareness.
-- **Source analysis:** Consolidated discussion and decisions in [analytics/pa-runtime-skills-tools/pa-runtime-skills-tools.md](../../analytics/pa-runtime-skills-tools/pa-runtime-skills-tools.md) (policy §7.0, §7.7, §8.2, §8.4–§8.6, Hermes retention §5.5, escalation note §5.6 / EP-006 interaction at implementation).
+- **Source analysis:** Consolidated discussion and decisions in [analytics/pa-runtime-skills-tools/pa-runtime-skills-tools.md](../../analytics/pa-runtime-skills-tools/pa-runtime-skills-tools.md) (policy §7.0, §7.7, §8.2, §8.4–§8.6, escalation note §5.6 / EP-006 interaction at implementation). Legacy text-tool markers were removed from the product contract in EP-030; analytics §5.5 / §8.5.1 are updated accordingly where they still apply.
 - **Related epics:** Runtime behaviour interacts with existing tool pre-selection (EP-004) and LLM escalation (EP-006); this epic defines the skills layer and prompt contract without removing those mechanisms.

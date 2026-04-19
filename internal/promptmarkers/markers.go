@@ -12,8 +12,6 @@ const (
 	EndRetrievedContext   = "<<<PA_END_RETRIEVED_CONTEXT>>>"
 	BeginToolInstructions = "<<<PA_BEGIN_TOOL_INSTRUCTIONS>>>"
 	EndToolInstructions   = "<<<PA_END_TOOL_INSTRUCTIONS>>>"
-	BeginHermesToolFormat = "<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>"
-	EndHermesToolFormat   = "<<<PA_END_HERMES_TOOL_FORMAT>>>"
 	BeginRuntimeSkills    = "<<<PA_BEGIN_RUNTIME_SKILLS>>>"
 	EndRuntimeSkills      = "<<<PA_END_RUNTIME_SKILLS>>>"
 )
@@ -26,8 +24,6 @@ func ForbiddenMarkerLines() []string {
 		EndRetrievedContext,
 		BeginToolInstructions,
 		EndToolInstructions,
-		BeginHermesToolFormat,
-		EndHermesToolFormat,
 		BeginRuntimeSkills,
 		EndRuntimeSkills,
 	}

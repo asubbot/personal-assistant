@@ -68,7 +68,7 @@ Epic scope: [ep-scope.md](ep-scope.md). EP-030 removes the Hermes text tool path
 ## Testing strategy
 
 - **Unit**: `internal/config` tests for reject paths and `default_response_format`; `internal/llm` tests updated for response format; `internal/core` tests replace Hermes suites with native-tool-only cases.
-- **Integration**: Adjust any integration test that asserted Hermes markers ordering; add startup WARN test with captured logger.
+- **Integration**: Runtime skills / handler integration tests; startup WARN test with captured logger.
 - **Validation**: Every new or changed `Test*` includes `// Covers AC-30.NNN` (and REQ where required) so `./bin/validate EP-030` passes ([REQ-30.015](ep-requirements.md#verification)).
 
 ---

@@ -92,7 +92,7 @@ flowchart LR
 *REQ-30.001*
 
 **REQ-30.001** (Ubiquitous)  
-THE conversation handler SHALL NOT insert Hermes tool-format instructions, Hermes boundary markers, or `tooltext` package prose into the main conversation system message for any intent tier.
+THE conversation handler SHALL NOT insert legacy text-tool protocol instructions or removed `tooltext` package prose into the main conversation system message for any intent tier; tool invocation for the main turn SHALL be driven by native provider tool definitions, not by instructing the model to emit tool markup in assistant text.
 
 *REQ-30.002*
 

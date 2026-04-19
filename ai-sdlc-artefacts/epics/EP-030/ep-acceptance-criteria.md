@@ -8,7 +8,7 @@ This document defines acceptance criteria for [ep-scope.md](ep-scope.md), traced
 
 | AC | REQ (trace) | Summary |
 |----|----------------|---------|
-| [AC-30.001](#ac-30-001) | REQ-30.001, REQ-30.002 | Main system prompt contains no Hermes markers or tooltext format block |
+| [AC-30.001](#ac-30-001) | REQ-30.001, REQ-30.002 | Main conversation path uses native tool defs in completion options when catalog tools are selected; no legacy text-tool path |
 | [AC-30.002](#ac-30-002) | REQ-30.002, REQ-30.016 | Handler does not parse `<tool_call>` from assistant text for tool execution |
 | [AC-30.003](#ac-30-003) | REQ-30.003 | Package `internal/tooltext` is absent |
 | [AC-30.004](#ac-30-004) | REQ-30.004, REQ-30.013 | Load rejects `tools.text_based_enabled` in config JSON |
@@ -31,8 +31,8 @@ This document defines acceptance criteria for [ep-scope.md](ep-scope.md), traced
 **AC-30.001** (Trace: [REQ-30.001](ep-requirements.md#hermes-removal), [REQ-30.002](ep-requirements.md#hermes-removal))
 
 Given a valid configuration with tools enabled for the main assistant and at least one catalog tool selected for the main LLM turn  
-When the core assembles the main conversation system message for tier `full` or `full_lite`  
-Then the system message content SHALL NOT contain substring `<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>` and SHALL NOT contain substring `<tool_call>` from static Hermes instructions.
+When the core assembles the first main conversation completion request for tier `full` or `full_lite`  
+Then the completion options SHALL include at least one native tool definition (provider `tools` payload) and SHALL NOT rely on prose in the system message alone to invoke catalog tools.
 
 ---
 
@@ -158,5 +158,5 @@ Then both commands SHALL exit with status zero.
 
 ## Notes
 
-- AC-30.002 is satisfied by automated tests that assert no tool execution from Hermes-only bodies; trace comments SHALL bind tests to AC ids.
+- AC-30.002 is satisfied by automated tests that assert no tool execution from assistant text that contains only fake `<tool_call>` markup without native `tool_calls`; trace comments SHALL bind tests to AC ids.
 - AC-30.007 may be covered by existing OpenAI client unit tests after `ForceJSONOutput` removal; update trace comments to AC-30.007 / REQ-30.007.

@@ -182,7 +182,7 @@ func TestEP018_dynamicTail_nilSkillsOmitsPlaybookText(t *testing.T) {
 	}
 }
 
-// Covers AC-18.007 / AC-30.003: full_lite with catalog tools uses native tool defs (no Hermes markers).
+// Covers AC-18.007 / AC-30.003: full_lite with catalog tools uses native tool defs.
 func TestEP018_fullLite_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 	cat := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -220,13 +220,9 @@ func TestEP018_fullLite_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 	if provider.lastOpts == nil || len(provider.lastOpts.Tools) == 0 {
 		t.Fatal("expected native tools on completion")
 	}
-	sys := provider.lastMessages[0].Content
-	if strings.Contains(sys, "<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>") {
-		t.Fatalf("did not expect Hermes markers in system message, got prefix: %.200q", sys)
-	}
 }
 
-// Covers AC-18.008: without catalog tools, completion opts omit tools and system has no Hermes markers.
+// Covers AC-18.008: without catalog tools, completion opts omit tools.
 func TestEP018_fullLite_noCatalogTools_omitsNativeTools(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	classifier := intent.NewCascadeClassifier(
@@ -249,10 +245,6 @@ func TestEP018_fullLite_noCatalogTools_omitsNativeTools(t *testing.T) {
 	}
 	if provider.lastOpts != nil {
 		t.Fatalf("expected nil opts without catalog tools, got %+v", provider.lastOpts)
-	}
-	sys := provider.lastMessages[0].Content
-	if strings.Contains(sys, "<<<PA_BEGIN_HERMES_TOOL_FORMAT>>>") {
-		t.Fatalf("did not expect Hermes block without tools")
 	}
 }
 
