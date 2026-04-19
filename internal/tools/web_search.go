@@ -133,50 +133,31 @@ func readHTTPBody(resp *http.Response, max int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(resp.Body, max))
 }
 
-//nolint:gocyclo // straight-line HTTP + JSON mapping
-func (w *WebSearchTool) searchBrave(ctx context.Context, query string) ([]webHit, error) {
-	path := strings.TrimSpace(w.cfg.Search.BraveAPIKeyPath)
+func readBraveAPIKey(path string) (string, error) {
+	path = strings.TrimSpace(path)
 	if path == "" {
-		return nil, errors.New("web_search: brave_api_key_path is not configured")
+		return "", errors.New("web_search: brave_api_key_path is not configured")
 	}
 	keyBytes, err := os.ReadFile(path)
 	if err != nil || strings.TrimSpace(string(keyBytes)) == "" {
-		return nil, errors.New("web_search: brave API key file missing or empty")
+		return "", errors.New("web_search: brave API key file missing or empty")
 	}
-	apiKey := strings.TrimSpace(string(keyBytes))
+	return strings.TrimSpace(string(keyBytes)), nil
+}
 
+func braveSearchRequestURL(query string) (string, error) {
 	u, err := url.Parse("https://api.search.brave.com/res/v1/web/search")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	q := u.Query()
 	q.Set("q", query)
 	q.Set("count", "10")
 	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("X-Subscription-Token", apiKey)
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := w.client.Do(req)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, errors.New("web_search: upstream timeout")
-		}
-		return nil, fmt.Errorf("web_search: upstream request failed")
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		func() { _ = resp.Body.Close() }()
-		return nil, fmt.Errorf("web_search: upstream status %d", resp.StatusCode)
-	}
-	body, err := readHTTPBody(resp, 4<<20)
-	if err != nil {
-		return nil, errors.New("web_search: failed to read upstream body")
-	}
-
+func parseBraveSearchJSON(body []byte) ([]webHit, error) {
 	var br struct {
 		Web struct {
 			Results []struct {
@@ -202,26 +183,21 @@ func (w *WebSearchTool) searchBrave(ctx context.Context, query string) ([]webHit
 	return hits, nil
 }
 
-var (
-	reDDGLink = regexp.MustCompile(`<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]*)</a>`)
-	reDDGSnip = regexp.MustCompile(`<a[^>]*class="result__snippet"[^>]*>([^<]*)</a>`)
-)
-
-//nolint:gocyclo // straight-line HTTP + HTML parsing
-func (w *WebSearchTool) searchDDG(ctx context.Context, query string) ([]webHit, error) {
-	u, err := url.Parse("https://html.duckduckgo.com/html/")
+func (w *WebSearchTool) searchBrave(ctx context.Context, query string) ([]webHit, error) {
+	apiKey, err := readBraveAPIKey(w.cfg.Search.BraveAPIKeyPath)
 	if err != nil {
 		return nil, err
 	}
-	q := u.Query()
-	q.Set("q", query)
-	u.RawQuery = q.Encode()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), http.NoBody)
+	urlStr, err := braveSearchRequestURL(query)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "PersonalAssistant/1.0 (+https://github.com/)")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Subscription-Token", apiKey)
+	req.Header.Set("Accept", "application/json")
 
 	resp, err := w.client.Do(req)
 	if err != nil {
@@ -231,14 +207,33 @@ func (w *WebSearchTool) searchDDG(ctx context.Context, query string) ([]webHit, 
 		return nil, fmt.Errorf("web_search: upstream request failed")
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		func() { _ = resp.Body.Close() }()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("web_search: upstream status %d", resp.StatusCode)
 	}
 	body, err := readHTTPBody(resp, 4<<20)
 	if err != nil {
 		return nil, errors.New("web_search: failed to read upstream body")
 	}
+	return parseBraveSearchJSON(body)
+}
 
+var (
+	reDDGLink = regexp.MustCompile(`<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]*)</a>`)
+	reDDGSnip = regexp.MustCompile(`<a[^>]*class="result__snippet"[^>]*>([^<]*)</a>`)
+)
+
+func ddgHTMLSearchURL(query string) (string, error) {
+	u, err := url.Parse("https://html.duckduckgo.com/html/")
+	if err != nil {
+		return "", err
+	}
+	q := u.Query()
+	q.Set("q", query)
+	u.RawQuery = q.Encode()
+	return u.String(), nil
+}
+
+func parseDDGHTMLHits(body []byte) ([]webHit, error) {
 	links := reDDGLink.FindAllStringSubmatch(string(body), -1)
 	snips := reDDGSnip.FindAllStringSubmatch(string(body), -1)
 	var hits []webHit
@@ -263,4 +258,33 @@ func (w *WebSearchTool) searchDDG(ctx context.Context, query string) ([]webHit, 
 		return nil, errors.New("web_search: no results")
 	}
 	return hits, nil
+}
+
+func (w *WebSearchTool) searchDDG(ctx context.Context, query string) ([]webHit, error) {
+	urlStr, err := ddgHTMLSearchURL(query)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "PersonalAssistant/1.0 (+https://github.com/)")
+
+	resp, err := w.client.Do(req)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, errors.New("web_search: upstream timeout")
+		}
+		return nil, fmt.Errorf("web_search: upstream request failed")
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("web_search: upstream status %d", resp.StatusCode)
+	}
+	body, err := readHTTPBody(resp, 4<<20)
+	if err != nil {
+		return nil, errors.New("web_search: failed to read upstream body")
+	}
+	return parseDDGHTMLHits(body)
 }

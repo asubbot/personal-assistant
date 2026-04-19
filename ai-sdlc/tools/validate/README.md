@@ -4,6 +4,10 @@ Multi-purpose validation tool for the PersonalAssistant SDLC pipeline.
 
 ## Current Validators
 
+### Policy: no gocyclo suppressions (AGENTS.md)
+
+Scans all `*.go` files under `tests/`, `internal/`, and `cmd/` for the forbidden golangci-lint cyclomatic-complexity suppression (substring `nolint:gocyclo` **outside** double-quoted string literals, so tests that assert on source text are not false positives). Violations are listed as `path/to/file.go:LINE`. On failure, human mode prints a dedicated block; JSON includes `nolint_gocyclo_violations` and sets `has_gaps` to true (single-epic JSON includes the same field on the epic report object).
+
 ### AC (Acceptance Criteria) Validation
 
 Validates that all Acceptance Criteria from an epic's `ep-acceptance-criteria.md` are covered by tests (with separate metrics for **automated** vs **manual-only** traceability; deferred ACs do not inflate the traceability percentage). It also checks the **reverse**: every top-level `Test*` under `tests/`, `internal/`, and `cmd/` must have at least one trace line that both matches the coverage declaration rules **and** contains a real `AC-EE.NNN` code bound to that test (see [VALIDATION.md](./VALIDATION.md#test-functions-must-declare-ac-trace-reverse-check)).
@@ -66,10 +70,10 @@ See [VALIDATION.md](./VALIDATION.md) for full documentation (metrics JSON schema
 
 ## Exit Codes
 
-- **0** — All validations passed (AC coverage and per-`Test*` AC trace) ✅
-- **1** — Validation failed (missing AC coverage and/or `Test*` without bound AC trace) ❌
+- **0** — All validations passed (AC coverage, per-`Test*` AC trace, and policy scan) ✅
+- **1** — Validation failed (missing AC coverage, `Test*` without bound AC trace, and/or forbidden gocyclo suppression in product trees) ❌
 
-JSON (`--json`): failures set `"has_gaps": true` when any in-scope AC is untraced **or** when `tests_missing_ac_trace` is non-empty. The `tests_missing_ac_trace` array is always **project-wide**, including when you run `./bin/validate EP-009 --json`.
+JSON (`--json`): failures set `"has_gaps": true` when any in-scope AC is untraced, when `tests_missing_ac_trace` is non-empty, or when `nolint_gocyclo_violations` is non-empty. The `tests_missing_ac_trace` and `nolint_gocyclo_violations` arrays are always **project-wide**, including when you run `./bin/validate EP-009 --json`.
 
 ## Future Validators
 

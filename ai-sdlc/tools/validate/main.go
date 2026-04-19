@@ -22,18 +22,19 @@ type CoverageRef struct {
 }
 
 type Report struct {
-	Epic                string                   `json:"epic"`
-	TotalACs            int                      `json:"total_acs"`
-	DeferredACs         int                      `json:"deferred_acs"`
-	InScopeACs          int                      `json:"in_scope_acs"`
-	AutomatedCoveredACs int                      `json:"automated_covered_acs"`
-	ManualOnlyTracedACs int                      `json:"manual_only_traced_acs"`
-	TraceabilityRatio   float64                  `json:"traceability_ratio"`
-	AutomatedRatio      float64                  `json:"automated_ratio"`
-	TestFuncsWithSkip   int                      `json:"test_funcs_with_skip"`
-	TestsMissingACTrace []string                 `json:"tests_missing_ac_trace,omitempty"`
-	Gaps                []ACGap                  `json:"gaps"`
-	Coverage            map[string][]CoverageRef `json:"ac_to_tests"`
+	Epic                    string                   `json:"epic"`
+	TotalACs                int                      `json:"total_acs"`
+	DeferredACs             int                      `json:"deferred_acs"`
+	InScopeACs              int                      `json:"in_scope_acs"`
+	AutomatedCoveredACs     int                      `json:"automated_covered_acs"`
+	ManualOnlyTracedACs     int                      `json:"manual_only_traced_acs"`
+	TraceabilityRatio       float64                  `json:"traceability_ratio"`
+	AutomatedRatio          float64                  `json:"automated_ratio"`
+	TestFuncsWithSkip       int                      `json:"test_funcs_with_skip"`
+	TestsMissingACTrace     []string                 `json:"tests_missing_ac_trace,omitempty"`
+	NolintGocycloViolations []string                 `json:"nolint_gocyclo_violations,omitempty"`
+	Gaps                    []ACGap                  `json:"gaps"`
+	Coverage                map[string][]CoverageRef `json:"ac_to_tests"`
 }
 
 type ACGap struct {
@@ -64,19 +65,20 @@ type ProjectNotCoveredAC struct {
 }
 
 type AllEpicsReport struct {
-	Epics               []EpicSummary         `json:"epics"`
-	NotCoveredACs       []ProjectNotCoveredAC `json:"not_covered_acs"`
-	NotCoveredCount     int                   `json:"not_covered_count"`
-	TotalACs            int                   `json:"total_acs"`
-	DeferredACs         int                   `json:"deferred_acs"`
-	InScopeACs          int                   `json:"in_scope_acs"`
-	AutomatedCoveredACs int                   `json:"automated_covered_acs"`
-	ManualOnlyTracedACs int                   `json:"manual_only_traced_acs"`
-	TraceabilityRatio   float64               `json:"traceability_ratio"`
-	AutomatedRatio      float64               `json:"automated_ratio"`
-	TestFuncsWithSkip   int                   `json:"test_funcs_with_skip"`
-	TestsMissingACTrace []string              `json:"tests_missing_ac_trace,omitempty"`
-	HasGaps             bool                  `json:"has_gaps"`
+	Epics                   []EpicSummary         `json:"epics"`
+	NotCoveredACs           []ProjectNotCoveredAC `json:"not_covered_acs"`
+	NotCoveredCount         int                   `json:"not_covered_count"`
+	TotalACs                int                   `json:"total_acs"`
+	DeferredACs             int                   `json:"deferred_acs"`
+	InScopeACs              int                   `json:"in_scope_acs"`
+	AutomatedCoveredACs     int                   `json:"automated_covered_acs"`
+	ManualOnlyTracedACs     int                   `json:"manual_only_traced_acs"`
+	TraceabilityRatio       float64               `json:"traceability_ratio"`
+	AutomatedRatio          float64               `json:"automated_ratio"`
+	TestFuncsWithSkip       int                   `json:"test_funcs_with_skip"`
+	TestsMissingACTrace     []string              `json:"tests_missing_ac_trace,omitempty"`
+	NolintGocycloViolations []string              `json:"nolint_gocyclo_violations,omitempty"`
+	HasGaps                 bool                  `json:"has_gaps"`
 }
 
 // parseACsFromFile extracts all AC-EE.NNN codes from an acceptance criteria markdown file.
@@ -496,7 +498,8 @@ func acCoverageCell(refs []CoverageRef, deferred bool) (status, testStr string) 
 
 // printTable prints a formatted table report. testFuncsWithSkip is project-wide Test* count with t.Skip.
 // testsMissingACTrace is project-wide (same list as full-repo validate), not filtered to the current epic.
-func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, testFuncsWithSkip int, testsMissingACTrace []string) {
+// gocycloSuppressViolations lists paths from the project-wide AGENTS.md policy scan (see findNolintGocycloViolations).
+func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, testFuncsWithSkip int, testsMissingACTrace []string, gocycloSuppressViolations []string) {
 	writeStdout("\n📋 AC Coverage Report for %s\n\n", r.Epic)
 	writeStdout("%-15s %-50s %-30s\n", "AC Code", "Criterion", "Coverage")
 	writelnStdout(strings.Repeat("─", 95))
@@ -562,6 +565,7 @@ func printTable(r *Report, acs map[ACCode]string, deferred map[ACCode]bool, test
 		}
 		writeStdout("\nAction: Add a trace line (e.g. // Covers AC-EE.NNN) bound to each Test* per VALIDATION.md\n")
 	}
+	printNolintGocycloViolationsHuman(gocycloSuppressViolations)
 	writelnStdout("")
 }
 
@@ -668,6 +672,7 @@ func printAllEpicsHuman(
 	testFuncsWithSkip int,
 	hasGaps bool,
 	testsMissingACTrace []string,
+	nolintGocycloViolations []string,
 ) {
 	writelnStdout("📋 Epic Validation Summary")
 	writelnStdout("")
@@ -688,7 +693,8 @@ func printAllEpicsHuman(
 	writelnStdout(strings.Repeat("─", 42))
 
 	hasTestTraceGaps := len(testsMissingACTrace) > 0
-	overallFail := hasGaps || hasTestTraceGaps
+	hasNolintGocyclo := len(nolintGocycloViolations) > 0
+	overallFail := hasGaps || hasTestTraceGaps || hasNolintGocyclo
 
 	statusEmoji := "✅"
 	if overallFail {
@@ -709,6 +715,9 @@ func printAllEpicsHuman(
 	}
 	if hasTestTraceGaps {
 		printTestsMissingACTraceHuman(testsMissingACTrace)
+	}
+	if hasNolintGocyclo {
+		printNolintGocycloViolationsHuman(nolintGocycloViolations)
 	}
 
 	writelnStdout("Tip: run `./bin/validate EP-XXX` for per-AC detail and test refs.")
@@ -755,6 +764,29 @@ func findCoverageAndTestTrace(cwd string) (map[ACCode][]CoverageRef, int, []stri
 	return globalCoverage, testFuncsWithSkip, testsMissingACTrace, nil
 }
 
+// readSortedEpicNames lists EP-* directory names under epicsPath, sorted.
+func readSortedEpicNames(epicsPath string) ([]string, error) {
+	entries, err := os.ReadDir(epicsPath)
+	if err != nil {
+		return nil, err
+	}
+	var epics []string
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "EP-") {
+			epics = append(epics, entry.Name())
+		}
+	}
+	sort.Strings(epics)
+	return epics, nil
+}
+
+func allEpicsProjectWideHasGaps(hasGaps bool, testsMissingACTrace, nolintViolations []string) bool {
+	if len(testsMissingACTrace) > 0 || len(nolintViolations) > 0 {
+		return true
+	}
+	return hasGaps
+}
+
 // validateAllEpics finds and validates all epics in ai-sdlc-artefacts/epics/
 func validateAllEpics(jsonOutput bool) {
 	cwd, err := os.Getwd()
@@ -763,26 +795,22 @@ func validateAllEpics(jsonOutput bool) {
 		os.Exit(1)
 	}
 
+	nolintViolations, err := findNolintGocycloViolations(cwd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error scanning for nolint:gocyclo: %v\n", err)
+		os.Exit(1)
+	}
+
 	epicsPath := filepath.Join(cwd, "ai-sdlc-artefacts", "epics")
-	entries, err := os.ReadDir(epicsPath)
+	epics, err := readSortedEpicNames(epicsPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading epics directory: %v\n", err)
 		os.Exit(1)
 	}
-
-	var epics []string
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "EP-") {
-			epics = append(epics, entry.Name())
-		}
-	}
-
 	if len(epics) == 0 {
 		fmt.Fprintf(os.Stderr, "No epics found in %s\n", epicsPath)
 		os.Exit(1)
 	}
-
-	sort.Strings(epics)
 
 	if !jsonOutput {
 		writeStdout("🔍 Validating AC coverage for all %d epics...\n\n", len(epics))
@@ -795,9 +823,7 @@ func validateAllEpics(jsonOutput bool) {
 	}
 
 	results, projectNotCovered, hasGaps := scanEpicsAgainstCoverage(cwd, epics, globalCoverage)
-	if len(testsMissingACTrace) > 0 {
-		hasGaps = true
-	}
+	hasGaps = allEpicsProjectWideHasGaps(hasGaps, testsMissingACTrace, nolintViolations)
 
 	sort.Slice(projectNotCovered, func(i, j int) bool {
 		if projectNotCovered[i].Epic != projectNotCovered[j].Epic {
@@ -809,19 +835,20 @@ func validateAllEpics(jsonOutput bool) {
 	totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio := aggregateEpicTotals(results)
 
 	allReport := AllEpicsReport{
-		Epics:               results,
-		NotCoveredACs:       projectNotCovered,
-		NotCoveredCount:     len(projectNotCovered),
-		TotalACs:            totalACs,
-		DeferredACs:         totalDeferred,
-		InScopeACs:          totalInScope,
-		AutomatedCoveredACs: totalAuto,
-		ManualOnlyTracedACs: totalManual,
-		TraceabilityRatio:   traceRatio,
-		AutomatedRatio:      autoRatio,
-		TestFuncsWithSkip:   testFuncsWithSkip,
-		TestsMissingACTrace: testsMissingACTrace,
-		HasGaps:             hasGaps,
+		Epics:                   results,
+		NotCoveredACs:           projectNotCovered,
+		NotCoveredCount:         len(projectNotCovered),
+		TotalACs:                totalACs,
+		DeferredACs:             totalDeferred,
+		InScopeACs:              totalInScope,
+		AutomatedCoveredACs:     totalAuto,
+		ManualOnlyTracedACs:     totalManual,
+		TraceabilityRatio:       traceRatio,
+		AutomatedRatio:          autoRatio,
+		TestFuncsWithSkip:       testFuncsWithSkip,
+		TestsMissingACTrace:     testsMissingACTrace,
+		NolintGocycloViolations: nolintViolations,
+		HasGaps:                 hasGaps,
 	}
 
 	if jsonOutput {
@@ -829,7 +856,7 @@ func validateAllEpics(jsonOutput bool) {
 		return
 	}
 
-	printAllEpicsHuman(results, projectNotCovered, totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio, testFuncsWithSkip, hasGaps, testsMissingACTrace)
+	printAllEpicsHuman(results, projectNotCovered, totalACs, totalDeferred, totalInScope, totalAuto, totalManual, traceRatio, autoRatio, testFuncsWithSkip, hasGaps, testsMissingACTrace, nolintViolations)
 }
 
 // getEpicNumber extracts the numeric part from "EP-009" → "09" (2 digits, not 3)
@@ -860,6 +887,32 @@ func jsonOutputRequested(flagVal bool, argvTail []string) bool {
 	return false
 }
 
+func runSingleEpicValidation(epic, epicNum, cwd string, acs map[ACCode]string, deferred map[ACCode]bool, nolintViolations []string, jsonOut bool) {
+	coverage, testFuncsWithSkip, testsMissingACTrace, err := findCoverageAndTestTrace(cwd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error scanning codebase: %v\n", err)
+		os.Exit(1)
+	}
+	epicCoverage := filterCoverageForEpicNum(coverage, epicNum)
+	r := generateReport(epic, acs, deferred, epicCoverage)
+	r.TestFuncsWithSkip = testFuncsWithSkip
+	r.TestsMissingACTrace = testsMissingACTrace
+	r.NolintGocycloViolations = nolintViolations
+	if jsonOut {
+		data, err := json.MarshalIndent(r, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
+			os.Exit(1)
+		}
+		writelnStdout(string(data))
+	} else {
+		printTable(r, acs, deferred, testFuncsWithSkip, testsMissingACTrace, r.NolintGocycloViolations)
+	}
+	if hasBlockingGaps(r) || len(testsMissingACTrace) > 0 || len(nolintViolations) > 0 {
+		os.Exit(1)
+	}
+}
+
 func validateSingleEpic(epic string, jsonOut bool) {
 	epicNum, err := normalizeEpicNumber(epic)
 	if err != nil {
@@ -870,6 +923,12 @@ func validateSingleEpic(epic string, jsonOut bool) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	nolintViolations, err := findNolintGocycloViolations(cwd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error scanning for nolint:gocyclo: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -893,31 +952,7 @@ func validateSingleEpic(epic string, jsonOut bool) {
 		os.Exit(1)
 	}
 
-	coverage, testFuncsWithSkip, testsMissingACTrace, err := findCoverageAndTestTrace(cwd)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error scanning codebase: %v\n", err)
-		os.Exit(1)
-	}
-
-	epicCoverage := filterCoverageForEpicNum(coverage, epicNum)
-	r := generateReport(epic, acs, deferred, epicCoverage)
-	r.TestFuncsWithSkip = testFuncsWithSkip
-	r.TestsMissingACTrace = testsMissingACTrace
-
-	if jsonOut {
-		data, err := json.MarshalIndent(r, "", "  ")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error marshaling JSON: %v\n", err)
-			os.Exit(1)
-		}
-		writelnStdout(string(data))
-	} else {
-		printTable(r, acs, deferred, testFuncsWithSkip, testsMissingACTrace)
-	}
-
-	if hasBlockingGaps(r) || len(testsMissingACTrace) > 0 {
-		os.Exit(1)
-	}
+	runSingleEpicValidation(epic, epicNum, cwd, acs, deferred, nolintViolations, jsonOut)
 }
 
 func main() {

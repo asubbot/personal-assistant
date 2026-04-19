@@ -17,8 +17,6 @@ type ErrDisallowedURL struct {
 func (e *ErrDisallowedURL) Error() string { return "httpsafety: " + e.Reason }
 
 // ValidateFetchURL parses rawURL, enforces HTTPS-only, resolves the host, and rejects disallowed destinations.
-//
-//nolint:gocyclo // sequential policy checks; branches are independent guards
 func ValidateFetchURL(ctx context.Context, rawURL string, resolver *net.Resolver) error {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -45,6 +43,10 @@ func ValidateFetchURL(ctx context.Context, rawURL string, resolver *net.Resolver
 		return nil
 	}
 
+	return validateFetchURLResolved(ctx, host, resolver)
+}
+
+func validateFetchURLResolved(ctx context.Context, host string, resolver *net.Resolver) error {
 	r := resolver
 	if r == nil {
 		r = net.DefaultResolver

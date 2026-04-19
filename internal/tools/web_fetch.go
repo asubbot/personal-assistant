@@ -54,7 +54,42 @@ func (w *WebFetchTool) Run(ctx context.Context, params map[string]any) (string, 
 // validateFetchURLFn is used by tests to bypass SSRF for httptest loopback (production passes nil).
 type validateFetchURLFn func(ctx context.Context, rawURL string) error
 
-//nolint:gocyclo // redirect loop with explicit policy branches
+func webFetchRedirectStatus(code int) bool {
+	switch code {
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther,
+		http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		return true
+	default:
+		return false
+	}
+}
+
+func webFetchResolveRedirect(baseURL, location string) (string, error) {
+	loc := strings.TrimSpace(location)
+	if loc == "" {
+		return "", errors.New("web_fetch: redirect without location")
+	}
+	next, err := url.Parse(loc)
+	if err != nil {
+		return "", errors.New("web_fetch: invalid redirect URL")
+	}
+	base, _ := url.Parse(baseURL)
+	out := base.ResolveReference(next).String()
+	if !strings.HasPrefix(strings.ToLower(out), "https://") {
+		return "", errors.New("web_fetch: redirect to non-https URL")
+	}
+	return out, nil
+}
+
+func (w *WebFetchTool) doFetchGET(fetchCtx context.Context, finalURL string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(fetchCtx, http.MethodGet, finalURL, http.NoBody)
+	if err != nil {
+		return nil, errors.New("web_fetch: invalid request")
+	}
+	req.Header.Set("User-Agent", "PersonalAssistant/1.0 (+https://github.com/)")
+	return w.client.Do(req)
+}
+
 func (w *WebFetchTool) runFetch(ctx context.Context, raw string, validate validateFetchURLFn) (string, error) {
 	if validate == nil {
 		validate = func(c context.Context, u string) error {
@@ -76,13 +111,7 @@ func (w *WebFetchTool) runFetch(ctx context.Context, raw string, validate valida
 		if err := validate(fetchCtx, finalURL); err != nil {
 			return "", fmt.Errorf("web_fetch: %w", err)
 		}
-		req, err := http.NewRequestWithContext(fetchCtx, http.MethodGet, finalURL, http.NoBody)
-		if err != nil {
-			return "", errors.New("web_fetch: invalid request")
-		}
-		req.Header.Set("User-Agent", "PersonalAssistant/1.0 (+https://github.com/)")
-
-		resp, err := w.client.Do(req)
+		resp, err := w.doFetchGET(fetchCtx, finalURL)
 		if err != nil {
 			if fetchCtx.Err() != nil {
 				return "", errors.New("web_fetch: timeout")
@@ -93,28 +122,20 @@ func (w *WebFetchTool) runFetch(ctx context.Context, raw string, validate valida
 		switch {
 		case code >= 200 && code < 300:
 			return readFetchBody(resp, w.cfg.MaxBodyBytes)
-		case code == http.StatusMovedPermanently || code == http.StatusFound || code == http.StatusSeeOther || code == http.StatusTemporaryRedirect || code == http.StatusPermanentRedirect:
-			loc := strings.TrimSpace(resp.Header.Get("Location"))
-			func() { _ = resp.Body.Close() }()
+		case webFetchRedirectStatus(code):
+			_ = resp.Body.Close()
 			if redirectsUsed >= maxRedir {
 				return "", errors.New("web_fetch: too many redirects")
 			}
-			if loc == "" {
-				return "", errors.New("web_fetch: redirect without location")
+			nextURL, redirErr := webFetchResolveRedirect(finalURL, resp.Header.Get("Location"))
+			if redirErr != nil {
+				return "", redirErr
 			}
-			next, err := url.Parse(loc)
-			if err != nil {
-				return "", errors.New("web_fetch: invalid redirect URL")
-			}
-			base, _ := url.Parse(finalURL)
-			finalURL = base.ResolveReference(next).String()
-			if !strings.HasPrefix(strings.ToLower(finalURL), "https://") {
-				return "", errors.New("web_fetch: redirect to non-https URL")
-			}
+			finalURL = nextURL
 			redirectsUsed++
 			continue
 		default:
-			func() { _ = resp.Body.Close() }()
+			_ = resp.Body.Close()
 			return "", fmt.Errorf("web_fetch: HTTP status %d", code)
 		}
 	}

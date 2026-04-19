@@ -65,6 +65,44 @@ func (m *mockVectorStore) Exists(context.Context, string) (bool, error) { return
 
 func (m *mockVectorStore) Close() error { return nil }
 
+// daySecondRunFixture prepares temp log, memory store, and DayConfig for tests that run Day twice for the same calendar day.
+func daySecondRunFixture(t *testing.T) (DayConfig, *mockLLM, *mockVectorStore, time.Time) {
+	t.Helper()
+	dir := t.TempDir()
+	llmLogDir := filepath.Join(dir, "llm_logs")
+	if err := os.MkdirAll(llmLogDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	logPath := filepath.Join(llmLogDir, "llm-2026-03-12.jsonl")
+	entry := llmlog.Entry{
+		RequestID:       "r1",
+		Messages:        []llm.Message{{Role: "user", Content: "hello"}},
+		ResponseContent: "hi",
+		Usage:           llm.Usage{},
+		DurationMs:      1,
+	}
+	line, _ := json.Marshal(entry)
+	if err := os.WriteFile(logPath, append(line, '\n'), 0o644); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+	memStore, err := memory.NewStore(filepath.Join(dir, "memory"), time.UTC)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	llmMock := &mockLLM{content: "first summary"}
+	vecMock := &mockVectorStore{}
+	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
+	cfg := DayConfig{
+		LLMLogDir:   llmLogDir,
+		LLMProvider: llmMock,
+		MemoryStore: memStore,
+		Embedder:    &mockEmbedder{vec: []float32{1, 0, 0, 0}},
+		VectorStore: vecMock,
+		Logger:      slog.Default(),
+	}
+	return cfg, llmMock, vecMock, day
+}
+
 // Covers AC-02.015: EP-002 summarization and vector paths are exercised under make check (non-functional gate).
 func TestEP002_makeCheckGate(t *testing.T) {}
 
@@ -169,41 +207,8 @@ func TestDay_withEntries_callsLLMAndWrites(t *testing.T) {
 }
 
 // Covers AC-02.014: second run for the same calendar day deletes and re-adds the same vector id (no duplicate id).
-//
-//nolint:gocyclo // setup + two Day runs + vector assertions; clarity over splitting
 func TestDay_secondRun_upsertsSameVectorID(t *testing.T) {
-	dir := t.TempDir()
-	llmLogDir := filepath.Join(dir, "llm_logs")
-	if err := os.MkdirAll(llmLogDir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	logPath := filepath.Join(llmLogDir, "llm-2026-03-12.jsonl")
-	entry := llmlog.Entry{
-		RequestID:       "r1",
-		Messages:        []llm.Message{{Role: "user", Content: "hello"}},
-		ResponseContent: "hi",
-		Usage:           llm.Usage{},
-		DurationMs:      1,
-	}
-	line, _ := json.Marshal(entry)
-	if err := os.WriteFile(logPath, append(line, '\n'), 0o644); err != nil {
-		t.Fatalf("write log: %v", err)
-	}
-	memStore, err := memory.NewStore(filepath.Join(dir, "memory"), time.UTC)
-	if err != nil {
-		t.Fatalf("NewStore: %v", err)
-	}
-	llmMock := &mockLLM{content: "first summary"}
-	vecMock := &mockVectorStore{}
-	day := time.Date(2026, 3, 12, 0, 0, 0, 0, time.UTC)
-	cfg := DayConfig{
-		LLMLogDir:   llmLogDir,
-		LLMProvider: llmMock,
-		MemoryStore: memStore,
-		Embedder:    &mockEmbedder{vec: []float32{1, 0, 0, 0}},
-		VectorStore: vecMock,
-		Logger:      slog.Default(),
-	}
+	cfg, llmMock, vecMock, day := daySecondRunFixture(t)
 	if err := Day(context.Background(), day, cfg); err != nil {
 		t.Fatalf("Day first: %v", err)
 	}
@@ -218,7 +223,7 @@ func TestDay_secondRun_upsertsSameVectorID(t *testing.T) {
 	if len(vecMock.adds) != 2 || vecMock.adds[0] != wantID || vecMock.adds[1] != wantID {
 		t.Errorf("vector adds = %v, want two %s", vecMock.adds, wantID)
 	}
-	got, _ := memStore.ReadDaySummary(context.Background(), day)
+	got, _ := cfg.MemoryStore.ReadDaySummary(context.Background(), day)
 	if got != "second summary" {
 		t.Errorf("memory after rerun = %q, want second summary", got)
 	}

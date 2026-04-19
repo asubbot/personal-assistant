@@ -70,6 +70,36 @@ func (c *captureHandlerWithAttrs) Handle(_ context.Context, r slog.Record) error
 func (c *captureHandlerWithAttrs) WithAttrs([]slog.Attr) slog.Handler { return c }
 func (c *captureHandlerWithAttrs) WithGroup(string) slog.Handler      { return c }
 
+func assertHermesFollowUpJSONOpts(t *testing.T, secondOpts *llm.CompletionOptions) {
+	t.Helper()
+	if secondOpts != nil && len(secondOpts.Tools) > 0 {
+		t.Error("follow-up Complete must not pass tools in opts")
+	}
+	if secondOpts == nil || !secondOpts.ForceJSONOutput {
+		t.Errorf("follow-up Complete must keep ForceJSONOutput=true (Hermes JSON hint); opts=%+v", secondOpts)
+	}
+}
+
+func assertUserToolResultMessage(t *testing.T, secondMsgs []llm.Message) {
+	t.Helper()
+	for _, m := range secondMsgs {
+		if m.Role == "user" && strings.Contains(m.Content, "run_echo") && strings.Contains(m.Content, "hello from node") {
+			return
+		}
+	}
+	t.Errorf("expected user message with tool result; messages=%+v", secondMsgs)
+}
+
+func assertHermesToolInvocationLogged(t *testing.T, cap *captureHandlerWithAttrs) {
+	t.Helper()
+	for _, r := range cap.records {
+		if r.msg == "tool invocation" && r.attrs["invoked_via"] == "hermes" {
+			return
+		}
+	}
+	t.Errorf("expected tool invocation with invoked_via=hermes; records=%+v", cap.records)
+}
+
 type mockProvider struct {
 	result *llm.CompletionResult
 	err    error
@@ -1533,8 +1563,6 @@ func TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand(t *testing
 
 // REQ-04.027–029: text_based + first provider without tools → Hermes in content → execute → follow-up without tools, tool results as user.
 // EP-008 AC-08.005 (integration): follow-up Complete keeps ForceJSONOutput so OpenAICompatible can apply REQ-08.005.
-//
-//nolint:gocyclo // Sequential scenario assertions; clarity over splitting.
 func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 	catalog := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
@@ -1591,32 +1619,9 @@ func TestHandleMessage_textBasedHermes_toolRoundAndFinalReply(t *testing.T) {
 	if callCount != 2 {
 		t.Errorf("Complete calls = %d, want 2", callCount)
 	}
-	if secondOpts != nil && len(secondOpts.Tools) > 0 {
-		t.Error("follow-up Complete must not pass tools in opts")
-	}
-	if secondOpts == nil || !secondOpts.ForceJSONOutput {
-		t.Errorf("follow-up Complete must keep ForceJSONOutput=true (Hermes JSON hint); opts=%+v", secondOpts)
-	}
-	var sawUserTool bool
-	for _, m := range secondMsgs {
-		if m.Role == "user" && strings.Contains(m.Content, "run_echo") && strings.Contains(m.Content, "hello from node") {
-			sawUserTool = true
-			break
-		}
-	}
-	if !sawUserTool {
-		t.Errorf("expected user message with tool result; messages=%+v", secondMsgs)
-	}
-	var sawHermesLog bool
-	for _, r := range cap.records {
-		if r.msg == "tool invocation" && r.attrs["invoked_via"] == "hermes" {
-			sawHermesLog = true
-			break
-		}
-	}
-	if !sawHermesLog {
-		t.Errorf("expected tool invocation with invoked_via=hermes; records=%+v", cap.records)
-	}
+	assertHermesFollowUpJSONOpts(t, secondOpts)
+	assertUserToolResultMessage(t, secondMsgs)
+	assertHermesToolInvocationLogged(t, cap)
 }
 
 // Covers AC-04.023: text-based (Hermes) path uses the same tool-result follow-up loop semantics.

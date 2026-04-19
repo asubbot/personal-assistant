@@ -275,9 +275,10 @@ See [Stage 9 (Task Execution)](../specification/skills/09-task-execution.skill.m
 
 **Location:** `ai-sdlc/tools/validate/` (multi-purpose validation tool)
 
-**Sources:** `main.go` (CLI, parsing, reports), `ast_skip.go` (`parseTestFuncsWithTSkip`, `t.Skip` detection), `test_ac_trace.go` (`findTestsMissingACTrace`, reverse check), `output.go` (stdout helpers for `fmt.Fprintf` / forbidigo), `main_test.go`.
+**Sources:** `main.go` (CLI, parsing, reports), `ast_skip.go` (`parseTestFuncsWithTSkip`, `t.Skip` detection), `test_ac_trace.go` (`findTestsMissingACTrace`, reverse check), `policy_nolint_gocyclo.go` (`findNolintGocycloViolations`, human output for policy failures), `output.go` (stdout helpers for `fmt.Fprintf` / forbidigo), `main_test.go`, `policy_nolint_gocyclo_test.go`.
 
 **Core functions:**
+- `findNolintGocycloViolations()` — Walk the same `tests/`, `internal/`, `cmd/` trees; flag lines where `nolint:gocyclo` appears outside double-quoted strings (AGENTS.md); merge into `has_gaps` / JSON `nolint_gocyclo_violations`
 - `parseACsFromFile()` — Extract AC-EE.NNN from markdown (multiple heading/link shapes)
 - `findCoverageInCodebase()` — Walk `tests/`, `internal/`, and `cmd/` for `*_test.go`; use `lineDeclaresACCoverage()` + `extractACsFromLine()` + `lineDeclaresManualTrace()` + `testFuncForTraceLine()` + `parseTestFuncsWithTSkip()`
 - `findTestsMissingACTrace()` — Second pass over the same trees: top-level `Test*` without a bound AC trace line (exit 1 + stdout list when non-empty; JSON field `tests_missing_ac_trace`)
@@ -303,8 +304,8 @@ make validate
 
 ## Exit Codes
 
-- **0** — All checks passed: every in-scope AC is traced, and every scanned `Test*` has an AC trace line ✅
-- **1** — Failure: at least one in-scope AC has no test trace, **or** at least one top-level `Test*` is missing a bound AC trace comment ❌
+- **0** — All checks passed: every in-scope AC is traced, every scanned `Test*` has an AC trace line, and the AGENTS.md gocyclo-suppression policy scan is clean ✅
+- **1** — Failure: at least one in-scope AC has no test trace, **or** at least one top-level `Test*` is missing a bound AC trace comment, **or** `findNolintGocycloViolations` reported one or more paths ❌
 
 ## Common Workflows
 
