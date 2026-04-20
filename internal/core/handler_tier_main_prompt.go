@@ -50,8 +50,7 @@ func (h *conversationHandler) buildMainTurnMessagesPreTail(ctx context.Context, 
 	if tier == intent.TierFull {
 		chunks = h.gatherRetrievedChunkTexts(ctx, userText)
 	}
-	hasRet := len(chunks) > 0
-	sysHead := h.systemStaticHead(hasRet)
+	sysHead := h.systemStaticHead()
 	messages = []llm.Message{
 		{Role: "system", Content: sysHead},
 	}

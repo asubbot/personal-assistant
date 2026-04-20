@@ -225,7 +225,7 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	if provider.lastMessages[0].Role != "system" || !strings.HasPrefix(sys, systemprompt.TrustPolicy) {
 		t.Errorf("messages[0] = %+v, want system starting with trust policy", provider.lastMessages[0])
 	}
-	if !strings.Contains(sys, "Current calendar date (assistant timezone): ") {
+	if !strings.Contains(sys, "Calendar date: ") {
 		t.Errorf("system message missing calendar date line: %s", sys)
 	}
 	wantDate := time.Now().UTC().Format("2006-01-02")
@@ -1773,7 +1773,7 @@ func TestHandleMessage_sessionMemory_withVectorStoreEmpty_coexists(t *testing.T)
 	if len(p.lastMessages) < 4 {
 		t.Fatalf("expected history + user, got %d", len(p.lastMessages))
 	}
-	if !strings.Contains(p.lastMessages[0].Content, "fixed assistant rules") {
+	if !strings.Contains(p.lastMessages[0].Content, "Host rules in this message") {
 		t.Error("expected merged system first")
 	}
 }

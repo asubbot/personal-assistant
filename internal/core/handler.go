@@ -198,20 +198,14 @@ func (h *conversationHandler) maybeEscalate(ctx context.Context, st *llmTurnStat
 	}
 }
 
-// webResearchHint is a single-line reminder; detailed rules live in the optional runtime skill web-source-research.
-const webResearchHint = "For web or GitHub research, keep tool outputs small (prefer raw files, API, or git on nodes over huge HTML pages). A fuller playbook may appear in Runtime skills when relevant."
-
-// systemStaticHead returns the fixed prefix (trust, marker supplement, calendar date, personality).
-// hasRetrieved reflects whether vector search returned at least one non-empty chunk before tail fitting (REQ-13.016).
+// systemStaticHead returns the fixed prefix (trust + marker semantics, calendar date, personality).
 // The date line is YYYY-MM-DD only (no clock time) in pa_timezone so prompt text stays stable within a calendar day for caching.
-func (h *conversationHandler) systemStaticHead(hasRetrieved bool) string {
+// Web output guidance lives in the optional runtime skill `web-output-brief` (skills_dir) when selected by vector search.
+func (h *conversationHandler) systemStaticHead() string {
 	dateStr := todayCalendarDateInPALocation(h)
-	dateLine := "Current calendar date (assistant timezone): " + dateStr + "\n\n"
-	personality := "You are a helpful assistant. Reply concisely.\n\n" + webResearchHint
-	if hasRetrieved {
-		personality = "You are a personal assistant. Reply concisely.\n\n" + webResearchHint
-	}
-	return systemprompt.TrustPolicy + "\n\n" + systemprompt.MarkerSupplement + "\n\n" + dateLine + personality + "\n\n"
+	dateLine := "Calendar date: " + dateStr + "\n\n"
+	personality := "You are a helpful assistant. Reply concisely.\n\n"
+	return systemprompt.TrustPolicy + "\n\n" + dateLine + personality
 }
 
 func todayCalendarDateInPALocation(h *conversationHandler) string {
