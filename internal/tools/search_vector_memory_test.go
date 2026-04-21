@@ -52,7 +52,7 @@ func (fixedSearchEmbedder) Embed(context.Context, string) ([]float32, error) {
 
 // Covers AC-31.002: search_vector_memory rejects missing/empty query.
 func TestSearchVectorMemoryTool_rejectsEmptyQuery(t *testing.T) {
-	tool := NewSearchVectorMemoryTool(&recordingVectorStore{}, &recordingVectorStore{}, &recordingVectorStore{}, fixedSearchEmbedder{}, 3, 8, 2048)
+	tool := NewSearchVectorMemoryTool(&recordingVectorStore{}, &recordingVectorStore{}, &recordingVectorStore{}, fixedSearchEmbedder{}, 3, 8, 2048, 120)
 	_, err := tool.Run(context.Background(), map[string]any{"query": "   "})
 	if err == nil || !strings.Contains(err.Error(), "query is required") {
 		t.Fatalf("expected query required error, got %v", err)
@@ -64,7 +64,7 @@ func TestSearchVectorMemoryTool_defaultLanesSearchAllReadOnly(t *testing.T) {
 	notes := &recordingVectorStore{searchResults: []searchResultFixture{{id: "n1", text: "note", score: 0.2}}}
 	summ := &recordingVectorStore{searchResults: []searchResultFixture{{id: "s1", text: "summary", score: 0.3}}}
 	turns := &recordingVectorStore{searchResults: []searchResultFixture{{id: "t1", text: "turn", score: 0.4}}}
-	tool := NewSearchVectorMemoryTool(notes, summ, turns, fixedSearchEmbedder{}, 3, 8, 2048)
+	tool := NewSearchVectorMemoryTool(notes, summ, turns, fixedSearchEmbedder{}, 3, 8, 2048, 120)
 	out, err := tool.Run(context.Background(), map[string]any{"query": "deadline"})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -84,13 +84,25 @@ func TestSearchVectorMemoryTool_defaultLanesSearchAllReadOnly(t *testing.T) {
 
 // Covers AC-31.004: invalid lane is rejected with explicit error.
 func TestSearchVectorMemoryTool_rejectsInvalidLane(t *testing.T) {
-	tool := NewSearchVectorMemoryTool(&recordingVectorStore{}, &recordingVectorStore{}, &recordingVectorStore{}, fixedSearchEmbedder{}, 3, 8, 2048)
+	tool := NewSearchVectorMemoryTool(&recordingVectorStore{}, &recordingVectorStore{}, &recordingVectorStore{}, fixedSearchEmbedder{}, 3, 8, 2048, 120)
 	_, err := tool.Run(context.Background(), map[string]any{
 		"query": "q",
 		"lanes": []any{"notes", "bad-lane"},
 	})
 	if err == nil || !strings.Contains(err.Error(), `invalid lane`) {
 		t.Fatalf("expected invalid lane error, got %v", err)
+	}
+}
+
+// Covers AC-32.003: search_vector_memory remains restricted to memory lanes only.
+func TestSearchVectorMemoryTool_rejectsSpecializedKnowledgeLanes(t *testing.T) {
+	tool := NewSearchVectorMemoryTool(&recordingVectorStore{}, &recordingVectorStore{}, &recordingVectorStore{}, fixedSearchEmbedder{}, 3, 8, 2048, 120)
+	_, err := tool.Run(context.Background(), map[string]any{
+		"query": "q",
+		"lanes": []any{"search_vector_tool"},
+	})
+	if err == nil || !strings.Contains(err.Error(), `invalid lane`) {
+		t.Fatalf("expected invalid lane error for specialized domain, got %v", err)
 	}
 }
 
@@ -101,7 +113,7 @@ func TestSearchVectorMemoryTool_topKBoundsAndDeterministicOrder(t *testing.T) {
 		{id: "a", text: "A", score: 0.8},
 		{id: "c", text: "C", score: 0.2},
 	}}
-	tool := NewSearchVectorMemoryTool(notes, nil, nil, fixedSearchEmbedder{}, 3, 4, 2048)
+	tool := NewSearchVectorMemoryTool(notes, nil, nil, fixedSearchEmbedder{}, 3, 4, 2048, 120)
 
 	_, err := tool.Run(context.Background(), map[string]any{"query": "q", "top_k": float64(10)})
 	if err == nil || !strings.Contains(err.Error(), "top_k must be in 1..4") {
@@ -127,13 +139,13 @@ func TestSearchVectorMemoryTool_outputBoundedWithTruncationFooter(t *testing.T) 
 		{id: "n2", text: strings.Repeat("y", 300), score: 0.2},
 		{id: "n3", text: strings.Repeat("z", 300), score: 0.3},
 	}}
-	tool := NewSearchVectorMemoryTool(notes, nil, nil, fixedSearchEmbedder{}, 5, 8, 360)
+	tool := NewSearchVectorMemoryTool(notes, nil, nil, fixedSearchEmbedder{}, 5, 8, 360, 120)
 	out, err := tool.Run(context.Background(), map[string]any{"query": "q", "lanes": []any{"notes"}})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if !strings.Contains(out, "[truncated:") {
-		t.Fatalf("expected truncation footer, got %q", out)
+	if strings.Contains(out, " n3 score=0.300000") {
+		t.Fatalf("expected bounded output to omit at least one row, got %q", out)
 	}
 	if len(out) > 360 {
 		t.Fatalf("output length %d exceeds cap", len(out))

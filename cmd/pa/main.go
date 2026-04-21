@@ -605,13 +605,28 @@ func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memor
 		return fmt.Errorf("memory tools: write_memory requires notes vector and embedding provider")
 	}
 	reg.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, wm.MaxAppendBytes, wm.MaxFileBytes))
+	searchMemoryCfg := cfg.VectorSearchToolSettings("search_vector_memory")
 	// search_vector_memory is read-only semantic retrieval over vector memory lanes.
-	reg.Register(tools.NewSearchVectorMemoryTool(memVec.Notes, memVec.Summaries, memVec.Turns, embedder, 5, 10, 4096))
+	reg.Register(tools.NewSearchVectorMemoryTool(memVec.Notes, memVec.Summaries, memVec.Turns, embedder, searchMemoryCfg.DefaultTopK, searchMemoryCfg.MaxTopK, searchMemoryCfg.MaxOutputBytes, searchMemoryCfg.SnippetRunes))
 	return nil
 }
 
 func writeMemoryRuntimeReady(memVec *core.MemoryVectors, embedder embedding.Embedder) bool {
 	return memVec != nil && memVec.Notes != nil && embedder != nil
+}
+
+func registerKnowledgeToolsIfEnabled(cfg *config.Config, reg *tools.Registry, toolIdx *toolindex.Index, skillIdx *skillindex.Index, embedder embedding.Embedder) {
+	if cfg == nil || reg == nil || embedder == nil {
+		return
+	}
+	toolCfg := cfg.VectorSearchToolSettings("search_vector_tool")
+	if toolCfg.Enabled && toolIdx != nil && toolIdx.Store() != nil {
+		reg.Register(tools.NewSearchVectorToolKnowledgeTool(toolIdx.Store(), embedder, toolCfg.DefaultTopK, toolCfg.MaxTopK, toolCfg.MaxOutputBytes, toolCfg.SnippetRunes))
+	}
+	skillCfg := cfg.VectorSearchToolSettings("search_vector_skill")
+	if skillCfg.Enabled && skillIdx != nil && skillIdx.Store() != nil {
+		reg.Register(tools.NewSearchVectorSkillKnowledgeTool(skillIdx.Store(), embedder, skillCfg.DefaultTopK, skillCfg.MaxTopK, skillCfg.MaxOutputBytes, skillCfg.SnippetRunes))
+	}
 }
 
 // buildIntentClassifier constructs the EP-017 cascade classifier from config. Returns nil when disabled.

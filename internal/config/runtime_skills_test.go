@@ -51,3 +51,16 @@ func TestAllowedNativeToolIDs_IncludesSearchVectorMemory(t *testing.T) {
 		t.Fatal("NativeToolAllowed(search_vector_memory) = false, want true")
 	}
 }
+
+// Covers AC-32.014: native allowlist includes search_vector_tool and search_vector_skill.
+func TestAllowedNativeToolIDs_IncludesSpecializedVectorKnowledgeTools(t *testing.T) {
+	ids := AllowedNativeToolIDs(&Config{})
+	for _, id := range []string{"search_vector_tool", "search_vector_skill"} {
+		if !slices.Contains(ids, id) {
+			t.Fatalf("AllowedNativeToolIDs = %v, want %s", ids, id)
+		}
+		if !NativeToolAllowed(&Config{}, id) {
+			t.Fatalf("NativeToolAllowed(%s) = false, want true", id)
+		}
+	}
+}

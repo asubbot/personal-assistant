@@ -1,0 +1,17 @@
+@startuml EP032_C4_Context
+!include <C4/C4_Context>
+
+title EP-032 C4 C1 — Specialized Knowledge Search Tools
+
+Person(user, "User", "Asks questions about tools and skills")
+System(pa, "PersonalAssistant", "Tool-calling assistant with vector retrieval")
+System_Ext(llm, "LLM Provider", "Chooses tool calls and generates final answer")
+System_Ext(vdb, "SQLite Vector DB", "Stores vec_notes, vec_turns, vec_summaries, vec_tools, vec_skills")
+
+Rel(user, pa, "Sends message")
+Rel(pa, llm, "Requests completion + tool definitions")
+Rel(llm, pa, "Returns tool calls")
+Rel(pa, vdb, "Embeds query and searches vectors")
+Rel(pa, user, "Returns grounded answer")
+
+@enduml
