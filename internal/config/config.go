@@ -178,6 +178,8 @@ type ToolsConfig struct {
 	AlwaysInclude []string `json:"always_include,omitempty"`
 	// DynamicSelection is optional (EP-018). When present and enabled, max_tools_for_llm_request must be set in JSON (>= 1).
 	DynamicSelection *ToolDynamicSelection `json:"dynamic_selection,omitempty"`
+	// VectorSearchTools is optional (EP-032). When set, configures search_vector_memory/search_vector_tool/search_vector_skill in one block.
+	VectorSearchTools *VectorSearchToolsConfig `json:"vector_search_tools,omitempty"`
 	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
 	CreateToolSecretPatterns []string             `json:"create_tool_secret_patterns,omitempty"`
 	LLMEscalation            *LLMEscalationConfig `json:"llm_escalation,omitempty"`

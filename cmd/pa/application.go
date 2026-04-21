@@ -120,6 +120,7 @@ func (a *paApplication) buildToolRegistry() (*tools.Registry, error) {
 	if err := registerMemoryToolsIfEnabled(a.cfg, toolRegistry, a.infra.MemoryStore, a.infra.MemVec, a.infra.Embedder); err != nil {
 		return nil, err
 	}
+	registerKnowledgeToolsIfEnabled(a.cfg, toolRegistry, a.infra.ToolIndex, a.infra.SkillIndex, a.infra.Embedder)
 	return toolRegistry, nil
 }
 

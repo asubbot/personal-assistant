@@ -304,6 +304,18 @@ func validateTools(c *Config) error {
 	if c.Tools == nil {
 		return errors.New("config: tools is required (use {\"tools\": {}} minimum)")
 	}
+	if c.Tools.VectorSearchTools == nil {
+		return nil
+	}
+	if err := validateVectorSearchToolConfig("tools.vector_search_tools.search_vector_memory", c.Tools.VectorSearchTools.SearchVectorMemory); err != nil {
+		return err
+	}
+	if err := validateVectorSearchToolConfig("tools.vector_search_tools.search_vector_tool", c.Tools.VectorSearchTools.SearchVectorTool); err != nil {
+		return err
+	}
+	if err := validateVectorSearchToolConfig("tools.vector_search_tools.search_vector_skill", c.Tools.VectorSearchTools.SearchVectorSkill); err != nil {
+		return err
+	}
 	return nil
 }
 

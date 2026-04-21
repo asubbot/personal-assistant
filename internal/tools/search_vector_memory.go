@@ -29,10 +29,11 @@ type SearchVectorMemoryTool struct {
 	defaultTopK    int
 	maxTopK        int
 	maxOutputBytes int
+	snippetRunes   int
 }
 
 // NewSearchVectorMemoryTool constructs search_vector_memory native tool with bounded output.
-func NewSearchVectorMemoryTool(notes, summaries, turns vector.Store, embedder embedding.Embedder, defaultTopK, maxTopK, maxOutputBytes int) *SearchVectorMemoryTool {
+func NewSearchVectorMemoryTool(notes, summaries, turns vector.Store, embedder embedding.Embedder, defaultTopK, maxTopK, maxOutputBytes, snippetRunes int) *SearchVectorMemoryTool {
 	if defaultTopK < 1 {
 		defaultTopK = defaultSearchVectorMemoryTopK
 	}
@@ -45,6 +46,9 @@ func NewSearchVectorMemoryTool(notes, summaries, turns vector.Store, embedder em
 	if maxOutputBytes < 256 {
 		maxOutputBytes = defaultSearchVectorMemoryMaxOutByte
 	}
+	if snippetRunes < 32 {
+		snippetRunes = defaultSearchVectorMemorySnippetLen
+	}
 	return &SearchVectorMemoryTool{
 		notes:          notes,
 		summaries:      summaries,
@@ -53,6 +57,7 @@ func NewSearchVectorMemoryTool(notes, summaries, turns vector.Store, embedder em
 		defaultTopK:    defaultTopK,
 		maxTopK:        maxTopK,
 		maxOutputBytes: maxOutputBytes,
+		snippetRunes:   snippetRunes,
 	}
 }
 
@@ -133,7 +138,7 @@ func (t *SearchVectorMemoryTool) collectHits(ctx context.Context, emb []float32,
 				lane:  lane,
 				id:    strings.TrimSpace(r.ID),
 				score: r.Score,
-				text:  compactSingleLine(txt, defaultSearchVectorMemorySnippetLen),
+				text:  compactSingleLine(txt, t.snippetRunes),
 			})
 		}
 	}
