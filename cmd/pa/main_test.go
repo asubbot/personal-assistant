@@ -9,8 +9,10 @@ import (
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/memory"
+	"pa/internal/skillindex"
 	"pa/internal/sqlitepragma"
 	"pa/internal/toolcatalog"
+	"pa/internal/toolindex"
 	patools "pa/internal/tools"
 	"pa/internal/vector"
 	"pa/internal/vector/sqlite"
@@ -82,6 +84,7 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) 
 	cfgNoBlock := &config.Config{
 		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
 		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 4096, MaxFileBytes: 512 * 1024},
+		Tools:       &config.ToolsConfig{},
 	}
 	regNoBlock := patools.NewRegistry()
 	if err := registerMemoryToolsIfEnabled(cfgNoBlock, regNoBlock, store, memVec, embedder); err != nil {
@@ -101,6 +104,7 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) 
 	cfgWrite := &config.Config{
 		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
 		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
+		Tools:       &config.ToolsConfig{},
 	}
 	regWrite := patools.NewRegistry()
 	if err := registerMemoryToolsIfEnabled(cfgWrite, regWrite, store, memVec, embedder); err != nil {
@@ -123,12 +127,72 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryCoreDepsRequired(t *testing.T) 
 	cfg := &config.Config{
 		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8192},
 		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
+		Tools:       &config.ToolsConfig{},
 	}
 	if err := registerMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{}, stubEmbedder{}); err == nil {
 		t.Fatal("expected error when notes vector is missing")
 	}
 	if err := registerMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{Notes: noopVectorStore{}}, nil); err == nil {
 		t.Fatal("expected error when embedder is missing")
+	}
+}
+
+// Covers AC-32.006: search_vector_memory uses limits from tools.vector_search_tools.
+// Supporting AC-32.015 and AC-32.016: this EP-032 runtime wiring test participates in make check / make validate quality gates.
+func TestRegisterMemoryToolsIfEnabled_VectorSearchMemorySettingsApplied(t *testing.T) {
+	store, err := memory.NewStore(t.TempDir(), time.UTC)
+	if err != nil {
+		t.Fatalf("memory.NewStore: %v", err)
+	}
+	cfgVectorSettings := &config.Config{
+		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
+		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
+		Tools: &config.ToolsConfig{
+			VectorSearchTools: &config.VectorSearchToolsConfig{
+				SearchVectorMemory: config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 1, MaxTopK: 2, MaxOutputBytes: 1024, SnippetRunes: 80},
+				SearchVectorTool:   config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
+				SearchVectorSkill:  config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
+			},
+		},
+	}
+	reg := patools.NewRegistry()
+	memVec := &core.MemoryVectors{Notes: noopVectorStore{}}
+	if err := registerMemoryToolsIfEnabled(cfgVectorSettings, reg, store, memVec, stubEmbedder{}); err != nil {
+		t.Fatalf("registerMemoryToolsIfEnabled(vector settings): %v", err)
+	}
+	toolAny, ok := reg.Get("search_vector_memory")
+	if !ok {
+		t.Fatal("expected search_vector_memory in registry with vector_search_tools settings")
+	}
+	_, err = toolAny.Run(context.Background(), map[string]any{"query": "q", "lanes": []any{"notes"}, "top_k": float64(3)})
+	if err == nil || !strings.Contains(err.Error(), "top_k must be in 1..2") {
+		t.Fatalf("expected max_top_k=2 bound error, got %v", err)
+	}
+}
+
+// Covers AC-32.001, AC-32.002, AC-32.007, AC-32.008: specialized vector tools register from unified config block.
+func TestRegisterKnowledgeToolsIfEnabled_RegistersSpecializedTools(t *testing.T) {
+	cfg := &config.Config{
+		Tools: &config.ToolsConfig{
+			VectorSearchTools: &config.VectorSearchToolsConfig{
+				SearchVectorMemory: config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
+				SearchVectorTool:   config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 2, MaxTopK: 4, MaxOutputBytes: 512, SnippetRunes: 80},
+				SearchVectorSkill:  config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 2, MaxTopK: 4, MaxOutputBytes: 512, SnippetRunes: 80},
+			},
+		},
+	}
+	reg := patools.NewRegistry()
+	registerKnowledgeToolsIfEnabled(cfg, reg, toolindex.NewIndex(noopVectorStore{}), skillindex.NewIndex(noopVectorStore{}), stubEmbedder{})
+	if _, ok := reg.Get("search_vector_tool"); !ok {
+		t.Fatal("expected search_vector_tool in registry")
+	}
+	toolAny, ok := reg.Get("search_vector_skill")
+	if !ok {
+		t.Fatal("expected search_vector_skill in registry")
+	}
+	_, err := toolAny.Run(context.Background(), map[string]any{"query": "q", "top_k": float64(5)})
+	if err == nil || !strings.Contains(err.Error(), "top_k must be in 1..4") {
+		t.Fatalf("expected max_top_k=4 bound error, got %v", err)
 	}
 }
 

@@ -13,7 +13,30 @@
       "max_per_user_message": 2,
       "baseline_index": 0
     },
-    "create_tool_secret_patterns": []
+    "create_tool_secret_patterns": [],
+    "vector_search_tools": {
+      "search_vector_memory": {
+        "enabled": true,
+        "default_top_k": 5,
+        "max_top_k": 10,
+        "max_output_bytes": 4096,
+        "snippet_runes": 200
+      },
+      "search_vector_tool": {
+        "enabled": true,
+        "default_top_k": 5,
+        "max_top_k": 10,
+        "max_output_bytes": 4096,
+        "snippet_runes": 200
+      },
+      "search_vector_skill": {
+        "enabled": true,
+        "default_top_k": 5,
+        "max_top_k": 10,
+        "max_output_bytes": 4096,
+        "snippet_runes": 200
+      }
+    }
   },
   "tool_pre_selection": {
     "tool_search_top_k": 10,

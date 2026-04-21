@@ -1,0 +1,25 @@
+@startuml EP032_C4_Container
+!include <C4/C4_Container>
+
+title EP-032 C4 C2 — Specialized Vector Search Tools
+
+Person(user, "User")
+System_Boundary(pa, "PersonalAssistant") {
+  Container(telegramAdapter, "Telegram Adapter", "Go", "Receives and sends chat messages")
+  Container(core, "Core Conversation Handler", "Go", "Runs tool-calling loop and orchestration")
+  Container(toolLayer, "Native Tools Layer", "Go", "search_vector_memory, search_vector_tool, search_vector_skill")
+  Container(configLoader, "Config Loader", "Go", "Validates tools.vector_search_tools and runtime settings")
+}
+
+System_Ext(llm, "LLM Provider", "Chooses tool calls and composes final answer")
+System_Ext(vdb, "SQLite Vector DB", "vec_notes, vec_summaries, vec_turns, vec_tools, vec_skills")
+
+Rel(user, telegramAdapter, "Messages")
+Rel(telegramAdapter, core, "Delivers user input")
+Rel(core, llm, "Completion requests with tool defs")
+Rel(llm, core, "Tool calls + final answer")
+Rel(core, toolLayer, "Invokes native vector-search tools")
+Rel(toolLayer, vdb, "Embeds query and performs read-only vector search")
+Rel(configLoader, toolLayer, "Provides validated runtime limits")
+
+@enduml
