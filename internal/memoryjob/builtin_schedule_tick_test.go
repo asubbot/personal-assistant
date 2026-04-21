@@ -45,7 +45,7 @@ func (tickEmbedder) Embed(ctx context.Context, text string) ([]float32, error) {
 	return []float32{1, 0, 0}, nil
 }
 
-// Covers AC-02.004: with memory_dir, llm_log_dir, embedder, and vector store wired, a single in-process onTick
+// Covers AC-02.004. Supporting AC-33.010: with memory_dir, llm_log_dir, embedder, and vector store wired, a single in-process onTick
 // at local 01:xx enqueues and runs built-in day summarization (no external cron).
 func TestOnTick_builtinDayScheduleWritesMemoryAndVector(t *testing.T) {
 	base := t.TempDir()

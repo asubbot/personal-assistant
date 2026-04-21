@@ -39,7 +39,7 @@ func TestRunner_drain_orderLowerPriorityFirst(t *testing.T) {
 	}
 }
 
-// Covers AC-02.016: scheduled summarization (priority 10) is not executed while UserTurnActive; runs after it clears.
+// Covers AC-02.016. Supporting AC-33.007: scheduled summarization (priority 10) is not executed while UserTurnActive; runs after it clears.
 func TestRunner_drain_defersScheduledDuringUserTurn(t *testing.T) {
 	userTurn := true
 	var ran int
@@ -68,7 +68,7 @@ func TestRunner_drain_defersScheduledDuringUserTurn(t *testing.T) {
 	}
 }
 
-// Covers AC-02.016: catch-up priority (5) is not executed while UserTurnActive; runs after it clears.
+// Covers AC-02.016. Supporting AC-33.007: catch-up priority (5) is not executed while UserTurnActive; runs after it clears.
 func TestRunner_drain_defersCatchUpDuringUserTurn(t *testing.T) {
 	userTurn := true
 	var ran int
@@ -385,5 +385,171 @@ func TestRunYear_embedFailsAfterFileWrite_enqueuesReconcileYear(t *testing.T) {
 	want := "reconcile_year:2027"
 	if it.name != want {
 		t.Fatalf("job name = %q, want %q", it.name, want)
+	}
+}
+
+// Covers AC-33.001, AC-33.004, AC-33.007, AC-33.008, AC-33.011. Supporting AC-33.012: retry waits for notBefore and runs in existing queue loop.
+func TestRunner_retryableDayJob_waitsThenRetries(t *testing.T) {
+	baseNow := time.Date(2035, 1, 10, 10, 0, 0, 0, time.UTC)
+	now := baseNow
+	ran := 0
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	targetDay := time.Date(2035, 1, 9, 12, 0, 0, 0, time.UTC)
+	r.enqueueDayRetry(PriorityCatchUp, "catchup_day", targetDay, func(context.Context, time.Time) error {
+		ran++
+		if ran == 1 {
+			return errors.New("timeout from provider")
+		}
+		return nil
+	})
+
+	r.drain(context.Background())
+	if ran != 1 {
+		t.Fatalf("runs after first drain = %d, want 1", ran)
+	}
+	r.drain(context.Background())
+	if ran != 1 {
+		t.Fatalf("runs before notBefore = %d, want 1", ran)
+	}
+	now = now.Add(time.Minute)
+	r.drain(context.Background())
+	if ran != 2 {
+		t.Fatalf("runs after backoff = %d, want 2", ran)
+	}
+}
+
+// Covers AC-33.002, AC-33.005: retries stop after bounded attempt budget.
+func TestRunner_retryableDayJob_exhaustsRetries(t *testing.T) {
+	baseNow := time.Date(2035, 2, 10, 10, 0, 0, 0, time.UTC)
+	now := baseNow
+	ran := 0
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	targetDay := time.Date(2035, 2, 9, 12, 0, 0, 0, time.UTC)
+	r.enqueueDayRetry(PriorityScheduled, "summarize_yesterday", targetDay, func(context.Context, time.Time) error {
+		ran++
+		return errors.New("temporary upstream failure")
+	})
+
+	for i := 0; i < 6; i++ {
+		r.drain(context.Background())
+		now = now.Add(61 * time.Minute)
+	}
+	if ran != 5 {
+		t.Fatalf("runs = %d, want 5 (1 initial + 4 retries)", ran)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.pq.Len() != 0 {
+		t.Fatalf("queue len = %d, want 0 after exhaustion", r.pq.Len())
+	}
+}
+
+// Covers AC-33.006: duplicate retry chains for the same day key are not queued.
+func TestRunner_retryDayDedupe_preventsDuplicateQueueEntries(t *testing.T) {
+	var first, second int
+	r := &Runner{
+		deps: Deps{
+			Logger: slog.New(slog.DiscardHandler),
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	targetDay := time.Date(2035, 3, 9, 12, 0, 0, 0, time.UTC)
+	r.enqueueDayRetry(PriorityCatchUp, "catchup_day", targetDay, func(context.Context, time.Time) error {
+		first++
+		return nil
+	})
+	r.enqueueDayRetry(PriorityCatchUp, "summarize_yesterday", targetDay, func(context.Context, time.Time) error {
+		second++
+		return nil
+	})
+	r.drain(context.Background())
+	if first+second != 1 {
+		t.Fatalf("executed jobs = %d, want 1", first+second)
+	}
+}
+
+// Covers AC-33.004. Supporting AC-33.001 and AC-33.002: retries preserve the original day target across midnight.
+func TestRunner_retryPreservesOriginalDayTargetAcrossMidnight(t *testing.T) {
+	now := time.Date(2035, 4, 10, 23, 59, 0, 0, time.UTC)
+	target := time.Date(2035, 4, 9, 12, 0, 0, 0, time.UTC)
+	seen := make([]string, 0, 2)
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+			Loc:    time.UTC,
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	r.enqueueDayRetry(PriorityScheduled, "summarize_yesterday", target, func(ctx context.Context, day time.Time) error {
+		_ = ctx
+		seen = append(seen, day.Format("2006-01-02"))
+		if len(seen) == 1 {
+			return errors.New("timeout")
+		}
+		return nil
+	})
+	r.drain(context.Background())
+	now = now.Add(2 * time.Minute)
+	r.drain(context.Background())
+	if len(seen) != 2 {
+		t.Fatalf("seen runs = %d, want 2", len(seen))
+	}
+	if seen[0] != "2035-04-09" || seen[1] != "2035-04-09" {
+		t.Fatalf("target days = %v, want [2035-04-09 2035-04-09]", seen)
+	}
+}
+
+// Supporting AC-33.006: startup and scheduled enqueue paths dedupe same day target key.
+func TestRunner_startupAndScheduledDaily_shareOneDayKey(t *testing.T) {
+	now := time.Date(2035, 5, 10, 1, 5, 0, 0, time.UTC)
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+			Loc:    time.UTC,
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	r.enqueueStartup()
+	r.maybeEnqueueDaily(now, time.UTC)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	dayKeyCount := 0
+	for _, it := range r.pq {
+		if it.key == "day:2035-05-09" {
+			dayKeyCount++
+		}
+	}
+	if dayKeyCount != 1 {
+		t.Fatalf("day key count = %d, want 1", dayKeyCount)
 	}
 }

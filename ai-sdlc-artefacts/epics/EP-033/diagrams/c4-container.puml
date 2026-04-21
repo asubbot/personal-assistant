@@ -1,0 +1,29 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title EP-033 Memory Summarization Retry - C4 Container
+
+Person(user, "User", "Interacts with PersonalAssistant in Telegram")
+System_Ext(telegram, "Telegram", "Bot API")
+System_Ext(llm, "LLM Provider", "Summarization completion")
+System_Ext(fs, "Filesystem", "LLM logs and memory markdown")
+System_Ext(vecdb, "SQLite Vector Store", "Day summary vector index")
+
+System_Boundary(pa_boundary, "PersonalAssistant") {
+  Container(adapter, "Telegram Adapter", "Go", "Receives updates and sends responses")
+  Container(core, "Core Conversation Runtime", "Go", "Conversation handling, tools, runtime loop")
+  Container(memoryjob, "MemoryJob Runner", "Go", "Background day/month/year summarization scheduling")
+  Container(memstore, "Memory Store", "Go", "Reads and writes summary markdown by calendar date")
+}
+
+Rel(user, telegram, "Uses")
+Rel(telegram, adapter, "Delivers updates")
+Rel(adapter, core, "Forwards messages")
+Rel(core, memoryjob, "Shares process lifecycle")
+Rel(memoryjob, fs, "Reads day logs")
+Rel(memoryjob, llm, "Requests summaries")
+Rel(memoryjob, memstore, "Writes day summary")
+Rel(memstore, fs, "Reads/writes markdown files")
+Rel(memoryjob, vecdb, "Writes summary vectors")
+
+@enduml
