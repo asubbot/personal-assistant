@@ -32,7 +32,7 @@ EP-014 adds a **sliding session memory window**: a bounded, ordered list of rece
 | **Session exchange** | One pair consisting of the user message text that started a handler invocation and the final assistant reply text returned to the user for that invocation. |
 | **Sliding window** | The bounded list of the most recent session exchanges for one session identifier; when full, the oldest exchange is removed on insert. |
 | **Working memory** | The session sliding window content passed as explicit `user` / `assistant` messages to the LLM. |
-| **Vector memory** | Semantic retrieval from `vec_items` embedded in the merged system message inside `RETRIEVED_CONTEXT`. |
+| **Vector memory** | Semantic retrieval from `vec_items` embedded in the merged system message inside the CONTEXT (`PA_BEGIN_CONTEXT` / `PA_END_CONTEXT`) marker block. |
 | **User turn** | One inbound user message processed by `HandleMessage` until the handler returns a reply string to the adapter. |
 
 ---

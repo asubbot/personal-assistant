@@ -5,7 +5,7 @@
 | **ID** | EP-013 |
 | **Status** | DONE |
 | **Title** | Runtime skills and consolidated system prompt |
-| **Description** | Introduce AgentSkills-style runtime skill packages (SKILL.md only for MVP), a dedicated `vec_skills` index with vector selection at startup, tool selection as union(skill-declared, always_include, tool_vector_top_k) with volume budgets and fail-fast validation. Extend the single merged `role: system` string with trust policy, canonical PA_BEGIN/PA_END block markers, retrieved-context placement and rules for user turns vs tool rounds, and a bounded RUNTIME_SKILLS block. No execution of skill `scripts/`, no `references/` in prompt or index in this epic. |
+| **Description** | Introduce AgentSkills-style runtime skill packages (SKILL.md only for MVP), a dedicated `vec_skills` index with vector selection at startup, tool selection as union(skill-declared, always_include, tool_vector_top_k) with volume budgets and fail-fast validation. Extend the single merged `role: system` string with trust policy, canonical PA_BEGIN/PA_END block markers, retrieved-context placement and rules for user turns vs tool rounds, and a bounded SKILLS (`PA_BEGIN_SKILLS` / `PA_END_SKILLS`) block. No execution of skill `scripts/`, no `references/` in prompt or index in this epic. |
 | **First version date** | 2026-04-09 |
 | **Audit (stage 11)** | [ep-audit-report.md](ep-audit-report.md) — 2026-04-10 (UTC) |
 
@@ -25,7 +25,7 @@
 - Build and maintain `vec_skills`: clear and full rebuild on startup; embed text derived from `SKILL.md` (frontmatter fields + body per epic detail); no hot-reload of skills or index without process restart.
 - Per user turn: vector-search skills for the user message; include full bodies of selected skills up to caps; compute final tool id set as union(skill-declared tools, always_include, tool_vector_top_k); apply volume budgets by dropping whole lowest-priority skills then whole tools only from vector top-k not pinned by selected skills or always_include.
 - Fallback when skills are disabled, directory empty, or vector returns no matches: retain current tool pre-selection behaviour plus `always_include` (exact fallback rules as in implementation).
-- Prompt assembly: insert English trust/injection policy block near the start of merged system (default variant B from analytics §8.4); wrap dynamic sections with canonical markers in fixed order; place retrieved context in `RETRIEVED_CONTEXT` pair at the tail of system; place selected runtime skills in `RUNTIME_SKILLS` pair; do not move retrieval to a separate API message in this epic.
+- Prompt assembly: insert English trust/injection policy block near the start of merged system (default variant B from analytics §8.4); wrap dynamic sections with canonical markers in fixed order; place retrieved context in the CONTEXT (`PA_BEGIN_CONTEXT` / `PA_END_CONTEXT`) pair at the tail of system; place selected runtime skills in the SKILLS (`PA_BEGIN_SKILLS` / `PA_END_SKILLS`) pair; do not move retrieval to a separate API message in this epic.
 - Multi-turn: rebuild retrieved block on each new user turn; do not re-retrieve between tool rounds inside the same user turn; same merged `system` is reused across tool rounds within that turn (native tool-calling message shape per EP-030).
 - Memory indexing: reject persistence of user or memory text that contains an exact marker line after trim (same canonical set); align with skill load rule.
 - Automated tests: unit coverage for validation, marker collision rejection, prompt layout snapshots or structural checks, and integration paths with mocked embedder or store where practical; no requirement to run real cloud LLM in CI.
@@ -33,7 +33,7 @@
 
 ## Success criteria
 
-- With a configured non-empty skills directory and valid packages, at least one user message causes the outbound LLM request’s merged system content to include a `RUNTIME_SKILLS` block whose body contains text from a selected `SKILL.md`, and the model receives a tool list consistent with the union rule and caps.
+- With a configured non-empty skills directory and valid packages, at least one user message causes the outbound LLM request’s merged system content to include a SKILLS (`PA_BEGIN_SKILLS` / `PA_END_SKILLS`) block whose body contains text from a selected `SKILL.md`, and the model receives a tool list consistent with the union rule and caps.
 - With skills disabled or zero vector matches, the core still answers and tool selection matches the agreed fallback without startup failure.
 - Startup fails with a clear error if any skill references a missing tool id or if `always_include` references a missing id.
 - Startup fails if any loaded `SKILL.md` contains a forbidden marker line; saving memory content that contains such a line is rejected without silent truncation.

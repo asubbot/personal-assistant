@@ -18,11 +18,11 @@ func WrapRetrievedContext(inner string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(promptmarkers.BeginRetrievedContext)
+	b.WriteString(promptmarkers.BeginContext)
 	b.WriteByte('\n')
 	b.WriteString(inner)
 	b.WriteByte('\n')
-	b.WriteString(promptmarkers.EndRetrievedContext)
+	b.WriteString(promptmarkers.EndContext)
 	b.WriteByte('\n')
 	return b.String()
 }
@@ -33,7 +33,7 @@ func WrapToolInstructions(inner string) string {
 	if inner == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginToolInstructions, inner, promptmarkers.EndToolInstructions)
+	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginTools, inner, promptmarkers.EndTools)
 }
 
 // WrapRuntimeSkills wraps non-empty runtime skill playbook text.
@@ -42,5 +42,5 @@ func WrapRuntimeSkills(inner string) string {
 	if inner == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginRuntimeSkills, inner, promptmarkers.EndRuntimeSkills)
+	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginSkills, inner, promptmarkers.EndSkills)
 }

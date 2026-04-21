@@ -46,7 +46,7 @@ func TestLoadDir_missingFrontmatter(t *testing.T) {
 func TestLoadDir_forbiddenMarker(t *testing.T) {
 	// Covers AC-13.001 (loader)
 	root := t.TempDir()
-	bad := "---\nname: X\ndescription: Y\n---\n\n<<<PA_BEGIN_RETRIEVED_CONTEXT>>>\n"
+	bad := "---\nname: X\ndescription: Y\n---\n\n<<<PA_BEGIN_CONTEXT>>>\n"
 	writeSkill(t, root, "bad", bad)
 	_, err := LoadDir(root)
 	if err == nil {

@@ -10,10 +10,10 @@ import (
 func TestWrapRetrievedContext_nonEmpty(t *testing.T) {
 	// Covers AC-13.004
 	out := WrapRetrievedContext("- item one\n")
-	if !strings.Contains(out, promptmarkers.BeginRetrievedContext) {
+	if !strings.Contains(out, promptmarkers.BeginContext) {
 		t.Fatal("missing begin marker")
 	}
-	if !strings.Contains(out, promptmarkers.EndRetrievedContext) {
+	if !strings.Contains(out, promptmarkers.EndContext) {
 		t.Fatal("missing end marker")
 	}
 	if !strings.Contains(out, "item one") {
@@ -24,7 +24,7 @@ func TestWrapRetrievedContext_nonEmpty(t *testing.T) {
 func TestWrapToolInstructions(t *testing.T) {
 	// Covers AC-13.005
 	out := WrapToolInstructions("do the thing")
-	if !strings.Contains(out, promptmarkers.BeginToolInstructions) || !strings.Contains(out, promptmarkers.EndToolInstructions) {
+	if !strings.Contains(out, promptmarkers.BeginTools) || !strings.Contains(out, promptmarkers.EndTools) {
 		t.Fatal(out)
 	}
 }

@@ -8,24 +8,24 @@ import (
 
 // Block marker line constants (exact bytes; EP-013 / analytics §8.5.1).
 const (
-	BeginRetrievedContext = "<<<PA_BEGIN_RETRIEVED_CONTEXT>>>"
-	EndRetrievedContext   = "<<<PA_END_RETRIEVED_CONTEXT>>>"
-	BeginToolInstructions = "<<<PA_BEGIN_TOOL_INSTRUCTIONS>>>"
-	EndToolInstructions   = "<<<PA_END_TOOL_INSTRUCTIONS>>>"
-	BeginRuntimeSkills    = "<<<PA_BEGIN_RUNTIME_SKILLS>>>"
-	EndRuntimeSkills      = "<<<PA_END_RUNTIME_SKILLS>>>"
+	BeginContext = "<<<PA_BEGIN_CONTEXT>>>"
+	EndContext   = "<<<PA_END_CONTEXT>>>"
+	BeginTools   = "<<<PA_BEGIN_TOOLS>>>"
+	EndTools     = "<<<PA_END_TOOLS>>>"
+	BeginSkills  = "<<<PA_BEGIN_SKILLS>>>"
+	EndSkills    = "<<<PA_END_SKILLS>>>"
 )
 
 // ForbiddenMarkerLines returns all canonical marker lines that must not appear
 // as a full line (after trim) in SKILL.md or in text indexed into vector stores.
 func ForbiddenMarkerLines() []string {
 	return []string{
-		BeginRetrievedContext,
-		EndRetrievedContext,
-		BeginToolInstructions,
-		EndToolInstructions,
-		BeginRuntimeSkills,
-		EndRuntimeSkills,
+		BeginContext,
+		EndContext,
+		BeginTools,
+		EndTools,
+		BeginSkills,
+		EndSkills,
 	}
 }
 

@@ -26,7 +26,7 @@ func testDiscardLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
 
-// Covers AC-13.006, AC-13.013: selected runtime skill playbook appears inside RUNTIME_SKILLS markers.
+// Covers AC-13.006, AC-13.013: selected runtime skill playbook appears inside PA_BEGIN_SKILLS markers.
 func TestRuntimeSkills_handler_injectsPlaybook(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -83,7 +83,7 @@ func TestRuntimeSkills_handler_injectsPlaybook(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if !strings.Contains(sys, promptmarkers.BeginRuntimeSkills) || !strings.Contains(sys, "UNIQUE_PLAYBOOK_BODY_RT_SKILLS") {
+	if !strings.Contains(sys, promptmarkers.BeginSkills) || !strings.Contains(sys, "UNIQUE_PLAYBOOK_BODY_RT_SKILLS") {
 		prefix := sys
 		if len(prefix) > 300 {
 			prefix = prefix[:300]
@@ -92,7 +92,7 @@ func TestRuntimeSkills_handler_injectsPlaybook(t *testing.T) {
 	}
 }
 
-// Covers AC-13.004, REQ-13.016: tool blocks precede RETRIEVED_CONTEXT in the dynamic system tail.
+// Covers AC-13.004, REQ-13.016: tool blocks precede CONTEXT block in the dynamic system tail.
 func TestRuntimeSkills_handler_toolBlocksBeforeRetrievedMarkers(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -128,8 +128,8 @@ func TestRuntimeSkills_handler_toolBlocksBeforeRetrievedMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	iTool := strings.Index(sys, promptmarkers.BeginToolInstructions)
-	iRet := strings.Index(sys, promptmarkers.BeginRetrievedContext)
+	iTool := strings.Index(sys, promptmarkers.BeginTools)
+	iRet := strings.Index(sys, promptmarkers.BeginContext)
 	if iTool < 0 || iRet < 0 || iTool >= iRet {
 		t.Fatalf("want tool block before retrieved: tool@%d retrieved@%d", iTool, iRet)
 	}
@@ -157,12 +157,12 @@ func TestRuntimeSkills_handler_trustAndRetrievedMarkers(t *testing.T) {
 	if !strings.HasPrefix(strings.TrimSpace(sys), systemprompt.TrustPolicy) {
 		t.Fatalf("system should start with trust policy")
 	}
-	if !strings.Contains(sys, promptmarkers.BeginRetrievedContext) || !strings.Contains(sys, "past fact") {
+	if !strings.Contains(sys, promptmarkers.BeginContext) || !strings.Contains(sys, "past fact") {
 		t.Fatalf("missing retrieved markers")
 	}
 }
 
-// Covers AC-13.005: per-tool instructions wrapped in TOOL_INSTRUCTIONS markers.
+// Covers AC-13.005: per-tool instructions wrapped in PA_BEGIN_TOOLS markers.
 func TestRuntimeSkills_handler_toolInstructionsMarkers(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -194,7 +194,7 @@ func TestRuntimeSkills_handler_toolInstructionsMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if !strings.Contains(sys, promptmarkers.BeginToolInstructions) || !strings.Contains(sys, "SYS_PROMPT_UNIQUE") {
+	if !strings.Contains(sys, promptmarkers.BeginTools) || !strings.Contains(sys, "SYS_PROMPT_UNIQUE") {
 		t.Fatalf("missing tool instruction markers")
 	}
 }
@@ -283,7 +283,7 @@ func TestRuntimeSkills_handler_indexTurnRejectsForbiddenMarkerLine(t *testing.T)
 		Embedder:    core.IntegrationConstEmbedder{},
 		Logger:      testDiscardLogger(),
 	})
-	err := core.IntegrationIndexTurn(h, context.Background(), "hello\n"+promptmarkers.BeginRetrievedContext, "reply")
+	err := core.IntegrationIndexTurn(h, context.Background(), "hello\n"+promptmarkers.BeginContext, "reply")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -292,7 +292,7 @@ func TestRuntimeSkills_handler_indexTurnRejectsForbiddenMarkerLine(t *testing.T)
 	}
 }
 
-// Covers AC-13.008: when runtime skills disabled, no RUNTIME_SKILLS block; tool pre-selection still runs.
+// Covers AC-13.008: when runtime skills disabled, no PA_BEGIN_SKILLS block; tool pre-selection still runs.
 func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -356,7 +356,7 @@ func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *te
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if strings.Contains(sys, promptmarkers.BeginRuntimeSkills) || strings.Contains(sys, "SECRET_SKILL_BODY") {
+	if strings.Contains(sys, promptmarkers.BeginSkills) || strings.Contains(sys, "SECRET_SKILL_BODY") {
 		t.Fatalf("runtime skills block must be absent when disabled")
 	}
 	found := false
@@ -407,7 +407,7 @@ func TestRuntimeSkills_handler_retrievedContextWithToolSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	iR := strings.Index(sys, promptmarkers.BeginRetrievedContext)
+	iR := strings.Index(sys, promptmarkers.BeginContext)
 	if iR < 0 {
 		t.Fatalf("want retrieved context marker, got prefix: %.200q", sys)
 	}

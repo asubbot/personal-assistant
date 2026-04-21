@@ -184,7 +184,7 @@ WHERE `runtime_skills.enabled` is false or skill semantic search yields zero ski
 THE System SHALL insert the agreed English trust-and-injection policy text at the beginning of the merged `role: system` content before retrieved context, tool instructions, and runtime skill bodies.
 
 **REQ-13.015** (Ubiquitous)  
-THE System SHALL wrap retrieved context in `<<<PA_BEGIN_RETRIEVED_CONTEXT>>>` / `<<<PA_END_RETRIEVED_CONTEXT>>>`, aggregate catalog tool instructions in `<<<PA_BEGIN_TOOL_INSTRUCTIONS>>>` / `<<<PA_END_TOOL_INSTRUCTIONS>>>`, and selected runtime skill bodies in `<<<PA_BEGIN_RUNTIME_SKILLS>>>` / `<<<PA_END_RUNTIME_SKILLS>>>` when the corresponding block is non-empty.
+THE System SHALL wrap retrieved context in `<<<PA_BEGIN_CONTEXT>>>` / `<<<PA_END_CONTEXT>>>`, aggregate catalog tool instructions in `<<<PA_BEGIN_TOOLS>>>` / `<<<PA_END_TOOLS>>>`, and selected runtime skill bodies in `<<<PA_BEGIN_SKILLS>>>` / `<<<PA_END_SKILLS>>>` when the corresponding block is non-empty.
 
 **REQ-13.016** (Ubiquitous)  
 THE System SHALL order dynamic blocks so that retrieved context and runtime skills appear after the trust policy and tool instruction blocks inside the merged system string.

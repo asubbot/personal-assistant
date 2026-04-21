@@ -99,7 +99,7 @@ func TestRuntimeSkills_configLoad_rejectsForbiddenMarkerInSkill(t *testing.T) {
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	badSkill := "---\nname: X\ndescription: y\ntools: []\n---\n\nline before\n" + promptmarkers.BeginRetrievedContext + "\n"
+	badSkill := "---\nname: X\ndescription: y\ntools: []\n---\n\nline before\n" + promptmarkers.BeginContext + "\n"
 	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(badSkill), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -105,7 +105,7 @@ func (p *Package) EmbeddingText() string {
 	return b.String()
 }
 
-// PlaybookText is full markdown injected into RUNTIME_SKILLS (title + body).
+// PlaybookText is full markdown injected into the SKILLS marker block (title + body).
 func (p *Package) PlaybookText() string {
 	var b strings.Builder
 	b.WriteString("# ")

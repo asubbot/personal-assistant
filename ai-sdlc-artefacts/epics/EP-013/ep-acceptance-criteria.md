@@ -18,9 +18,9 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 | [AC-13.001](#ac-13-001) | REQ-13.007 | Startup fails when SKILL.md contains a canonical marker line |
 | [AC-13.002](#ac-13-002) | REQ-13.006 | Startup fails when skill references unknown tool id |
 | [AC-13.003](#ac-13-003) | REQ-13.003 | Config load fails when always_include references unknown tool |
-| [AC-13.004](#ac-13-004) | REQ-13.014, REQ-13.015 | Merged system begins with trust policy and wraps non-empty retrieved context in RETRIEVED_CONTEXT markers |
-| [AC-13.005](#ac-13-005) | REQ-13.015 | Tool instruction aggregate wrapped in TOOL_INSTRUCTIONS markers when non-empty |
-| [AC-13.006](#ac-13-006) | REQ-13.010, REQ-13.016 | When skills enabled and index ready, merged system contains RUNTIME_SKILLS block with selected skill body text |
+| [AC-13.004](#ac-13-004) | REQ-13.014, REQ-13.015 | Merged system begins with trust policy and wraps non-empty retrieved context in CONTEXT (`PA_BEGIN_CONTEXT` / `PA_END_CONTEXT`) markers |
+| [AC-13.005](#ac-13-005) | REQ-13.015 | Tool instruction aggregate wrapped in TOOLS (`PA_BEGIN_TOOLS` / `PA_END_TOOLS`) markers when non-empty |
+| [AC-13.006](#ac-13-006) | REQ-13.010, REQ-13.016 | When skills enabled and index ready, merged system contains SKILLS (`PA_BEGIN_SKILLS` / `PA_END_SKILLS`) block with selected skill body text |
 | [AC-13.007](#ac-13-007) | REQ-13.011 | Tool list includes union of always_include, skill-declared tools, and vector-selected tools |
 | [AC-13.008](#ac-13-008) | REQ-13.013 | When runtime skills disabled, handler behaviour matches pre-selection without skill packages |
 | [AC-13.009](#ac-13-009) | REQ-13.018 | indexTurn refuses chunk containing forbidden marker line |
@@ -36,7 +36,7 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 
 <a id="ac-13-001"></a>**AC-13.001** (Trace: [REQ-13.007](ep-requirements.md#requirements))
 
-**Given** a skill package whose `SKILL.md` contains a line exactly equal to `<<<PA_BEGIN_RETRIEVED_CONTEXT>>>` after trim  
+**Given** a skill package whose `SKILL.md` contains a line exactly equal to `<<<PA_BEGIN_CONTEXT>>>` after trim  
 **When** the application loads configuration with `runtime_skills.enabled` true  
 **Then** startup SHALL fail with an error that references the skill directory or file path
 
@@ -63,7 +63,7 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 **Given** a handler build with vector memory and a user message that yields non-empty retrieved context  
 **When** the first LLM request is assembled  
 **Then** the system message content SHALL start with the configured English trust policy text  
-**And** the retrieved context SHALL appear between `<<<PA_BEGIN_RETRIEVED_CONTEXT>>>` and `<<<PA_END_RETRIEVED_CONTEXT>>>`
+**And** the retrieved context SHALL appear between `<<<PA_BEGIN_CONTEXT>>>` and `<<<PA_END_CONTEXT>>>`
 
 ---
 
@@ -71,7 +71,7 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 
 **Given** a handler with catalog tools selected so that aggregate system prompts are non-empty  
 **When** the first LLM request is assembled in native tool-calling mode  
-**Then** the aggregate tool instructions SHALL appear between `<<<PA_BEGIN_TOOL_INSTRUCTIONS>>>` and `<<<PA_END_TOOL_INSTRUCTIONS>>>`
+**Then** the aggregate tool instructions SHALL appear between `<<<PA_BEGIN_TOOLS>>>` and `<<<PA_END_TOOLS>>>`
 
 ---
 
@@ -79,7 +79,7 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 
 **Given** `runtime_skills.enabled` true, a non-empty skill index, and a user message whose embedding search selects at least one skill  
 **When** the first LLM request is assembled  
-**Then** the system message SHALL contain a `<<<PA_BEGIN_RUNTIME_SKILLS>>>` / `<<<PA_END_RUNTIME_SKILLS>>>` block whose body includes text from the selected skill `SKILL.md` body
+**Then** the system message SHALL contain a `<<<PA_BEGIN_SKILLS>>>` / `<<<PA_END_SKILLS>>>` block whose body includes text from the selected skill `SKILL.md` body
 
 ---
 
@@ -135,7 +135,7 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 
 **Given** a test harness with mock LLM provider, tool catalog, runtime skills enabled, and at least one valid skill package  
 **When** `HandleMessage` runs for an allowed user text  
-**Then** the mock SHALL observe a request whose system content includes the RUNTIME_SKILLS marker block  
+**Then** the mock SHALL observe a request whose system content includes the SKILLS (`PA_BEGIN_SKILLS` / `PA_END_SKILLS`) marker block  
 **And** the process SHALL complete without panic
 
 ---

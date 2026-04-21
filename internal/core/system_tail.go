@@ -10,7 +10,7 @@ import (
 )
 
 // tailFitState holds mutable pieces of the dynamic system tail (after protected head).
-// Order in the final message: TOOL_INSTRUCTIONS, RETRIEVED_CONTEXT, RUNTIME_SKILLS (REQ-13.016).
+// Order in the final message: TOOLS block, CONTEXT block, SKILLS block (REQ-13.016; wire markers PA_BEGIN_*).
 type tailFitState struct {
 	merged  []string
 	sources map[string]toolOrigin
