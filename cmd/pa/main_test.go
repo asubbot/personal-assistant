@@ -70,6 +70,7 @@ func (noopVectorStore) Exists(context.Context, string) (bool, error) { return fa
 func (noopVectorStore) Close() error                                 { return nil }
 
 // Covers AC-16.018: write_memory is registered as a core native tool (config block tunes limits only).
+// Supporting AC-31.011 and AC-31.012: this EP-031 runtime wiring test is part of make check / make validate quality gates.
 func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) {
 	store, err := memory.NewStore(t.TempDir(), time.UTC)
 	if err != nil {
@@ -92,6 +93,10 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) 
 	if _, ok := regNoBlock.Get("write_memory"); !ok {
 		t.Fatal("expected write_memory in registry")
 	}
+	// Covers AC-31.001: search_vector_memory is registered as a core native tool.
+	if _, ok := regNoBlock.Get("search_vector_memory"); !ok {
+		t.Fatal("expected search_vector_memory in registry")
+	}
 
 	cfgWrite := &config.Config{
 		ReadMemory:  &config.ReadMemoryConfig{MaxSpanDays: 7, MaxOutputBytes: 8 * 1024},
@@ -103,6 +108,9 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) 
 	}
 	if _, ok := regWrite.Get("write_memory"); !ok {
 		t.Fatal("expected write_memory in registry when cfg.write_memory is present")
+	}
+	if _, ok := regWrite.Get("search_vector_memory"); !ok {
+		t.Fatal("expected search_vector_memory in registry when memory tools are enabled")
 	}
 }
 

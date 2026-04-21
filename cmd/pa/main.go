@@ -605,6 +605,8 @@ func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memor
 		return fmt.Errorf("memory tools: write_memory requires notes vector and embedding provider")
 	}
 	reg.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, wm.MaxAppendBytes, wm.MaxFileBytes))
+	// search_vector_memory is read-only semantic retrieval over vector memory lanes.
+	reg.Register(tools.NewSearchVectorMemoryTool(memVec.Notes, memVec.Summaries, memVec.Turns, embedder, 5, 10, 4096))
 	return nil
 }
 

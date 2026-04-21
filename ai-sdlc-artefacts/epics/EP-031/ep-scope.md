@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | **ID** | EP-031 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Vector Memory Search Tool |
 | **Description** | Add a native, read-only tool for on-demand semantic retrieval from vector memory so the assistant can fetch relevant memory only when needed instead of always injecting auto-RAG context into the system prompt. The epic focuses on controllable retrieval, bounded output, and safe integration with existing skills/tool-calling flow. |
 | **First version date** | 2026-04-21 |

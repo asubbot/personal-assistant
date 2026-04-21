@@ -9,7 +9,7 @@ import (
 type ParamSpec struct {
 	Name     string
 	Required bool
-	Type     string // "string", "number", "boolean"
+	Type     string // "string", "number", "boolean", "array"
 }
 
 // Tool is the extensible tool contract (REQ-01.010): name, description, params schema, Run (AC-01.022, AC-01.023).
@@ -33,24 +33,44 @@ func ValidateParams(spec []ParamSpec, params map[string]any) error {
 			}
 			continue
 		}
-		switch p.Type {
-		case "string":
-			if _, ok := v.(string); !ok {
-				return fmt.Errorf("tools: param %q must be string", p.Name)
-			}
-		case "number":
-			switch v.(type) {
-			case float64, int, int64:
-			default:
-				return fmt.Errorf("tools: param %q must be number", p.Name)
-			}
-		case "boolean":
-			if _, ok := v.(bool); !ok {
-				return fmt.Errorf("tools: param %q must be boolean", p.Name)
-			}
-		default:
-			return fmt.Errorf("tools: unknown param type %q for %q", p.Type, p.Name)
+		if err := validateParamType(p, v); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func validateParamType(p ParamSpec, v any) error {
+	switch p.Type {
+	case "string":
+		if _, ok := v.(string); !ok {
+			return fmt.Errorf("tools: param %q must be string", p.Name)
+		}
+	case "number":
+		switch v.(type) {
+		case float64, int, int64:
+		default:
+			return fmt.Errorf("tools: param %q must be number", p.Name)
+		}
+	case "boolean":
+		if _, ok := v.(bool); !ok {
+			return fmt.Errorf("tools: param %q must be boolean", p.Name)
+		}
+	case "array":
+		switch vals := v.(type) {
+		case []any:
+			for i, it := range vals {
+				if _, ok := it.(string); !ok {
+					return fmt.Errorf("tools: param %q[%d] must be string", p.Name, i)
+				}
+			}
+		case []string:
+			// accepted for direct Go invocations in tests
+		default:
+			return fmt.Errorf("tools: param %q must be array", p.Name)
+		}
+	default:
+		return fmt.Errorf("tools: unknown param type %q for %q", p.Type, p.Name)
 	}
 	return nil
 }

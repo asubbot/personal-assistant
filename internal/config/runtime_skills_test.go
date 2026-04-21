@@ -40,3 +40,14 @@ func TestAllowedNativeToolIDs_NilConfigExcludesCreateScheduledJob(t *testing.T) 
 		t.Fatalf("AllowedNativeToolIDs(nil) = %v, must not contain create_scheduled_job", ids)
 	}
 }
+
+// Covers AC-31.008: native allowlist includes search_vector_memory for runtime skills.
+func TestAllowedNativeToolIDs_IncludesSearchVectorMemory(t *testing.T) {
+	ids := AllowedNativeToolIDs(&Config{})
+	if !slices.Contains(ids, "search_vector_memory") {
+		t.Fatalf("AllowedNativeToolIDs = %v, want search_vector_memory", ids)
+	}
+	if !NativeToolAllowed(&Config{}, "search_vector_memory") {
+		t.Fatal("NativeToolAllowed(search_vector_memory) = false, want true")
+	}
+}
