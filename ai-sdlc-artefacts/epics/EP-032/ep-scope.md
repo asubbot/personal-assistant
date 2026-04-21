@@ -1,12 +1,14 @@
 # Epic scope — EP-032 Specialized Knowledge Search Tools
 
-| Field | Content |
-|-------|---------|
-| **ID** | EP-032 |
-| **Status** | NEW |
-| **Title** | Specialized Knowledge Search Tools |
-| **Description** | Keep `search_vector_memory` focused on personal memory retrieval and add two specialized read-only tools for knowledge about tools and skills. This separates domains, reduces ambiguity, and keeps retrieval behavior explicit and bounded. |
-| **First version date** | 2026-04-21 |
+
+| Field                  | Content                                                                                                                                                                                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ID**                 | EP-032                                                                                                                                                                                                                                       |
+| **Status**             | DONE                                                                                                                                                                                                                                         |
+| **Title**              | Specialized Knowledge Search Tools                                                                                                                                                                                                           |
+| **Description**        | Keep `search_vector_memory` focused on personal memory retrieval and add two specialized read-only tools for knowledge about tools and skills. This separates domains, reduces ambiguity, and keeps retrieval behavior explicit and bounded. |
+| **First version date** | 2026-04-21                                                                                                                                                                                                                                   |
+
 
 ## Glossary
 
@@ -51,3 +53,4 @@
 - **Scope:** Extends retrieval capabilities in [scope.md](../../scope.md) by separating knowledge domains and improving reliability of retrieval decisions.
 - **Strategy:** Aligns with [strategy.md](../../strategy.md) traceability and testability goals via explicit AC coverage at unit/integration/E2E levels.
 - **Related epics:** Builds on [EP-031](../EP-031/ep-scope.md) by preserving memory retrieval as a separate concern and adding tool/skill knowledge retrieval via specialized native tools.
+
