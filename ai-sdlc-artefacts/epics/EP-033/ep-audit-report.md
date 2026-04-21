@@ -41,7 +41,7 @@ EP-033 is complete and passes the stage-11 gate. Implementation plan tasks are d
 | [AC-33.006](ep-acceptance-criteria.md#ac-33-006) | [REQ-33.006](ep-requirements.md#retry-scheduling-behavior) | ✓ | — | — | — | `internal/memoryjob/memoryjob_test.go::TestRunner_retryDayDedupe_preventsDuplicateQueueEntries`; `internal/memoryjob/memoryjob_test.go::TestRunner_startupAndScheduledDaily_shareOneDayKey` |
 | [AC-33.007](ep-acceptance-criteria.md#ac-33-007) | [REQ-33.007](ep-requirements.md#queue-semantics) | ✓ | — | — | — | `internal/memoryjob/memoryjob_test.go::TestRunner_drain_defersScheduledDuringUserTurn`; `internal/memoryjob/memoryjob_test.go::TestRunner_drain_defersCatchUpDuringUserTurn`; `internal/memoryjob/memoryjob_test.go::TestRunner_retryableDayJob_waitsThenRetries` |
 | [AC-33.008](ep-acceptance-criteria.md#ac-33-008) | [REQ-33.008](ep-requirements.md#queue-semantics) | ✓ | — | — | — | `internal/memoryjob/memoryjob_test.go::TestRunner_retryableDayJob_waitsThenRetries` |
-| [AC-33.009](ep-acceptance-criteria.md#ac-33-009) | [REQ-33.009](ep-requirements.md#observability) | — | — | — | ✓ | `tests/integration/ep033_manual_test.go::TestManual_AC33009_RetryLogsContainStructuredFields` |
+| [AC-33.009](ep-acceptance-criteria.md#ac-33-009) | [REQ-33.009](ep-requirements.md#observability) | ✓ | — | — | — | `internal/memoryjob/memoryjob_test.go::TestRunner_retryLogsStructuredWarnAndExhaust` |
 | [AC-33.010](ep-acceptance-criteria.md#ac-33-010) | [REQ-33.010](ep-requirements.md#existing-behavior-preservation) | ✓ | — | — | — | `internal/memoryjob/builtin_schedule_tick_test.go::TestOnTick_builtinDayScheduleWritesMemoryAndVector` |
 | [AC-33.011](ep-acceptance-criteria.md#ac-33-011) | [REQ-33.011](ep-requirements.md#verification) | ✓ | — | — | — | `internal/memoryjob/memoryjob_test.go::TestRunner_retryableDayJob_waitsThenRetries` |
 | [AC-33.012](ep-acceptance-criteria.md#ac-33-012) | [REQ-33.012](ep-requirements.md#verification) | ✓ | — | — | — | `internal/memoryjob/memoryjob_test.go::TestRunner_retryableDayJob_waitsThenRetries` |
@@ -65,5 +65,5 @@ EP-033 is complete and passes the stage-11 gate. Implementation plan tasks are d
 ## Gaps, risks, recommendations
 
 - **Gaps:** No blocking gaps against EP-033 implementation plan and acceptance criteria.
-- **Risks:** AC-33.009 remains manual-only for log-content verification and can miss regressions in structured retry log fields.
-- **Recommendations:** Add one deterministic automated log-assertion test for retry scheduling/exhaustion fields in a follow-up hardening epic.
+- **Risks:** None identified against the current EP-033 scope after automated AC-33.009 log assertions landed.
+- **Recommendations:** None beyond routine maintenance as memoryjob observability evolves.

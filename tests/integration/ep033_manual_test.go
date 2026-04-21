@@ -14,13 +14,6 @@ func TestManual_AC33003_MonthYearRetryBehaviorUnchanged(t *testing.T) {
 	t.Skip("manual: review memoryjob logs/tests; confirm retry policy is only for catchup_day and summarize_yesterday.")
 }
 
-// manual Covers AC-33.009 — retry scheduling and exhaustion emit structured logs.
-// Verify by running a forced-retry scenario and checking log fields include
-// job name, day key, attempt, and delay/exhaustion marker.
-func TestManual_AC33009_RetryLogsContainStructuredFields(t *testing.T) {
-	t.Skip("manual: run forced retry flow and inspect logs for job, key, attempt, delay, and retry exhausted message.")
-}
-
 // manual Covers AC-33.013 — `make check` passes on EP-033 branch.
 func TestManual_AC33013_MakeCheckPasses(t *testing.T) {
 	t.Skip("manual: from repo root run `make check`; command must exit 0 for EP-033.")

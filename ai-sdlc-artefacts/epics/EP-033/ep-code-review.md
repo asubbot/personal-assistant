@@ -78,9 +78,7 @@ No blocking findings remain.
 
 ### Findings
 
-| Severity | Location | Issue | Recommendation |
-|---|---|---|---|
-| Suggestion | `tests/integration/ep033_manual_test.go` | AC-33.009 remains manual-only via `t.Skip`. | Consider adding deterministic automated assertion for retry structured logs in future hardening pass. |
+No open findings. A prior suggestion to automate AC-33.009 structured retry logs is addressed by `internal/memoryjob/memoryjob_test.go::TestRunner_retryLogsStructuredWarnAndExhaust`.
 
 ### Test / verification
 
