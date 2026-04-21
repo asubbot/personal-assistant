@@ -1,0 +1,28 @@
+@startuml ep031_c4_container
+!include <C4/C4_Container>
+
+title EP-031 C4 Level 2 — `search_vector_memory` integration
+
+Person(user, "User", "Chats via Telegram")
+System_Ext(llm, "LLM provider", "Native tool-calling completions")
+System_Ext(embed, "Embedding provider", "Generates query embeddings")
+System_Ext(vecdb, "Vector SQLite", "vec_notes / vec_summaries / vec_turns")
+
+System_Boundary(pa, "PersonalAssistant") {
+  Container(adapter, "Telegram adapter", "Go", "Receives/sends messages")
+  Container(core, "Conversation core", "Go", "Prompt assembly and tool-calling loop")
+  Container(native, "Native tools", "Go", "Includes search_vector_memory")
+  Container(cfg, "Config and runtime skills", "Go", "Load/validate config and skill tool refs")
+}
+
+Rel(user, adapter, "Sends message")
+Rel(adapter, core, "HandleMessage")
+Rel(core, llm, "Complete with native tools")
+Rel(llm, core, "tool_calls + final content")
+Rel(core, native, "Dispatch tool call")
+Rel(native, embed, "Embed(query)")
+Rel(native, vecdb, "Search lanes (read-only)")
+Rel(native, core, "Bounded tool result text")
+Rel(cfg, native, "Allows tool id in skill refs")
+
+@enduml

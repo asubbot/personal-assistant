@@ -1,0 +1,25 @@
+@startuml ep031_c4_context
+!include <C4/C4_Context>
+
+title EP-031 C4 Level 1 — On-demand vector memory retrieval
+
+Person(user, "User", "Sends chat messages via Telegram")
+
+System_Boundary(pa, "PersonalAssistant") {
+  System(core, "Core", "Conversation handler with native tools")
+  System(tool, "search_vector_memory tool", "Native read-only semantic retrieval")
+}
+
+System_Ext(llm, "LLM provider", "Supports native tool-calling API")
+System_Ext(vecdb, "Vector memory database", "SQLite vector tables: notes, summaries, turns")
+System_Ext(embed, "Embedding provider", "Generates query embeddings")
+
+Rel(user, core, "Requests and receives answers")
+Rel(core, llm, "Completions with native tools")
+Rel(llm, core, "Returns tool call request")
+Rel(core, tool, "Dispatches native tool call")
+Rel(tool, embed, "Embeds query text")
+Rel(tool, vecdb, "Runs similarity search (read-only)")
+Rel(tool, core, "Returns bounded snippets")
+
+@enduml

@@ -15,6 +15,9 @@ func LLMDefFromTool(t Tool) llm.ToolDef {
 	var required []string
 	for _, p := range specs {
 		prop := map[string]any{"type": jsonSchemaParamType(p.Type)}
+		if p.Type == "array" {
+			prop["items"] = map[string]any{"type": "string"}
+		}
 		props[p.Name] = prop
 		if p.Required {
 			required = append(required, p.Name)
@@ -41,6 +44,8 @@ func jsonSchemaParamType(t string) string {
 		return "number"
 	case "boolean":
 		return "boolean"
+	case "array":
+		return "array"
 	default:
 		return "string"
 	}

@@ -17,7 +17,7 @@ func AllowedNativeToolIDs(c *Config) []string {
 	if c == nil {
 		return []string{"run_on_node", "create_tool"}
 	}
-	out := []string{"run_on_node", "create_tool", "read_memory", "write_memory"}
+	out := []string{"run_on_node", "create_tool", "read_memory", "write_memory", "search_vector_memory"}
 	if c.WebTools != nil && c.WebTools.Enabled {
 		out = append(out, "web_search", "web_fetch")
 	}
