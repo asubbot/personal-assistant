@@ -4,6 +4,7 @@ package memoryjob
 import (
 	"container/heap"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"pa/internal/config"
@@ -61,6 +62,7 @@ type Runner struct {
 	deps     Deps
 	mu       sync.Mutex
 	pq       priorityQueue
+	queued   map[string]struct{}
 	seq      int64
 	wake     chan struct{}
 	done     chan struct{}
@@ -87,10 +89,14 @@ func (r *Runner) userTurnActive() bool {
 }
 
 type jobItem struct {
-	priority int
-	seq      int64
-	name     string
-	run      func(context.Context) error
+	priority  int
+	seq       int64
+	name      string
+	key       string
+	attempt   int
+	notBefore time.Time
+	delays    []time.Duration
+	run       func(context.Context) error
 }
 
 type priorityQueue []*jobItem
@@ -128,10 +134,11 @@ func Start(ctx context.Context, deps Deps) *Runner {
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	r := &Runner{
-		deps: deps,
-		wake: make(chan struct{}, 1),
-		done: make(chan struct{}),
-		stop: cancel,
+		deps:   deps,
+		wake:   make(chan struct{}, 1),
+		done:   make(chan struct{}),
+		stop:   cancel,
+		queued: make(map[string]struct{}),
 	}
 	heap.Init(&r.pq)
 	go r.loop(runCtx)
@@ -177,7 +184,8 @@ func (r *Runner) maybeEnqueueDaily(now time.Time, loc *time.Location) {
 		return
 	}
 	r.lastDailyFireKey = fireKey
-	r.Enqueue(PriorityScheduled, "summarize_yesterday", r.jobSummarizeYesterday)
+	day := previousCalendarDayNoon(loc, now)
+	r.enqueueDayRetry(PriorityScheduled, "summarize_yesterday", day, r.jobSummarizeDayFor)
 }
 
 func (r *Runner) maybeEnqueueMonthRollup(now time.Time, loc *time.Location) {
@@ -216,7 +224,8 @@ func (r *Runner) enqueueStartup() {
 	r.Enqueue(PriorityReconcile, "reconciliation_scan", func(ctx context.Context) error {
 		return r.runReconciliationScan(ctx)
 	})
-	r.Enqueue(PriorityCatchUp, "catchup_day", r.jobCatchUpDay)
+	day := previousCalendarDayNoon(r.deps.Loc, r.now())
+	r.enqueueDayRetry(PriorityCatchUp, "catchup_day", day, r.jobCatchUpDayFor)
 	r.Enqueue(PriorityCatchUp, "catchup_month", r.jobCatchUpMonth)
 	r.Enqueue(PriorityCatchUp, "catchup_year", r.jobCatchUpYear)
 	select {
@@ -229,65 +238,192 @@ func (r *Runner) enqueueStartup() {
 func (r *Runner) Enqueue(priority int, name string, run func(context.Context) error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.seq++
-	heap.Push(&r.pq, &jobItem{priority: priority, seq: r.seq, name: name, run: run})
+	r.enqueueLocked(&jobItem{priority: priority, name: name, run: run})
 	select {
 	case r.wake <- struct{}{}:
 	default:
 	}
 }
 
-func (r *Runner) drain(ctx context.Context) {
-	for {
-		r.mu.Lock()
-		if r.pq.Len() == 0 {
-			r.mu.Unlock()
-			return
-		}
-		it := heap.Pop(&r.pq).(*jobItem)
-		r.mu.Unlock()
-
-		if it.priority >= PriorityCatchUp && r.userTurnActive() {
-			// Silent push back without waking — avoids tight poll loop (REQ-02.015).
-			// Job retries on the next scheduler tick (≤60 s) or next real enqueue.
-			r.deps.Logger.Debug("memory job deferred during user turn", "job", it.name, "priority", it.priority)
-			r.mu.Lock()
-			r.seq++
-			heap.Push(&r.pq, &jobItem{priority: it.priority, seq: r.seq, name: it.name, run: it.run})
-			r.mu.Unlock()
-			return
-		}
-
-		timeout := time.Duration(jobTimeoutSeconds) * time.Second
-		if timeout < 30*time.Second {
-			timeout = 30 * time.Second
-		}
-		jctx, cancel := context.WithTimeout(ctx, timeout)
-		started := time.Now()
-		lifecyclelog.Info(r.deps.Logger, "memory_job", "job_start", 0, "lifecycle", "job", it.name)
-		err := it.run(jctx)
-		cancel()
-		dur := time.Since(started)
-		if err != nil {
-			lifecyclelog.Error(r.deps.Logger, "memory_job", "job_complete", dur, err, "lifecycle", "job", it.name)
-			r.deps.Logger.Error("memory job failed", "job", it.name, "error", err)
-			continue
-		}
-		lifecyclelog.Info(r.deps.Logger, "memory_job", "job_complete", dur, "lifecycle", "job", it.name)
+func (r *Runner) enqueueDayRetry(priority int, name string, day time.Time, run func(context.Context, time.Time) error) {
+	loc := r.deps.Loc
+	if loc == nil {
+		loc = time.UTC
+	}
+	dayStr := day.In(loc).Format("2006-01-02")
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.enqueueLocked(&jobItem{
+		priority: priority,
+		name:     name,
+		key:      "day:" + dayStr,
+		delays:   []time.Duration{time.Minute, 5 * time.Minute, 15 * time.Minute, 60 * time.Minute},
+		run: func(ctx context.Context) error {
+			return run(ctx, day)
+		},
+	})
+	select {
+	case r.wake <- struct{}{}:
+	default:
 	}
 }
 
-func (r *Runner) jobSummarizeYesterday(ctx context.Context) error {
-	loc := r.deps.Loc
-	y, m, d := patime.PreviousCalendarDate(loc, r.now())
-	day := patime.NoonOnCalendar(loc, y, m, d)
+func (r *Runner) enqueueLocked(it *jobItem) {
+	if r.queued == nil {
+		r.queued = make(map[string]struct{})
+	}
+	if it.key != "" {
+		if _, exists := r.queued[it.key]; exists {
+			return
+		}
+		r.queued[it.key] = struct{}{}
+	}
+	r.seq++
+	it.seq = r.seq
+	heap.Push(&r.pq, it)
+}
+
+func isRetryableDayJobError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	s := strings.ToLower(err.Error())
+	if strings.Contains(s, "invalid") || strings.Contains(s, "parse") || strings.Contains(s, "validation") {
+		return false
+	}
+	return true
+}
+
+func retryDelay(it *jobItem) (time.Duration, bool) {
+	if it == nil || len(it.delays) == 0 {
+		return 0, false
+	}
+	if it.attempt >= len(it.delays) {
+		return 0, false
+	}
+	return it.delays[it.attempt], true
+}
+
+func (r *Runner) scheduleRetry(it *jobItem, err error) bool {
+	delay, ok := retryDelay(it)
+	if !ok || !isRetryableDayJobError(err) {
+		return false
+	}
+	nextAttempt := it.attempt + 1
+	it.attempt = nextAttempt
+	it.notBefore = r.now().Add(delay)
+	r.deps.Logger.Warn("memory job retry scheduled",
+		"job", it.name,
+		"key", it.key,
+		"attempt", nextAttempt,
+		"delay", delay.String(),
+	)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.enqueueLocked(it)
+	select {
+	case r.wake <- struct{}{}:
+	default:
+	}
+	return true
+}
+
+func (r *Runner) drain(ctx context.Context) {
+	for {
+		it := r.popNextJob()
+		if it == nil {
+			return
+		}
+		if r.deferUntilNotBefore(it) {
+			return
+		}
+		if r.deferDuringUserTurn(it) {
+			return
+		}
+		r.runOne(ctx, it)
+	}
+}
+
+func (r *Runner) popNextJob() *jobItem {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.pq.Len() == 0 {
+		return nil
+	}
+	it := heap.Pop(&r.pq).(*jobItem)
+	if it.key != "" {
+		delete(r.queued, it.key)
+	}
+	return it
+}
+
+func (r *Runner) requeue(it *jobItem) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.enqueueLocked(it)
+}
+
+func (r *Runner) deferUntilNotBefore(it *jobItem) bool {
+	if it.notBefore.IsZero() || !r.now().Before(it.notBefore) {
+		return false
+	}
+	r.requeue(it)
+	return true
+}
+
+func (r *Runner) deferDuringUserTurn(it *jobItem) bool {
+	if it.priority < PriorityCatchUp || !r.userTurnActive() {
+		return false
+	}
+	// Silent push back without waking — avoids tight poll loop (REQ-02.015).
+	// Job retries on the next scheduler tick (≤60 s) or next real enqueue.
+	r.deps.Logger.Debug("memory job deferred during user turn", "job", it.name, "priority", it.priority)
+	r.requeue(it)
+	return true
+}
+
+func (r *Runner) runOne(ctx context.Context, it *jobItem) {
+	timeout := time.Duration(jobTimeoutSeconds) * time.Second
+	if timeout < 30*time.Second {
+		timeout = 30 * time.Second
+	}
+	jctx, cancel := context.WithTimeout(ctx, timeout)
+	started := time.Now()
+	lifecyclelog.Info(r.deps.Logger, "memory_job", "job_start", 0, "lifecycle", "job", it.name)
+	err := it.run(jctx)
+	cancel()
+	dur := time.Since(started)
+	if err != nil {
+		lifecyclelog.Error(r.deps.Logger, "memory_job", "job_complete", dur, err, "lifecycle", "job", it.name)
+		r.deps.Logger.Error("memory job failed", "job", it.name, "error", err)
+		if r.scheduleRetry(it, err) {
+			return
+		}
+		if len(it.delays) > 0 && isRetryableDayJobError(err) && it.attempt >= len(it.delays) {
+			r.deps.Logger.Error("memory job retry exhausted", "job", it.name, "key", it.key, "attempts", it.attempt)
+		}
+		return
+	}
+	lifecyclelog.Info(r.deps.Logger, "memory_job", "job_complete", dur, "lifecycle", "job", it.name)
+}
+
+func previousCalendarDayNoon(loc *time.Location, now time.Time) time.Time {
+	y, m, d := patime.PreviousCalendarDate(loc, now)
+	return patime.NoonOnCalendar(loc, y, m, d)
+}
+
+func (r *Runner) jobSummarizeDayFor(ctx context.Context, day time.Time) error {
 	return r.runDayDirect(ctx, day)
 }
 
-func (r *Runner) jobCatchUpDay(ctx context.Context) error {
+func (r *Runner) jobCatchUpDayFor(ctx context.Context, day time.Time) error {
 	loc := r.deps.Loc
-	y, m, d := patime.PreviousCalendarDate(loc, r.now())
-	day := patime.NoonOnCalendar(loc, y, m, d)
 	need, err := dayNeedsCatchUp(ctx, r.deps.Cfg, r.deps.Memory, loc, day)
 	if err != nil {
 		return err
@@ -296,6 +432,10 @@ func (r *Runner) jobCatchUpDay(ctx context.Context) error {
 		return nil
 	}
 	return r.runDayDirect(ctx, day)
+}
+
+func (r *Runner) jobCatchUpDay(ctx context.Context) error {
+	return r.jobCatchUpDayFor(ctx, previousCalendarDayNoon(r.deps.Loc, r.now()))
 }
 
 func (r *Runner) jobCatchUpMonth(ctx context.Context) error {

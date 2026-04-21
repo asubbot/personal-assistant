@@ -1,0 +1,19 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-033 Memory Summarization Retry - C4 Context
+
+Person(user, "User", "Interacts with PersonalAssistant in Telegram")
+System(pa, "PersonalAssistant", "Go service with memory jobs and tool-driven assistant runtime")
+System_Ext(telegram, "Telegram", "Messaging channel")
+System_Ext(llm, "LLM Provider", "Used to generate day summaries")
+System_Ext(storage, "Memory + Vector Storage", "Summary markdown and vector index")
+System_Ext(logs, "LLM JSONL Logs", "Per-day conversation logs")
+
+Rel(user, telegram, "Uses")
+Rel(telegram, pa, "Delivers user updates and bot messages")
+Rel(pa, llm, "Requests day summary completion")
+Rel(pa, logs, "Reads previous day logs")
+Rel(pa, storage, "Writes day summary and vector index")
+
+@enduml

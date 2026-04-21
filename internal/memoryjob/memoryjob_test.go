@@ -12,6 +12,8 @@ import (
 	"pa/internal/summarize"
 	"pa/internal/vector"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 )
@@ -39,7 +41,7 @@ func TestRunner_drain_orderLowerPriorityFirst(t *testing.T) {
 	}
 }
 
-// Covers AC-02.016: scheduled summarization (priority 10) is not executed while UserTurnActive; runs after it clears.
+// Covers AC-02.016. Supporting AC-33.007: scheduled summarization (priority 10) is not executed while UserTurnActive; runs after it clears.
 func TestRunner_drain_defersScheduledDuringUserTurn(t *testing.T) {
 	userTurn := true
 	var ran int
@@ -68,7 +70,7 @@ func TestRunner_drain_defersScheduledDuringUserTurn(t *testing.T) {
 	}
 }
 
-// Covers AC-02.016: catch-up priority (5) is not executed while UserTurnActive; runs after it clears.
+// Covers AC-02.016. Supporting AC-33.007: catch-up priority (5) is not executed while UserTurnActive; runs after it clears.
 func TestRunner_drain_defersCatchUpDuringUserTurn(t *testing.T) {
 	userTurn := true
 	var ran int
@@ -385,5 +387,314 @@ func TestRunYear_embedFailsAfterFileWrite_enqueuesReconcileYear(t *testing.T) {
 	want := "reconcile_year:2027"
 	if it.name != want {
 		t.Fatalf("job name = %q, want %q", it.name, want)
+	}
+}
+
+// Covers AC-33.001, AC-33.004, AC-33.007, AC-33.008, AC-33.011. Supporting AC-33.012: retry waits for notBefore and runs in existing queue loop.
+func TestRunner_retryableDayJob_waitsThenRetries(t *testing.T) {
+	baseNow := time.Date(2035, 1, 10, 10, 0, 0, 0, time.UTC)
+	now := baseNow
+	ran := 0
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	targetDay := time.Date(2035, 1, 9, 12, 0, 0, 0, time.UTC)
+	r.enqueueDayRetry(PriorityCatchUp, "catchup_day", targetDay, func(context.Context, time.Time) error {
+		ran++
+		if ran == 1 {
+			return errors.New("timeout from provider")
+		}
+		return nil
+	})
+
+	r.drain(context.Background())
+	if ran != 1 {
+		t.Fatalf("runs after first drain = %d, want 1", ran)
+	}
+	r.drain(context.Background())
+	if ran != 1 {
+		t.Fatalf("runs before notBefore = %d, want 1", ran)
+	}
+	now = now.Add(time.Minute)
+	r.drain(context.Background())
+	if ran != 2 {
+		t.Fatalf("runs after backoff = %d, want 2", ran)
+	}
+}
+
+// Covers AC-33.002, AC-33.005: retries stop after bounded attempt budget.
+func TestRunner_retryableDayJob_exhaustsRetries(t *testing.T) {
+	baseNow := time.Date(2035, 2, 10, 10, 0, 0, 0, time.UTC)
+	now := baseNow
+	ran := 0
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	targetDay := time.Date(2035, 2, 9, 12, 0, 0, 0, time.UTC)
+	r.enqueueDayRetry(PriorityScheduled, "summarize_yesterday", targetDay, func(context.Context, time.Time) error {
+		ran++
+		return errors.New("temporary upstream failure")
+	})
+
+	for i := 0; i < 6; i++ {
+		r.drain(context.Background())
+		now = now.Add(61 * time.Minute)
+	}
+	if ran != 5 {
+		t.Fatalf("runs = %d, want 5 (1 initial + 4 retries)", ran)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.pq.Len() != 0 {
+		t.Fatalf("queue len = %d, want 0 after exhaustion", r.pq.Len())
+	}
+}
+
+type captureSlogHandler struct {
+	mu      sync.Mutex
+	records []capturedSlogRecord
+}
+
+type capturedSlogRecord struct {
+	level slog.Level
+	msg   string
+	attrs map[string]string
+}
+
+func slogAttrString(a slog.Attr) string {
+	switch a.Value.Kind() {
+	case slog.KindInt64:
+		return strconv.FormatInt(a.Value.Int64(), 10)
+	case slog.KindUint64:
+		return strconv.FormatUint(a.Value.Uint64(), 10)
+	case slog.KindDuration:
+		return a.Value.Duration().String()
+	default:
+		return a.Value.String()
+	}
+}
+
+func (h *captureSlogHandler) Enabled(context.Context, slog.Level) bool { return true }
+
+func (h *captureSlogHandler) Handle(_ context.Context, r slog.Record) error {
+	attrs := make(map[string]string)
+	r.Attrs(func(a slog.Attr) bool {
+		attrs[a.Key] = slogAttrString(a)
+		return true
+	})
+	h.mu.Lock()
+	h.records = append(h.records, capturedSlogRecord{
+		level: r.Level,
+		msg:   r.Message,
+		attrs: attrs,
+	})
+	h.mu.Unlock()
+	return nil
+}
+
+func (h *captureSlogHandler) WithAttrs([]slog.Attr) slog.Handler { return h }
+
+func (h *captureSlogHandler) WithGroup(string) slog.Handler { return h }
+
+func retryScheduleWarnsAndExhaustFromRecords(records []capturedSlogRecord) (warns []capturedSlogRecord, exhausted *capturedSlogRecord) {
+	for i := range records {
+		rec := &records[i]
+		if rec.msg == "memory job retry scheduled" && rec.level == slog.LevelWarn {
+			warns = append(warns, *rec)
+		}
+		if rec.msg == "memory job retry exhausted" && rec.level == slog.LevelError {
+			exhausted = rec
+		}
+	}
+	return warns, exhausted
+}
+
+func assertRetryScheduleWarns(t *testing.T, warns []capturedSlogRecord, wantKey string, wantDelays []string) {
+	t.Helper()
+	if len(warns) != len(wantDelays) {
+		t.Fatalf("retry scheduled logs = %d, want %d", len(warns), len(wantDelays))
+	}
+	for i := range warns {
+		w := warns[i]
+		if got := w.attrs["job"]; got != "summarize_yesterday" {
+			t.Fatalf("warn[%d] job = %q", i, got)
+		}
+		if got := w.attrs["key"]; got != wantKey {
+			t.Fatalf("warn[%d] key = %q, want %q", i, got, wantKey)
+		}
+		if got := w.attrs["attempt"]; got != strconv.Itoa(i+1) {
+			t.Fatalf("warn[%d] attempt = %q, want %q", i, got, strconv.Itoa(i+1))
+		}
+		if got := w.attrs["delay"]; got != wantDelays[i] {
+			t.Fatalf("warn[%d] delay = %q, want %q", i, got, wantDelays[i])
+		}
+	}
+}
+
+func assertRetryExhaustLog(t *testing.T, exhausted *capturedSlogRecord, wantKey string) {
+	t.Helper()
+	if exhausted == nil {
+		t.Fatal("expected memory job retry exhausted log")
+	}
+	if got := exhausted.attrs["job"]; got != "summarize_yesterday" {
+		t.Fatalf("exhaust job = %q", got)
+	}
+	if got := exhausted.attrs["key"]; got != wantKey {
+		t.Fatalf("exhaust key = %q, want %q", got, wantKey)
+	}
+	if got := exhausted.attrs["attempts"]; got != "4" {
+		t.Fatalf("exhaust attempts = %q, want 4", got)
+	}
+}
+
+// Covers AC-33.009: retry scheduling and exhaustion emit structured log attributes (job, key, attempt, delay / attempts).
+func TestRunner_retryLogsStructuredWarnAndExhaust(t *testing.T) {
+	cap := &captureSlogHandler{}
+	now := time.Date(2035, 2, 10, 10, 0, 0, 0, time.UTC)
+	ran := 0
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(cap),
+			Loc:    time.UTC,
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	targetDay := time.Date(2035, 2, 9, 12, 0, 0, 0, time.UTC)
+	r.enqueueDayRetry(PriorityScheduled, "summarize_yesterday", targetDay, func(context.Context, time.Time) error {
+		ran++
+		return errors.New("temporary upstream failure")
+	})
+
+	for range 6 {
+		r.drain(context.Background())
+		now = now.Add(61 * time.Minute)
+	}
+	if ran != 5 {
+		t.Fatalf("runs = %d, want 5", ran)
+	}
+
+	cap.mu.Lock()
+	records := append([]capturedSlogRecord(nil), cap.records...)
+	cap.mu.Unlock()
+
+	wantKey := "day:2035-02-09"
+	wantDelays := []string{
+		time.Minute.String(),
+		(5 * time.Minute).String(),
+		(15 * time.Minute).String(),
+		(60 * time.Minute).String(),
+	}
+	warns, exhausted := retryScheduleWarnsAndExhaustFromRecords(records)
+	assertRetryScheduleWarns(t, warns, wantKey, wantDelays)
+	assertRetryExhaustLog(t, exhausted, wantKey)
+}
+
+// Covers AC-33.006: duplicate retry chains for the same day key are not queued.
+func TestRunner_retryDayDedupe_preventsDuplicateQueueEntries(t *testing.T) {
+	var first, second int
+	r := &Runner{
+		deps: Deps{
+			Logger: slog.New(slog.DiscardHandler),
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	targetDay := time.Date(2035, 3, 9, 12, 0, 0, 0, time.UTC)
+	r.enqueueDayRetry(PriorityCatchUp, "catchup_day", targetDay, func(context.Context, time.Time) error {
+		first++
+		return nil
+	})
+	r.enqueueDayRetry(PriorityCatchUp, "summarize_yesterday", targetDay, func(context.Context, time.Time) error {
+		second++
+		return nil
+	})
+	r.drain(context.Background())
+	if first+second != 1 {
+		t.Fatalf("executed jobs = %d, want 1", first+second)
+	}
+}
+
+// Covers AC-33.004. Supporting AC-33.001 and AC-33.002: retries preserve the original day target across midnight.
+func TestRunner_retryPreservesOriginalDayTargetAcrossMidnight(t *testing.T) {
+	now := time.Date(2035, 4, 10, 23, 59, 0, 0, time.UTC)
+	target := time.Date(2035, 4, 9, 12, 0, 0, 0, time.UTC)
+	seen := make([]string, 0, 2)
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+			Loc:    time.UTC,
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	r.enqueueDayRetry(PriorityScheduled, "summarize_yesterday", target, func(ctx context.Context, day time.Time) error {
+		_ = ctx
+		seen = append(seen, day.Format("2006-01-02"))
+		if len(seen) == 1 {
+			return errors.New("timeout")
+		}
+		return nil
+	})
+	r.drain(context.Background())
+	now = now.Add(2 * time.Minute)
+	r.drain(context.Background())
+	if len(seen) != 2 {
+		t.Fatalf("seen runs = %d, want 2", len(seen))
+	}
+	if seen[0] != "2035-04-09" || seen[1] != "2035-04-09" {
+		t.Fatalf("target days = %v, want [2035-04-09 2035-04-09]", seen)
+	}
+}
+
+// Supporting AC-33.006: startup and scheduled enqueue paths dedupe same day target key.
+func TestRunner_startupAndScheduledDaily_shareOneDayKey(t *testing.T) {
+	now := time.Date(2035, 5, 10, 1, 5, 0, 0, time.UTC)
+	r := &Runner{
+		deps: Deps{
+			Now:    func() time.Time { return now },
+			Logger: slog.New(slog.DiscardHandler),
+			Loc:    time.UTC,
+		},
+		wake: make(chan struct{}, 1),
+		done: make(chan struct{}),
+		stop: func() {},
+	}
+	heap.Init(&r.pq)
+	r.enqueueStartup()
+	r.maybeEnqueueDaily(now, time.UTC)
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	dayKeyCount := 0
+	for _, it := range r.pq {
+		if it.key == "day:2035-05-09" {
+			dayKeyCount++
+		}
+	}
+	if dayKeyCount != 1 {
+		t.Fatalf("day key count = %d, want 1", dayKeyCount)
 	}
 }
