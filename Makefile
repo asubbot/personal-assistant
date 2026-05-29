@@ -36,9 +36,10 @@ bin/pa: cmd/pa/main.go
 	@mkdir -p bin
 	go build -o ./bin/pa ./cmd/pa
 
-bin/validate: ai-sdlc/tools/validate/main.go ai-sdlc/tools/validate/output.go ai-sdlc/tools/validate/ast_skip.go ai-sdlc/tools/validate/main_test.go ai-sdlc/tools/validate/policy_nolint_gocyclo.go ai-sdlc/tools/validate/policy_nolint_gocyclo_test.go
+bin/validate:
+	@test -f ai-sdlc/tools/validate/go.mod || (echo "Missing ai-sdlc/: clone https://github.com/asubbot/ai-sdlc at pin in ai-sdlc.version (see README)" >&2; exit 1)
 	@mkdir -p bin
-	go build -o ./bin/validate ./ai-sdlc/tools/validate
+	go build -C ai-sdlc/tools/validate -o $(CURDIR)/bin/validate .
 
 validate: bin/validate
 	@./bin/validate $(filter-out validate,$(MAKECMDGOALS))

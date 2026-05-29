@@ -9,7 +9,7 @@ Go service: Telegram bot, conversation core, long-term memory (markdown), vector
 
 **Documentation:** operator guides live under **[docs/](docs/README.md)** (installation, configuration, Docker, operations, troubleshooting). This README is the short entry point.
 
-**Design and process:** [ai-sdlc/](ai-sdlc/) · epic artefacts [ai-sdlc-artefacts/epics/](ai-sdlc-artefacts/epics/) (e.g. EP-001 MVP, EP-004 tools, EP-006 escalation).
+**Design and process:** nested [ai-sdlc/](ai-sdlc/) clone (pin in [ai-sdlc.version](ai-sdlc.version); not in git — `git clone https://github.com/asubbot/ai-sdlc.git ai-sdlc` then checkout the pin) · epic artefacts [ai-sdlc-artefacts/epics/](ai-sdlc-artefacts/epics/) (e.g. EP-001 MVP, EP-004 tools, EP-006 escalation).
 
 **Requirements:** **Go 1.26+** with **CGO** (SQLite + sqlite-vec). Main config: **`config.json`** inside **`PA_CONFIG_DIR`** (default `./.config`). Copy templates from **`config.examples/`** into **`.config/`** (gitignored). Secrets are **files** referenced from JSON — never commit real tokens or keys.
 

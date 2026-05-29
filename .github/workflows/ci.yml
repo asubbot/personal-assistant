@@ -17,8 +17,32 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      AI_SDLC_REPO: asubbot/ai-sdlc
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify ai-sdlc pin
+        run: |
+          PIN="$(tr -d '[:space:]' < ai-sdlc.version | grep -v '^#' | tail -1)"
+          if git ls-remote "https://github.com/${AI_SDLC_REPO}.git" "refs/tags/${PIN}" | grep -q .; then
+            echo "Tag ${PIN} found"
+          elif git ls-remote "https://github.com/${AI_SDLC_REPO}.git" "${PIN}" | grep -q .; then
+            echo "Commit ${PIN} found"
+          else
+            echo "Pin ${PIN} not found in ${AI_SDLC_REPO}" >&2
+            exit 1
+          fi
+
+      - name: Checkout ai-sdlc at pin
+        run: |
+          PIN="$(tr -d '[:space:]' < ai-sdlc.version | grep -v '^#' | tail -1)"
+          if git ls-remote "https://github.com/${AI_SDLC_REPO}.git" "refs/tags/${PIN}" | grep -q .; then
+            git clone --depth 1 --branch "${PIN}" "https://github.com/${AI_SDLC_REPO}.git" ai-sdlc
+          else
+            git clone "https://github.com/${AI_SDLC_REPO}.git" ai-sdlc
+            git -C ai-sdlc checkout "${PIN}"
+          fi
 
       - uses: actions/setup-go@v5
         with:

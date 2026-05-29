@@ -1,6 +1,6 @@
 # PersonalAssistant — user documentation
 
-Operator-focused guides for installing, configuring, running, and troubleshooting PersonalAssistant. For SDLC and epic artefacts, see the repository root [README.md](../README.md) and [ai-sdlc/](../ai-sdlc/).
+Operator-focused guides for installing, configuring, running, and troubleshooting PersonalAssistant. For SDLC and epic artefacts, see the repository root [README.md](../README.md) and the nested process clone [ai-sdlc/](../ai-sdlc/) (local checkout per [ai-sdlc.version](../ai-sdlc.version)).
 
 | Document | Description |
 |----------|-------------|
