@@ -131,9 +131,7 @@ func (a *paApplication) buildMessageHandler(ctx context.Context, toolRegistry *t
 	}
 	var ti core.ToolIndex = a.infra.ToolIndex
 	var si core.SkillIndex = a.infra.SkillIndex
-	router, err := llmrouter.New(a.llmProviders, a.llmLabels, llmrouter.Config{
-		Escalation: a.cfg.ToolsLLMEscalation(),
-	}, a.logger)
+	router, err := llmrouter.New(a.llmProviders, a.llmLabels, llmrouter.Config{}, a.logger)
 	if err != nil {
 		return nil, err
 	}

@@ -8,11 +8,6 @@
   },
   "tools": {
     "always_include": [],
-    "llm_escalation": {
-      "enabled": true,
-      "max_per_user_message": 2,
-      "baseline_index": 0
-    },
     "create_tool_secret_patterns": [],
     "vector_search_tools": {
       "search_vector_memory": {

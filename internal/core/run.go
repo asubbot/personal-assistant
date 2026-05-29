@@ -49,9 +49,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger, adapter A
 		return fmt.Errorf("core: provider labels length %d != providers length %d", len(providerLabels), len(providers))
 	}
 	redactor := buildRedactor(cfg)
-	router, err := llmrouter.New(providers, providerLabels, llmrouter.Config{
-		Escalation: escalationFromConfig(cfg),
-	}, logger)
+	router, err := llmrouter.New(providers, providerLabels, llmrouter.Config{}, logger)
 	if err != nil {
 		return err
 	}
@@ -112,7 +110,6 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	}
 	h := &conversationHandler{
 		router:                     router,
-		escalation:                 escalationFromConfig(cfg),
 		memVec:                     memVec,
 		embedder:                   embedder,
 		nodeRunner:                 nodeRunner,
@@ -145,10 +142,6 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	return h, nil
 }
 
-func escalationFromConfig(cfg *config.Config) *config.LLMEscalationConfig {
-	return cfg.ToolsLLMEscalation()
-}
-
 func openLLMLogIfConfigured(cfg *config.Config, logger *slog.Logger, redactor func(string) string) (llmlog.Writer, string, error) {
 	if cfg == nil || cfg.Paths.LLMLogDir == "" {
 		return nil, "", nil
@@ -160,11 +153,7 @@ func openLLMLogIfConfigured(cfg *config.Config, logger *slog.Logger, redactor fu
 	}
 	model := ""
 	if len(cfg.LLMProviders) > 0 {
-		idx := 0
-		if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled && esc.BaselineIndex < len(cfg.LLMProviders) {
-			idx = esc.BaselineIndex
-		}
-		model = cfg.LLMProviders[idx].Model
+		model = cfg.LLMProviders[0].Model
 	}
 	return w, model, nil
 }
@@ -173,12 +162,8 @@ func baselineProviderSupportsTools(cfg *config.Config) bool {
 	if cfg == nil {
 		return true
 	}
-	idx := 0
-	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled && esc.BaselineIndex < len(cfg.LLMProviders) {
-		idx = esc.BaselineIndex
-	}
-	if len(cfg.LLMProviders) > idx && cfg.LLMProviders[idx].SupportsTools != nil {
-		return *cfg.LLMProviders[idx].SupportsTools
+	if len(cfg.LLMProviders) > 0 && cfg.LLMProviders[0].SupportsTools != nil {
+		return *cfg.LLMProviders[0].SupportsTools
 	}
 	return true
 }

@@ -8,7 +8,6 @@ import (
 	"os"
 	"pa/internal/allowlist"
 	"pa/internal/config"
-	"pa/internal/core/toolfailure"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -422,78 +421,6 @@ func (m *mockExecutor) Exec(ctx context.Context, nodeID, command string) ([]byte
 	return nil, nil, nil
 }
 
-// Smoke: RunOnNode errors still carry EP-006 escalation typing via escalationpolicy (full matrix in escalationpolicy tests).
-// Covers AC-01.007: traceability for TestRunOnNode_escalationPolicy_smoke.
-func TestRunOnNode_escalationPolicy_smoke(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	allowPath := filepath.Join(dir, "allowlist.txt")
-	if err := os.WriteFile(allowPath, []byte("echo *\n"), 0o600); err != nil {
-		t.Fatalf("write allowlist: %v", err)
-	}
-	cfg := &config.Config{
-		Nodes: map[string]config.Node{
-			"n1": {
-				Host:                 "localhost",
-				DedicatedUser:        "pa",
-				Auth:                 config.NodeAuth{PrivateKeyPath: filepath.Join(dir, "key")},
-				CommandAllowlistPath: allowPath,
-			},
-		},
-	}
-	al, err := allowlist.NewChecker(cfg)
-	if err != nil {
-		t.Fatalf("NewChecker: %v", err)
-	}
-
-	t.Run("empty_NoEscalate", func(t *testing.T) {
-		t.Parallel()
-		r := New(cfg, al, slog.Default())
-		r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
-			t.Fatal("executor must not run")
-			return nil, nil, nil
-		}})
-		_, runErr := r.RunOnNode(context.Background(), "n1", "   ")
-		if runErr == nil {
-			t.Fatal("expected error")
-		}
-		if toolfailure.QualifiesForEscalation(runErr) {
-			t.Fatal("expected NoEscalate for empty command")
-		}
-	})
-
-	t.Run("disallowed_runes_NoEscalate", func(t *testing.T) {
-		t.Parallel()
-		r := New(cfg, al, slog.Default())
-		r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
-			t.Fatal("executor must not run")
-			return nil, nil, nil
-		}})
-		_, runErr := r.RunOnNode(context.Background(), "n1", "echo\thello")
-		if runErr == nil {
-			t.Fatal("expected error")
-		}
-		if toolfailure.QualifiesForEscalation(runErr) {
-			t.Fatal("expected NoEscalate for disallowed runes")
-		}
-	})
-
-	t.Run("executor_error_MayEscalate", func(t *testing.T) {
-		t.Parallel()
-		r := New(cfg, al, slog.Default())
-		r.SetExecutor(&mockExecutor{execFunc: func(context.Context, string, string) ([]byte, []byte, error) {
-			return nil, nil, errors.New("remote exec failed")
-		}})
-		_, runErr := r.RunOnNode(context.Background(), "n1", "echo hello")
-		if runErr == nil {
-			t.Fatal("expected error")
-		}
-		if !toolfailure.QualifiesForEscalation(runErr) {
-			t.Fatal("expected MayEscalate for remote exec failure")
-		}
-	})
-}
-
 // Remote stderr/stdout from the node are appended to the exec error (and logs) so tools and operators see script output.
 // Covers AC-01.007: traceability for TestRunOnNode_execError_includesRemoteStderr.
 func TestRunOnNode_execError_includesRemoteStderr(t *testing.T) {
@@ -530,9 +457,6 @@ func TestRunOnNode_execError_includesRemoteStderr(t *testing.T) {
 	}
 	if !strings.Contains(runErr.Error(), "stderr:") {
 		t.Errorf("error should label stderr; got %v", runErr)
-	}
-	if !toolfailure.QualifiesForEscalation(runErr) {
-		t.Fatal("expected MayEscalate for remote exec failure")
 	}
 }
 

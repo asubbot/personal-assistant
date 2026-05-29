@@ -88,6 +88,8 @@ Run the acceptance check for a selected profile:
 PA_LIST_RESPONSIVENESS_PROFILE=baseline go test -tags=integration ./tests/integration/... -run TestEP019_ListResponsiveness_ProfileAcceptance
 ```
 
-## LLM escalation (optional)
+## LLM provider pool and transport fallback
 
-When `tools.llm_escalation.enabled` is true, startup logs include an `llm escalation` line with baseline index/model. When disabled, a single `llm model` line is logged for the first provider.
+At startup the process logs a single **`llm model`** line with the model id from the first `llm_providers` entry (index **0**). Main chat and summarization both start each `Complete` at that index.
+
+When **two or more** providers are configured, `internal/llmrouter` may switch to the next pool entry on retryable transport errors (network, timeout, HTTP 5xx). Tool execution failures do not change the active provider. See [llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md).

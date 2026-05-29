@@ -35,7 +35,6 @@ func TestLogEvent_emitsStructuredRoutingLine(t *testing.T) {
 		FromIndex:         0,
 		ToIndex:           1,
 		Attempt:           1,
-		EscalationsUsed:   0,
 		FromProviderLabel: "a/m0",
 		ProviderLabel:     "b/m1",
 	})

@@ -8,7 +8,7 @@ Use **symptom → check → fix**. Prefer `./pa` with `PA_LOG_LEVEL=debug` only 
 |-------|--------|
 | `PA_CONFIG_DIR` wrong | Ensure the directory exists and contains **`config.json`**. |
 | JSON invalid | Validate JSON; compare with [config.examples/config.example.json](../config.examples/config.example.json). |
-| Validation error message | Read the error: escalation rules, missing paths, `llm_log_retention_days` &lt; 1, unsupported legacy scheduler fields, tool catalog errors, etc. Fix config per [configuration.md](configuration.md). |
+| Validation error message | Read the error: missing paths, `llm_log_retention_days` &lt; 1, unsupported legacy keys (e.g. removed scheduler or `tools.llm_escalation` fields), tool catalog errors, etc. Fix config per [configuration.md](configuration.md). |
 
 ## Telegram / bot does not respond
 
@@ -59,6 +59,6 @@ When you run `go build`, `go run ./cmd/pa`, or similar, Clang may warn from **`g
 | LLM / embedding | `-summarize` uses configured providers; API keys and network must work. |
 | Logs | `docker compose logs pa` — cron runs `/pa -summarize=...` via `summarize.sh` with retries. |
 
-## Escalation-related config rejected at startup
+## Legacy `tools.llm_escalation` rejected at startup
 
-When `tools.llm_escalation.enabled` is true: require **≥ 2** `llm_providers`, valid `baseline_index`, and **`max_per_user_message` ≥ 1**. Disable escalation or fix values.
+Tool-path LLM escalation was removed (EP-034). If `config.json` still contains a `tools.llm_escalation` block, config load fails with an explicit rejection message. Remove the block entirely; multi-provider **transport fallback** needs only an ordered `llm_providers` list with two or more entries. See [llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md).

@@ -7,7 +7,7 @@ import (
 	"pa/internal/llm"
 )
 
-// Router unifies transport fallback and escalation-state transitions.
+// Router runs transport fallback across configured providers.
 type Router struct {
 	providers []llm.Provider
 	labels    []string
@@ -29,13 +29,9 @@ func New(providers []llm.Provider, labels []string, cfg Config, logger *slog.Log
 	return &Router{providers: providers, labels: labels, cfg: cfg, logger: logger}, nil
 }
 
-// NewState returns initial routing state for a new user turn.
+// NewState returns initial routing state for a new user turn (always provider index 0).
 func (r *Router) NewState() *State {
-	st := &State{ActiveIndex: 0, EscUsed: 0}
-	if r.cfg.Escalation != nil && r.cfg.Escalation.Enabled {
-		st.ActiveIndex = r.cfg.Escalation.BaselineIndex
-	}
-	return st
+	return &State{ActiveIndex: 0}
 }
 
 func (r *Router) providerLabel(idx int) string {
@@ -52,7 +48,7 @@ func (r *Router) maxAttempts() int {
 	return len(r.providers) + 2
 }
 
-// Complete runs one LLM completion with policy-based provider switching on retryable transport failures.
+// Complete runs one LLM completion with transport-based provider switching on retryable errors.
 func (r *Router) Complete(ctx context.Context, st *State, messages []llm.Message, opts *llm.CompletionOptions, onEvent func(Event)) (*llm.CompletionResult, error) {
 	if st == nil {
 		return nil, fmt.Errorf("llmrouter: state is nil")
@@ -69,7 +65,6 @@ func (r *Router) Complete(ctx context.Context, st *State, messages []llm.Message
 				FromIndex:         idx,
 				ToIndex:           idx,
 				Attempt:           attempt,
-				EscalationsUsed:   st.EscUsed,
 				FromProviderLabel: r.providerLabel(idx),
 				ProviderLabel:     r.providerLabel(idx),
 			}
@@ -100,7 +95,6 @@ func (r *Router) Complete(ctx context.Context, st *State, messages []llm.Message
 			FromIndex:         from,
 			ToIndex:           to,
 			Attempt:           attempt,
-			EscalationsUsed:   st.EscUsed,
 			FromProviderLabel: r.providerLabel(from),
 			ProviderLabel:     r.providerLabel(to),
 		}
@@ -111,38 +105,4 @@ func (r *Router) Complete(ctx context.Context, st *State, messages []llm.Message
 			return nil, err
 		}
 	}
-}
-
-// OnQualifyingFailure applies policy escalation for qualifying tool failures.
-func (r *Router) OnQualifyingFailure(st *State, phase Phase, failureClass string, onEvent func(Event)) bool {
-	if st == nil {
-		return false
-	}
-	enabled := r.cfg.Escalation != nil && r.cfg.Escalation.Enabled
-	maxEsc := 0
-	if r.cfg.Escalation != nil {
-		maxEsc = r.cfg.Escalation.MaxPerUserMessage
-	}
-	from := st.ActiveIndex
-	action := DecideToolFailure(st, enabled, maxEsc, st.ActiveIndex+1 < len(r.providers))
-	to := from
-	if action == ActionEscalatePolicy {
-		st.ActiveIndex++
-		st.EscUsed++
-		to = st.ActiveIndex
-	}
-	e := Event{
-		Phase:             phase,
-		FailureClass:      failureClass,
-		Action:            action,
-		FromIndex:         from,
-		ToIndex:           to,
-		EscalationsUsed:   st.EscUsed,
-		FromProviderLabel: r.providerLabel(from),
-		ProviderLabel:     r.providerLabel(to),
-	}
-	if onEvent != nil {
-		onEvent(e)
-	}
-	return action == ActionEscalatePolicy
 }

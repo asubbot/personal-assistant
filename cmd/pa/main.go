@@ -63,7 +63,7 @@ func buildAppLLM(cfg *config.Config, logger *slog.Logger) ([]llm.Provider, []str
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	summarizeLLM, err := llmrouter.NewProviderAdapter(providers, labels, llmrouter.SummarizeRouterConfig(cfg), logger)
+	summarizeLLM, err := llmrouter.NewProviderAdapter(providers, labels, llmrouter.SummarizeRouterConfig(), logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -223,12 +223,8 @@ func baselineProviderSupportsTools(cfg *config.Config) bool {
 	if cfg == nil {
 		return true
 	}
-	idx := 0
-	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled && esc.BaselineIndex < len(cfg.LLMProviders) {
-		idx = esc.BaselineIndex
-	}
-	if len(cfg.LLMProviders) > idx && cfg.LLMProviders[idx].SupportsTools != nil {
-		return *cfg.LLMProviders[idx].SupportsTools
+	if len(cfg.LLMProviders) > 0 && cfg.LLMProviders[0].SupportsTools != nil {
+		return *cfg.LLMProviders[0].SupportsTools
 	}
 	return true
 }
@@ -247,20 +243,12 @@ func warnBaselineOmitsNativeToolsWithCatalog(cfg *config.Config, logger *slog.Lo
 	logger.Warn("native tool calling is disabled for the baseline LLM (supports_tools false) while the tool catalog defines tools; conversation tools will not run in completion requests")
 }
 
-// mainConversationModelName returns the configured chat model id for the active baseline provider
-// (first provider, or tools.llm_escalation.baseline_index when escalation is enabled).
+// mainConversationModelName returns the configured chat model id for the first llm_providers entry.
 func mainConversationModelName(cfg *config.Config) string {
 	if cfg == nil || len(cfg.LLMProviders) == 0 {
 		return "unknown"
 	}
-	idx := 0
-	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled {
-		bi := esc.BaselineIndex
-		if bi >= 0 && bi < len(cfg.LLMProviders) {
-			idx = bi
-		}
-	}
-	m := cfg.LLMProviders[idx].Model
+	m := cfg.LLMProviders[0].Model
 	if m == "" {
 		return "default"
 	}
@@ -269,11 +257,6 @@ func mainConversationModelName(cfg *config.Config) string {
 
 func logLLMStartupInfo(cfg *config.Config, logger *slog.Logger) {
 	model := mainConversationModelName(cfg)
-	if esc := cfg.ToolsLLMEscalation(); esc != nil && esc.Enabled {
-		bi := esc.BaselineIndex
-		logger.Info("llm escalation", "enabled", true, "baseline_index", bi, "model", model)
-		return
-	}
 	logger.Info("llm model", "model", model)
 }
 

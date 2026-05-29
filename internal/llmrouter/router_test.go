@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net"
-	"pa/internal/config"
 	"pa/internal/llm"
 	"strings"
 	"testing"
@@ -21,40 +20,7 @@ func (p *testProvider) Complete(_ context.Context, _ []llm.Message, _ *llm.Compl
 	return p.result, p.err
 }
 
-// EP-006: transport fallback in Complete must not consume policy escalation budget (EscUsed).
-// Covers AC-01.001: traceability for TestComplete_transportRetry_doesNotIncrementEscUsed_withEscalationConfigured.
-func TestComplete_transportRetry_doesNotIncrementEscUsed_withEscalationConfigured(t *testing.T) {
-	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
-	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
-	r, err := New(
-		[]llm.Provider{p0, p1},
-		[]string{"a/m0", "b/m1"},
-		Config{Escalation: &config.LLMEscalationConfig{Enabled: true, BaselineIndex: 0, MaxPerUserMessage: 3}},
-		nil,
-	)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	st := r.NewState()
-	if st.EscUsed != 0 {
-		t.Fatalf("initial EscUsed = %d, want 0", st.EscUsed)
-	}
-	result, err := r.Complete(context.Background(), st, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("Complete: %v", err)
-	}
-	if result.Content != "ok" {
-		t.Errorf("content = %q", result.Content)
-	}
-	if st.ActiveIndex != 1 {
-		t.Errorf("ActiveIndex = %d, want 1 (switched for transport)", st.ActiveIndex)
-	}
-	if st.EscUsed != 0 {
-		t.Errorf("EscUsed = %d after transport switch, want 0 (policy budget untouched)", st.EscUsed)
-	}
-}
-
-// Covers AC-01.001: traceability for TestComplete_retryableFirst_switchesToNext.
+// Covers AC-34.004, AC-34.014
 func TestComplete_retryableFirst_switchesToNext(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -78,7 +44,7 @@ func TestComplete_retryableFirst_switchesToNext(t *testing.T) {
 	}
 }
 
-// Covers AC-01.001: traceability for TestComplete_nonRetryable_stopsImmediately.
+// Covers AC-34.004
 func TestComplete_nonRetryable_stopsImmediately(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 401, Err: errors.New("unauthorized")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -96,36 +62,7 @@ func TestComplete_nonRetryable_stopsImmediately(t *testing.T) {
 	}
 }
 
-// Covers AC-01.001: traceability for TestOnQualifyingFailure_respectsEscalationCap.
-func TestOnQualifyingFailure_respectsEscalationCap(t *testing.T) {
-	p0 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
-	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
-	p2 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
-	r, err := New(
-		[]llm.Provider{p0, p1, p2},
-		[]string{"a/m0", "b/m1", "c/m2"},
-		Config{Escalation: &config.LLMEscalationConfig{Enabled: true, BaselineIndex: 0, MaxPerUserMessage: 1}},
-		nil,
-	)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	st := r.NewState()
-	if !r.OnQualifyingFailure(st, PhaseToolFailure, "tool_execution", nil) {
-		t.Fatal("expected first qualifying failure to escalate")
-	}
-	if st.ActiveIndex != 1 || st.EscUsed != 1 {
-		t.Errorf("state after first escalate = %+v, want index=1 esc=1", *st)
-	}
-	if r.OnQualifyingFailure(st, PhaseToolFailure, "tool_execution", nil) {
-		t.Fatal("expected second qualifying failure to stop at cap")
-	}
-	if st.ActiveIndex != 1 || st.EscUsed != 1 {
-		t.Errorf("state after second attempt = %+v, want unchanged", *st)
-	}
-}
-
-// Covers AC-01.001: traceability for TestComplete_nilState_returnsError.
+// Covers AC-34.004
 func TestComplete_nilState_returnsError(t *testing.T) {
 	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	r, err := New([]llm.Provider{p}, []string{"a/m0"}, Config{}, nil)
@@ -138,7 +75,7 @@ func TestComplete_nilState_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-01.001: traceability for TestComplete_outOfRangeStateIndex_returnsError.
+// Covers AC-34.004
 func TestComplete_outOfRangeStateIndex_returnsError(t *testing.T) {
 	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
 	r, err := New([]llm.Provider{p}, []string{"a/m0"}, Config{}, nil)
@@ -151,7 +88,7 @@ func TestComplete_outOfRangeStateIndex_returnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-01.001: traceability for TestComplete_maxAttemptsExceeded_stopsDeterministically.
+// Covers AC-34.004
 func TestComplete_maxAttemptsExceeded_stopsDeterministically(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}
 	p1 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}
@@ -180,7 +117,7 @@ func TestComplete_maxAttemptsExceeded_stopsDeterministically(t *testing.T) {
 	}
 }
 
-// Covers AC-01.001: traceability for TestComplete_emitsSwitchEventPayload.
+// Covers AC-34.004
 func TestComplete_emitsSwitchEventPayload(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -207,36 +144,6 @@ func TestComplete_emitsSwitchEventPayload(t *testing.T) {
 	}
 }
 
-// Covers AC-01.001: traceability for TestOnQualifyingFailure_nilState_returnsFalse.
-func TestOnQualifyingFailure_nilState_returnsFalse(t *testing.T) {
-	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
-	r, err := New([]llm.Provider{p}, []string{"a/m0"}, Config{}, nil)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	if r.OnQualifyingFailure(nil, PhaseToolFailure, "x", nil) {
-		t.Fatal("expected false for nil state")
-	}
-}
-
-// Covers AC-01.001: traceability for TestOnQualifyingFailure_noNextProvider_returnsFalse.
-func TestOnQualifyingFailure_noNextProvider_returnsFalse(t *testing.T) {
-	p := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
-	r, err := New(
-		[]llm.Provider{p},
-		[]string{"a/m0"},
-		Config{Escalation: &config.LLMEscalationConfig{Enabled: true, BaselineIndex: 0, MaxPerUserMessage: 2}},
-		nil,
-	)
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	st := r.NewState()
-	if r.OnQualifyingFailure(st, PhaseToolFailure, "tool_execution", nil) {
-		t.Fatal("expected false when no next provider")
-	}
-}
-
 type fakeNetErr struct{}
 
 func (fakeNetErr) Error() string   { return "net" }
@@ -245,7 +152,7 @@ func (fakeNetErr) Temporary() bool { return true }
 
 var _ net.Error = fakeNetErr{}
 
-// Covers AC-01.001: traceability for TestClassifyCompleteError_networkAndTimeout.
+// Covers AC-34.004
 func TestClassifyCompleteError_networkAndTimeout(t *testing.T) {
 	if got := ClassifyCompleteError(fakeNetErr{}); got != FailureClassTransportNetwork {
 		t.Errorf("network class = %s", got)
@@ -255,43 +162,29 @@ func TestClassifyCompleteError_networkAndTimeout(t *testing.T) {
 	}
 }
 
-// Covers AC-01.001: traceability for TestDecideToolFailure_matrix.
-func TestDecideToolFailure_matrix(t *testing.T) {
-	st := &State{ActiveIndex: 0, EscUsed: 0}
-	if got := DecideToolFailure(st, false, 2, true); got != ActionStop {
-		t.Errorf("disabled = %s", got)
-	}
-	if got := DecideToolFailure(st, true, 0, true); got != ActionStop {
-		t.Errorf("max0 = %s", got)
-	}
-	if got := DecideToolFailure(st, true, 2, false); got != ActionStop {
-		t.Errorf("no next = %s", got)
-	}
-	if got := DecideToolFailure(st, true, 2, true); got != ActionEscalatePolicy {
-		t.Errorf("eligible = %s", got)
-	}
-}
-
-// Covers AC-01.001: traceability for TestNewState_usesConfiguredBaseline.
-func TestNewState_usesConfiguredBaseline(t *testing.T) {
-	p0 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
+// Covers AC-34.006
+func TestNewState_alwaysStartsAtZero(t *testing.T) {
+	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("overloaded")}}
 	p1 := &testProvider{result: &llm.CompletionResult{Content: "ok"}}
-	r, err := New(
-		[]llm.Provider{p0, p1},
-		[]string{"a/m0", "b/m1"},
-		Config{Escalation: &config.LLMEscalationConfig{Enabled: true, BaselineIndex: 1, MaxPerUserMessage: 2}},
-		nil,
-	)
+	r, err := New([]llm.Provider{p0, p1}, []string{"a/m0", "b/m1"}, Config{}, nil)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	st := r.NewState()
+	_, err = r.Complete(context.Background(), st, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("first Complete: %v", err)
+	}
 	if st.ActiveIndex != 1 {
-		t.Errorf("baseline state index = %d, want 1", st.ActiveIndex)
+		t.Fatalf("after transport fallback ActiveIndex = %d, want 1", st.ActiveIndex)
+	}
+	st2 := r.NewState()
+	if st2.ActiveIndex != 0 {
+		t.Errorf("new turn ActiveIndex = %d, want 0", st2.ActiveIndex)
 	}
 }
 
-// Covers AC-01.001: traceability for TestComplete_wrapsExceededAttemptsErrorText.
+// Covers AC-34.004
 func TestComplete_wrapsExceededAttemptsErrorText(t *testing.T) {
 	p0 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}
 	p1 := &testProvider{err: &llm.APIError{StatusCode: 503, Err: errors.New("down")}}

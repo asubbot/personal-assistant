@@ -1,0 +1,26 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title EP-034 Remove tool-path LLM escalation - C4 Containers
+
+Person(user, "User", "Telegram user")
+System_Boundary(pa, "PersonalAssistant") {
+  Container(tg, "telegram.Adapter", "Go", "Transport")
+  Container(core, "core.conversationHandler", "Go", "Orchestration; no escalation state")
+  Container(router, "llmrouter.Router", "Go", "Transport fallback only")
+  Container(tools, "tools + noderunner", "Go", "Tool execution; plain errors")
+  Container(cfg, "config.Load", "Go", "No tools.llm_escalation")
+}
+System_Ext(llm, "LLM providers", "Ordered pool")
+System_Ext(nodes, "SSH nodes", "Remote exec")
+
+Rel(user, tg, "Messages")
+Rel(tg, core, "HandleMessage")
+Rel(core, router, "Complete")
+Rel(router, llm, "HTTP")
+Rel(core, tools, "tool_calls")
+Rel(tools, nodes, "SSH")
+Rel(cfg, core, "wiring")
+Rel(cfg, router, "provider list")
+
+@enduml
