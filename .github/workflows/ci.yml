@@ -60,10 +60,16 @@ jobs:
       - name: Add Go bin to PATH
         run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: make check
+      - name: Build validate binary
+        run: make build
+
+      - name: Product check gate
         env:
           CGO_ENABLED: "1"
         run: make check
+
+      - name: Product validate gate
+        run: make validate
 
       - name: Coverage summary
         run: |

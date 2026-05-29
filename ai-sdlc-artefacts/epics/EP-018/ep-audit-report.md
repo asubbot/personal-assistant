@@ -60,7 +60,7 @@ Checkpoints A–D: **all satisfied** (see implementation plan).
 | [AC-18.018](ep-acceptance-criteria.md#ac-18-018) | [REQ-18.018](ep-requirements.md#req-18-018) | ✓ | — | — | — | `internal/core/handler_ep018_test.go` |
 | [AC-18.019](ep-acceptance-criteria.md#ac-18-019) | [REQ-18.019](ep-requirements.md#req-18-019) | ✓ | — | — | — | `internal/config/ep018_dynamic_tools_test.go`, `internal/core/dynamic_tool_selection_test.go` |
 | [AC-18.020](ep-acceptance-criteria.md#ac-18-020) | [REQ-18.004](ep-requirements.md#req-18-004), [REQ-18.006](ep-requirements.md#req-18-006), [REQ-18.013](ep-requirements.md#req-18-013) | ✓ | — | — | — | `internal/core/handler_ep018_test.go` |
-| [AC-18.021](ep-acceptance-criteria.md#ac-18-021) | [REQ-18.020](ep-requirements.md#req-18-020), [REQ-18.021](ep-requirements.md#req-18-021) | ✓ | — | — | — | `internal/core/handler_ep018_coverage_test.go` (`go run` validate) |
+| [AC-18.021](ep-acceptance-criteria.md#ac-18-021) | [REQ-18.020](ep-requirements.md#req-18-020), [REQ-18.021](ep-requirements.md#req-18-021) | ✓ | — | — | — | `internal/core/handler_ep018_coverage_test.go` (`./bin/validate EP-018`) |
 
 **Notes:** “Unit” here means package tests under `internal/` and `cmd/` per [strategy.md](../../strategy.md). AC-18.016 is explicitly traced as manual-only (pre-selection disabled + fallback list).
 

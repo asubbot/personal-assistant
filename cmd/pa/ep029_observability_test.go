@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/llm"
+	"pa/internal/testutil"
 	"pa/internal/toolindex"
 	"path/filepath"
 	"strings"
@@ -157,15 +157,10 @@ func TestEP029_operatorObservabilityDoc(t *testing.T) {
 	}
 }
 
-// Covers AC-29.008. Supporting full gate: `make check` in CI.
+// Covers AC-29.008. Entrypoint: ./bin/validate EP-029 (via testutil.EnsureValidator).
 func TestEP029_validateCommandExitZero(t *testing.T) {
 	root := repoRoot(t)
-	cmd := exec.CommandContext(context.Background(), "go", "run", "./ai-sdlc/tools/validate", "EP-029")
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("validate EP-029: %v\n%s", err, out)
-	}
+	testutil.RunValidateEpic(t, root, "EP-029")
 }
 
 // Covers AC-29.003: readiness is not OK while the tool index is still building.

@@ -131,7 +131,7 @@ THE operator documentation under `docs/` SHALL describe how to configure `observ
 *REQ-29.008*
 
 **REQ-29.008** (NFR)  
-THE change set SHALL pass `make check` from the repository root, and AC validation for EP-029 SHALL succeed via the same validate tool entrypoint used in CI (`go run ./ai-sdlc/tools/validate EP-029`, or equivalently `./bin/validate EP-029` after `make build`).
+THE change set SHALL pass `make check` from the repository root, and AC validation for EP-029 SHALL succeed via `./bin/validate EP-029` after `make build` from the repository root.
 
 ---
 

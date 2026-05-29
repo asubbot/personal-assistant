@@ -97,6 +97,6 @@ Then the document describes `observability_http`, example Docker `HEALTHCHECK` u
 
 Given `cmd/pa` tests  
 When `TestEP029_validateCommandExitZero` runs (as part of `go test ./cmd/pa` inside `make check`)  
-Then it executes the repository validate entrypoint for **EP-029** with exit status zero (same logic as `go run ./ai-sdlc/tools/validate EP-029`).
+Then `./bin/validate EP-029` exits zero from the repository root (via `RunValidateEpic` / `EnsureValidator`, which builds `bin/validate` if missing).
 
-Supporting verification for operators and release tags: from the repository root, `make check` exits zero, and `make build && ./bin/validate EP-029` exits zero when the `bin/validate` helper is built.
+Supporting verification for operators and release tags: from the repository root, `make check` exits zero, and `make build && ./bin/validate EP-029` exits zero.
