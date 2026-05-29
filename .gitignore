@@ -1,3 +1,6 @@
+# ai-sdlc nested repo
+ai-sdlc/
+
 # Go
 *.out
 coverage.html

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"pa/internal/config"
 	"pa/internal/intent"
 	"pa/internal/llm"
 	"pa/internal/runtimeskills"
+	"pa/internal/testutil"
 	"pa/internal/toolcatalog"
 	"pa/internal/vector"
 	"path/filepath"
@@ -313,13 +313,8 @@ func TestEP018_manual_note_toolPreSelectionFallbackDeferredToOperator(t *testing
 	// Behaviour is specified in ep-requirements / ep-system-design; automated path shares mergeSelectedToolIDs with full tier.
 }
 
-// Covers AC-18.021
+// Covers AC-18.021. Entrypoint: ./bin/validate EP-018 (via testutil.EnsureValidator).
 func TestEP018_validateCommandExitZero(t *testing.T) {
 	root := moduleRootDir(t)
-	cmd := exec.CommandContext(context.Background(), "go", "run", "./ai-sdlc/tools/validate", "EP-018")
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("validate EP-018: %v\n%s", err, out)
-	}
+	testutil.RunValidateEpic(t, root, "EP-018")
 }

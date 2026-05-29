@@ -14,6 +14,23 @@ cd PersonalAssistant
 go mod tidy
 ```
 
+## Agentic SDLC process clone (contributors only)
+
+Required before **`make build`**, **`make check`**, or **`make validate`** (CI runs the same three gates). **Not** required for operator install below (`go build -o pa ./cmd/pa` / `./pa`).
+
+The canonical process lives in [github.com/asubbot/ai-sdlc](https://github.com/asubbot/ai-sdlc). One-time setup from the product repository root (pin: last non-comment line in [`ai-sdlc.version`](../ai-sdlc.version), same extraction as [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)):
+
+```bash
+git clone https://github.com/asubbot/ai-sdlc.git ai-sdlc
+git -C ai-sdlc checkout "$(grep -v '^#' ai-sdlc.version | tail -1 | tr -d '[:space:]')"
+```
+
+Works for **tags and full commit SHAs** in [`ai-sdlc.version`](../ai-sdlc.version) (full clone + checkout; CI may use shallow `--branch` for tags only).
+
+After a pin bump: `git -C ai-sdlc fetch && git -C ai-sdlc checkout <pin>`. Do **not** commit `ai-sdlc/` — it is listed in [`.gitignore`](../.gitignore).
+
+After checkout: process index at [`ai-sdlc/README.md`](../ai-sdlc/README.md); agents see [AGENTS.md](../AGENTS.md).
+
 ## Local environment file (optional)
 
 ```bash
@@ -55,10 +72,15 @@ Or set the same variables in `.env` and run `./pa` from a shell where they are e
 
 ## Contributors: full code quality gate (not installation)
 
+Requires nested **`ai-sdlc/`** checkout at the pin in **`ai-sdlc.version`** (see [Agentic SDLC process clone](#agentic-sdlc-process-clone-contributors-only)).
+
+Gate order (matches CI): clone process → **`make build`** → **`make check`** → **`make validate`**.
+
 **`make check` does not install or deploy PersonalAssistant.** It runs the full automated verification of the **source tree**, in order: `go fmt`, `go vet`, `golangci-lint` (with the integration build tag), **`go test -race -tags=integration ./...`** (race detector; slower than plain tests), **`go test` with coverage** across `./...`, and the **module-boundaries** script.
 
 ```bash
 make check
+make validate
 ```
 
 For a **non-race** test run (e.g. faster local iteration), use `make test`. For integration tests only: `make test-integration`.
