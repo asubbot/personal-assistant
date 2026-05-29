@@ -164,15 +164,7 @@ type ConversationSessionConfig struct {
 	MaxSessionExchanges int  `json:"max_session_exchanges"`
 }
 
-// LLMEscalationConfig enables tool-driven escalation along llm_providers order (REQ-06.002). JSON: tools.llm_escalation.
-// When Enabled is true, MaxPerUserMessage must be >= 1 at load (zero would disable policy escalation and is rejected as a misconfiguration).
-type LLMEscalationConfig struct {
-	Enabled           bool `json:"enabled"`
-	MaxPerUserMessage int  `json:"max_per_user_message"`
-	BaselineIndex     int  `json:"baseline_index"`
-}
-
-// ToolsConfig holds optional tool-invocation settings (REQ-04.030) and tools.llm_escalation (EP-006).
+// ToolsConfig holds optional tool-invocation settings (REQ-04.030).
 type ToolsConfig struct {
 	// AlwaysInclude lists catalog or allowed-native tool ids merged into every turn’s tool set (EP-013, REQ-13.011).
 	AlwaysInclude []string `json:"always_include,omitempty"`
@@ -181,8 +173,7 @@ type ToolsConfig struct {
 	// VectorSearchTools is optional (EP-032). When set, configures search_vector_memory/search_vector_tool/search_vector_skill in one block.
 	VectorSearchTools *VectorSearchToolsConfig `json:"vector_search_tools,omitempty"`
 	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
-	CreateToolSecretPatterns []string             `json:"create_tool_secret_patterns,omitempty"`
-	LLMEscalation            *LLMEscalationConfig `json:"llm_escalation,omitempty"`
+	CreateToolSecretPatterns []string `json:"create_tool_secret_patterns,omitempty"`
 }
 
 // ToolDynamicSelection configures EP-018 dynamic narrowing of the main LLM tool list.
@@ -190,14 +181,6 @@ type ToolsConfig struct {
 type ToolDynamicSelection struct {
 	Enabled               bool `json:"enabled"`
 	MaxToolsForLLMRequest int  `json:"max_tools_for_llm_request"`
-}
-
-// ToolsLLMEscalation returns tools.llm_escalation for EP-006 (nil if tools section or escalation block absent).
-func (c *Config) ToolsLLMEscalation() *LLMEscalationConfig {
-	if c == nil || c.Tools == nil {
-		return nil
-	}
-	return c.Tools.LLMEscalation
 }
 
 // ToolPreSelection holds parameters for tool pre-selection (REQ-04.019, REQ-04.020). Validated at load; no implicit defaults.

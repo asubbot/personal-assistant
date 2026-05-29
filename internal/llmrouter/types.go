@@ -3,7 +3,6 @@ package llmrouter
 import (
 	"context"
 	"log/slog"
-	"pa/internal/config"
 )
 
 // Action is a routing decision outcome.
@@ -12,7 +11,6 @@ type Action string
 const (
 	ActionRetrySame           Action = "retry_same"
 	ActionSwitchNextTransport Action = "switch_next_transport"
-	ActionEscalatePolicy      Action = "escalate_policy"
 	ActionStop                Action = "stop"
 )
 
@@ -32,13 +30,11 @@ type Phase string
 
 const (
 	PhaseCompleteError Phase = "complete_error"
-	PhaseToolFailure   Phase = "tool_failure"
 )
 
-// State is mutable routing state for one user message.
+// State is mutable routing state for one user message (active provider index only).
 type State struct {
 	ActiveIndex int
-	EscUsed     int
 }
 
 // Event is emitted for each routing transition.
@@ -49,14 +45,12 @@ type Event struct {
 	FromIndex         int
 	ToIndex           int
 	Attempt           int
-	EscalationsUsed   int
 	FromProviderLabel string // label at FromIndex (provider before transition)
 	ProviderLabel     string // label at ToIndex after transition (destination; kept name for backward compatibility)
 }
 
 // Config controls unified router behavior.
 type Config struct {
-	Escalation *config.LLMEscalationConfig
 	// MaxAttemptsPerComplete bounds retry/switch loops for one Complete call.
 	// 0 means use router default based on provider count.
 	MaxAttemptsPerComplete int
@@ -71,7 +65,6 @@ func (e Event) LogAttrs() []any {
 		"from_index", e.FromIndex,
 		"to_index", e.ToIndex,
 		"attempt", e.Attempt,
-		"escalations_used", e.EscalationsUsed,
 		"from_provider", e.FromProviderLabel,
 		"provider_label", e.ProviderLabel,
 	}

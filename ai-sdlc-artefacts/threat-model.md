@@ -103,10 +103,9 @@ flowchart TB
 
 ## 6. Security controls (evidence-based)
 
-- **Config fail-fast:** `internal/config/load.go` — validation including `tools.llm_escalation`, paths, tool pre-selection minima, `log_redaction` required.  
+- **Config fail-fast:** `internal/config/load.go` — validation including rejection of removed keys (e.g. `tools.llm_escalation`), paths, tool pre-selection minima, `log_redaction` required.  
 - **Telegram gate:** `internal/telegram/adapter.go` — empty `users_path` → allow-none behaviour (tests document).  
-- **LLM transport:** `internal/llmrouter` — bounded completion attempts; retry only on classified transport failures (`classifier.go`, `policy.go`).  
-- **Tool path typing:** `internal/core/toolfailure`, `internal/escalationpolicy` — escalation decisions use typed errors, not string matching alone.  
+- **LLM transport:** `internal/llmrouter` — bounded completion attempts; retry only on classified transport failures (`classifier.go`, `policy.go`); tool failures do not advance provider index (EP-034).  
 - **Remote exec:** `cmdsafe.ValidateRemoteCommand` in `internal/noderunner/runner.go` (before allowlist + SSH) and `internal/core/handler.go` `executeOneToolCall` (catalog-substituted commands before `RunOnNode`); allowlist check in runner; truncated streams in logs/errors; optional log redactor from `cmd/pa` via `core.BuildLogRedactor`.  
 - **SSH client:** `internal/ssh` — dedicated user model; startup handshake behaviour documented in [operations.md](../docs/operations.md).  
 - **Secrets layout:** [configuration.md](../docs/configuration.md), [docker.md](../docs/docker.md) — file-based secrets, Compose secret mounts.  
@@ -118,7 +117,7 @@ flowchart TB
 
 1. **Trusted user = trusted input to LLM** — No isolation between allowed users beyond shared bot policy (single-tenant mental model).  
 2. **No in-app rate limiting** for messages or tool rounds beyond existing caps (e.g. max tool rounds in handler).  
-3. **Third-party LLM** visibility of prompts, tool outputs, and escalation chain usage.  
+3. **Third-party LLM** visibility of prompts, tool outputs, and multi-provider transport fallback usage.  
 4. **Dependency and supply-chain** risk standard for Go modules and base container images.  
 5. **Absolute paths in config** — Used as-is; Docker mis-mount can break keys or widen exposure if host paths leak into container unintentionally.  
 6. **Scheduler / summarization** paths run with same process privileges and config — compromise of scheduled task definitions file equals behaviour change on load.
@@ -157,7 +156,7 @@ flowchart TB
 | Troubleshooting SSH/tools | [docs/troubleshooting.md](../docs/troubleshooting.md) |
 | Project rules | [AGENTS.md](../AGENTS.md) |
 | Product entry | [README.md](../README.md) |
-| Example epic (tools / escalation context) | [epics/EP-006/ep-scope.md](epics/EP-006/ep-scope.md) |
+| Example epic (historical tool-path escalation; superseded by EP-034) | [epics/EP-006/ep-scope.md](epics/EP-006/ep-scope.md) |
 
 ---
 

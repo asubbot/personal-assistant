@@ -116,8 +116,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"embedding batch_size out of range", "invalid_embedding_batch_size.json", "embedding.batch_size is required and must be between 1 and 1000"},
 		{"missing embedding batch_size", "missing_embedding_batch_size.json", "embedding.batch_size is required and must be between 1 and 1000"},
 		{"missing supports_tools", "missing_supports_tools.json", "supports_tools is required"}, // Covers AC-04.028 (REQ-04.034)
-		{"tools.llm_escalation enabled with one provider", "tools_llm_escalation_enabled_one_provider.json", "tools.llm_escalation.enabled requires at least two llm_providers"},
-		{"tools.llm_escalation enabled max_per_user_message zero", "tools_llm_escalation_max_zero.json", "max_per_user_message must be >= 1 when enabled"},
+		{"tools.llm_escalation rejected", "tools_llm_escalation_rejected.json", "llm_escalation"},
 		{"missing tools section", "missing_tools.json", "top-level key \"tools\""},
 		{"missing read_memory", "missing_read_memory.json", "top-level key \"read_memory\""},
 		{"missing write_memory", "missing_write_memory.json", "top-level key \"write_memory\""},
@@ -432,15 +431,14 @@ func TestDocs_configuration_md_EP030(t *testing.T) {
 	}
 }
 
-// Covers AC-06.002 (REQ-06.002): tools.llm_escalation loads and validates against llm_providers.
-func TestLoad_ToolsLLMEscalation_valid_loads(t *testing.T) {
-	cfg, err := Load(filepath.Join("testdata", "tools_llm_escalation_valid.json"))
-	if err != nil {
-		t.Fatalf("Load: %v", err)
+// Covers AC-34.007 (REQ-34.007): tools.llm_escalation is rejected at load.
+func TestLoad_ToolsLLMEscalation_rejected(t *testing.T) {
+	_, err := Load(filepath.Join("testdata", "tools_llm_escalation_rejected.json"))
+	if err == nil {
+		t.Fatal("Load: expected error, got nil")
 	}
-	esc := cfg.ToolsLLMEscalation()
-	if esc == nil || !esc.Enabled || esc.BaselineIndex != 1 || esc.MaxPerUserMessage != 2 {
-		t.Fatalf("ToolsLLMEscalation = %+v, want enabled=true baseline_index=1 max=2", esc)
+	if !strings.Contains(err.Error(), "llm_escalation") {
+		t.Fatalf("Load: error = %v, want llm_escalation rejection", err)
 	}
 }
 

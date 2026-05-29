@@ -10,9 +10,7 @@ import (
 	"log/slog"
 	"pa/internal/cmdsafe"
 	"pa/internal/config"
-	"pa/internal/core/toolfailure"
 	"pa/internal/embedding"
-	"pa/internal/escalationpolicy"
 	"pa/internal/intent"
 	"pa/internal/llm"
 	"pa/internal/llmlog"
@@ -48,17 +46,10 @@ func genRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-// llmTurnState holds active provider index and escalation count for one user message (EP-006).
-type llmTurnState struct {
-	activeIdx int
-	escUsed   int
-}
-
 // conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-01.006, REQ-01.007, REQ-01.018).
 // Context is built only from vector store (turns and summaries); no full.md day file.
 type conversationHandler struct {
 	router                     *llmrouter.Router
-	escalation                 *config.LLMEscalationConfig
 	memVec                     *MemoryVectors // optional; EP-016 split memory vectors (nil disables retrieval and turn indexing)
 	embedder                   embedding.Embedder
 	nodeRunner                 NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
@@ -110,25 +101,7 @@ func (h *conversationHandler) checkUserMessage(text string) (trimmed string, ear
 	return trimmed, "", false
 }
 
-func (h *conversationHandler) escalationEnabled() bool {
-	if h.escalation == nil || !h.escalation.Enabled {
-		return false
-	}
-	return h.router != nil
-}
-
-func activeIndex(st *llmTurnState) int {
-	if st == nil {
-		return 0
-	}
-	return st.activeIdx
-}
-
 func (h *conversationHandler) onRouteEvent(ctx context.Context, e llmrouter.Event) {
-	if e.Action == llmrouter.ActionEscalatePolicy {
-		h.logger.InfoContext(ctx, "llm tool escalation", e.LogAttrs()...)
-		return
-	}
 	if e.Action == llmrouter.ActionSwitchNextTransport {
 		h.logger.WarnContext(ctx, "llm provider failed, trying next", e.LogAttrs()...)
 		return
@@ -136,34 +109,26 @@ func (h *conversationHandler) onRouteEvent(ctx context.Context, e llmrouter.Even
 	h.logger.WarnContext(ctx, "llm routing stop", e.LogAttrs()...)
 }
 
-func (h *conversationHandler) completeViaRouter(ctx context.Context, st *llmTurnState, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
-	rs := &llmrouter.State{ActiveIndex: 0, EscUsed: 0}
-	if st != nil {
-		rs.ActiveIndex = st.activeIdx
-		rs.EscUsed = st.escUsed
-	}
+func (h *conversationHandler) completeViaRouter(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
+	rs := h.router.NewState()
 	result, err := h.router.Complete(ctx, rs, messages, opts, func(e llmrouter.Event) {
 		h.onRouteEvent(ctx, e)
 	})
-	if st != nil {
-		st.activeIdx = rs.ActiveIndex
-		st.escUsed = rs.EscUsed
-	}
 	if err != nil {
-		h.logger.Error("llm complete", "error", err, "provider_index", activeIndex(st))
+		h.logger.Error("llm complete", "error", err)
 	}
 	return result, err
 }
 
 // completeAt runs Complete through the unified router. usageAcc receives API usage on success when non-nil (EP-015).
-func (h *conversationHandler) completeAt(ctx context.Context, st *llmTurnState, messages []llm.Message, opts *llm.CompletionOptions, usageAcc *usageTurnAcc) (*llm.CompletionResult, error) {
+func (h *conversationHandler) completeAt(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions, usageAcc *usageTurnAcc) (*llm.CompletionResult, error) {
 	if h.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMRequest(ctx, messages)
 	}
 	if h.router == nil {
 		return nil, fmt.Errorf("core: llm router is nil")
 	}
-	result, err := h.completeViaRouter(ctx, st, messages, opts)
+	result, err := h.completeViaRouter(ctx, messages, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -172,30 +137,6 @@ func (h *conversationHandler) completeAt(ctx context.Context, st *llmTurnState, 
 		h.logMainLLMCompletion(ctx, usageAcc.round, len(messages), result)
 	}
 	return result, nil
-}
-
-// failureClass is e.g. tool_execution (REQ-06.010, REQ-06.016).
-func (h *conversationHandler) maybeEscalate(ctx context.Context, st *llmTurnState, hadQualifyingFailure bool, failureClass string) {
-	if st == nil || !h.escalationEnabled() || !hadQualifyingFailure {
-		return
-	}
-	if failureClass == "" {
-		failureClass = "tool_execution"
-	}
-	if st.escUsed >= h.escalation.MaxPerUserMessage {
-		return
-	}
-	if h.router == nil {
-		return
-	}
-	rs := &llmrouter.State{ActiveIndex: st.activeIdx, EscUsed: st.escUsed}
-	escalated := h.router.OnQualifyingFailure(rs, llmrouter.PhaseToolFailure, failureClass, func(e llmrouter.Event) {
-		h.onRouteEvent(ctx, e)
-	})
-	if escalated {
-		st.activeIdx = rs.ActiveIndex
-		st.escUsed = rs.EscUsed
-	}
 }
 
 // systemStaticHead returns the fixed prefix (trust + marker semantics, calendar date, personality).
@@ -216,13 +157,13 @@ func todayCalendarDateInPALocation(h *conversationHandler) string {
 	return time.Now().In(loc).Format("2006-01-02")
 }
 
-func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, sessionKey, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, st *llmTurnState, usageAcc *usageTurnAcc) (string, error) {
+func (h *conversationHandler) finishAfterFirstLLM(ctx context.Context, requestID, sessionKey, userText string, start time.Time, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, usageAcc *usageTurnAcc) (string, error) {
 	if len(result.ToolCalls) == 0 {
 		h.handleLLMSuccess(ctx, requestID, messages, result, userText, time.Since(start))
 		h.appendSessionIfEnabled(sessionKey, userText, result.Content)
 		return result.Content, nil
 	}
-	messages, result, err := h.runToolResultLoop(ctx, messages, result, opts, st, usageAcc)
+	messages, result, err := h.runToolResultLoop(ctx, messages, result, opts, usageAcc)
 	if err != nil {
 		return "", err
 	}
@@ -294,17 +235,12 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 	h.logMainLLMPromptAssembled(ctx, tier, opts, dynamicRan, intentStage)
 	requestID := genRequestID()
 	start := time.Now()
-	var st *llmTurnState
-	if h.router != nil {
-		rs := h.router.NewState()
-		st = &llmTurnState{activeIdx: rs.ActiveIndex, escUsed: rs.EscUsed}
-	}
 	var usageAcc usageTurnAcc
-	result, err := h.completeAt(ctx, st, messages, opts, &usageAcc)
+	result, err := h.completeAt(ctx, messages, opts, &usageAcc)
 	if err != nil {
 		return "", err
 	}
-	reply, err := h.finishAfterFirstLLM(ctx, requestID, sk, userText, start, messages, result, opts, st, &usageAcc)
+	reply, err := h.finishAfterFirstLLM(ctx, requestID, sk, userText, start, messages, result, opts, &usageAcc)
 	if err != nil {
 		return "", err
 	}
@@ -315,14 +251,11 @@ func (h *conversationHandler) HandleMessage(ctx context.Context, userID int64, s
 }
 
 // runToolResultLoop continues until no tool_calls or max rounds (REQ-04.006).
-// st is non-nil when EP-006 escalation is enabled; after a qualifying tool failure the active provider may advance before the next Complete.
-func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, st *llmTurnState, usageAcc *usageTurnAcc) ([]llm.Message, *llm.CompletionResult, error) {
+func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []llm.Message, result *llm.CompletionResult, opts *llm.CompletionOptions, usageAcc *usageTurnAcc) ([]llm.Message, *llm.CompletionResult, error) {
 	for rounds := 1; len(result.ToolCalls) > 0 && rounds < maxToolRounds; rounds++ {
-		var qual bool
-		messages, qual = h.appendToolRound(ctx, messages, result)
-		h.maybeEscalate(ctx, st, qual, "tool_execution")
+		messages = h.appendToolRound(ctx, messages, result)
 		var err error
-		result, err = h.completeAt(ctx, st, messages, opts, usageAcc)
+		result, err = h.completeAt(ctx, messages, opts, usageAcc)
 		if err != nil {
 			h.logger.Error("llm complete", "error", err)
 			return nil, nil, err
@@ -347,17 +280,13 @@ func truncateToolResultForPrompt(content string) string {
 	return fmt.Sprintf("%s\n\n[tool output truncated: %d bytes omitted]", truncated, omitted)
 }
 
-func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult) ([]llm.Message, bool) {
-	qualifyingFailure := false
+func (h *conversationHandler) appendToolRound(ctx context.Context, messages []llm.Message, result *llm.CompletionResult) []llm.Message {
 	messages = append(messages, llm.Message{Role: "assistant", Content: result.Content, ToolCalls: result.ToolCalls})
 	for _, tc := range result.ToolCalls {
 		stdout, execErr := h.executeOneToolCall(ctx, tc.Name, tc.Arguments)
 		content := stdout
 		if execErr != nil {
 			content = execErr.Error()
-			if toolfailure.QualifiesForEscalation(execErr) {
-				qualifyingFailure = true
-			}
 		}
 		if h.logger != nil {
 			argsLog := h.redactLogString(tc.Arguments)
@@ -378,7 +307,7 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 		}
 		messages = append(messages, llm.Message{Role: "tool", Content: truncateToolResultForPrompt(content), ToolCallID: tc.ID})
 	}
-	return messages, qualifyingFailure
+	return messages
 }
 
 // mergeSelectedToolIDs merges tools.always_include, skill-linked, and vector-selected catalog tool ids (EP-013).
@@ -480,20 +409,16 @@ func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, ar
 		if nt, ok := h.nativeRegistry.Get(toolID); ok {
 			params, err := parseToolArgumentsJSON(argsJSON)
 			if err != nil {
-				return "", toolfailure.NoEscalate(err)
+				return "", err
 			}
 			out, err := nt.Run(ctx, params)
 			if err != nil {
-				wrapped := fmt.Errorf("tool %q: %w", toolID, err)
-				if toolID == "create_tool" {
-					return "", toolfailure.NoEscalate(wrapped)
-				}
-				return "", toolfailure.MayEscalate(wrapped)
+				return "", fmt.Errorf("tool %q: %w", toolID, err)
 			}
 			return out, nil
 		}
 	}
-	return "", toolfailure.NoEscalate(fmt.Errorf("tool catalog: unknown tool %q", toolID))
+	return "", fmt.Errorf("tool catalog: unknown tool %q", toolID)
 }
 
 func parseToolArgumentsJSON(argsJSON string) (map[string]any, error) {
@@ -528,20 +453,20 @@ func remoteCommandFromRunOnNodeArgs(toolID, argsJSON string) string {
 func (h *conversationHandler) executeCatalogToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
 	tool, args, err := toolcatalog.ValidateToolCall(h.catalog, toolID, argsJSON)
 	if err != nil {
-		return "", escalationpolicy.WrapCatalogValidateError(err)
+		return "", err
 	}
 	command, err := toolcatalog.Substitute(tool.Template, args)
 	if err != nil {
-		return "", toolfailure.MayEscalate(fmt.Errorf("tool %q: %w", toolID, err))
+		return "", fmt.Errorf("tool %q: %w", toolID, err)
 	}
 	if err := cmdsafe.ValidateRemoteCommand(command); err != nil {
 		if h.logger != nil {
 			h.logger.InfoContext(ctx, "catalog tool remote command rejected", "tool_id", toolID, "node_id", tool.NodeID, "remote_command", h.redactLogString(command), "error", err)
 		}
-		return "", toolfailure.NoEscalate(fmt.Errorf("tool %q: %w", toolID, err))
+		return "", fmt.Errorf("tool %q: %w", toolID, err)
 	}
 	if h.nodeRunner == nil {
-		return "", toolfailure.NoEscalate(fmt.Errorf("tool %q: no node runner configured", toolID))
+		return "", fmt.Errorf("tool %q: no node runner configured", toolID)
 	}
 	return h.nodeRunner.RunOnNode(ctx, tool.NodeID, command)
 }

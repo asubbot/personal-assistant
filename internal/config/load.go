@@ -100,14 +100,31 @@ func rejectRemovedUnsupportedConfigKeys(data []byte) error {
 	if err := json.Unmarshal(data, &root); err != nil {
 		return fmt.Errorf("config: parse: %w", err)
 	}
-	if rawTools, ok := root["tools"]; ok && len(rawTools) > 0 && string(rawTools) != "null" {
-		var tools map[string]json.RawMessage
-		if err := json.Unmarshal(rawTools, &tools); err == nil {
-			if _, has := tools["text_based_enabled"]; has {
-				return errors.New("config: tools.text_based_enabled is not supported; use llm_providers[].supports_tools true for native tool calling")
-			}
+	if rawTools, ok := root["tools"]; ok {
+		if err := rejectRemovedToolsConfigKeys(rawTools); err != nil {
+			return err
 		}
 	}
+	return rejectUnsupportedLLMProviderFields(data)
+}
+
+func rejectRemovedToolsConfigKeys(rawTools json.RawMessage) error {
+	if len(rawTools) == 0 || string(rawTools) == "null" {
+		return nil
+	}
+	var tools map[string]json.RawMessage
+	if err := json.Unmarshal(rawTools, &tools); err == nil {
+		if _, has := tools["text_based_enabled"]; has {
+			return errors.New("config: tools.text_based_enabled is not supported; use llm_providers[].supports_tools true for native tool calling")
+		}
+		if _, has := tools["llm_escalation"]; has {
+			return errors.New("config: tools.llm_escalation is not supported; tool-path LLM escalation was removed (EP-034)")
+		}
+	}
+	return nil
+}
+
+func rejectUnsupportedLLMProviderFields(data []byte) error {
 	var stub struct {
 		LLMProviders []map[string]json.RawMessage `json:"llm_providers"`
 	}
@@ -215,9 +232,6 @@ func validateMandatoryJSONSectionsCore(c *Config) error {
 		return err
 	}
 	if err := validateToolPreSelection(c); err != nil {
-		return err
-	}
-	if err := validateLLMEscalation(c); err != nil {
 		return err
 	}
 	if err := validateWebTools(c); err != nil {
@@ -337,24 +351,6 @@ func compileCreateToolSecretPatterns(c *Config) error {
 		out = append(out, re)
 	}
 	c.CreateToolSecretRegex = out
-	return nil
-}
-
-func validateLLMEscalation(c *Config) error {
-	e := c.ToolsLLMEscalation()
-	if e == nil || !e.Enabled {
-		return nil
-	}
-	n := len(c.LLMProviders)
-	if n < 2 {
-		return errors.New("config: tools.llm_escalation.enabled requires at least two llm_providers")
-	}
-	if e.BaselineIndex < 0 || e.BaselineIndex >= n {
-		return fmt.Errorf("config: tools.llm_escalation.baseline_index must be in [0, %d] (0-based index into llm_providers, count=%d)", n-1, n)
-	}
-	if e.MaxPerUserMessage < 1 {
-		return errors.New("config: tools.llm_escalation.max_per_user_message must be >= 1 when enabled")
-	}
 	return nil
 }
 

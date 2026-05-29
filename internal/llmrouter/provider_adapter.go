@@ -3,7 +3,6 @@ package llmrouter
 import (
 	"context"
 	"log/slog"
-	"pa/internal/config"
 	"pa/internal/llm"
 )
 
@@ -12,7 +11,7 @@ type providerAdapter struct {
 }
 
 // NewProviderAdapter returns an llm.Provider backed by Router transport routing.
-// routerCfg supplies optional Escalation (e.g. tools.llm_escalation): when Enabled, each Complete starts at BaselineIndex like conversation turns; when absent or disabled, starts at index 0. Tool-escalation policy in the same struct is unused here (ProviderAdapter only calls Complete). Pass Config{} for legacy index-0 behavior.
+// Each Complete starts at provider index 0 (routerCfg may set MaxAttemptsPerComplete).
 func NewProviderAdapter(providers []llm.Provider, labels []string, routerCfg Config, logger *slog.Logger) (llm.Provider, error) {
 	r, err := New(providers, labels, routerCfg, logger)
 	if err != nil {
@@ -21,16 +20,9 @@ func NewProviderAdapter(providers []llm.Provider, labels []string, routerCfg Con
 	return &providerAdapter{router: r}, nil
 }
 
-// SummarizeRouterConfig returns llmrouter.Config for summarization (memory job, -summarize): start at tools.llm_escalation.baseline_index when escalation is enabled, else index 0.
-func SummarizeRouterConfig(cfg *config.Config) Config {
-	if cfg == nil {
-		return Config{}
-	}
-	esc := cfg.ToolsLLMEscalation()
-	if esc == nil {
-		return Config{}
-	}
-	return Config{Escalation: esc}
+// SummarizeRouterConfig returns llmrouter.Config for summarization (memory job, -summarize). Always starts at provider index 0 (EP-034).
+func SummarizeRouterConfig() Config {
+	return Config{}
 }
 
 func (p *providerAdapter) Complete(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {

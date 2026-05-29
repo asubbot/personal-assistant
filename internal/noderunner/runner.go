@@ -7,7 +7,6 @@ import (
 	"pa/internal/allowlist"
 	"pa/internal/cmdsafe"
 	"pa/internal/config"
-	"pa/internal/escalationpolicy"
 	"pa/internal/ssh"
 	"strings"
 	"unicode/utf8"
@@ -116,18 +115,8 @@ func ellipsisCommandForError(cmd string) string {
 }
 
 func wrapValidateRemoteCommandOutcome(nodeID, cmd string, err error) error {
-	kind, ok := cmdsafe.RejectKind(err)
 	q := ellipsisCommandForError(cmd)
-	if !ok {
-		// ValidateRemoteCommand returns *CommandValidationError today; if that invariant breaks, map to rune policy so escalation stays conservative.
-		return escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: command validation failed for node %q (attempted: %q): %w", nodeID, q, err))
-	}
-	switch kind {
-	case cmdsafe.CommandRejectShellMeta:
-		return escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeShellMetaRejected, fmt.Errorf("noderunner: command validation failed for node %q (attempted: %q): %w", nodeID, q, err))
-	default:
-		return escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeDisallowedRunes, fmt.Errorf("noderunner: command validation failed for node %q (attempted: %q): %w", nodeID, q, err))
-	}
+	return fmt.Errorf("noderunner: command validation failed for node %q (attempted: %q): %w", nodeID, q, err)
 }
 
 func (r *Runner) logRemoteRejectedEmpty(nodeID string) {
@@ -166,7 +155,7 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 	cmd := strings.TrimSpace(command)
 	if cmd == "" {
 		r.logRemoteRejectedEmpty(nodeID)
-		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeEmptyCommand, fmt.Errorf("noderunner: command is empty"))
+		return "", fmt.Errorf("noderunner: command is empty")
 	}
 	cmdLog := r.redactLogString(cmd)
 	if err := cmdsafe.ValidateRemoteCommand(cmd); err != nil {
@@ -175,11 +164,11 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 	}
 	if r.allowlist == nil {
 		r.logRemoteRejectedAllowlistMissing(nodeID, cmdLog)
-		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeAllowlistNotConfigured, fmt.Errorf("noderunner: allowlist not configured for node %q (attempted: %q)", nodeID, ellipsisCommandForError(cmd)))
+		return "", fmt.Errorf("noderunner: allowlist not configured for node %q (attempted: %q)", nodeID, ellipsisCommandForError(cmd))
 	}
 	if !r.allowlist.Allow(nodeID, cmd) {
 		r.logRemoteRejectedAllowlist(nodeID, cmdLog)
-		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeAllowlistDenied, fmt.Errorf("noderunner: command not allowed for node %q (attempted: %q)", nodeID, ellipsisCommandForError(cmd)))
+		return "", fmt.Errorf("noderunner: command not allowed for node %q (attempted: %q)", nodeID, ellipsisCommandForError(cmd))
 	}
 	r.logRemoteExecStarting(ctx, nodeID, cmdLog)
 	var out, stderr []byte
@@ -189,7 +178,7 @@ func (r *Runner) RunOnNode(ctx context.Context, nodeID, command string) (stdout 
 		client, connErr := ssh.NewClient(ctx, r.cfg, nodeID)
 		if connErr != nil {
 			r.logger.Error("ssh connect", "node_id", nodeID, "error", connErr)
-			return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeRemoteExecFailure, fmt.Errorf("noderunner: ssh: %w", connErr))
+			return "", fmt.Errorf("noderunner: ssh: %w", connErr)
 		}
 		defer func() {
 			if closeErr := client.Close(); closeErr != nil && err == nil {
@@ -209,7 +198,7 @@ func (r *Runner) finishRemoteExec(nodeID, cmd string, out, stderr []byte, execEr
 		logAttrs := appendRemoteStreamAttrs([]any{"node_id", nodeID, "remote_command", r.redactLogString(cmd), "error", execErr}, r.redactLogString(outTrunc), r.redactLogString(errTrunc))
 		r.logger.Error("ssh exec", logAttrs...)
 		detail := remoteStreamsSuffix(outTrunc, errTrunc)
-		return "", escalationpolicy.WrapNodeOutcome(escalationpolicy.NodeOutcomeRemoteExecFailure, fmt.Errorf("noderunner: exec: %w%s", execErr, detail))
+		return "", fmt.Errorf("noderunner: exec: %w%s", execErr, detail)
 	}
 	if len(stderr) > 0 || len(out) > 0 {
 		outTrunc := truncateRemoteStream(out)

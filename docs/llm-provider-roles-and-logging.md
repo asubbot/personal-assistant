@@ -1,6 +1,6 @@
 # LLM provider pool, runtime roles, and application logging
 
-This guide explains how the ordered `llm_providers` list in `config.json` maps to PersonalAssistant runtime roles (main conversation with optional escalation and transport fallback, summarization, and the optional intent classifier), and how `PA_LOG_LEVEL` / `PA_ENV` relate to **application** logs (`slog` on stderr). It does not replace the dedicated JSONL audit stream under `paths.llm_log_dir` when that path is configured.
+This guide explains how the ordered `llm_providers` list in `config.json` maps to PersonalAssistant runtime roles (main conversation with transport fallback, summarization, and the optional intent classifier), and how `PA_LOG_LEVEL` / `PA_ENV` relate to **application** logs (`slog` on stderr). It does not replace the dedicated JSONL audit stream under `paths.llm_log_dir` when that path is configured.
 
 See also [configuration.md](configuration.md) for environment variables and the full configuration overview.
 
@@ -12,16 +12,14 @@ See also [configuration.md](configuration.md) for environment variables and the 
 ## Main conversation (chat replies)
 
 - The **main conversation** path uses `internal/llmrouter.Router` over the same provider instances passed to `core.Run`.
-- **Starting index for each new user turn:**
-  - If `tools.llm_escalation.enabled` is **false** (or the block is absent): the router starts at index **0**.
-  - If escalation is **true**: the router starts at `tools.llm_escalation.baseline_index` (validated at config load to lie within the pool).
-- **Transport fallback:** On certain retryable completion errors, the router may advance to the **next** pool index and retry, up to an internal attempt cap. This is independent of escalation counters; escalation policies still apply on top of the active index.
-- Reordering or inserting entries in `llm_providers` therefore changes which model answers first and which providers participate in fallback.
+- **Starting index for each new user turn:** the router always starts at index **0** (the first `llm_providers` entry).
+- **Transport fallback:** On retryable completion errors (network failures, timeouts, HTTP 5xx from the provider API), the router may advance to the **next** pool index and retry the same `Complete` call, up to an internal attempt cap. Tool execution failures do **not** change the active provider index.
+- Reordering or inserting entries in `llm_providers` therefore changes which model answers first and which providers participate in transport fallback.
 
 ## Summarization (memory jobs and `-summarize`)
 
 - Summarization uses a dedicated adapter built from the **same** `llm_providers` slice.
-- Router configuration follows `SummarizeRouterConfig`: when escalation is enabled, summarization starts at `baseline_index` like the main chat router; otherwise it starts at index **0**.
+- Each summarization `Complete` also starts at index **0** and uses the same transport fallback rules as main chat.
 
 ## Intent classifier (optional, EP-017)
 
@@ -49,25 +47,18 @@ The production `Dockerfile` sets `ENV PA_LOG_LEVEL=info`. Compose uses `PA_LOG_L
 ]
 ```
 
-Main chat and summarization both use index **0** only. Escalation is off unless you add `tools.llm_escalation` with `enabled: true` (which requires at least two providers).
+Main chat and summarization both use index **0** only. Transport fallback has no alternate provider to switch to.
 
-## Example: escalation-enabled pool
+## Example: multi-provider pool with transport fallback
 
 ```json
-"tools": {
-  "llm_escalation": {
-    "enabled": true,
-    "max_per_user_message": 2,
-    "baseline_index": 0
-  }
-},
 "llm_providers": [
   { "type": "ollama", "endpoint": "http://localhost:11434/v1", "model": "llama3:8b", "http_timeout": "120s" },
   { "type": "openai", "endpoint": "https://api.openai.com/v1", "model": "gpt-4o-mini", "http_timeout": "120s" }
 ]
 ```
 
-Each new turn starts at provider **0**. Failed completions that qualify for transport fallback may move to provider **1**. Per-message escalation limits are configured separately (`max_per_user_message`).
+Each new turn starts at provider **0**. If a `Complete` call fails with a retryable transport error, the router may retry on provider **1**. Tool failures during a turn do not advance the provider index.
 
 ## Example: pool with intent classifier enabled
 

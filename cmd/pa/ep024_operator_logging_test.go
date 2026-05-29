@@ -65,15 +65,15 @@ func TestEP024_ProviderRolesDocContent(t *testing.T) {
 	checks := []string{
 		"llm_providers",
 		"zero-based",
-		"baseline_index",
-		"SummarizeRouterConfig",
+		"always starts at index **0**",
+		"transport fallback",
 		"intent_classifier",
 		"model_stage",
 		"not selected by an index",
 		"PA_ENV",
 		"development",
 		"## Example: single-provider",
-		"## Example: escalation-enabled",
+		"## Example: multi-provider pool with transport fallback",
 		"## Example: pool with intent classifier",
 	}
 	for _, sub := range checks {

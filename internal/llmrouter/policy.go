@@ -7,17 +7,3 @@ func DecideCompleteError(class FailureClass, hasNext bool) Action {
 	}
 	return ActionStop
 }
-
-// DecideToolFailure decides whether to escalate after qualifying tool failures.
-func DecideToolFailure(st *State, escalationEnabled bool, maxEsc int, hasNext bool) Action {
-	if st == nil || !escalationEnabled {
-		return ActionStop
-	}
-	if st.EscUsed >= maxEsc {
-		return ActionStop
-	}
-	if !hasNext {
-		return ActionStop
-	}
-	return ActionEscalatePolicy
-}
