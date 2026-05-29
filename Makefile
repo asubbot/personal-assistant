@@ -37,7 +37,7 @@ bin/pa: cmd/pa/main.go
 	go build -o ./bin/pa ./cmd/pa
 
 bin/validate:
-	@test -f ai-sdlc/tools/validate/go.mod || (echo "Missing ai-sdlc/: clone https://github.com/asubbot/ai-sdlc at pin in ai-sdlc.version (see README)" >&2; exit 1)
+	@test -f ai-sdlc/tools/validate/go.mod || (echo "Missing ai-sdlc/: clone https://github.com/asubbot/ai-sdlc at pin in ai-sdlc.version (see docs/installation.md)" >&2; exit 1)
 	@mkdir -p bin
 	go build -C ai-sdlc/tools/validate -o $(CURDIR)/bin/validate .
 

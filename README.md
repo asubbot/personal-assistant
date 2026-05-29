@@ -78,6 +78,8 @@ See [docs/operations.md](docs/operations.md) and [docs/docker.md](docs/docker.md
 
 ## Development
 
+**Prerequisite (contributors):** nested **`ai-sdlc/`** checkout at the pin in [`ai-sdlc.version`](ai-sdlc.version) — see [docs/installation.md#agentic-sdlc-process-clone-contributors-only](docs/installation.md#agentic-sdlc-process-clone-contributors-only). CI performs the same checkout automatically.
+
 **`make check`** does not install the app — it runs the full local **quality gate** on the repo: format, vet, **govulncheck** (known CVEs in module dependencies), lint, **tests with the race detector** (`-race`, integration tag), then a **coverage** pass, and module-boundary checks.
 
 ```bash

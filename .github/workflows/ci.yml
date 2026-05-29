@@ -24,7 +24,7 @@ jobs:
 
       - name: Verify ai-sdlc pin
         run: |
-          PIN="$(tr -d '[:space:]' < ai-sdlc.version | grep -v '^#' | tail -1)"
+          PIN="$(grep -v '^#' ai-sdlc.version | tail -1 | tr -d '[:space:]')"
           if git ls-remote "https://github.com/${AI_SDLC_REPO}.git" "refs/tags/${PIN}" | grep -q .; then
             echo "Tag ${PIN} found"
           elif git ls-remote "https://github.com/${AI_SDLC_REPO}.git" "${PIN}" | grep -q .; then
@@ -36,7 +36,7 @@ jobs:
 
       - name: Checkout ai-sdlc at pin
         run: |
-          PIN="$(tr -d '[:space:]' < ai-sdlc.version | grep -v '^#' | tail -1)"
+          PIN="$(grep -v '^#' ai-sdlc.version | tail -1 | tr -d '[:space:]')"
           if git ls-remote "https://github.com/${AI_SDLC_REPO}.git" "refs/tags/${PIN}" | grep -q .; then
             git clone --depth 1 --branch "${PIN}" "https://github.com/${AI_SDLC_REPO}.git" ai-sdlc
           else

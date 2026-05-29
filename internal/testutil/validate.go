@@ -19,7 +19,7 @@ func EnsureValidator(t *testing.T, root string) {
 
 	modPath := filepath.Join(root, "ai-sdlc", "tools", "validate", "go.mod")
 	if _, err := os.Stat(modPath); err != nil {
-		t.Fatalf("missing ai-sdlc/: clone https://github.com/asubbot/ai-sdlc at pin in ai-sdlc.version (see README)")
+		t.Fatalf("missing ai-sdlc/: clone https://github.com/asubbot/ai-sdlc at pin in ai-sdlc.version (see docs/installation.md)")
 	}
 
 	cmd := exec.CommandContext(context.Background(), "make", "build")
