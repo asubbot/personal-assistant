@@ -151,6 +151,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 }
 
+// Covers AC-01.005: config load rejects unknown top-level keys with a clear error.
 func TestLoad_UnknownTopLevelKey_ReturnsError(t *testing.T) {
 	path := filepath.Join("testdata", "unknown_root_key.json")
 	_, err := Load(path)
