@@ -8,11 +8,10 @@ import (
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/llm"
-	"pa/internal/promptmarkers"
+	"pa/internal/prompt"
 	"pa/internal/runtimeskills"
 	"pa/internal/skillindex"
 	"pa/internal/sqlitepragma"
-	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/vector"
 	"path/filepath"
@@ -83,7 +82,7 @@ func TestRuntimeSkills_handler_injectsPlaybook(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if !strings.Contains(sys, promptmarkers.BeginSkills) || !strings.Contains(sys, "UNIQUE_PLAYBOOK_BODY_RT_SKILLS") {
+	if !strings.Contains(sys, prompt.BeginSkills) || !strings.Contains(sys, "UNIQUE_PLAYBOOK_BODY_RT_SKILLS") {
 		prefix := sys
 		if len(prefix) > 300 {
 			prefix = prefix[:300]
@@ -128,14 +127,16 @@ func TestRuntimeSkills_handler_toolBlocksBeforeRetrievedMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	iTool := strings.Index(sys, promptmarkers.BeginTools)
-	iRet := strings.Index(sys, promptmarkers.BeginContext)
+	iTool := strings.Index(sys, prompt.BeginTools)
+	iRet := strings.Index(sys, prompt.BeginContext)
 	if iTool < 0 || iRet < 0 || iTool >= iRet {
 		t.Fatalf("want tool block before retrieved: tool@%d retrieved@%d", iTool, iRet)
 	}
 }
 
 // Covers AC-13.004: trust policy prefix and retrieved context markers.
+// Covers AC-35.017: trust placement and retrieved-context markers unchanged after the prompt merge.
+// Supporting AC-35.020: EP-013 handler prompt-structure test passes on the epic branch.
 func TestRuntimeSkills_handler_trustAndRetrievedMarkers(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -154,10 +155,10 @@ func TestRuntimeSkills_handler_trustAndRetrievedMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if !strings.HasPrefix(strings.TrimSpace(sys), systemprompt.TrustPolicy) {
+	if !strings.HasPrefix(strings.TrimSpace(sys), prompt.TrustPolicy) {
 		t.Fatalf("system should start with trust policy")
 	}
-	if !strings.Contains(sys, promptmarkers.BeginContext) || !strings.Contains(sys, "past fact") {
+	if !strings.Contains(sys, prompt.BeginContext) || !strings.Contains(sys, "past fact") {
 		t.Fatalf("missing retrieved markers")
 	}
 }
@@ -194,7 +195,7 @@ func TestRuntimeSkills_handler_toolInstructionsMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if !strings.Contains(sys, promptmarkers.BeginTools) || !strings.Contains(sys, "SYS_PROMPT_UNIQUE") {
+	if !strings.Contains(sys, prompt.BeginTools) || !strings.Contains(sys, "SYS_PROMPT_UNIQUE") {
 		t.Fatalf("missing tool instruction markers")
 	}
 }
@@ -275,6 +276,7 @@ func TestRuntimeSkills_handler_toolUnionAlwaysInclude(t *testing.T) {
 }
 
 // Covers AC-13.009: forbidden PA marker lines must not be indexed into vector stores.
+// Covers AC-35.019: handler indexing still rejects forbidden marker lines after the prompt merge.
 func TestRuntimeSkills_handler_indexTurnRejectsForbiddenMarkerLine(t *testing.T) {
 	t.Parallel()
 	spy := &core.IntegrationMockVectorStore{}
@@ -283,7 +285,7 @@ func TestRuntimeSkills_handler_indexTurnRejectsForbiddenMarkerLine(t *testing.T)
 		Embedder:    core.IntegrationConstEmbedder{},
 		Logger:      testDiscardLogger(),
 	})
-	err := core.IntegrationIndexTurn(h, context.Background(), "hello\n"+promptmarkers.BeginContext, "reply")
+	err := core.IntegrationIndexTurn(h, context.Background(), "hello\n"+prompt.BeginContext, "reply")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -356,7 +358,7 @@ func TestRuntimeSkills_handler_disabledNoPlaybookToolPreselectionStillRuns(t *te
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	if strings.Contains(sys, promptmarkers.BeginSkills) || strings.Contains(sys, "SECRET_SKILL_BODY") {
+	if strings.Contains(sys, prompt.BeginSkills) || strings.Contains(sys, "SECRET_SKILL_BODY") {
 		t.Fatalf("runtime skills block must be absent when disabled")
 	}
 	found := false
@@ -407,7 +409,7 @@ func TestRuntimeSkills_handler_retrievedContextWithToolSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := provider.LastMessages[0].Content
-	iR := strings.Index(sys, promptmarkers.BeginContext)
+	iR := strings.Index(sys, prompt.BeginContext)
 	if iR < 0 {
 		t.Fatalf("want retrieved context marker, got prefix: %.200q", sys)
 	}

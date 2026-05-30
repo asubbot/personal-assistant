@@ -3,7 +3,7 @@ package runtimeskills
 import (
 	"bytes"
 	"fmt"
-	"pa/internal/promptmarkers"
+	"pa/internal/prompt"
 	"pa/internal/toolcatalog"
 	"strings"
 
@@ -48,7 +48,7 @@ func loadPackageDir(dir string) (*Package, error) {
 	if err != nil {
 		return nil, fmt.Errorf("skill %s: %w", dir, err)
 	}
-	if promptmarkers.TextContainsForbiddenMarkerLine(string(raw)) {
+	if prompt.TextContainsForbiddenMarkerLine(string(raw)) {
 		return nil, fmt.Errorf("skill %s: SKILL.md contains a forbidden PA marker line", dir)
 	}
 	fm, body, err := parseFrontmatter(raw)

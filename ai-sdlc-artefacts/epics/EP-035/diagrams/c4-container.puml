@@ -1,0 +1,27 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title EP-035 Consolidate small internal packages - C4 Containers
+
+Person(dev, "Developer / CI", "Runs make check and go test -race")
+
+System_Boundary(pa, "PersonalAssistant") {
+  Container(prompt, "internal/prompt", "Go", "Merged EP-013 markers, TrustPolicy, wrap helpers")
+  Container(core, "internal/core", "Go", "System message assembly; marker rejection on index")
+  Container(rskills, "internal/runtimeskills", "Go", "Runtime SKILL.md load; forbidden marker lines")
+  Container(tools, "internal/tools", "Go", "write_memory vector body validation")
+  Container(testint, "tests/integration", "Go", "integration tag; relocated concurrent-write race test")
+  ContainerDb(vec, "vector SQLite", "SQLite", "vec_summaries / vec_turns / vec_tools")
+  ContainerDb(jobs, "jobs SQLite", "SQLite", "scheduled jobs store")
+}
+
+Rel(dev, testint, "go test -race -tags=integration")
+Rel(core, prompt, "TrustPolicy, wraps, TextContainsForbiddenMarkerLine")
+Rel(rskills, prompt, "TextContainsForbiddenMarkerLine")
+Rel(tools, prompt, "TextContainsForbiddenMarkerLine")
+Rel(testint, core, "handler / runtime-skills tests")
+Rel(testint, prompt, "marker assertions in integration tests")
+Rel(testint, vec, "TestConcurrentWrites_NoBusyErrors writers")
+Rel(testint, jobs, "TestConcurrentWrites_NoBusyErrors writers")
+
+@enduml

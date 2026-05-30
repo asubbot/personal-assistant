@@ -2,8 +2,8 @@ package core
 
 import (
 	"context"
+	"pa/internal/prompt"
 	"pa/internal/runtimeskills"
-	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"strings"
 	"unicode/utf8"
@@ -37,16 +37,16 @@ func (h *conversationHandler) buildDynamicTailString(st *tailFitState) string {
 	var b strings.Builder
 	if h.catalog != nil && len(st.merged) > 0 {
 		if block := toolcatalog.AggregateSystemPrompts(h.catalog, st.merged); block != "" {
-			b.WriteString(systemprompt.WrapToolInstructions(block))
+			b.WriteString(prompt.WrapToolInstructions(block))
 		}
 	}
-	b.WriteString(systemprompt.WrapRetrievedContext(formatRetrievedInnerFromChunks(st.chunks)))
+	b.WriteString(prompt.WrapRetrievedContext(formatRetrievedInnerFromChunks(st.chunks)))
 	var sb strings.Builder
 	for _, p := range st.skills {
 		sb.WriteString(p.PlaybookText())
 		sb.WriteString("\n\n")
 	}
-	b.WriteString(systemprompt.WrapRuntimeSkills(strings.TrimSpace(sb.String())))
+	b.WriteString(prompt.WrapRuntimeSkills(strings.TrimSpace(sb.String())))
 	return b.String()
 }
 

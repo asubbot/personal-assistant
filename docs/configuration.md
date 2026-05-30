@@ -76,7 +76,7 @@ Both **`vector_store_reliability`** and **`jobs_store_reliability`** must be pre
 | `synchronous` | yes | `"NORMAL"` | Per-connection. |
 | `foreign_keys` | yes (bool) | `false` for vector, `true` for jobs | **Vector store** (`paths.vector_index_path`) MUST be `false`; **jobs store** (`paths.jobs_db_path`) MUST be `true`. Startup fails fast on mismatch. |
 
-Single-writer expectation: the product opens each SQLite file from a single process; operators MUST NOT share `vector_index_path` or `jobs_db_path` between processes. The concurrent-writer reliability is covered within one process by WAL + `busy_timeout` (tested with `-race` under `internal/reliability`).
+Single-writer expectation: the product opens each SQLite file from a single process; operators MUST NOT share `vector_index_path` or `jobs_db_path` between processes. The concurrent-writer reliability is covered within one process by WAL + `busy_timeout` (tested with `-race` and `-tags=integration` under `tests/integration`; see `TestConcurrentWrites_NoBusyErrors`).
 
 ### Outbound HTTP timeouts (EP-022)
 

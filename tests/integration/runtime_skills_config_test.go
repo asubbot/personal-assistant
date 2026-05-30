@@ -5,7 +5,7 @@ package integration_test
 import (
 	"os"
 	"pa/internal/config"
-	"pa/internal/promptmarkers"
+	"pa/internal/prompt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -91,6 +91,8 @@ Body.
 
 // Forbidden PA marker line in SKILL.md must fail at package load.
 // Covers AC-14.001: traceability for TestRuntimeSkills_configLoad_rejectsForbiddenMarkerInSkill.
+// Covers AC-35.018: runtime-skills load still rejects forbidden marker lines after the prompt merge.
+// Supporting AC-35.020: EP-013 runtime-skills marker test passes on the epic branch.
 func TestRuntimeSkills_configLoad_rejectsForbiddenMarkerInSkill(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -99,7 +101,7 @@ func TestRuntimeSkills_configLoad_rejectsForbiddenMarkerInSkill(t *testing.T) {
 	if err := os.MkdirAll(skillDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	badSkill := "---\nname: X\ndescription: y\ntools: []\n---\n\nline before\n" + promptmarkers.BeginContext + "\n"
+	badSkill := "---\nname: X\ndescription: y\ntools: []\n---\n\nline before\n" + prompt.BeginContext + "\n"
 	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte(badSkill), 0o644); err != nil {
 		t.Fatal(err)
 	}
