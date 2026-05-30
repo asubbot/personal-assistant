@@ -32,25 +32,26 @@ Shrink the `internal/` package tree for increment 0.02 by removing empty/stub pa
 
 ## Design Decisions
 
-- Target merge name: `internal/prompt` (replaces two ~46 LOC packages).
-- Reliability test destination: `tests/integration` (cross-store, already allowed by EP-022 design).
-- `lifecyclelog` out of epic: avoid coupling `cmd/pa` and `memoryjob` or splitting EP-029 constants.
+- Merged package: **`internal/prompt`** (`pa/internal/prompt`) — files `markers.go`, `wrap.go` + tests; delete `promptmarkers` / `systemprompt`.
+- Reliability test: **`tests/integration/concurrent_write_test.go`**, package `integration_test`, `//go:build integration`.
+- `lifecyclelog` out of epic (EP-029 contract).
 
 ## Interfaces / Contracts
 
-- Frozen strings: `TrustPolicy`, marker consts in `promptmarkers` today.
-- Frozen API surface for callers: wrap functions + `TextContainsForbiddenMarkerLine` + `ForbiddenMarkerLines`.
+- Frozen: `TrustPolicy`, six marker consts, `ForbiddenMarkerLines`, `TextContainsForbiddenMarkerLine`, three `Wrap*` functions (byte/logic identical).
+- Seven importer files → single `pa/internal/prompt` import (see [ep-system-design.md](ep-system-design.md)).
 
 ## Current Gate Summary
 
-Stage 5 complete (draft ep-acceptance-criteria). Next: system design (stage 6).
+Stage 6 complete (draft ep-system-design). Next: system design review (stage 7).
 
 ## Open Questions
 
-- Confirm final merged package name (`internal/prompt` vs alternative) at system design if operators care about import ergonomics.
+- None for stage 6 (package name `internal/prompt` confirmed in system design).
 
 ## Links
 
+- [ep-system-design.md](ep-system-design.md)
 - [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
