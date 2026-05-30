@@ -21,7 +21,12 @@ Cut intent-classification complexity for increment 0.02: drop the optional model
 
 ## Key Requirements
 
-Not yet defined (stage 4).
+- **REQ-36.001–002:** Two tiers (`simple`, `full`); remove `full_lite` / `TierFullLite`.
+- **REQ-36.003–007:** Heuristic-only cascade; ambiguous → `full` / `default`; no `full_lite_patterns`.
+- **REQ-36.008–011:** Delete model stage; no classification LLM in `cmd/pa`; stages `heuristic` | `default`.
+- **REQ-36.012–015:** Core `simple`/`full` dispatch only; remove `full_lite` builder; tier assembly parity; former `full_lite` → `full`.
+- **REQ-36.016–021:** Reject removed config keys; enabled `heuristic` schema; keep `intent_classifier` root key (`null` ok).
+- **REQ-36.022–027:** Update configs/docs; regression tests; `make check` and EARS validate.
 
 ## Acceptance Signals
 
@@ -48,6 +53,7 @@ Stage 3 draft ep-scope complete; downstream gates not started.
 
 ## Links
 
+- [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
 - [scope.md](../../scope.md)
 - [strategy.md](../../strategy.md)
