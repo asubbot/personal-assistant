@@ -30,7 +30,9 @@ Cut intent-classification complexity for increment 0.02: drop the optional model
 
 ## Acceptance Signals
 
-Not yet defined (stage 5).
+- **21 ACs** ([ep-acceptance-criteria.md](ep-acceptance-criteria.md)): two tiers only; heuristic cascade (`heuristic` \| `default`, ambiguous → `full` without classification LLM); model stage and `full_lite` removed from code, config, and docs.
+- **Automated:** unit tests for tiers, cascade, config reject/load; integration for per-turn tier and `simple`/`full` assembly parity; former `full_lite` → `full` path.
+- **Manual gates:** deleted `model.go` / `cmd/pa` wiring inspection, operator docs review, obsolete-test inventory, `make check`, `./bin/validate ears EP-036`.
 
 ## Design Decisions
 
@@ -45,7 +47,7 @@ Not yet defined (stage 5).
 
 ## Current Gate Summary
 
-Stage 3 draft ep-scope complete; downstream gates not started.
+Stage 5 draft acceptance criteria complete; stages 6+ not started.
 
 ## Open Questions
 
@@ -53,6 +55,7 @@ Stage 3 draft ep-scope complete; downstream gates not started.
 
 ## Links
 
+- [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
 - [scope.md](../../scope.md)
