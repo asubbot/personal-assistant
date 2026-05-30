@@ -31,14 +31,15 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 
 ## Design Decisions
 
-- **File split over frameworks:** Prefer moving method groups to `handler_{llm,tools,memory}.go` over introducing tier-strategy interfaces (only `simple` / `full` after EP-036).
-- **Leave prior extractions:** `system_tail.go`, `dynamic_tool_selection.go`, `runtime_tools.go`, `vector_merge.go` stay put.
-- **Config frozen:** EP-037 deferred `tool_output_artifacts` typing and `vector_search_tools` DRY—out of scope here too.
+- **File split over frameworks:** Three new files (`handler_llm.go`, `handler_tools.go`, `handler_memory.go`) on the same unexported `conversationHandler`; `handler.go` ≤ ~200 LOC orchestration; direct `simple`/`full` switch in `handler_tier_main_prompt.go` ([ep-system-design.md](ep-system-design.md)).
+- **Extraction order:** memory → tools → llm → slim `handler.go`; no logic edits on cut/paste.
+- **Leave prior extractions:** `system_tail.go`, `dynamic_tool_selection.go`, `runtime_tools.go`, `vector_merge.go`, `memory_vectors.go` unchanged in responsibility.
+- **Config frozen:** No `config.json` schema change; EP-037 `tools.selection` wiring preserved.
 
 ## Interfaces / Contracts
 
-- **Public:** `MessageHandler.HandleMessage`, `BuildMessageHandler`, `NewIntegrationConversationHandler` unchanged.
-- **Internal:** `conversationHandler` remains unexported; method receivers move files but signatures stay equivalent.
+- **Public:** `MessageHandler.HandleMessage`, `BuildMessageHandler`/`Run`, `NewIntegrationConversationHandler`/`IntegrationIndexTurn` unchanged ([ep-system-design.md](ep-system-design.md#architecture)).
+- **Internal:** Same-package receivers across `handler*.go`; `completeAt`/`finishAfterFirstLLM`/`executeOneToolCall` signatures unchanged; EP-034 transport-only routing and EP-037 `tools.selection` cap paths preserved.
 
 ## Current Gate Summary
 
@@ -47,17 +48,19 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 | Stage 3 ep-scope | draft |
 | Stage 4 ep-requirements | draft |
 | Stage 5 ep-acceptance-criteria | draft (25 ACs) |
-| Stage 6 ep-system-design | — |
+| Stage 6 ep-system-design | draft |
 
 ## Open Questions
 
-None for stage 4 — HOTL: no config schema change; no tier-strategy framework unless stage 6 design proves a smaller alternative.
+None — stage 6 confirms file-split approach; no tier-strategy framework.
 
 ## Links
 
 - [ep-scope.md](ep-scope.md)
 - [ep-requirements.md](ep-requirements.md)
 - [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
+- [ep-system-design.md](ep-system-design.md)
+- [diagrams/c4-container.puml](diagrams/c4-container.puml)
 - [strategy.md](../../strategy.md) — Refactoring 0.02, direction F
 - [scope.md](../../scope.md)
 - [EP-037 ep-scope](../EP-037/ep-scope.md) — deferred handler decomposition
