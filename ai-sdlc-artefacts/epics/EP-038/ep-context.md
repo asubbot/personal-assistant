@@ -18,7 +18,9 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 
 ## Key Requirements
 
-(To be derived in stage 4 from [ep-scope.md](ep-scope.md): file ownership map, parity tests, LOC/orchestration target, zero schema change, preserved `MessageHandler` API.)
+- **25 REQs** (19 FR, 6 NFR): file ownership map (`handler.go` ≤~200 LOC; new `handler_llm|tools|memory.go`), behaviour parity, frozen `config.json`, unchanged `MessageHandler` / `Run` / integration surfaces, EP-034/036/037 contracts preserved, `make check` + `validate ears EP-038`.
+- Land only after **EP-035/036/037** merged; no new tiers, no `full_lite`, no tier-strategy framework.
+- Out of scope: product behaviour, config schema DRY follow-ups, `conversationHandler` rename/export.
 
 ## Acceptance Signals
 
@@ -40,17 +42,18 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 | Gate | Status |
 |------|--------|
 | Stage 3 ep-scope | draft |
-| Stage 4 ep-requirements | — |
+| Stage 4 ep-requirements | draft |
 | Stage 5 ep-acceptance-criteria | — |
 | Stage 6 ep-system-design | — |
 
 ## Open Questions
 
-None for stage 3 — HOTL: no config schema change; no tier-strategy framework unless stage 6 design proves a smaller alternative.
+None for stage 4 — HOTL: no config schema change; no tier-strategy framework unless stage 6 design proves a smaller alternative.
 
 ## Links
 
 - [ep-scope.md](ep-scope.md)
+- [ep-requirements.md](ep-requirements.md)
 - [strategy.md](../../strategy.md) — Refactoring 0.02, direction F
 - [scope.md](../../scope.md)
 - [EP-037 ep-scope](../EP-037/ep-scope.md) — deferred handler decomposition
