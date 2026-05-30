@@ -3,14 +3,14 @@ artefact: ep-system-design-review
 epic_id: EP-036
 status: draft
 source_of_truth: true
-gate: fail
-latest_iteration: 2
+gate: pass
+latest_iteration: 3
 open_counts:
   blocker: 0
   major: 0
-  medium: 1
-  minor: 1
-next_action: return_to_stage_6
+  medium: 0
+  minor: 0
+next_action: proceed_to_stage_8
 updated_at: 2026-05-30
 ---
 
@@ -22,16 +22,16 @@ updated_at: 2026-05-30
 
 ## Current Gate Summary
 
-Gate: Fail
-Latest iteration: 2
+Gate: Pass
+Latest iteration: 3
 Last updated: 2026-05-30
-Open counts: Blocker 0 | Major 0 | Medium 1 | Minor 1
+Open counts: Blocker 0 | Major 0 | Medium 0 | Minor 0
 Open findings:
-- F-002 Medium (still open): The verification rationale is now accurate (manual operator-file check + `config.examples`/`testdata` unit coverage) but is **not reconciled with AC-36.018**, which still lists operator `.config/config.json` under **automated Unit tests**. Design declares that file manual-only, contradicting the AC instead of reconciling it.
-- F-006 Minor (new): Design instructs editing `model_stage` / `classifier_model` **log-key expectations** in `cmd/pa/ep024_operator_logging_test.go`, but no such log-key assertion exists in that file (only a doc-content check). The production removal in `main.go` is correctly specified; the test-edit instruction (update 1) is spurious.
+- _None._
 
+Resolved in iteration 3: F-002 (Medium), F-006 (Minor) — verified against the amended ACs and code.
 Resolved in iteration 2: F-001 (Major), F-003/F-004/F-005 (Minor) — verified against code.
-Next action: Return to stage 6 (and amend AC-36.018 at stage 5 to mark the operator file Manual, or add an automated check)
+Next action: Proceed to stage 8 (implementation planning).
 
 ---
 
@@ -159,6 +159,74 @@ _None. F-001 resolved — test-file inventory is now exhaustive and line-accurat
 | Fail fast | ✅ Raw-JSON key rejection at load; heuristic regex / `max_simple_len` validated at load. |
 | Security | ✅ No posture change; removes an outbound classifier LLM call. |
 | Testability | ⚠️ Test inventory now exhaustive (F-001 closed), but AC-36.018 automated-coverage claim for the operator file remains unreconciled (F-002). |
+
+### Traceability (this iteration)
+
+- **Architecture:** [ep-system-design.md](ep-system-design.md)
+- **Requirements:** [ep-requirements.md](ep-requirements.md)
+- **Acceptance criteria:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
+- **Scope:** [ep-scope.md](ep-scope.md)
+
+---
+
+## Review iteration 3
+
+**Review date:** 2026-05-30
+**Stage 7 iteration:** 3 of max 5
+**Document reviewed:** [ep-system-design.md](ep-system-design.md)
+**Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 0 | Minor: 0
+**Gate:** Pass (Blocker/Major/Medium/Minor all zero)
+
+### Overall assessment
+
+Both remaining findings are genuinely resolved and verified against the amended acceptance criteria and the live code. F-002 is now **reconciled, not reinterpreted**: AC-36.018 has been amended to **Manual** ("operator `.config/config.json` is verified manually and by app startup validation"), the new **AC-36.022 (Unit)** covers automated positive-load via `config.examples/` plus the `intent_classifier_enabled_heuristic_only.json` testdata fixture, and removed-key rejection stays automated **Unit** (AC-36.013/014). The design's F-002 note, Risks table, sequencing, and AC-mapping all match this split with no surviving "CI catches stale operator files" claim. F-006 is closed: `cmd/pa/ep024_operator_logging_test.go` contains **only** a doc-content assertion (`TestEP024_ProviderRolesDocContent`, the `"model_stage"` substring at line 71) and **no** log-key fixture assertion, and the design now specifies only the doc-content rewrite plus the production log-attr removal in `main.go:657,660`. The previously-closed F-001/F-003/F-004/F-005 remain addressed — every cited line reference still matches the code. REQ/AC traceability and the green-`make check` migration ordering hold.
+
+**Verdict:** Pass gate — proceed to stage 8.
+
+### Strengths
+
+- **F-002 reconciled (verified).** AC index and body are internally consistent: AC-36.018 Test level **Manual** (index line + body `Status: AC-36.018 MANUAL ONLY`), AC-36.022 Test level **Unit** (index + body), AC-36.013/014 remain **Unit**. The design's "Configuration files to update" table marks the live `.config/config.json` as **MANUAL verification only** and cites AC-36.018 (amended) + AC-36.022; the F-002 note and Risks table now state plainly that no Go test loads the operator file and that positive-load/rejection coverage lives in `config.examples` + testdata. AC-mapping rows for AC-36.018 (Manual) and AC-36.022 (automated Unit) added.
+- **F-006 closed (verified by grep).** `cmd/pa/ep024_operator_logging_test.go` has no `model_stage`/`classifier_model` log-key assertion — its only `model_stage` reference is the doc-content check `TestEP024_ProviderRolesDocContent` (line 71). Repo-wide, `model_stage`/`classifier_model` appear in product code only at `cmd/pa/main.go:657,660` (correctly slated for removal). The design's `cmd/pa` "Tests" line and Testing-strategy bullet now describe **doc-content only** + production log-attr removal; the spurious "edit log-key expectations" instruction is gone.
+- **No regression in closed findings (verified).** `internal/core/handler_tier_main_prompt_test.go` still calls `TierFullLite` (line 39) and `buildTierFullLiteMainPrompt` (lines 73–74); `handler_ep018_coverage_test.go` still has `TestEP018_configurationDoc_containsTierMatrix` asserting `"full_lite"` (line 72) and old 4-arg/3-arg constructors (lines 84, 144, 198, 229, 270); `internal/intent/tier.go:11,18` still carry `TierFullLite` and the `"heuristic", "model", or "default"` comment; `docs/architecture-ru.md` lines 162/230/260/519 still hold `full_lite`; `observability_test.go:40–41` still uses the old signatures. Every line reference in the design's exhaustive inventory and F-003/F-004/F-005 tables remains accurate.
+
+### Issues and recommendations
+
+#### Blocker
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Major
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Medium
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None. F-002 resolved — AC-36.018 amended to Manual, AC-36.022 (Unit) added for automated positive load, removed-key rejection stays Unit (AC-36.013/014); design and ACs now agree._
+
+#### Minor
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None. F-006 resolved — `ep024_operator_logging_test.go` has only a doc-content assertion; design specifies the doc-content rewrite + production log-attr removal only._
+
+### Project rules compliance
+
+| Rule | Compliance |
+|------|------------|
+| KISS | ✅ Removes a whole LLM stage + tier; net simplification. |
+| Fail fast | ✅ Raw-JSON key rejection at load; heuristic regex / `max_simple_len` validated at load. |
+| Security | ✅ No posture change; removes an outbound classifier LLM call. |
+| Testability | ✅ Exhaustive, line-accurate test inventory; AC/design now agree on automated vs manual config coverage (F-002 closed). |
 
 ### Traceability (this iteration)
 
