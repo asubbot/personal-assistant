@@ -36,18 +36,21 @@ Cut intent-classification complexity for increment 0.02: drop the optional model
 
 ## Design Decisions
 
-- Ambiguous heuristic → `full` (no model stage).
-- Former `full_lite` → `full` (richer path; acceptable token/latency trade-off).
-- Removed nested config keys rejected at load; top-level `intent_classifier` key retained per explicit-JSON rules.
+- Ambiguous heuristic → `full`, `Stage: default` (no model stage).
+- Former `full_lite` → `full` path (`buildTierFullMainPrompt`); operator may merge old `full_lite_patterns` into `full_patterns` for confident routing.
+- Removed nested keys rejected via raw-JSON map check in `rejectRemovedUnsupportedConfigKeys` (EP-034 pattern), not silent struct drop.
+- `NewCascadeClassifier(heuristic, logger)` and `NewHeuristicClassifier(simple, full, maxSimpleLen)` — no model / full_lite parameters.
+- Top-level `intent_classifier` key retained; explicit-JSON rules unchanged.
 
 ## Interfaces / Contracts
 
-- `intent.Classifier.Classify` → `Result{Tier: simple|full, Stage: heuristic|default}`.
+- `intent.Classifier.Classify` → `Result{Tier: simple|full, Stage: heuristic|default, MessageLen}`.
 - Enabled `intent_classifier`: `{ "enabled": true, "heuristic": { "simple_patterns", "full_patterns", "max_simple_len" } }` only.
+- Load errors if JSON contains `intent_classifier.model_stage` or `intent_classifier.heuristic.full_lite_patterns`.
 
 ## Current Gate Summary
 
-Stage 5 draft acceptance criteria complete; stages 6+ not started.
+Stage 6 system design draft complete ([ep-system-design.md](ep-system-design.md)); stage 7 not started.
 
 ## Open Questions
 
@@ -55,6 +58,7 @@ Stage 5 draft acceptance criteria complete; stages 6+ not started.
 
 ## Links
 
+- [ep-system-design.md](ep-system-design.md)
 - [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
