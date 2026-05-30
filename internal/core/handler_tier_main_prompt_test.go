@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// Covers AC-26.001, AC-26.002, AC-26.003. Supporting AC-26.005, AC-26.006: exercised with full package tests and make check.
+// Covers AC-26.001, AC-26.002, AC-26.003, AC-36.010
 func TestTierMainPromptBuilders_simpleTierUnchanged(t *testing.T) {
 	ctx := context.Background()
 	h := &conversationHandler{logger: slog.New(slog.DiscardHandler)}
@@ -29,23 +29,7 @@ func TestTierMainPromptBuilders_simpleTierUnchanged(t *testing.T) {
 	}
 }
 
-// Covers AC-26.001, AC-26.002, AC-26.003
-func TestTierMainPromptBuilders_fullLiteNilCatalog(t *testing.T) {
-	ctx := context.Background()
-	h := &conversationHandler{logger: slog.New(slog.DiscardHandler)}
-	sysHead := "system-head"
-	userText := "hello"
-	msgs := []llm.Message{{Role: "system", Content: sysHead}, {Role: "user", Content: userText}}
-	got, err := h.assembleTierMainLLMParams(ctx, intent.TierFullLite, userText, sysHead, nil, msgs)
-	if err != nil {
-		t.Fatalf("assemble full_lite: %v", err)
-	}
-	if got.opts != nil {
-		t.Fatalf("opts = %v, want nil when catalog nil", got.opts)
-	}
-}
-
-// Covers AC-26.001, AC-26.002, AC-26.003
+// Covers AC-26.001, AC-26.002, AC-26.003, AC-36.010
 func TestTierMainPromptBuilders_fullNilCatalog(t *testing.T) {
 	ctx := context.Background()
 	h := &conversationHandler{logger: slog.New(slog.DiscardHandler)}
@@ -61,17 +45,13 @@ func TestTierMainPromptBuilders_fullNilCatalog(t *testing.T) {
 	}
 }
 
-// Covers AC-26.001
+// Covers AC-26.001, AC-36.010
 func TestTierMainPromptBuilders_explicitEntryPoints(t *testing.T) {
 	h := &conversationHandler{logger: slog.New(slog.DiscardHandler)}
 	ctx := context.Background()
 	sysHead := "h"
-	msgs := []llm.Message{{Role: "system", Content: sysHead}}
 	if p := h.buildTierSimpleMainPrompt(); p.opts != nil || p.dynamicRan {
 		t.Fatalf("buildTierSimpleMainPrompt = %+v", p)
-	}
-	if _, err := h.buildTierFullLiteMainPrompt(ctx, "u", sysHead, msgs); err != nil {
-		t.Fatalf("buildTierFullLiteMainPrompt: %v", err)
 	}
 	msgs2 := []llm.Message{{Role: "system", Content: sysHead}}
 	if _, err := h.buildTierFullMainPrompt(ctx, "u", sysHead, nil, msgs2); err != nil {

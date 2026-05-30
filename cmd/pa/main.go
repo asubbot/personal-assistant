@@ -612,59 +612,23 @@ func registerKnowledgeToolsIfEnabled(cfg *config.Config, reg *tools.Registry, to
 	}
 }
 
-// buildIntentClassifier constructs the EP-017 cascade classifier from config. Returns nil when disabled.
-func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) (intent.Classifier, error) {
+// buildIntentClassifier constructs the EP-017/EP-036 heuristic cascade from config. Returns nil when disabled.
+func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) intent.Classifier {
 	ic := cfg.IntentClassifier
 	if ic == nil || !ic.Enabled {
-		return nil, nil
+		return nil
 	}
 	var heuristic *intent.HeuristicClassifier
 	if ic.Heuristic != nil {
 		heuristic = intent.NewHeuristicClassifier(
 			ic.Heuristic.SimplePatterns,
 			ic.Heuristic.FullPatterns,
-			ic.Heuristic.FullLitePatterns,
 			ic.Heuristic.MaxSimpleLen,
 		)
 	}
-	var model *intent.ModelClassifier
-	if ic.ModelStage != nil && ic.ModelStage.Enabled {
-		provCfg := &config.LLMProvider{
-			Type:                  ic.ModelStage.Type,
-			Endpoint:              ic.ModelStage.Endpoint,
-			APIKeyPath:            ic.ModelStage.APIKeyPath,
-			Model:                 ic.ModelStage.Model,
-			DefaultTemperature:    ic.ModelStage.DefaultTemperature,
-			DefaultMaxTokens:      ic.ModelStage.DefaultMaxTokens,
-			DefaultResponseFormat: "text",
-			SupportsTools:         boolPtr(false),
-			HTTPTimeout:           ic.ModelStage.HTTPTimeout,
-		}
-		provider, err := llm.NewProvider(provCfg)
-		if err != nil {
-			return nil, fmt.Errorf("intent classifier model provider: %w", err)
-		}
-		var timeout time.Duration
-		if ic.ModelStage.Timeout != "" {
-			var parseErr error
-			timeout, parseErr = time.ParseDuration(ic.ModelStage.Timeout)
-			if parseErr != nil {
-				return nil, fmt.Errorf("intent classifier model timeout: %w", parseErr)
-			}
-		}
-		model = intent.NewModelClassifier(provider, logger, timeout)
-	}
-	attrs := []any{"heuristic", heuristic != nil, "model_stage", model != nil}
-	if ic.ModelStage != nil && ic.ModelStage.Enabled {
-		if m := strings.TrimSpace(ic.ModelStage.Model); m != "" {
-			attrs = append(attrs, "classifier_model", m)
-		}
-	}
-	logger.Info("intent classifier enabled", attrs...)
-	return intent.NewCascadeClassifier(heuristic, model, logger), nil
+	logger.Info("intent classifier enabled", "heuristic", heuristic != nil)
+	return intent.NewCascadeClassifier(heuristic, logger)
 }
-
-func boolPtr(v bool) *bool { return &v }
 
 // clearConversationContext deletes turn rows from vec_turns. vec_summaries, vec_notes, and vec_tools are unchanged.
 func clearConversationContext(cfg *config.Config) error {

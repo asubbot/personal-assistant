@@ -125,10 +125,7 @@ func (a *paApplication) buildToolRegistry() (*tools.Registry, error) {
 }
 
 func (a *paApplication) buildMessageHandler(ctx context.Context, toolRegistry *tools.Registry) (core.MessageHandler, error) {
-	classifier, err := buildIntentClassifier(a.cfg, a.logger)
-	if err != nil {
-		return nil, err
-	}
+	classifier := buildIntentClassifier(a.cfg, a.logger)
 	var ti core.ToolIndex = a.infra.ToolIndex
 	var si core.SkillIndex = a.infra.SkillIndex
 	router, err := llmrouter.New(a.llmProviders, a.llmLabels, llmrouter.Config{}, a.logger)

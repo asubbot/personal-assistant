@@ -68,8 +68,6 @@ func (h *conversationHandler) assembleTierMainLLMParams(ctx context.Context, tie
 	switch tier {
 	case intent.TierFull:
 		return h.buildTierFullMainPrompt(ctx, userText, sysHead, chunks, messages)
-	case intent.TierFullLite:
-		return h.buildTierFullLiteMainPrompt(ctx, userText, sysHead, messages)
 	default:
 		return h.buildTierSimpleMainPrompt(), nil
 	}
@@ -87,10 +85,6 @@ func (h *conversationHandler) buildTierFullMainPrompt(ctx context.Context, userT
 	return h.mergeTailMergedToolsAndOptions(ctx, userText, sysHead, skills, chunks, messages)
 }
 
-func (h *conversationHandler) buildTierFullLiteMainPrompt(ctx context.Context, userText, sysHead string, messages []llm.Message) (tierMainLLMParams, error) {
-	return h.mergeTailMergedToolsAndOptions(ctx, userText, sysHead, nil, nil, messages)
-}
-
 func (h *conversationHandler) mergedAfterDynamicToolCap(ctx context.Context, merged []string) (picked []string, dynamicRan bool) {
 	if h.toolsDynamic == nil || !h.toolsDynamic.Enabled || len(merged) == 0 {
 		return merged, false
@@ -98,7 +92,7 @@ func (h *conversationHandler) mergedAfterDynamicToolCap(ctx context.Context, mer
 	return h.pickToolsForMainRequest(ctx, merged, h.toolsDynamic.MaxToolsForLLMRequest), true
 }
 
-// mergeTailMergedToolsAndOptions implements the shared full / full_lite tail path.
+// mergeTailMergedToolsAndOptions implements the shared full-tier tail path.
 func (h *conversationHandler) mergeTailMergedToolsAndOptions(ctx context.Context, userText, sysHead string, skills []*runtimeskills.Package, chunks []string, messages []llm.Message) (tierMainLLMParams, error) {
 	out := tierMainLLMParams{}
 	merged, sources, errMer := h.mergeSelectedToolIDs(ctx, userText, skills)
