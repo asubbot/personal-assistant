@@ -54,23 +54,23 @@ Given a user turn classified as `full_lite`
 When HandleMessage runs  
 Then the core SHALL not call semantic RAG retrieval for that turn and SHALL not inject retrieved memory chunk strings into the system message.
 
-<a id="ac-18-005"></a>**AC-18.005** (Trace: REQ-18.005)  
-Given session memory is enabled and a user turn is classified as `full_lite`  
+<a id="ac-18-005"></a>**AC-18.005** (Trace: REQ-18.005) **Amended by EP-036:** the `full_lite` tier was removed; former `full_lite` turns use the `full` path, which this AC now describes.  
+Given session memory is enabled and a user turn is assigned the `full` tier  
 When HandleMessage builds the message list  
-Then session store exchanges SHALL appear in the same order as for the `full` tier for the same session key.
+Then session store exchanges SHALL appear in order for the same session key.
 
-<a id="ac-18-006"></a>**AC-18.006** (Trace: REQ-18.006)  
-Given a user turn classified as `full_lite`  
+<a id="ac-18-006"></a>**AC-18.006** (Trace: REQ-18.006) **Amended by EP-036:** verifies the dynamic-tail playbook gating that the surviving `full` path uses when no skills are selected.  
+Given a dynamic tail assembled with no selected runtime skill packages  
 When the dynamic tail is assembled  
 Then runtime skill playbook text SHALL be absent from the system message tail.
 
-<a id="ac-18-007"></a>**AC-18.007** (Trace: REQ-18.007)  
-Given a user turn classified as `full_lite` and the main completion includes at least one tool  
+<a id="ac-18-007"></a>**AC-18.007** (Trace: REQ-18.007) **Amended by EP-036:** former `full_lite` turns use the `full` path; this AC describes the surviving `full`-tier behaviour.  
+Given a user turn assigned the `full` tier and the main completion includes at least one tool  
 When the system message is built  
 Then Hermes tool-format instructions SHALL be present in the system message.
 
-<a id="ac-18-008"></a>**AC-18.008** (Trace: REQ-18.008)  
-Given a user turn classified as `full_lite` and the main completion includes zero tools  
+<a id="ac-18-008"></a>**AC-18.008** (Trace: REQ-18.008) **Amended by EP-036:** former `full_lite` turns use the `full` path; this AC describes the surviving `full`-tier behaviour.  
+Given a user turn assigned the `full` tier and the main completion includes zero tools  
 When the system message is built  
 Then Hermes tool-format instructions SHALL be absent from the system message.
 
@@ -114,8 +114,8 @@ Given `full_lite` and tool vector pre-selection is disabled
 When dynamic tool selection builds the candidate list  
 Then the candidate identifiers SHALL be produced using the same fallback cap list rules as the current tool pre-selection path.
 
-<a id="ac-18-017"></a>**AC-18.017** (Trace: REQ-18.017)  
-Given `full_lite` and conversation tools are enabled  
+<a id="ac-18-017"></a>**AC-18.017** (Trace: REQ-18.017) **Amended by EP-036:** former `full_lite` turns use the `full` path; this AC describes the surviving `full`-tier dynamic tool selection.  
+Given a user turn assigned the `full` tier and conversation tools are enabled  
 When HandleMessage prepares tools for the main LLM request  
 Then the tool identifier set SHALL be produced through the dynamic tool selection path from this epic.
 

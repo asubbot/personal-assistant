@@ -134,7 +134,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 }
 
 // Covers AC-18.005
-func TestEP018_fullLite_includesSessionExchangesLikeFull(t *testing.T) {
+func TestEP018_fullTier_includesSessionExchanges(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	router := mustRouterSingle(t, provider)
 	store := newSessionWindowStore()
@@ -220,7 +220,7 @@ func TestEP018_fullTier_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 }
 
 // Covers AC-18.008: without catalog tools, completion opts omit tools.
-func TestEP018_fullLite_noCatalogTools_omitsNativeTools(t *testing.T) {
+func TestEP018_fullTier_noCatalogTools_omitsNativeTools(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	classifier := intent.NewCascadeClassifier(
 		intent.NewHeuristicClassifier(nil, []string{`^LITENOTOOL`}, 100),
@@ -256,7 +256,7 @@ func TestEP018_pickTools_preservesVectorOrderUnderCap(t *testing.T) {
 }
 
 // Covers AC-18.017
-func TestEP018_fullLite_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
+func TestEP018_fullTier_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
 	var cap captureHandlerWithAttrs
 	logger := slog.New(&cap)
 	cat := catalogFiveTools(t)

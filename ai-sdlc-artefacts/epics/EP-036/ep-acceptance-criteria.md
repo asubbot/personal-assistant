@@ -195,7 +195,8 @@ And the type name `ModelClassifier` SHALL not appear in product packages.
 
 **Trace:** [REQ-36.010](ep-requirements.md#req-36-010--no-classification-llm-wiring)  
 **Test level:** Manual (build/grep)  
-**Status:** AC-36.009 MANUAL ONLY — verified by grep of `cmd/pa` intent wiring for classification LLM / `ModelClassifier` construction (zero matches) and successful `make check` build; behaviour of no extra LLM call is covered by AC-36.006 unit tests.
+**Status:** AC-36.009 MANUAL ONLY — verified by grep of `cmd/pa` intent wiring for classification LLM / `ModelClassifier` construction (zero matches) and successful `make check` build.  
+**Related coverage:** the behaviour of no extra LLM call is exercised by the ambiguous-default cascade unit tests.
 
 Given the EP-036 change set  
 When inspecting `cmd/pa` intent-classifier construction (`buildIntentClassifier` and related wiring)  
@@ -318,7 +319,8 @@ And SHALL NOT document `model_stage`, `full_lite_patterns`, or a three-tier / mo
 
 **Trace:** [REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs)  
 **Test level:** Manual  
-**Status:** AC-36.018 MANUAL ONLY — operator `.config/config.json` is verified manually and by app startup validation; automated schema/rejection coverage is provided by `config.examples/` (AC-36.022) and a testdata fixture, plus removed-key rejection (AC-36.013, AC-36.014), which remain Unit.
+**Status:** AC-36.018 MANUAL ONLY — operator `.config/config.json` is verified manually and by app startup validation.  
+**Related coverage:** automated schema, positive-load, and removed-key rejection coverage for the new classifier schema is provided by the example config, a testdata fixture, and the dedicated rejection tests, which remain Unit.
 
 Given the operator `.config/config.json` updated for the shrunk classifier schema on the epic branch  
 When the application loads and validates it at startup (or an operator runs the binary against it)  
