@@ -31,7 +31,7 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 
 ## Design Decisions
 
-- **File split over frameworks:** Three new files (`handler_llm.go`, `handler_tools.go`, `handler_memory.go`) on the same unexported `conversationHandler`; `handler.go` ≤ ~200 LOC orchestration; direct `simple`/`full` switch in `handler_tier_main_prompt.go` ([ep-system-design.md](ep-system-design.md)).
+- **File split over frameworks:** Three new files (`handler_llm.go`, `handler_tools.go`, `handler_memory.go`) on the same unexported `conversationHandler`; `handler.go` ≤ ~200 LOC orchestration; direct `simple`/`full` switch in `handler_tier_main_prompt.go` ([ep-system-design.md](ep-system-design.md)). Nine listed symbols are package-level helpers (not receivers); MANUAL grep checks definition in target file ([ep-system-design.md#manual-grep-guidance](ep-system-design.md#manual-grep-guidance)).
 - **Extraction order:** memory → tools → llm → slim `handler.go`; no logic edits on cut/paste.
 - **Leave prior extractions:** `system_tail.go`, `dynamic_tool_selection.go`, `runtime_tools.go`, `vector_merge.go`, `memory_vectors.go` unchanged in responsibility.
 - **Config frozen:** No `config.json` schema change; EP-037 `tools.selection` wiring preserved.
@@ -46,9 +46,10 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 | Gate | Status |
 |------|--------|
 | Stage 3 ep-scope | draft |
-| Stage 4 ep-requirements | draft |
+| Stage 4 ep-requirements | draft — canonical `### REQ-38.NNN` headings (stage 7 iter 1 F-001) |
 | Stage 5 ep-acceptance-criteria | draft (25 ACs) |
-| Stage 6 ep-system-design | draft |
+| Stage 6 ep-system-design | draft — package-level vs receiver mapping + manual grep (F-002) |
+| Stage 7 system-design-review | iter 1 findings F-001/F-002 addressed in artefacts |
 
 ## Open Questions
 

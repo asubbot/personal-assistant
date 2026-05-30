@@ -63,7 +63,30 @@ The design keeps **one** unexported `conversationHandler` type across `package c
 
 ## Method → file mapping
 
-Target layout after EP-038. **Current** column reflects `handler.go` on the epic branch (~663 LOC). Moves are cut/paste of methods and package-level helpers onto the same `conversationHandler` receiver unless noted.
+Target layout after EP-038. **Current** column reflects `handler.go` on the epic branch (~663 LOC). Moves are cut/paste with **no logic edits**; symbols stay in `package core` (same-package visibility).
+
+### Receiver methods vs package-level helpers
+
+REQ-38.005/007/009 and MANUAL ACs (AC-38.005, AC-38.007, AC-38.009) list symbols to relocate. Several are **package-level functions** (no `(h *conversationHandler)` receiver) or take `h` as a parameter. Manual verification checks that each symbol is **defined in the target file**, not that every moved symbol is a receiver method.
+
+| Kind | Definition shape | Examples (pre-move in `handler.go`) |
+|------|------------------|--------------------------------------|
+| **Receiver method** | `func (h *conversationHandler) Name(...)` | `completeAt`, `mergeSelectedToolIDs`, `gatherRetrievedChunkTexts`, `indexTurn` |
+| **Package-level helper** | `func Name(...)` in target file | `genRequestID`, `truncateToolResultForPrompt`, `parseToolArgumentsJSON`, `remoteCommandFromRunOnNodeArgs`, `retrievalChunkWithLabel`, `eventAlignedTurnDate`, `canonicalizeTurnPair`, `canonicalizeTurnText` |
+| **Handler-parameter helper** | `func Name(h *conversationHandler, ...)` | `todayCalendarDateInPALocation` |
+| **Config helper (construction)** | `func paLocationFromConfig(cfg *config.Config)` | Called from `run.go` (`BuildMessageHandler`); move to `handler_llm.go` per REQ-38.005, remains callable from `run.go` in the same package |
+
+The table below uses **Method / symbol** for both receivers and package-level helpers. Rows marked *(package)* in **Current** are not receiver methods today.
+
+### Package-level helpers by target file
+
+| Symbol | Target file | REQ |
+|--------|-------------|-----|
+| `genRequestID`, `truncateToolResultForPrompt`, `todayCalendarDateInPALocation`, `paLocationFromConfig` | `handler_llm.go` | REQ-38.005 |
+| `parseToolArgumentsJSON`, `remoteCommandFromRunOnNodeArgs` | `handler_tools.go` | REQ-38.007 |
+| `retrievalChunkWithLabel`, `eventAlignedTurnDate`, `canonicalizeTurnPair`, `canonicalizeTurnText` | `handler_memory.go` | REQ-38.009 |
+
+### Receiver and constant mapping
 
 | Method / symbol | Current | Target | REQ |
 |-----------------|---------|--------|-----|
@@ -85,11 +108,11 @@ Target layout after EP-038. **Current** column reflects `handler.go` on the epic
 | `finishAfterFirstLLM` | `handler.go` | `handler_llm.go` | REQ-38.005 |
 | `runToolResultLoop` | `handler.go` | `handler_llm.go` | REQ-38.005, REQ-38.006 |
 | `appendToolRound` | `handler.go` | `handler_llm.go` | REQ-38.005 |
-| `truncateToolResultForPrompt` | `handler.go` | `handler_llm.go` | REQ-38.005 |
+| `truncateToolResultForPrompt` *(package)* | `handler.go` | `handler_llm.go` | REQ-38.005 |
 | `systemStaticHead` | `handler.go` | `handler_llm.go` | REQ-38.005 |
-| `todayCalendarDateInPALocation` | `handler.go` | `handler_llm.go` | REQ-38.005 |
-| `paLocationFromConfig` | `handler.go` | `handler_llm.go` | REQ-38.005 |
-| `genRequestID` | `handler.go` | `handler_llm.go` | REQ-38.005 |
+| `todayCalendarDateInPALocation` *(h param)* | `handler.go` | `handler_llm.go` | REQ-38.005 |
+| `paLocationFromConfig` *(package)* | `handler.go` | `handler_llm.go` | REQ-38.005 |
+| `genRequestID` *(package)* | `handler.go` | `handler_llm.go` | REQ-38.005 |
 | `logLLMRequest`, `logMainLLMCompletion`, `logLLMResponse` | `handler.go` | `handler_llm.go` | REQ-38.005 |
 | `logMainLLMPromptAssembled` | `handler.go` | `handler_llm.go` | REQ-38.005 |
 | `mergeSelectedToolIDs` | `handler.go` | `handler_tools.go` | REQ-38.007 |
@@ -98,18 +121,18 @@ Target layout after EP-038. **Current** column reflects `handler.go` on the epic
 | `nativeToolDefs` | `handler.go` | `handler_tools.go` | REQ-38.007 |
 | `executeOneToolCall` | `handler.go` | `handler_tools.go` | REQ-38.007 |
 | `executeCatalogToolCall` | `handler.go` | `handler_tools.go` | REQ-38.007 |
-| `parseToolArgumentsJSON` | `handler.go` | `handler_tools.go` | REQ-38.007 |
-| `remoteCommandFromRunOnNodeArgs` | `handler.go` | `handler_tools.go` | REQ-38.007 |
+| `parseToolArgumentsJSON` *(package)* | `handler.go` | `handler_tools.go` | REQ-38.007 |
+| `remoteCommandFromRunOnNodeArgs` *(package)* | `handler.go` | `handler_tools.go` | REQ-38.007 |
 | `mergeToolIDs` | `runtime_tools.go` | *(unchanged)* | REQ-38.008 |
 | `pickToolsForMainRequest` | `dynamic_tool_selection.go` | *(unchanged)* | REQ-38.008 |
 | `gatherRetrievedChunkTexts` | `handler.go` | `handler_memory.go` | REQ-38.009 |
 | `gatherSplitTableChunks` | `handler.go` | `handler_memory.go` | REQ-38.009 |
 | `labeledChunksFromResults` | `handler.go` | `handler_memory.go` | REQ-38.009 |
-| `retrievalChunkWithLabel` | `handler.go` | `handler_memory.go` | REQ-38.009 |
+| `retrievalChunkWithLabel` *(package)* | `handler.go` | `handler_memory.go` | REQ-38.009 |
 | `handleLLMSuccess` | `handler.go` | `handler_memory.go` | REQ-38.009 |
 | `indexTurn` | `handler.go` | `handler_memory.go` | REQ-38.009 |
-| `eventAlignedTurnDate` | `handler.go` | `handler_memory.go` | REQ-38.009 |
-| `canonicalizeTurnPair`, `canonicalizeTurnText` | `handler.go` | `handler_memory.go` | REQ-38.009 |
+| `eventAlignedTurnDate` *(package)* | `handler.go` | `handler_memory.go` | REQ-38.009 |
+| `canonicalizeTurnPair`, `canonicalizeTurnText` *(package)* | `handler.go` | `handler_memory.go` | REQ-38.009 |
 | `MemoryVectors`, `vector_merge` helpers | `memory_vectors.go`, `vector_merge.go` | *(unchanged)* | REQ-38.010 |
 | EP-013 system tail assembly | `system_tail.go` | *(unchanged)* | REQ-38.010, REQ-38.019 |
 
@@ -220,13 +243,29 @@ Per [strategy.md](../../strategy.md) §2 and [ep-acceptance-criteria.md](ep-acce
 | **Integration — handler** | Turn sequence, tier prompts, tool loop, routing | `handler_test.go`, `handler_ep017_test.go`, `handler_ep018_test.go`, `handler_ep018_coverage_test.go` | AC-38.002, AC-38.011, AC-38.018 |
 | **Integration — contracts** | EP-034/036/037 regressions | `handler_ep034_regression_test.go`, `handler_ep036_test.go`, `tools_selection_parity_test.go` | AC-38.006, AC-38.019 |
 | **Integration — export** | Integration handler wiring | `tests/integration/runtime_skills_handler_test.go` | AC-38.016 |
-| **Manual — structure** | File ownership grep, `handler.go` LOC | Reviewer checklist | AC-38.003, AC-38.005, AC-38.007, AC-38.009, AC-38.013, AC-38.024 |
-| **Repo gates** | Full quality | `make check` ([REQ-38.021](ep-requirements.md#verification-and-contracts)); `./tools/validate/validate ears EP-038` ([REQ-38.022](ep-requirements.md#verification-and-contracts)) | AC-38.021, AC-38.022 |
+| **Manual — structure** | File ownership grep, `handler.go` LOC | Reviewer checklist (see [Manual grep guidance](#manual-grep-guidance)) | AC-38.003, AC-38.005, AC-38.007, AC-38.009, AC-38.013, AC-38.024 |
+| **Repo gates** | Full quality | `make check` ([REQ-38.021](ep-requirements.md#req-38-021--make-check-passes)); `./bin/validate ears EP-038` ([REQ-38.022](ep-requirements.md#req-38-022--validate-ears-ep-038-passes)) — requires canonical `### REQ-38.NNN` headings in `ep-requirements.md` | AC-38.021, AC-38.022 |
 | **Manual — diff** | No intentional behaviour change | Branch diff review | AC-38.023 |
 
 **Assertion policy:** Existing tests pass without assertion changes except import or unexported-symbol location fixes ([REQ-38.020](ep-requirements.md#verification-and-contracts)).
 
-**Suggested implementation verification order:** (1) extract `handler_memory.go` and compile; (2) `handler_tools.go`; (3) `handler_llm.go`; (4) slim `handler.go`; (5) `make check`; (6) manual grep/LOC for MANUAL ACs.
+**Suggested implementation verification order:** (1) extract `handler_memory.go` and compile; (2) `handler_tools.go`; (3) `handler_llm.go`; (4) slim `handler.go`; (5) `make check`; (6) manual grep/LOC for MANUAL ACs; (7) `./bin/validate ears EP-038` and `./bin/validate req EP-038`.
+
+### Manual grep guidance
+
+Run from the repository root after `make build`. Grep confirms **symbol definition in the target file**, not receiver syntax (see [Receiver methods vs package-level helpers](#receiver-methods-vs-package-level-helpers)).
+
+| AC | Check | Example command |
+|----|-------|-----------------|
+| AC-38.003 | `handler.go` LOC | `wc -l internal/core/handler.go` (expect ≤ ~200 after extraction) |
+| AC-38.005 | REQ-38.005 symbols in `handler_llm.go`, absent from `handler.go` | `rg '^func (genRequestID|truncateToolResultForPrompt|completeAt|runToolResultLoop)\b' internal/core/handler_llm.go` and `rg '^func (genRequestID|completeAt)\b' internal/core/handler.go` → no matches on moved symbols |
+| AC-38.007 | REQ-38.007 symbols in `handler_tools.go` | `rg '^func (mergeSelectedToolIDs|parseToolArgumentsJSON|executeOneToolCall)\b' internal/core/handler_tools.go` |
+| AC-38.008 | Ownership unchanged | `rg '^func mergeToolIDs\b' internal/core/runtime_tools.go`; `rg '^func pickToolsForMainRequest\b' internal/core/dynamic_tool_selection.go`; `rg 'mergedAfterDynamicToolCap' internal/core/handler_tier_main_prompt.go` |
+| AC-38.009 | REQ-38.009 symbols in `handler_memory.go` | `rg '^func (gatherRetrievedChunkTexts|indexTurn|canonicalizeTurnPair)\b' internal/core/handler_memory.go` |
+| AC-38.013 | Two-tier switch, no strategy registry | `rg 'TierSimple|TierFull' internal/core/handler_tier_main_prompt.go`; confirm no `TierStrategy` / plugin registry types |
+| AC-38.024 | Handler stays unexported | `rg '^type conversationHandler\b' internal/core/`; `rg '^func New.*Handler' internal/core/` — no exported `conversationHandler` |
+
+For package-level helpers, `rg '^func SymbolName\b' internal/core/<target>.go` is sufficient; do not require `func (h *conversationHandler)`.
 
 ---
 

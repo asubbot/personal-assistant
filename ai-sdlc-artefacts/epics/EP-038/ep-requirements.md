@@ -139,105 +139,116 @@ In the following, *System* = **PersonalAssistant** unless a requirement names **
 
 ### Prerequisites and landing gate
 
-**REQ-38.001** (Event-driven)  
+### REQ-38.001 — Land after EP-035, EP-036, EP-037 merged
+
 WHEN EP-038 implementation lands on the integration branch, THE repository SHALL have EP-035 (package consolidation), EP-036 (two-tier intent), and EP-037 (`tools.selection`) already merged so handler file splits do not conflict with concurrent core edits.
 
 ### Slim orchestration entry (handler.go)
 
-*REQ-38.002, REQ-38.003, REQ-38.004*
+### REQ-38.002 — Keep struct and HandleMessage turn sequence
 
-**REQ-38.002** (Ubiquitous)  
 THE PersonalAssistant SHALL keep `conversationHandler` struct definition, `HandleMessage`, and the **HandleMessage turn sequence** in `internal/core/handler.go`.
 
-**REQ-38.003** (Ubiquitous)  
+### REQ-38.003 — Reduce handler.go to orchestration (~≤200 LOC)
+
 THE PersonalAssistant SHALL limit `internal/core/handler.go` to orchestration and shared wiring such that implementation detail primarily lives in `handler_llm.go`, `handler_tools.go`, `handler_memory.go`, and existing focused files, with `handler.go` at approximately **≤200** lines of code.
 
-**REQ-38.004** (Ubiquitous)  
+### REQ-38.004 — Retain shared turn constants in handler.go
+
 THE PersonalAssistant SHALL keep turn-wide constants `maxToolRounds`, `logTruncateMaxLen`, and `maxToolResultPromptBytes` in `internal/core/handler.go` (or co-located with orchestration in that file).
 
 ### LLM completion and tool loop (handler_llm.go)
 
-*REQ-38.005, REQ-38.006*
+### REQ-38.005 — Extract LLM completion and tool-loop methods
 
-**REQ-38.005** (Ubiquitous)  
 THE PersonalAssistant SHALL implement in `internal/core/handler_llm.go` the methods moved from `handler.go`: `completeViaRouter`, `completeAt`, `onRouteEvent`, `finishAfterFirstLLM`, `runToolResultLoop`, `appendToolRound`, `truncateToolResultForPrompt`, `systemStaticHead`, `todayCalendarDateInPALocation`, `paLocationFromConfig`, `genRequestID`, `logLLMRequest`, `logMainLLMCompletion`, `logLLMResponse`, and `logMainLLMPromptAssembled`.
 
-**REQ-38.006** (Ubiquitous)  
+### REQ-38.006 — Preserve router usage, round cap, message roles
+
 THE PersonalAssistant SHALL preserve after the move: unified `llmrouter` usage, **transport-only** provider switching via `onRouteEvent`, **maxToolRounds** enforcement in `runToolResultLoop`, LLM message roles in tool rounds, and DEBUG/INFO LLM observability semantics established before this epic.
 
 ### Tool offering and execution (handler_tools.go)
 
-*REQ-38.007, REQ-38.008*
+### REQ-38.007 — Extract tool merge, selection, and execution
 
-**REQ-38.007** (Ubiquitous)  
 THE PersonalAssistant SHALL implement in `internal/core/handler_tools.go` the methods moved from `handler.go`: `mergeSelectedToolIDs`, `selectSkillPackages`, `completionOptionsMergedCatalogNative`, `nativeToolDefs`, `executeOneToolCall`, `executeCatalogToolCall`, `parseToolArgumentsJSON`, and `remoteCommandFromRunOnNodeArgs`.
 
-**REQ-38.008** (Ubiquitous)  
+### REQ-38.008 — Leave runtime_tools and dynamic_tool_selection in place
+
 THE PersonalAssistant SHALL keep `mergeToolIDs` in `runtime_tools.go`, dynamic pre-main cap logic in `dynamic_tool_selection.go`, and tail merge helpers (`mergedAfterDynamicToolCap`, `mergeTailMergedToolsAndOptions`) in `handler_tier_main_prompt.go` without relocating their responsibilities to other packages.
 
 ### Memory retrieval and turn indexing (handler_memory.go)
 
-*REQ-38.009, REQ-38.010*
+### REQ-38.009 — Extract RAG chunk and turn-index methods
 
-**REQ-38.009** (Ubiquitous)  
 THE PersonalAssistant SHALL implement in `internal/core/handler_memory.go` the methods moved from `handler.go`: `gatherRetrievedChunkTexts`, `gatherSplitTableChunks`, `labeledChunksFromResults`, `retrievalChunkWithLabel`, `handleLLMSuccess`, `indexTurn`, `eventAlignedTurnDate`, `canonicalizeTurnPair`, and `canonicalizeTurnText`.
 
-**REQ-38.010** (Ubiquitous)  
+### REQ-38.010 — Leave vector_merge, memory_vectors, system_tail ownership
+
 THE PersonalAssistant SHALL leave ownership of `vector_merge.go`, `memory_vectors.go`, and `system_tail.go` unchanged by this epic.
 
 ### Tier main prompt boundary
 
-*REQ-38.011, REQ-38.012, REQ-38.013, REQ-38.025*
+### REQ-38.011 — Retain tier main prompt dispatch in handler_tier_main_prompt.go
 
-**REQ-38.011** (Ubiquitous)  
 THE PersonalAssistant SHALL retain tier dispatch in `handler_tier_main_prompt.go`: `buildMainTurnMessagesPreTail`, `assembleTierMainLLMParams`, `buildTierSimpleMainPrompt`, `buildTierFullMainPrompt`, and `mergeTailMergedToolsAndOptions`.
 
-**REQ-38.012** (Ubiquitous)  
+### REQ-38.012 — No new tier values or full_lite revival
+
 THE PersonalAssistant SHALL NOT introduce new intent tier values or revive the `full_lite` tier as part of this epic.
 
-**REQ-38.013** (Ubiquitous)  
+### REQ-38.013 — Use simple tier switch; no strategy framework
+
 THE PersonalAssistant SHALL dispatch intent tiers `simple` and `full` with a direct tier switch (or equivalent minimal dispatch), not a pluggable tier-strategy framework.
 
-**REQ-38.025** (Optional feature)  
+### REQ-38.025 — Optional naming/comments cleanup only in tier prompt file
+
 WHERE light cleanup is applied in `handler_tier_main_prompt.go`, THE PersonalAssistant SHALL limit changes to naming, comments, or unexported helper visibility without altering tier selection, prompt message shapes, or tool-list assembly order.
 
 ### Public wiring and configuration
 
-*REQ-38.014, REQ-38.015, REQ-38.016, REQ-38.017*
+### REQ-38.014 — Preserve MessageHandler.HandleMessage signature
 
-**REQ-38.014** (Ubiquitous)  
 THE PersonalAssistant SHALL preserve the `MessageHandler` interface and `HandleMessage(ctx, userID, sessionKey, text) (string, error)` contract in `internal/core/adapter.go`.
 
-**REQ-38.015** (Ubiquitous)  
+### REQ-38.015 — Preserve BuildMessageHandler and Run surfaces
+
 THE PersonalAssistant SHALL preserve `BuildMessageHandler` and `Run` public signatures and behaviour in `internal/core/run.go`, adjusting imports or field wiring only as required by file moves.
 
-**REQ-38.016** (Ubiquitous)  
+### REQ-38.016 — Preserve NewIntegrationConversationHandler
+
 THE PersonalAssistant SHALL preserve `NewIntegrationConversationHandler` and `IntegrationIndexTurn` public surfaces in `internal/core/integration_export.go`.
 
-**REQ-38.017** (Ubiquitous)  
+### REQ-38.017 — No config.json schema change
+
 THE PersonalAssistant SHALL NOT add or remove top-level `config.json` keys or change documented configuration semantics as part of this epic; `.config/config.json` and examples SHALL load unchanged.
 
 ### Verification and contracts
 
-*REQ-38.018, REQ-38.019, REQ-38.020, REQ-38.021, REQ-38.022, REQ-38.023, REQ-38.024*
+### REQ-38.018 — Behaviour parity on tier, tools, prompts, routing
 
-**REQ-38.018** (Ubiquitous)  
 THE PersonalAssistant SHALL exhibit behaviour parity for representative configurations: unchanged intent tier choice, merged catalog tool ids, dynamic tool cap application, main prompt message shapes, tool-loop round limits, transport-only LLM routing, and turn-index id format.
 
-**REQ-38.019** (Ubiquitous)  
+### REQ-38.019 — Preserve EP-013/034/036/037 contracts
+
 THE PersonalAssistant SHALL satisfy preserved contracts: EP-013 marker/trust system tail assembly, EP-036 two-tier dispatch, EP-037 `tools.selection` fields on the handler, and EP-034 prohibition of tool-path LLM provider escalation.
 
-**REQ-38.020** (Ubiquitous)  
+### REQ-38.020 — Existing handler tests pass without assertion changes
+
 THE repository SHALL pass all existing `internal/core/handler_*` and integration handler tests without assertion changes except import or package-location fixes tied to moved unexported symbols.
 
-**REQ-38.021** (Ubiquitous)  
+### REQ-38.021 — make check passes
+
 THE repository SHALL pass `make check` after EP-038 implementation.
 
-**REQ-38.022** (Ubiquitous)  
+### REQ-38.022 — validate ears EP-038 passes
+
 THE repository SHALL pass `./tools/validate/validate ears EP-038` for EARS format on this epic’s requirements artefact.
 
-**REQ-38.023** (Ubiquitous)  
+### REQ-38.023 — No product behaviour changes
+
 THE EP-038 change set SHALL NOT intentionally change product behaviour: Telegram/session semantics, tool-selection algorithms, router policies, memory storage formats, or operator-visible configuration.
 
-**REQ-38.024** (Ubiquitous)  
+### REQ-38.024 — Do not rename or export conversationHandler
+
 THE PersonalAssistant SHALL keep `conversationHandler` unexported and SHALL NOT export sub-handlers to other packages as part of this epic.
