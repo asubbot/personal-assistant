@@ -3,14 +3,14 @@ artefact: ep-system-design-review
 epic_id: EP-038
 status: draft
 source_of_truth: true
-gate: fail
-latest_iteration: 1
+gate: pass
+latest_iteration: 2
 open_counts:
   blocker: 0
   major: 0
-  medium: 1
-  minor: 1
-next_action: return_to_stage_6
+  medium: 0
+  minor: 0
+next_action: proceed_to_stage_8
 updated_at: 2026-05-31
 ---
 
@@ -22,14 +22,12 @@ updated_at: 2026-05-31
 
 ## Current Gate Summary
 
-Gate: Fail
-Latest iteration: 1
+Gate: Pass
+Latest iteration: 2
 Last updated: 2026-05-31
-Open counts: Blocker 0 | Major 0 | Medium 1 | Minor 1
-Open findings:
-- F-001 Medium: `validate ears EP-038` is vacuous — requirements headings not in EARS parser format.
-- F-002 Minor: Method→file mapping omits package-level helpers vs receiver methods (AC grep ambiguity).
-Next action: Return to stage 6 (revise design testing strategy; coordinate `ep-requirements.md` heading reformat for REQ-38.022)
+Open counts: Blocker 0 | Major 0 | Medium 0 | Minor 0
+Open findings: None
+Next action: Proceed to stage 8
 
 ---
 
@@ -130,3 +128,113 @@ _None._
 - **Acceptance criteria:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - **Scope:** [ep-scope.md](ep-scope.md)
 - **Codebase (branch `epic/EP-038-refactor-core-handler`):** `internal/core/handler.go` (663 LOC), `handler_tier_main_prompt.go`, `run.go`, `adapter.go`, `integration_export.go` — target files not yet created (pre–stage 9)
+
+---
+
+## Review iteration 2
+
+**Review date:** 2026-05-31
+**Stage 7 iteration:** 2 of max 5
+**Document reviewed:** [ep-system-design.md](ep-system-design.md)
+**Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 0 | Minor: 0
+**Gate:** Pass (Blocker/Major/Medium/Minor all zero)
+
+### Overall assessment
+
+Iteration 1 findings **F-001** and **F-002** are resolved. `ep-requirements.md` now uses canonical `### REQ-38.NNN — <summary>` headings (25 blocks); `./bin/validate ears EP-038` reports **25 requirements, 0 errors** (exit 0); `./bin/validate req EP-038` reports **25/25 REQs covered** (exit 0). The design adds **Receiver methods vs package-level helpers** and **Package-level helpers by target file** subsections plus **Manual grep guidance** that states MANUAL ACs verify symbol definition in the target file, not receiver syntax.
+
+Fresh structural review: all stage 7 checklist sections are present; C4 container diagram and method→file mapping remain accurate against `handler.go` (663 LOC) on `epic/EP-038-refactor-core-handler`; HandleMessage sequence, two-tier switch, unchanged-module boundaries, full REQ-38.001–038.025 traceability, and testing strategy (including canonical-heading note for REQ-38.022) align with scope and acceptance criteria. No new Blocker/Major/Medium/Minor findings.
+
+**Verdict:** Pass gate — proceed to stage 8.
+
+### Prior findings verification (iteration 1)
+
+| Finding | Severity (iter 1) | Status | Evidence |
+|---------|-------------------|--------|----------|
+| F-001 | Medium | **Resolved** | 25× `### REQ-38.NNN —` headings in `ep-requirements.md`; `validate ears EP-038` → total 25, 0 errors; `validate req EP-038` → 25/25, 0 orphans |
+| F-002 | Minor | **Resolved** | `ep-system-design.md` § Method → file mapping: subsections *Receiver methods vs package-level helpers*, *Package-level helpers by target file*, and *Manual grep guidance* |
+
+### Strengths
+
+- **Validator alignment:** Testing strategy explicitly ties REQ-38.022/AC-38.022 to canonical REQ headings and lists `validate req EP-038` in the verification order ([ep-system-design.md](ep-system-design.md) § Testing strategy).
+- **MANUAL AC clarity:** Package-level vs receiver vs handler-parameter helpers are tabulated; grep examples use `^func SymbolName` without requiring `(h *conversationHandler)`.
+- **Unchanged from iteration 1:** Accurate pre-move inventory, behaviour-preserving sequence diagram, EP-034/036/037 contract callouts, extraction order memory → tools → llm, KISS same-package split.
+
+### Issues and recommendations
+
+#### Blocker
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Major
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Medium
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Minor
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Nit
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+| N-001 | Turn-index id wording | Data models cite “first 12 hex chars of SHA-256”; implementation uses first 12 **bytes** (`sum[:12]` with `%x` → 24 hex digits). Same as iteration 1. | Harmonize in stage 8 implementation checklist if grep-based turn-id verification is added. |
+
+#### Suggestion
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+| S-001 | Import split | Large shared import block in `handler.go` today. | Stage 8 plan: trim per-file imports after each extraction step; run `go test ./internal/core/...`. |
+| S-002 | `paLocationFromConfig` placement | Moved to `handler_llm.go`; caller remains `run.go`. | Already noted in package-helper table; no design change needed. |
+
+### Architectural decisions (optional)
+
+| Decision | Justification |
+|----------|---------------|
+| Same-package file split only | Smallest change; preserves unexported `conversationHandler` (REQ-38.024). |
+| Extraction order memory → tools → llm | Incremental compile/test; tier file keeps calling moved symbols. |
+| Leave tier/tail/support files | EP-026 precedent; EP-037 scope boundary. |
+
+### NFR coverage (optional)
+
+| NFR | Coverage | Status |
+|-----|----------|--------|
+| REQ-38.021 `make check` | Testing strategy | OK (post-implementation) |
+| REQ-38.022 `validate ears` | Testing strategy + canonical headings | OK (verified 25 REQs, 0 errors) |
+| REQ-38.023 no behaviour change | Overview, error handling, risks | OK |
+| REQ-38.024 no export | Overview, data models | OK |
+| Security / config | No schema change; structural moves only | OK |
+
+### Project rules compliance (optional)
+
+| Rule | Compliance |
+|------|------------|
+| KISS | ✅ File split only; no frameworks |
+| Fail fast | ✅ No config or behaviour changes |
+| Security | ✅ No weakening; structural moves only |
+| Testability | ✅ Validators and manual grep guidance complete |
+
+### Traceability (this iteration)
+
+- **Architecture:** [ep-system-design.md](ep-system-design.md)
+- **Requirements:** [ep-requirements.md](ep-requirements.md) — canonical `### REQ-38.NNN` headings
+- **Acceptance criteria:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
+- **Scope:** [ep-scope.md](ep-scope.md)
+- **Validators (2026-05-31):** `./bin/validate ears EP-038` (25 reqs, 0 errors); `./bin/validate req EP-038` (25/25)
+- **Codebase (branch `epic/EP-038-refactor-core-handler`):** `internal/core/handler.go` (663 LOC); target split files not yet created (pre–stage 9)
