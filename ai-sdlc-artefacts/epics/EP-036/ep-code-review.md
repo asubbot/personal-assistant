@@ -3,17 +3,17 @@ artefact: ep-code-review
 epic_id: EP-036
 status: draft
 source_of_truth: true
-gate: fail
-latest_iteration: 1
+gate: pass
+latest_iteration: 2
 open_counts:
   blocker: 0
   major: 0
-  medium: 1
-  minor: 2
+  medium: 0
+  minor: 0
 non_blocking_counts:
   nit: 2
-  suggestion: 1
-next_action: return_to_stage_9
+  suggestion: 2
+next_action: proceed_to_stage_11
 updated_at: 2026-05-30
 ---
 
@@ -23,16 +23,13 @@ updated_at: 2026-05-30
 
 ## Current Gate Summary
 
-Gate: Fail
-Latest iteration: 1
+Gate: Pass
+Latest iteration: 2
 Last updated: 2026-05-30
-Open counts: Blocker 0 | Major 0 | Medium 1 | Minor 2
-Non-blocking counts: Nit 2 | Suggestion 1
-Open findings:
-- F-001 Medium: Four in-scope Unit ACs (36.006/013/014/022) are silently excluded as DEFERRED by `bin/validate` because their codes appear inside the "MANUAL ONLY" status sentences of AC-36.009/36.018; the hard AC↔test gate stops enforcing them.
-- F-002 Minor: EP-018 `ep-requirements.md` REQs for `full_lite`/model-stage are not annotated as superseded by EP-036, while their ACs are marked Obsolete (forward-traceability asymmetry).
-- F-003 Minor: EP-018 AC-18.005/006/007/008/017 still describe the removed `full_lite` tier in their text while their tests now exercise the `full` tier.
-Next action: Return to stage 9
+Open counts: Blocker 0 | Major 0 | Medium 0 | Minor 0
+Non-blocking counts: Nit 2 | Suggestion 2
+Open findings: none (all blocking findings F-001/F-002/F-003 resolved in iteration 2)
+Next action: Proceed to stage 11
 
 ---
 
@@ -40,45 +37,63 @@ Next action: Return to stage 9
 
 **Review date:** 2026-05-30
 **Stage 10 iteration:** 1 of max 5
-**Scope:** Branch `epic/EP-036-simplify-intent-tiers` vs `main` — `git diff main...HEAD` (product code: `cmd/`, `internal/`; docs; epic artefacts incl. cross-epic EP-018 AC edit). Readonly review.
+**Scope:** Branch `epic/EP-036-simplify-intent-tiers` vs `main` — `git diff main...HEAD`. Readonly review.
 **Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 1 | Minor: 2 | Nit: 2 | Suggestion: 1
-**Gate:** Fail — Medium=1, Minor=2 remain open (§2.2 requires Blocker=Major=Medium=Minor=0).
+**Gate:** Fail
 
 ### Summary
 
-Request changes (non-blocking on correctness). The product change is clean, idiomatic, and faithful to the epic: the model stage is fully removed (`internal/intent/model.go` + `model_test.go` deleted), the cascade is now heuristic → default `full`, `TierFullLite`/`full_lite` is gone from production code and tier dispatch, config structs are shrunk, and `load.go` fails fast on the removed keys with explicit, named errors. `go build ./...`, the targeted test packages, and `./bin/validate EP-036` / `EP-018` all pass. There are **no Blocker or Major** findings. The blocking issues are about traceability evidence integrity, not product behaviour.
-
-### Verification performed (readonly)
-
-- `go build ./...` → success.
-- `go test ./internal/config/... ./internal/intent/... ./internal/core/... ./cmd/pa/...` → all `ok`.
-- `./bin/validate EP-036` → exit 0 (in-scope 11/11 traced, automated 11, deferred 10, obsolete 1, total 22).
-- `./bin/validate EP-018` → exit 0 (in-scope 16/16 traced, obsolete 5, total 21).
-- `.config/config.json`: `intent_classifier.enabled=true`, heuristic-only, no `model_stage`/`full_lite_patterns` → AC-36.018 manual claim valid.
-- `config.examples/config.example.json`: `intent_classifier: null` (top-level key retained, nullable) → explicit-JSON principle intact.
-- grep `full_lite|TierFullLite|ModelStage|ModelClassifier|model_stage` in `cmd/`+`internal/`: production matches limited to config-rejection logic and tests that intentionally name rejected keys (plus two unrelated test string literals — F-005). No dead code.
+Request changes (non-blocking on correctness). Product change is clean and faithful: model stage removed (`internal/intent/model.go`/`model_test.go` deleted), cascade = heuristic → default `full`, `TierFullLite`/`full_lite` gone from production code, config structs shrunk, `load.go` fails fast on removed keys. Build, targeted tests, and both validators pass. No Blocker/Major. Blocking issues are traceability evidence integrity, not behaviour.
 
 ### Findings
 
 | Severity | Location | Issue | Recommendation |
 |----------|----------|-------|----------------|
-| **Medium** | `ep-acceptance-criteria.md` AC-36.009 and AC-36.018 status lines | The two **MANUAL ONLY** sentences name other Unit AC codes (AC-36.006; AC-36.022/013/014) on the same physical line. `bin/validate`'s exclusion heuristic marks those codes DEFERRED, so AC-36.006/013/014/022 — each `Test level: Unit` with real `// Covers` tests — are dropped from the hard AC↔test gate. Coverage evidence is misleading (a future deletion of those tests would not be caught). | Reword AC-36.009/36.018 status sentences so referenced Unit AC codes are NOT on the same line as "MANUAL ONLY" (drop the explicit tokens or move cross-refs to a separate line). Re-run `./bin/validate EP-036` and confirm 36.006/013/014/022 count as automated. |
-| **Minor** | EP-018 `ep-requirements.md` (REQ-18.004/009/010/011 + full_lite FR rows) | ACs marked Obsolete with EP-036 cross-refs, but the REQs still describe full_lite/model-stage as live with no superseded note. Asymmetric forward traceability. | Add a `Superseded by EP-036` note to the affected REQ-18.xxx lines. |
-| **Minor** | EP-018 `ep-acceptance-criteria.md` AC-18.005/006/007/008/017; `internal/core/handler_ep018_coverage_test.go` | These ACs still describe the removed `full_lite` tier while their tests were repointed to `full` (incl. lingering `fullLite` test names). Inconsistent with obsoleting 18.004/009/010/011/020. | Obsolete these too or reword to the surviving `full`-tier behaviour, and rename lingering `fullLite` test functions. |
-| **Nit** | `internal/llm/openai_test.go`; `internal/telegram/outbound_chunk_test.go` | Pre-existing unmodified tests use `"full_lite"` as arbitrary literal content (not the intent tier). Stale sample label. | Optional: replace with `full`/`simple`. Out of strict scope. |
-| **Nit** | `internal/config/intent_classifier_test.go` heuristic-only testdata test | A `Test*` calls another `Test*` to attach a second `// Covers AC-36.022` trace — slightly hacky. | Optional: extract a shared non-`Test` helper. |
-| **Suggestion** | Cross-epic EP-018 edit | Assessed as **legitimate traceability hygiene**: feature deliberately removed by EP-036, REQ links retained, ACs annotated (not deleted), validator supports `Obsolete`, `validate EP-018` passes. No objection. | Record a one-line operator decision acknowledging the cross-epic obsoleting (done in chat). |
+| **Medium** | `ep-acceptance-criteria.md` AC-36.009 / AC-36.018 status lines | MANUAL ONLY sentences name other Unit AC codes (AC-36.006; AC-36.022/013/014) on the same line → validator marks AC-36.006/013/014/022 DEFERRED despite real tests. | Reword so referenced AC codes are not on the MANUAL ONLY line; re-run validate. |
+| **Minor** | EP-018 `ep-requirements.md` (REQ-18.004/009/010/011) | ACs marked Obsolete but REQs not annotated superseded. Asymmetric traceability. | Add `Superseded by EP-036` notes. |
+| **Minor** | EP-018 `ep-acceptance-criteria.md` AC-18.005/006/007/008/017; `handler_ep018_coverage_test.go` | ACs still describe removed `full_lite` while tests repointed to `full` (lingering `fullLite` test names). | Reword to `full` tier; rename tests. |
+| **Nit** | `internal/llm/openai_test.go`; `internal/telegram/outbound_chunk_test.go` | Pre-existing literal `"full_lite"` (not intent tier). | Optional. |
+| **Nit** | `internal/config/intent_classifier_test.go` | `Test*` calls another `Test*` for a second trace. | Optional helper extraction. |
+| **Suggestion** | Cross-epic EP-018 edit | Legitimate traceability hygiene; no objection. | Record operator decision (done in chat). |
 
 ### Focus-area conclusions
 
-1. **Config strictness / explicit-JSON:** PASS. Fail-fast on `model_stage` and `heuristic.full_lite_patterns` with named errors; strict unknown-key rejection unchanged; top-level `intent_classifier` required-but-nullable; new testdata + example load successfully.
-2. **Behavioural safety:** PASS. `assembleTierMainLLMParams` only has `TierFull` + `default`(simple); `buildTierFullLiteMainPrompt` removed; `full` path unchanged; ambiguous → `full` (no LLM call).
-3. **Complete removal:** PASS. No stray symbols; `model.go`/`model_test.go` deleted; no dead code.
-4. **Cross-epic EP-018 edit:** Legitimate; REQ traceability retained; `validate EP-018` passes. Minor asymmetries (F-002/F-003).
-5. **Test integrity:** Largely PASS; new tests carry `// Covers AC-36.xxx`; AC-36.018 genuinely MANUAL, AC-36.022 automated. F-001 wording causes validator to under-enforce 4 ACs.
-6. **KISS / imports / boundaries:** PASS.
+1. Config strictness / explicit-JSON: PASS. 2. Behavioural safety: PASS. 3. Complete removal: PASS. 4. Cross-epic EP-018 edit: legitimate. 5. Test integrity: PASS except F-001 under-enforcement. 6. KISS / boundaries: PASS.
 
-### Residual risks / follow-ups
+---
 
-- Stale `full_lite` literals in unrelated `llm`/`telegram` tests (harmless).
-- Capture cross-epic decision as operator record (done).
+## Review iteration 2
+
+**Review date:** 2026-05-30
+**Stage 10 iteration:** 2 of max 5
+**Scope:** Branch `epic/EP-036-simplify-intent-tiers` vs `main` — full `git diff main...HEAD`, focused re-review of fix commit `1bc3e93` (`git diff 72f72f7..HEAD`). Fresh readonly reviewer. Verified resolution of F-001/F-002/F-003.
+**Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 0 | Minor: 0 | Nit: 2 | Suggestion: 2
+**Gate:** Pass — all blocking severities 0 (§2.2 exit satisfied).
+
+### Summary
+
+Approve. The iteration-2 commit is documentation/test-naming only (EP-036 + EP-018 artefacts and three EP-018 test-function renames); it touches no product code under `cmd/`/`internal/` (non-test). All three blocking findings resolved and verified by re-running validators and the build/test suite. Iteration-1's behavioural PASS conclusions remain valid. No new regressions.
+
+### Verification performed (readonly)
+
+- `git diff 72f72f7..HEAD`: only `EP-018/ep-acceptance-criteria.md`, `EP-018/ep-requirements.md`, `EP-036/ep-acceptance-criteria.md`, `internal/core/handler_ep018_coverage_test.go` (3 test renames). No product (non-test) code changed.
+- `go build ./...` → success. `go test ./internal/core/... ./internal/config/... ./internal/intent/... ./cmd/pa/...` → all `ok`.
+- `./bin/validate EP-036` → exit 0. **in-scope 15/15 traced (100%), automated 15 (100%), manual-only 0 | deferred 6 | obsolete 1 | total 22.** AC-36.006/013/014/022 now `✓` automated (were DEFERRED in iteration 1). F-001 effect confirmed.
+- `./bin/validate EP-018` → exit 0. in-scope 16/16 traced (100%), automated 15, manual-only 1, deferred 0, obsolete 5, total 21. AC-18.005/006/007/008/017 `✓`.
+- grep: no `fullLite`/`full_lite` remain in `handler_ep018_*` tests; `// Covers AC-18.xxx` traces intact.
+
+### Resolution verification
+
+| Finding | Severity | Status | Evidence |
+|---------|----------|--------|----------|
+| F-001 | Medium | **Resolved** | AC-36.009/36.018 status lines reworded; cross-refs moved to `Related coverage:` lines with no AC tokens. validate EP-036 counts AC-36.006/013/014/022 as automated (15/15, 100%). |
+| F-002 | Minor | **Resolved** | REQ-18.004/009/010/011 annotated `Superseded by EP-036` in table + detailed entries; retained for historical traceability. |
+| F-003 | Minor | **Resolved** | AC-18.005/006/007/008/017 reworded to `full` tier (`Amended by EP-036`); three `fullLite` test functions renamed to `TestEP018_fullTier_*`; traces intact; validate EP-018 passes. |
+
+### Findings (open)
+
+None blocking. Carried-over non-blocking: two Nits (stale `full_lite` literals in unrelated `llm`/`telegram` tests; test-calls-test wrapper) and two Suggestions (optional REQ-18.005–008/017 wording polish; operator record of cross-epic edit — acknowledged).
+
+### Gate decision
+
+All Blocker/Major/Medium/Minor open counts are 0. The §2.2 9↔10 loop is complete. Approve and proceed to stage 11 (audit).
