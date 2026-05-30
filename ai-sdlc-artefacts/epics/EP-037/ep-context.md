@@ -32,14 +32,15 @@ Add required `tools.selection` (`tool_search_top_k`, `tool_min_count`, `tool_fal
 
 ## Design Decisions
 
-- Target shape: single `tools.selection` under required `tools`.
-- `runtime_skills.tool_vector_top_k_cap` unchanged; still caps effective top-K at runtime.
-- `vector_search_tools` triple-schema repetition: out of scope (deferred).
+- `ToolsSelection` struct in `internal/config/config.go` on required `ToolsConfig.Selection` (five explicit JSON fields).
+- Legacy keys rejected via `rejectRemovedUnsupportedConfigKeys` / `rejectRemovedToolsConfigKeys` (EP-034/036 raw-JSON pattern); `tool_pre_selection` dropped from `configRootJSONKeys`.
+- `enabled` gates runtime cap only; when false, `max_tools_for_llm_request` may be 0 and is ignored at runtime.
+- `runtime_skills.tool_vector_top_k_cap` unchanged; `vector_search_tools` DRY deferred.
 
 ## Interfaces / Contracts
 
-- Config: `tools.selection` replaces `tool_pre_selection` + `tools.dynamic_selection`.
-- Runtime: `mergeSelectedToolIDs` + `mergedAfterDynamicToolCap` behaviour unchanged.
+- Config: `tools.selection` replaces `tool_pre_selection` + `tools.dynamic_selection`; `validateToolsSelection` + `validateToolsObjectKeys`.
+- Runtime: handler reads `cfg.Tools.Selection`; `mergeSelectedToolIDs` / `mergedAfterDynamicToolCap` algorithms unchanged.
 
 ## Current Gate Summary
 
@@ -48,6 +49,7 @@ Add required `tools.selection` (`tool_search_top_k`, `tool_min_count`, `tool_fal
 | Stage 3 ep-scope | draft |
 | Stage 4 ep-requirements | draft |
 | Stage 5 ep-acceptance-criteria | draft |
+| Stage 6 ep-system-design | draft |
 
 ## Open Questions
 
@@ -55,6 +57,7 @@ None for stage 3 — HOTL default: defer `vector_search_tools` DRY; keep EP-038 
 
 ## Links
 
+- [ep-system-design.md](ep-system-design.md)
 - [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
