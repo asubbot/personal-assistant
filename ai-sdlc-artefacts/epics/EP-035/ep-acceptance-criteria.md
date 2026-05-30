@@ -19,7 +19,7 @@ Testable conditions for removing stub `internal/logging`, relocating the EP-022 
 | AC ID | REQ (trace) | Test level | Summary |
 |-------|-------------|------------|---------|
 | [AC-35.001](#ac-35-001) | [REQ-35.001](ep-requirements.md#req-35-001--delete-logging-stub-package) | Manual | `internal/logging` directory removed |
-| [AC-35.002](#ac-35-002) | [REQ-35.002](ep-requirements.md#req-35-002--no-logging-package-imports) | Integration | No Go imports of `pa/internal/logging` |
+| [AC-35.002](#ac-35-002) | [REQ-35.002](ep-requirements.md#req-35-002--no-logging-package-imports) | Manual (build/grep) | No Go imports of `pa/internal/logging` |
 | [AC-35.003](#ac-35-003) | [REQ-35.003](ep-requirements.md#req-35-003--delete-reliability-test-package) | Manual | `internal/reliability` directory removed |
 | [AC-35.004](#ac-35-004) | [REQ-35.004](ep-requirements.md#req-35-004--relocate-concurrent-write-test) | Integration | `TestConcurrentWrites_NoBusyErrors` lives under `tests/integration` |
 | [AC-35.005](#ac-35-005) | [REQ-35.005](ep-requirements.md#req-35-005--preserve-ac-22-010-race-test-intent) | Integration | Relocated test passes under `go test -race` (EP-022 race-test intent) |
@@ -30,10 +30,10 @@ Testable conditions for removing stub `internal/logging`, relocating the EP-022 
 | [AC-35.010](#ac-35-010) | [REQ-35.010](ep-requirements.md#req-35-010--equivalent-forbidden-marker-validation) | Unit | Forbidden-marker validation matches pre-EP-035 behaviour |
 | [AC-35.011](#ac-35-011) | [REQ-35.011](ep-requirements.md#req-35-011--equivalent-block-wrap-helpers) | Unit | Wrap helpers match pre-EP-035 `systemprompt` output |
 | [AC-35.012](#ac-35-012) | [REQ-35.012](ep-requirements.md#req-35-012--delete-legacy-prompt-packages) | Manual | Legacy `promptmarkers` and `systemprompt` dirs removed |
-| [AC-35.013](#ac-35-013) | [REQ-35.013](ep-requirements.md#req-35-013--no-legacy-prompt-package-imports) | Integration | No Go imports of removed prompt packages |
-| [AC-35.014](#ac-35-014) | [REQ-35.014](ep-requirements.md#req-35-014--update-prompt-package-importers) | Integration | Listed importers build using `internal/prompt` only |
+| [AC-35.013](#ac-35-013) | [REQ-35.013](ep-requirements.md#req-35-013--no-legacy-prompt-package-imports) | Manual (build/grep) | No Go imports of removed prompt packages |
+| [AC-35.014](#ac-35-014) | [REQ-35.014](ep-requirements.md#req-35-014--update-prompt-package-importers) | Manual (build/grep) | Listed importers build using `internal/prompt` only |
 | [AC-35.015](#ac-35-015) | [REQ-35.015](ep-requirements.md#req-35-015--no-configjson-changes) | Manual | EP-035 diff leaves `config.json` and load validation unchanged |
-| [AC-35.016](#ac-35-016) | [REQ-35.016](ep-requirements.md#req-35-016--quality-gate-passes) | Integration | `make check` exits zero |
+| [AC-35.016](#ac-35-016) | [REQ-35.016](ep-requirements.md#req-35-016--quality-gate-passes) | Manual (make check) | `make check` exits zero |
 | [AC-35.017](#ac-35-017) | [REQ-35.017](ep-requirements.md#req-35-017--preserve-system-prompt-assembly) | Integration | Core handler system-message assembly unchanged vs baseline |
 | [AC-35.018](#ac-35-018) | [REQ-35.018](ep-requirements.md#req-35-018--preserve-runtime-skills-marker-rejection) | Integration | Runtime skills still fail startup on forbidden marker lines |
 | [AC-35.019](#ac-35-019) | [REQ-35.019](ep-requirements.md#req-35-019--preserve-memory-indexing-marker-rejection) | Unit | `write_memory` / handler still reject forbidden marker lines in chunks |
@@ -108,7 +108,7 @@ Then the path `internal/logging/` SHALL NOT exist.
 ### AC-35.002
 
 **Trace:** [REQ-35.002](ep-requirements.md#req-35-002--no-logging-package-imports)  
-**Test level:** Integration  
+**Test level:** Manual (build/grep)  
 **Status:** AC-35.002 MANUAL ONLY — verified by repository grep for `pa/internal/logging` (zero matches) and `make check`; no unit test applies.
 
 Given the EP-035 change set is applied  
@@ -258,7 +258,7 @@ Then the paths `internal/promptmarkers/` and `internal/systemprompt/` SHALL NOT 
 ### AC-35.013
 
 **Trace:** [REQ-35.013](ep-requirements.md#req-35-013--no-legacy-prompt-package-imports)  
-**Test level:** Integration  
+**Test level:** Manual (build/grep)  
 **Status:** AC-35.013 MANUAL ONLY — verified by repository grep for `pa/internal/promptmarkers` and `pa/internal/systemprompt` (zero matches) and `make check`; no unit test applies.
 
 Given the EP-035 change set is applied  
@@ -272,7 +272,7 @@ Then the search SHALL return zero matches.
 ### AC-35.014
 
 **Trace:** [REQ-35.014](ep-requirements.md#req-35-014--update-prompt-package-importers)  
-**Test level:** Integration  
+**Test level:** Manual (build/grep)  
 **Status:** AC-35.014 MANUAL ONLY — verified by `make check` (build/vet of all listed importers) and grep confirming `pa/internal/prompt`-only imports; behaviour is covered by the same packages' existing tests.
 
 Given the EP-035 change set is applied  
@@ -301,7 +301,7 @@ Then the diff SHALL introduce no new, removed, or altered top-level configuratio
 ### AC-35.016
 
 **Trace:** [REQ-35.016](ep-requirements.md#req-35-016--quality-gate-passes)  
-**Test level:** Integration  
+**Test level:** Manual (make check)  
 **Status:** AC-35.016 MANUAL ONLY — verified by running `make check` from the repository root (exit 0); this is a process gate, not a unit test.
 
 Given the EP-035 implementation is complete on the epic branch  
