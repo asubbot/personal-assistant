@@ -35,10 +35,11 @@ Testable acceptance criteria for **EP-036**: remove the intent-classifier **mode
 | [AC-36.015](#ac-36-015) | [REQ-36.018](ep-requirements.md#req-36-018--enabled-heuristic-schema), [REQ-36.019](ep-requirements.md#req-36-019--validate-heuristic-at-load) | Unit | Enabled `heuristic` schema and regex / length validation at load |
 | [AC-36.016](#ac-36-016) | [REQ-36.020](ep-requirements.md#req-36-020--keep-intent_classifier-root-key), [REQ-36.021](ep-requirements.md#req-36-021--null-intent_classifier-disables-classification) | Unit | Root `intent_classifier` key; JSON `null` accepted |
 | [AC-36.017](#ac-36-017) | [REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs) | Manual | Operator docs describe two-tier heuristic-only cascade |
-| [AC-36.018](#ac-36-018) | [REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs) | Unit | Example, live, and testdata configs load without removed keys |
+| [AC-36.018](#ac-36-018) | [REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs) | Manual | Live operator `.config/config.json` loads under new schema |
 | [AC-36.019](#ac-36-019) | [REQ-36.025](ep-requirements.md#req-36-025--retire-obsolete-tier-tests) | Manual (test inventory) | Obsolete model / three-tier / `full_lite` tests removed or rewritten |
 | [AC-36.020](#ac-36-020) | [REQ-36.026](ep-requirements.md#req-36-026--make-check-passes) | Manual (make check) | `make check` exits zero |
 | [AC-36.021](#ac-36-021) | [REQ-36.027](ep-requirements.md#req-36-027--epic-validation-passes) | Manual (validate) | `./bin/validate ears EP-036` passes |
+| [AC-36.022](#ac-36-022) | [REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs) | Unit | Example and testdata configs load without removed keys |
 
 ---
 
@@ -70,11 +71,11 @@ Given a `config.json` fixture containing `intent_classifier.heuristic.full_lite_
 When config load runs in `internal/config` tests  
 Then load SHALL fail with an explicit validation error.
 
-### AC-36.018 Representative configs load (Trace: REQ-36.022)
+### AC-36.022 Representative configs load (Trace: REQ-36.022)
 
-Given `config.examples/config.example.json`, operator `.config/config.json`, and updated `internal/config/testdata/` fixtures on the epic branch  
+Given `config.examples/config.example.json` and updated `internal/config/testdata/` fixtures on the epic branch  
 When config load runs in automated tests  
-Then each representative file SHALL load successfully without removed nested keys.
+Then each file SHALL load successfully without removed nested keys.
 
 ---
 
@@ -316,11 +317,12 @@ And SHALL NOT document `model_stage`, `full_lite_patterns`, or a three-tier / mo
 ### AC-36.018
 
 **Trace:** [REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs)  
-**Test level:** Unit
+**Test level:** Manual  
+**Status:** AC-36.018 MANUAL ONLY — operator `.config/config.json` is verified manually and by app startup validation; automated schema/rejection coverage is provided by `config.examples/` (AC-36.022) and a testdata fixture, plus removed-key rejection (AC-36.013, AC-36.014), which remain Unit.
 
-Given `config.examples/config.example.json`, operator `.config/config.json`, and updated files under `internal/config/testdata/` on the epic branch  
-When config load runs in automated tests  
-Then each representative config SHALL load successfully without `model_stage` or `full_lite_patterns`.
+Given the operator `.config/config.json` updated for the shrunk classifier schema on the epic branch  
+When the application loads and validates it at startup (or an operator runs the binary against it)  
+Then the live config SHALL load successfully without `model_stage` or `full_lite_patterns`.
 
 ---
 
@@ -363,3 +365,16 @@ Then it SHALL exit with status zero.
 Given `ep-requirements.md` for EP-036 on the epic branch  
 When `./bin/validate ears EP-036` runs from the repository root  
 Then validation SHALL report no EARS format errors for the requirements artefact.
+
+---
+
+<a id="ac-36-022"></a>
+
+### AC-36.022
+
+**Trace:** [REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs)  
+**Test level:** Unit
+
+Given `config.examples/config.example.json` and updated files under `internal/config/testdata/` on the epic branch  
+When config load runs in automated tests  
+Then each file SHALL load successfully without `model_stage` or `full_lite_patterns`.

@@ -153,7 +153,7 @@ return intent.NewCascadeClassifier(heuristic, logger), nil
 
 **Imports to drop from model-stage block:** no extra `llm` provider construction for classification (package may still import `llm` elsewhere in `main.go`).
 
-**Tests:** `cmd/pa/ep024_operator_logging_test.go` — remove expected log keys `model_stage` / classification model from intent-enabled fixture expectations ([AC-36.009](ep-acceptance-criteria.md#ac-36-009)).
+**Tests:** No `cmd/pa` test asserts intent-classifier **log keys**, so removing the `model_stage` / `classifier_model` log attrs in `main.go` needs no test edit. The only `cmd/pa` test touching removed text is the **doc-content** check in `ep024_operator_logging_test.go` (`TestEP024_ProviderRolesDocContent`), handled in the Testing strategy / step 6. AC-36.009 is verified by build + grep (Manual).
 
 ### `internal/config` — schema and load ([REQ-36.016](ep-requirements.md#req-36-016--reject-model_stage-config-key)–[REQ-36.021](ep-requirements.md#req-36-021--null-intent_classifier-disables-classification))
 
@@ -199,23 +199,28 @@ This mirrors [EP-034](../EP-034/ep-system-design.md) `rejectRemovedToolsConfigKe
 
 **Comment-only:** `ToolDynamicSelection` doc line “TierFull and TierFullLite” → “TierFull” ([REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs) docs alignment).
 
-### Configuration files to update ([REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs), [AC-36.018](ep-acceptance-criteria.md#ac-36-018))
+### Configuration files to update ([REQ-36.022](ep-requirements.md#req-36-022--update-configs-and-operator-docs), [AC-36.018](ep-acceptance-criteria.md#ac-36-018), [AC-36.022](ep-acceptance-criteria.md#ac-36-022))
 
 | File | Action |
 |------|--------|
-| `.config/config.json` | Remove `heuristic.full_lite_patterns` and entire `model_stage` object; keep `enabled: true` and heuristic-only block (merge former `full_lite` regexes into `full_patterns` per operator choice). **Verified MANUALLY** (no automated test loads this path — see F-002 note below) |
-| `config.examples/config.example.json` | Keep `"intent_classifier": null` (explicit key); document enabled shape in `docs/configuration.md` only |
+| `.config/config.json` | Remove `heuristic.full_lite_patterns` and entire `model_stage` object; keep `enabled: true` and heuristic-only block (merge former `full_lite` regexes into `full_patterns` per operator choice). **Live operator file = MANUAL verification only** ([AC-36.018](ep-acceptance-criteria.md#ac-36-018), amended; see F-002 note below) |
+| `config.examples/config.example.json` | Keep `"intent_classifier": null` (explicit key); document enabled shape in `docs/configuration.md` only. Automated positive-load coverage ([AC-36.022](ep-acceptance-criteria.md#ac-36-022), Unit) |
 | `internal/config/testdata/*.json` | All fixtures already use `"intent_classifier": null` — no bulk edit required |
-| **Add** `internal/config/testdata/intent_classifier_model_stage_rejected.json` | Minimal valid config + `model_stage` → load must fail |
-| **Add** `internal/config/testdata/intent_classifier_full_lite_patterns_rejected.json` | Minimal valid config + `full_lite_patterns` → load must fail |
-| **Add** `internal/config/testdata/intent_classifier_enabled_heuristic_only.json` | Positive enabled heuristic-only load ([AC-36.015](ep-acceptance-criteria.md#ac-36-015), [AC-36.018](ep-acceptance-criteria.md#ac-36-018)) |
+| **Add** `internal/config/testdata/intent_classifier_model_stage_rejected.json` | Minimal valid config + `model_stage` → load must fail (automated Unit, [AC-36.013](ep-acceptance-criteria.md#ac-36-013)) |
+| **Add** `internal/config/testdata/intent_classifier_full_lite_patterns_rejected.json` | Minimal valid config + `full_lite_patterns` → load must fail (automated Unit, [AC-36.014](ep-acceptance-criteria.md#ac-36-014)) |
+| **Add** `internal/config/testdata/intent_classifier_enabled_heuristic_only.json` | Positive enabled heuristic-only load ([AC-36.015](ep-acceptance-criteria.md#ac-36-015), [AC-36.022](ep-acceptance-criteria.md#ac-36-022)) |
 | `tests/integration/testdata/runtime_skills/minimal_ok/config.json` | Already `null`; verify unchanged |
 | `cmd/pa/main_test.go` embedded config | Already `intent_classifier: null` |
 | `docs/configuration.md` | Two-tier table; heuristic-only cascade; remove `full_lite` / `model_stage` sections |
 | `docs/llm-provider-roles-and-logging.md` | Remove intent classifier model-stage client section |
 | `docs/architecture-ru.md` | **Add (F-004):** stale `full_lite` / three-tier references at lines 162 (`simple / full_lite / full`), 230 (`else tier = full_lite`), 260 (`full_lite` tier description), 519 (classification-flow `simple / full_lite / full`) → two-tier (`simple` / `full`) heuristic-only |
 
-> **F-002 — `.config/config.json` verification.** No Go test loads the operator `.config/config.json` (a real `config.Load` needs secrets / known_hosts / tool-catalog files that are not test fixtures), so a stale operator file is **not** caught by `make check`; it would fail only at process start. Automated **Unit** coverage for the shrunk schema (AC-36.018) is provided by `config.examples/config.example.json` (loads as `intent_classifier: null`) plus the three new `internal/config/testdata/` fixtures (positive heuristic-only load + two rejection fixtures). The operator `.config/config.json` is updated and verified **manually** during the epic. Sequencing step 1 must not claim CI catches stale operator files.
+> **F-002 — `.config/config.json` verification (reconciled with AC).** No Go test loads the operator `.config/config.json` (a real `config.Load` needs secrets / known_hosts / tool-catalog files that are not test fixtures), so a stale operator file is **not** caught by `make check`; it would fail only at process start. The acceptance criteria now reflect this split:
+> - **Live operator `.config/config.json` → MANUAL verification only** ([AC-36.018](ep-acceptance-criteria.md#ac-36-018), amended in stage 5): updated and verified by hand during the epic.
+> - **Automated positive-load / schema coverage → Unit** ([AC-36.022](ep-acceptance-criteria.md#ac-36-022)): `config.examples/config.example.json` (loads as `intent_classifier: null`) plus the new `internal/config/testdata/intent_classifier_enabled_heuristic_only.json` fixture.
+> - **Removed-key rejection → Unit** ([AC-36.013](ep-acceptance-criteria.md#ac-36-013)/[AC-36.014](ep-acceptance-criteria.md#ac-36-014)): the two new rejection fixtures via `Load`.
+>
+> No design wording claims CI catches a stale operator file.
 
 ---
 
@@ -270,7 +275,7 @@ Disabled: `"intent_classifier": null` ([REQ-36.021](ep-requirements.md#req-36-02
 | Level | Focus | REQ / AC |
 |-------|-------|----------|
 | Unit — `intent` | Two tier constants; heuristic order without `full_lite` step; ambiguous → default full; no model tests | AC-36.001–007 |
-| Unit — `config` | Rejection fixtures; enabled heuristic-only load; drop model-stage validation tests | AC-36.013–016, AC-36.018 |
+| Unit — `config` | Removed-key rejection fixtures (AC-36.013–014); positive enabled heuristic-only + `config.examples` load (AC-36.022); root-key + `null` (AC-36.016); drop model-stage validation tests. Live `.config/config.json` is **manual** (AC-36.018) | AC-36.013–016, AC-36.022 |
 | Unit — `core` | Dispatch only simple/full; delete `buildTierFullLite` tests; rewrite EP-018 token-delta tests to compare simple vs full or former-lite fixture → full path | AC-36.010–012, AC-36.019 |
 | Integration | Handler assigns one tier per turn; simple/full assembly parity; table of pre-epic `full_lite` messages → `full` assembly | AC-36.003, AC-36.011–012 |
 | Manual | Grep `cmd/pa` for classification LLM; docs review; `make check`; `./bin/validate ears EP-036` | AC-36.008–009, AC-36.017, AC-36.020–021 |
@@ -297,7 +302,7 @@ Disabled: `"intent_classifier": null` ([REQ-36.021](ep-requirements.md#req-36-02
 
 **`cmd/pa/`**
 
-- `ep024_operator_logging_test.go` — **two updates.** (1) intent-enabled logging fixture/expectations: drop `model_stage` / `classifier_model` log keys ([AC-36.009](ep-acceptance-criteria.md#ac-36-009)). (2) `TestEP024_ProviderRolesDocContent` (lines 65–78) asserts `docs/llm-provider-roles-and-logging.md` **contains** `"model_stage"`, `"not selected by an index"`, and `"## Example: pool with intent classifier"`; the doc update removes the model-stage section, so **remove those substrings** from the checks list (keep `intent_classifier`, transport-fallback, and `PA_ENV` checks).
+- `ep024_operator_logging_test.go` — **doc-content only (F-006).** This file has **no** intent-classifier log-key assertion, so no log-key edit is required; the `model_stage` / `classifier_model` log attrs are removed in `cmd/pa/main.go` production code (AC-36.009, verified by build + grep). The one assertion touching removed text is `TestEP024_ProviderRolesDocContent` (lines 65–78), which asserts `docs/llm-provider-roles-and-logging.md` **contains** `"model_stage"`, `"not selected by an index"`, and `"## Example: pool with intent classifier"`. Because the doc update removes the model-stage section, **remove those three substrings** from the `checks` list (keep `llm_providers`, `zero-based`, `transport fallback`, `intent_classifier`, `PA_ENV`, `development`, and the single-/multi-provider example headers).
 - `main_test.go` — embedded config already uses `"intent_classifier": null`; no change.
 
 **Literal-string-only (not `intent.Tier`; out of scope for tier removal, optional hygiene)**
@@ -314,9 +319,9 @@ Order below keeps `make check` green after each step ([REQ-36.026](ep-requiremen
 
 | Step | Work | Rationale / green-after-step note |
 |------|------|-----------|
-| **1** | `rejectRemovedIntentClassifierKeys` + two rejection testdata JSON + positive heuristic-only testdata + `config_test.go` cases. Land alongside struct removal in step 5 **or** keep legacy structs until step 5 so the package compiles | Rejection unit coverage lands first; applies to `config.examples` + new testdata only (not the live operator file) |
+| **1** | `rejectRemovedIntentClassifierKeys` + two rejection testdata JSON + positive heuristic-only testdata + `config_test.go` cases. Land alongside struct removal in step 5 **or** keep legacy structs until step 5 so the package compiles | Automated Unit coverage: removed-key rejection (AC-36.013–014) + positive load of `config.examples` and new testdata (AC-36.022). Does **not** load the live operator `.config/config.json` (AC-36.018 manual) |
 | **2** | `internal/intent`: delete `model.go`/`model_test.go`; shrink `tier.go`/`heuristic.go`/`cascade.go` (+ comment updates F-003); migrate `cascade_test.go`, `heuristic_test.go`, `observability_test.go` signatures and delete model/lite tests | Package + its tests compile once constructor signatures and removed tests are updated together |
-| **3** | `cmd/pa`: `buildIntentClassifier` (drop model block) + `ep024_operator_logging_test.go` log-key edit | Wires new 2-arg cascade constructor |
+| **3** | `cmd/pa`: `buildIntentClassifier` (drop model block + `model_stage`/`classifier_model` log attrs). No `cmd/pa` test log-key edit exists (the only affected `ep024` assertion is doc-content, handled in step 6) | Wires new 2-arg cascade constructor |
 | **4** | `internal/core`: remove `TierFullLite` case + `buildTierFullLiteMainPrompt`; migrate/rewrite `handler_ep017_test.go`, `handler_ep018_test.go`, `handler_ep018_coverage_test.go`, `handler_tier_main_prompt_test.go` (incl. former-lite → full path test) | All four core test files edited in the **same** step as the symbol removal so the build never breaks |
 | **5** | `internal/config`: remove `ClassificationModelConfig`, `ModelStage`, `FullLitePatterns`, `validateICModelStage`, lite-pattern loop, `resolve.go` block; update `intent_classifier_test.go`; update `.config/config.json` (manual) | Load matches code; struct removal coexists with raw-JSON rejection from step 1 |
 | **6** | Docs: `docs/configuration.md`, `docs/llm-provider-roles-and-logging.md`, `docs/architecture-ru.md` (F-004); `config.go` `ToolDynamicSelection` comment. **Same step:** rewrite the doc-content assertions in `handler_ep018_coverage_test.go` (`TestEP018_configurationDoc_containsTierMatrix`) and `cmd/pa/ep024_operator_logging_test.go` (`TestEP024_ProviderRolesDocContent`) so doc edits and their content tests change atomically | Doc-content tests would otherwise fail the instant `full_lite` / `model_stage` leave the docs |
@@ -360,9 +365,11 @@ Steps 2–4 may be one commit. The doc-content tests in step 6 MUST move with th
 | AC-36.010 | `handler_tier_main_prompt` unit tests |
 | AC-36.011 | Existing simple/full assembly baselines |
 | AC-36.012 | Former `full_lite` fixture → full assembly |
-| AC-36.013–014 | Config load rejection testdata |
+| AC-36.013–014 | Config load rejection testdata (automated Unit) |
 | AC-36.015–016 | Heuristic validation + root key tests |
-| AC-36.017–018 | Docs + `Load` on representative JSON |
+| AC-36.017 | Operator docs review (Manual) |
+| AC-36.018 | Live `.config/config.json` load (Manual only) |
+| AC-36.022 | Positive load of `config.examples` + new testdata fixture (automated Unit) |
 | AC-36.019 | Test inventory |
 | AC-36.020–021 | `make check`, validate binary |
 
@@ -372,7 +379,7 @@ Steps 2–4 may be one commit. The doc-content tests in step 6 MUST move with th
 
 | Risk | Mitigation |
 |------|------------|
-| Operator configs still contain removed keys | Fail-fast JSON rejection at load; the live `.config/config.json` is updated and verified **manually** (no automated test loads it — F-002); a stale file fails at process start, not in `make check` |
+| Operator configs still contain removed keys | Fail-fast JSON rejection at load (automated Unit, AC-36.013–014); the live `.config/config.json` is updated and verified **manually** (AC-36.018; no automated test loads it — F-002), while positive schema load is covered by `config.examples` + testdata (AC-36.022). A stale operator file fails at process start, not in `make check` |
 | Doc-content tests assert removed substrings (`full_lite`, `model_stage`) | Rewrite `TestEP018_configurationDoc_containsTierMatrix` and `TestEP024_ProviderRolesDocContent` in the same commit as the doc edits (sequencing step 6) |
 | Former `full_lite` messages use heavier `full` path (more tokens/latency) | Accepted in scope; merge patterns into `full_patterns` if needed |
 | Silent ignore if rejection omitted | Follow EP-034 raw-JSON check; unit tests for both keys |
