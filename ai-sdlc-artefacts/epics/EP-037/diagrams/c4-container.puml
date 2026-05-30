@@ -1,0 +1,35 @@
+@startuml c4-container
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 60
+skinparam ranksep 80
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-037 tools.selection config
+
+Person(user, "User", "Telegram user")
+System_Ext(telegram, "Telegram", "Messaging / Bot API")
+System_Ext(llm_main, "Main LLM Provider", "Chat completions with tool defs")
+System_Ext(embed_api, "Embedding API", "Tool/skill vector search")
+
+System_Boundary(pa, "PersonalAssistant") {
+  Container(tg_adapter, "Telegram Adapter", "Go", "Routes messages to handler")
+  Container(handler, "Conversation Handler", "Go", "mergeSelectedToolIDs, dynamic cap on tier full")
+  Container(config_loader, "Config Loader", "Go", "Load, validate tools.selection, reject legacy keys")
+  ContainerDb(config_store, "Config", "JSON", "tools.selection (five fields); no tool_pre_selection")
+}
+
+Rel(user, telegram, "Uses")
+Rel(telegram, tg_adapter, "Bot API")
+Rel(tg_adapter, handler, "User message")
+Rel(handler, config_loader, "Reads tools.selection at startup")
+Rel(config_loader, config_store, "config.json")
+Rel(handler, embed_api, "SelectToolIDs embeddings")
+Rel(handler, llm_main, "Capped tool list when selection.enabled")
+Rel(tg_adapter, telegram, "Reply")
+
+@enduml

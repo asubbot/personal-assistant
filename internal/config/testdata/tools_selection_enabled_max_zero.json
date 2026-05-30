@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "telegram": {
+    "token_path": "/run/secrets/token",
+    "users_path": ""
+  },
+  "llm_providers": [
+    {
+      "type": "ollama",
+      "endpoint": "http://localhost:11434",
+      "model": "llama3.2",
+      "supports_tools": true,
+      "default_temperature": 0.3,
+      "default_max_tokens": 1024,
+      "default_response_format": "text",
+      "http_timeout": "60s"
+    }
+  ],
+  "tools": {
+    "selection": {
+      "tool_search_top_k": 10,
+      "tool_min_count": 1,
+      "tool_fallback_cap": 50,
+      "enabled": true,
+      "max_tools_for_llm_request": 0
+    }
+  },
+  "paths": {
+    "memory_dir": "/data/memory",
+    "log_path": "/data/pa.log",
+    "vector_index_path": "/data/pa_vectors.sqlite",
+    "llm_log_dir": "/data/llm_logs",
+    "llm_log_retention_days": 7,
+    "jobs_db_path": "jobs.sqlite",
+    "tool_catalog_path": "valid_tools.yaml"
+  },
+  "embedding": {
+    "type": "ollama",
+    "endpoint": "http://localhost:11434",
+    "model": "nomic-embed-text",
+    "dimensions": 768,
+    "batch_size": 100,
+    "http_timeout": "60s"
+  },
+  "nodes": {},
+  "log_redaction": {
+    "additional_patterns": []
+  },
+  "pa_timezone": "UTC",
+  "conversation_context": {
+    "max_dynamic_system_runes": 4000,
+    "memory_vector": {
+      "notes_top_k": 10,
+      "summaries_top_k": 10,
+      "turns_top_k": 10
+    }
+  },
+  "read_memory": {
+    "max_span_days": 31,
+    "max_output_bytes": 262144
+  },
+  "write_memory": {
+    "max_append_bytes": 65536,
+    "max_file_bytes": 5242880
+  },
+  "vector_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": false
+  },
+  "jobs_store_reliability": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL",
+    "foreign_keys": true
+  },
+  "intent_classifier": null,
+  "observability_http": null,
+  "web_tools": null,
+  "runtime_skills": null,
+  "conversation_session": null
+}

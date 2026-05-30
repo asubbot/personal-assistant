@@ -9,6 +9,7 @@ import (
 	"pa/internal/toolcatalog"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -83,7 +84,7 @@ func prepareConfig(raw *Config, path string, rootJSON []byte) error {
 	if err := validateToolsAlwaysInclude(raw); err != nil {
 		return err
 	}
-	if err := validateToolDynamicSelection(raw); err != nil {
+	if err := validateToolsSelectionAlwaysIncludeFloor(raw); err != nil {
 		return err
 	}
 	if err := finalizeRuntimeSkills(raw); err != nil {
@@ -104,6 +105,9 @@ func rejectRemovedUnsupportedConfigKeys(data []byte) error {
 		if err := rejectRemovedToolsConfigKeys(rawTools); err != nil {
 			return err
 		}
+	}
+	if _, has := root["tool_pre_selection"]; has {
+		return errors.New("config: tool_pre_selection is not supported; use tools.selection (EP-037)")
 	}
 	if rawIC, ok := root["intent_classifier"]; ok {
 		if err := rejectRemovedIntentClassifierKeys(rawIC); err != nil {
@@ -138,17 +142,38 @@ func rejectRemovedIntentClassifierKeys(rawIC json.RawMessage) error {
 	return nil
 }
 
+var allowedToolsKeys = []string{
+	"always_include",
+	"selection",
+	"vector_search_tools",
+	"create_tool_secret_patterns",
+	"tool_output_artifacts",
+}
+
 func rejectRemovedToolsConfigKeys(rawTools json.RawMessage) error {
 	if len(rawTools) == 0 || string(rawTools) == "null" {
 		return nil
 	}
 	var tools map[string]json.RawMessage
-	if err := json.Unmarshal(rawTools, &tools); err == nil {
-		if _, has := tools["text_based_enabled"]; has {
-			return errors.New("config: tools.text_based_enabled is not supported; use llm_providers[].supports_tools true for native tool calling")
-		}
-		if _, has := tools["llm_escalation"]; has {
-			return errors.New("config: tools.llm_escalation is not supported; tool-path LLM escalation was removed (EP-034)")
+	if err := json.Unmarshal(rawTools, &tools); err != nil {
+		return fmt.Errorf("config: tools: %w", err)
+	}
+	if _, has := tools["dynamic_selection"]; has {
+		return errors.New("config: tools.dynamic_selection is not supported; use tools.selection (EP-037)")
+	}
+	if _, has := tools["text_based_enabled"]; has {
+		return errors.New("config: tools.text_based_enabled is not supported; use llm_providers[].supports_tools true for native tool calling")
+	}
+	if _, has := tools["llm_escalation"]; has {
+		return errors.New("config: tools.llm_escalation is not supported; tool-path LLM escalation was removed (EP-034)")
+	}
+	return validateToolsObjectKeys(tools)
+}
+
+func validateToolsObjectKeys(tools map[string]json.RawMessage) error {
+	for got := range tools {
+		if !slices.Contains(allowedToolsKeys, got) {
+			return fmt.Errorf("config: unknown tools key %q", got)
 		}
 	}
 	return nil
@@ -261,7 +286,7 @@ func validateMandatoryJSONSectionsCore(c *Config) error {
 	if err := validateConversationSession(c); err != nil {
 		return err
 	}
-	if err := validateToolPreSelection(c); err != nil {
+	if err := validateToolsSelectionBounds(c); err != nil {
 		return err
 	}
 	if err := validateWebTools(c); err != nil {
@@ -384,28 +409,31 @@ func compileCreateToolSecretPatterns(c *Config) error {
 	return nil
 }
 
-func validateToolPreSelection(c *Config) error {
-	if c.ToolPreSelection == nil {
-		return errors.New("config: tool_pre_selection is required")
+func validateToolsSelectionBounds(c *Config) error {
+	if c == nil || c.Tools == nil || c.Tools.Selection == nil {
+		return errors.New("config: tools.selection is required")
 	}
-	t := c.ToolPreSelection
-	if t.ToolSearchTopK < 1 {
-		return errors.New("config: tool_pre_selection.tool_search_top_k must be >= 1")
+	s := c.Tools.Selection
+	if s.ToolSearchTopK < 1 {
+		return errors.New("config: tools.selection.tool_search_top_k must be >= 1")
 	}
-	if t.ToolSearchTopK > maxToolSearchTopK {
-		return fmt.Errorf("config: tool_pre_selection.tool_search_top_k must be <= %d", maxToolSearchTopK)
+	if s.ToolSearchTopK > maxToolSearchTopK {
+		return fmt.Errorf("config: tools.selection.tool_search_top_k must be <= %d", maxToolSearchTopK)
 	}
-	if t.ToolMinCount < 1 {
-		return errors.New("config: tool_pre_selection.tool_min_count must be >= 1")
+	if s.ToolMinCount < 1 {
+		return errors.New("config: tools.selection.tool_min_count must be >= 1")
 	}
-	if t.ToolMinCount > maxToolMinCount {
-		return fmt.Errorf("config: tool_pre_selection.tool_min_count must be <= %d", maxToolMinCount)
+	if s.ToolMinCount > maxToolMinCount {
+		return fmt.Errorf("config: tools.selection.tool_min_count must be <= %d", maxToolMinCount)
 	}
-	if t.ToolFallbackCap < 1 {
-		return errors.New("config: tool_pre_selection.tool_fallback_cap must be >= 1")
+	if s.ToolFallbackCap < 1 {
+		return errors.New("config: tools.selection.tool_fallback_cap must be >= 1")
 	}
-	if t.ToolFallbackCap > maxToolFallbackCap {
-		return fmt.Errorf("config: tool_pre_selection.tool_fallback_cap must be <= %d", maxToolFallbackCap)
+	if s.ToolFallbackCap > maxToolFallbackCap {
+		return fmt.Errorf("config: tools.selection.tool_fallback_cap must be <= %d", maxToolFallbackCap)
+	}
+	if s.Enabled && s.MaxToolsForLLMRequest < 1 {
+		return errors.New("config: tools.selection.max_tools_for_llm_request must be >= 1 when selection.enabled is true")
 	}
 	return nil
 }
@@ -767,20 +795,17 @@ func countValidAlwaysIncludeTools(c *Config) int {
 	return len(seen)
 }
 
-func validateToolDynamicSelection(c *Config) error {
-	if c == nil || c.Tools == nil || c.Tools.DynamicSelection == nil {
+func validateToolsSelectionAlwaysIncludeFloor(c *Config) error {
+	if c == nil || c.Tools == nil || c.Tools.Selection == nil {
 		return nil
 	}
-	ds := c.Tools.DynamicSelection
-	if !ds.Enabled {
+	s := c.Tools.Selection
+	if !s.Enabled {
 		return nil
-	}
-	if ds.MaxToolsForLLMRequest < 1 {
-		return errors.New("config: tools.dynamic_selection.max_tools_for_llm_request must be >= 1 when dynamic_selection.enabled is true")
 	}
 	n := countValidAlwaysIncludeTools(c)
-	if n > 0 && ds.MaxToolsForLLMRequest < n {
-		return fmt.Errorf("config: tools.dynamic_selection.max_tools_for_llm_request (%d) must be >= valid always_include count (%d)", ds.MaxToolsForLLMRequest, n)
+	if n > 0 && s.MaxToolsForLLMRequest < n {
+		return fmt.Errorf("config: tools.selection.max_tools_for_llm_request (%d) must be >= valid always_include count (%d)", s.MaxToolsForLLMRequest, n)
 	}
 	return nil
 }

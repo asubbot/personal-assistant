@@ -26,8 +26,6 @@ type Config struct {
 	ConversationContext *ConversationContextConfig `json:"conversation_context"` // required; injected context limits (max_dynamic_system_runes >= 1; memory_vector per-field 0..cap)
 	// ToolCatalog is the parsed tool catalog when paths.tool_catalog_path is set; nil otherwise. Populated at config load (fail fast on parse/schema error).
 	ToolCatalog *toolcatalog.Catalog `json:"-"`
-	// ToolPreSelection is required; all numeric fields must be >= 1 (no runtime defaults).
-	ToolPreSelection *ToolPreSelection `json:"tool_pre_selection"`
 	// Tools is required; use {"tools":{}} minimum.
 	Tools *ToolsConfig `json:"tools"`
 	// CreateToolSecretRegex is compiled at Load from tools.create_tool_secret_patterns (REQ-09.017). Nil when absent or empty.
@@ -168,26 +166,22 @@ type ConversationSessionConfig struct {
 type ToolsConfig struct {
 	// AlwaysInclude lists catalog or allowed-native tool ids merged into every turn’s tool set (EP-013, REQ-13.011).
 	AlwaysInclude []string `json:"always_include,omitempty"`
-	// DynamicSelection is optional (EP-018). When present and enabled, max_tools_for_llm_request must be set in JSON (>= 1).
-	DynamicSelection *ToolDynamicSelection `json:"dynamic_selection,omitempty"`
+	// Selection is required (EP-037); catalog vector pre-selection and per-request main-LLM tool cap.
+	Selection *ToolsSelection `json:"selection"`
 	// VectorSearchTools is optional (EP-032). When set, configures search_vector_memory/search_vector_tool/search_vector_skill in one block.
 	VectorSearchTools *VectorSearchToolsConfig `json:"vector_search_tools,omitempty"`
 	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
 	CreateToolSecretPatterns []string `json:"create_tool_secret_patterns,omitempty"`
 }
 
-// ToolDynamicSelection configures EP-018 dynamic narrowing of the main LLM tool list.
-// When Enabled is true, TierFull applies the cap after merge.
-type ToolDynamicSelection struct {
-	Enabled               bool `json:"enabled"`
-	MaxToolsForLLMRequest int  `json:"max_tools_for_llm_request"`
-}
-
-// ToolPreSelection holds parameters for tool pre-selection (REQ-04.019, REQ-04.020). Validated at load; no implicit defaults.
-type ToolPreSelection struct {
-	ToolSearchTopK  int `json:"tool_search_top_k"` // top-k from vector search (>= 1)
-	ToolMinCount    int `json:"tool_min_count"`    // minimum tools from search before accepting; else fallback (>= 1)
-	ToolFallbackCap int `json:"tool_fallback_cap"` // max tools when using fallback (sorted catalog ids) (>= 1)
+// ToolsSelection configures catalog vector pre-selection and per-request main-LLM tool cap (EP-037).
+// All fields are required in JSON when tools is present; validated at load; no implicit defaults.
+type ToolsSelection struct {
+	ToolSearchTopK        int  `json:"tool_search_top_k"`         // >= 1, <= 500
+	ToolMinCount          int  `json:"tool_min_count"`            // >= 1, <= 500
+	ToolFallbackCap       int  `json:"tool_fallback_cap"`         // >= 1, <= 1000
+	Enabled               bool `json:"enabled"`                   // dynamic cap gate (tier full)
+	MaxToolsForLLMRequest int  `json:"max_tools_for_llm_request"` // when enabled: >= 1 and >= always_include count; when disabled: may be 0
 }
 
 // MemoryVectorConfig holds per-table top-k for automatic memory injection (vector search into the system prompt). Validated at load: each field 0..maxVectorSearchTopK; 0 disables that lane.

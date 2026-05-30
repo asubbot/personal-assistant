@@ -1,0 +1,17 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-037 Consolidate tool selection config - C4 Context
+
+Person(user, "User", "Telegram operator")
+System(pa, "PersonalAssistant", "Config load, tool merge, main LLM")
+System_Ext(telegram, "Telegram", "Messaging channel")
+System_Ext(llm, "LLM providers", "Main completion with tool defs")
+System_Ext(catalog, "Tool catalog / index", "Vector-ranked catalog tools")
+
+Rel(user, telegram, "Uses")
+Rel(telegram, pa, "Messages")
+Rel(pa, llm, "Complete with capped tool set")
+Rel(pa, catalog, "SelectToolIDs / merge")
+
+@enduml

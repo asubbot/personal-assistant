@@ -14,10 +14,14 @@ import (
 // minimalConfigForRun satisfies config fields required by newRunConversationHandler when tests bypass config.Load.
 func minimalConfigForRun() *config.Config {
 	return &config.Config{
-		Tools:               &config.ToolsConfig{},
+		Tools: &config.ToolsConfig{
+			Selection: &config.ToolsSelection{
+				ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50,
+				Enabled: false, MaxToolsForLLMRequest: 0,
+			},
+		},
 		LogRedaction:        &config.LogRedaction{},
 		PATimezone:          "UTC",
-		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
 		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, MemoryVector: config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}},
 	}
 }
@@ -60,6 +64,28 @@ type capturingAdapter struct {
 func (a *capturingAdapter) Run(ctx context.Context, handler MessageHandler) error {
 	a.handler = handler
 	return nil
+}
+
+// Covers AC-37.012: handler construction reads pre-selection from cfg.Tools.Selection only.
+func TestRun_wiresToolsSelectionFromConfig(t *testing.T) {
+	cfg := minimalConfigForRun()
+	cfg.Tools.Selection.Enabled = true
+	cfg.Tools.Selection.MaxToolsForLLMRequest = 3
+	adapter := &capturingAdapter{}
+	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
+	if err := Run(context.Background(), cfg, slog.Default(), adapter, []llm.Provider{provider}, []string{"test/default"}, nil, nil, nil, nil, nil, nil, nil, nil); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	h, ok := adapter.handler.(*conversationHandler)
+	if !ok {
+		t.Fatalf("handler type %T", adapter.handler)
+	}
+	if h.toolsSelection == nil || !h.toolsSelection.Enabled || h.toolsSelection.MaxToolsForLLMRequest != 3 {
+		t.Fatalf("toolsSelection = %#v", h.toolsSelection)
+	}
+	if h.toolSearchTopK != cfg.Tools.Selection.ToolSearchTopK {
+		t.Fatalf("toolSearchTopK = %d want %d", h.toolSearchTopK, cfg.Tools.Selection.ToolSearchTopK)
+	}
 }
 
 // Covers AC-01.003 (US-02): core.Run calls adapter.Run with non-nil handler (valid wiring).
@@ -123,12 +149,16 @@ func TestRun_builtLLMContextDoesNotContainConfigSecret(t *testing.T) {
 	}
 
 	cfg := &config.Config{
-		Version:             1,
-		Telegram:            config.Telegram{TokenPath: secretPath},
-		Tools:               &config.ToolsConfig{},
+		Version:  1,
+		Telegram: config.Telegram{TokenPath: secretPath},
+		Tools: &config.ToolsConfig{
+			Selection: &config.ToolsSelection{
+				ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50,
+				Enabled: false, MaxToolsForLLMRequest: 0,
+			},
+		},
 		LogRedaction:        &config.LogRedaction{},
 		PATimezone:          "UTC",
-		ToolPreSelection:    &config.ToolPreSelection{ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50},
 		ConversationContext: &config.ConversationContextConfig{MaxDynamicSystemRunes: 4000, MemoryVector: config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}},
 	}
 	logger := slog.Default()

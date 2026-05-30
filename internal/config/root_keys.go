@@ -25,7 +25,6 @@ var configRootJSONKeys = []string{
 	"read_memory",
 	"runtime_skills",
 	"telegram",
-	"tool_pre_selection",
 	"tools",
 	"vector_store_reliability",
 	"version",

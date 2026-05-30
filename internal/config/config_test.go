@@ -120,10 +120,10 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 		{"missing tools section", "missing_tools.json", "top-level key \"tools\""},
 		{"missing read_memory", "missing_read_memory.json", "top-level key \"read_memory\""},
 		{"missing write_memory", "missing_write_memory.json", "top-level key \"write_memory\""},
-		{"dynamic_selection enabled max zero", "tools_dynamic_selection_enabled_max_zero.json", "max_tools_for_llm_request must be >= 1"},
+		{"tools.selection enabled max zero", "tools_selection_enabled_max_zero.json", "max_tools_for_llm_request must be >= 1"},
 		{"missing log_redaction section", "missing_log_redaction.json", "top-level key \"log_redaction\""},
 		{"missing pa_timezone", "missing_pa_timezone.json", "top-level key \"pa_timezone\""},
-		{"tool_pre_selection zero top_k", "tool_pre_selection_zero.json", "tool_search_top_k must be >= 1"},
+		{"tools.selection zero top_k", "tools_selection_zero.json", "tool_search_top_k must be >= 1"},
 		{"conversation_context zero max runes", "conversation_context_zero.json", "max_dynamic_system_runes must be >= 1"},
 		{"memory_vector negative notes_top_k", "conversation_memory_vector_notes_negative.json", "memory_vector top_k fields must be >= 0"},
 		{"memory_vector notes_top_k over max", "conversation_memory_vector_notes_over_max.json", "conversation_context.memory_vector.notes_top_k must be <="},
@@ -150,7 +150,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 }
 
-// Covers AC-01.005: config load rejects unknown top-level keys with a clear error.
+// Covers AC-01.005, AC-37.018: config load rejects unknown top-level keys with a clear error.
 func TestLoad_UnknownTopLevelKey_ReturnsError(t *testing.T) {
 	path := filepath.Join("testdata", "unknown_root_key.json")
 	_, err := Load(path)
@@ -173,10 +173,9 @@ func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "legacy.json", "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
-  "tools": {},
+  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
-  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
@@ -306,10 +305,9 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 	  },
 	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
 	  "nodes": {},
-	  "tools": {},
+	  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
 	  "log_redaction": { "additional_patterns": [] },
 	  "pa_timezone": "UTC",
-	  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
 	  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
 	  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
 	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
@@ -466,10 +464,9 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
   "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
   "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
   "nodes": {},
-  "tools": {},
+  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
-  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
@@ -519,10 +516,9 @@ func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
       "command_allowlist_path": "/allowlist.txt"
     }
   },
-  "tools": {},
+  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
-  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
@@ -650,10 +646,9 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" }
   },
-  "tools": {},
+  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
-  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
@@ -716,10 +711,9 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "key1" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "key2" }, "command_allowlist_path": "allow.txt" }
   },
-  "tools": {},
+  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
-  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
@@ -784,10 +778,9 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
     "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "real" }, "command_allowlist_path": "allow.txt" },
     "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "alias" }, "command_allowlist_path": "allow.txt" }
   },
-  "tools": {},
+  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
   "log_redaction": { "additional_patterns": [] },
   "pa_timezone": "UTC",
-  "tool_pre_selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50 },
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false }, "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null

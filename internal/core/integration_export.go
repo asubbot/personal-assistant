@@ -138,6 +138,7 @@ type IntegrationConversationParams struct {
 	LogRedactor                func(string) string
 	FirstProviderSupportsTools bool
 	ConversationSession        *config.ConversationSessionConfig
+	ToolsSelection             *config.ToolsSelection
 }
 
 // NewIntegrationConversationHandler returns a MessageHandler for integration tests.
@@ -195,6 +196,7 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 		firstProviderSupportsTools: p.FirstProviderSupportsTools,
 		sessionCfg:                 sessCfg,
 		sessionStore:               sessStore,
+		toolsSelection:             p.ToolsSelection,
 	}
 }
 

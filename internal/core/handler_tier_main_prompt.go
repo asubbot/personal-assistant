@@ -86,10 +86,10 @@ func (h *conversationHandler) buildTierFullMainPrompt(ctx context.Context, userT
 }
 
 func (h *conversationHandler) mergedAfterDynamicToolCap(ctx context.Context, merged []string) (picked []string, dynamicRan bool) {
-	if h.toolsDynamic == nil || !h.toolsDynamic.Enabled || len(merged) == 0 {
+	if h.toolsSelection == nil || !h.toolsSelection.Enabled || len(merged) == 0 {
 		return merged, false
 	}
-	return h.pickToolsForMainRequest(ctx, merged, h.toolsDynamic.MaxToolsForLLMRequest), true
+	return h.pickToolsForMainRequest(ctx, merged, h.toolsSelection.MaxToolsForLLMRequest), true
 }
 
 // mergeTailMergedToolsAndOptions implements the shared full-tier tail path.
