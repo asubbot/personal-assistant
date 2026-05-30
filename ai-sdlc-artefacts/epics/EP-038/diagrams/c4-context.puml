@@ -1,0 +1,17 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-038 Refactor core conversation handler - C4 Context
+
+Person(user, "User", "Telegram operator")
+System(pa, "PersonalAssistant", "Go monolith; core handler split (no behaviour change)")
+System_Ext(telegram, "Telegram", "Messaging channel")
+System_Ext(llm, "LLM providers", "Ordered pool; transport fallback only")
+System_Ext(nodes, "SSH nodes", "Allowlisted remote execution")
+
+Rel(user, telegram, "Uses")
+Rel(telegram, pa, "Messages")
+Rel(pa, llm, "Complete / embeddings")
+Rel(pa, nodes, "Allowlisted commands via tools")
+
+@enduml

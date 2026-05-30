@@ -1,0 +1,39 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title EP-038 Refactor core conversation handler - C4 Containers
+
+Person(user, "User", "Telegram operator")
+System_Boundary(pa, "PersonalAssistant") {
+  Container(tg, "telegram.Adapter", "Go", "Transport; unchanged")
+  Container(orch, "core.handler.go", "Go", "HandleMessage orchestration; struct; session helpers; turn constants")
+  Container(tier, "core.handler_tier_main_prompt.go", "Go", "Tier dispatch; tail merge; dynamic cap hook")
+  Container(llmF, "core.handler_llm.go", "Go", "Router complete; tool loop; LLM logs")
+  Container(toolsF, "core.handler_tools.go", "Go", "Tool merge; catalog/native execution")
+  Container(memF, "core.handler_memory.go", "Go", "RAG chunks; turn index")
+  Container(support, "core support files", "Go", "system_tail; dynamic_tool_selection; runtime_tools; vector_merge; memory_vectors")
+  Container(cfg, "config.Load", "Go", "Unchanged schema (EP-037 tools.selection)")
+  Container(router, "llmrouter.Router", "Go", "Transport fallback only (EP-034)")
+}
+System_Ext(telegram, "Telegram", "Bot API")
+System_Ext(llm, "LLM providers", "Ordered pool")
+System_Ext(nodes, "SSH nodes", "Allowlisted remote exec")
+
+Rel(user, telegram, "Uses")
+Rel(telegram, tg, "Messages")
+Rel(tg, orch, "HandleMessage")
+Rel(orch, tier, "buildMainTurnMessagesPreTail; assembleTierMainLLMParams")
+Rel(tier, memF, "gatherRetrievedChunkTexts (full tier)")
+Rel(tier, toolsF, "mergeSelectedToolIDs; cap via dynamic_tool_selection")
+Rel(orch, llmF, "completeAt; finishAfterFirstLLM")
+Rel(llmF, router, "Complete")
+Rel(router, llm, "HTTP")
+Rel(llmF, toolsF, "executeOneToolCall (tool rounds)")
+Rel(toolsF, nodes, "run_on_node")
+Rel(llmF, memF, "handleLLMSuccess; indexTurn")
+Rel(support, tier, "system tail; pickToolsForMainRequest")
+Rel(support, toolsF, "mergeToolIDs")
+Rel(support, memF, "vector search; merge")
+Rel(cfg, orch, "wiring via Run")
+
+@enduml
