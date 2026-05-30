@@ -3,30 +3,34 @@ artefact: ep-system-design-review
 epic_id: EP-037
 status: draft
 source_of_truth: true
-gate: fail
-latest_iteration: 1
+gate: pass
+latest_iteration: 2
 open_counts:
   blocker: 0
-  major: 1
-  medium: 3
-  minor: 3
-next_action: return_to_stage_6
+  major: 0
+  medium: 0
+  minor: 0
+next_action: proceed_to_stage_8
 updated_at: 2026-05-30
 ---
 
 # Architecture Review — EP-037 Consolidate tool pre-selection configuration
 
-**Reviewer:** AI Agent (fresh delegated reviewer, Stage 7 iteration 1)
+**Reviewer:** AI Agent (fresh delegated reviewer, Stage 7)
 
 ---
 
 ## Current Gate Summary
 
-Gate: Fail
-Latest iteration: 1
+Gate: Pass
+Latest iteration: 2
 Last updated: 2026-05-30
-Open counts: Blocker 0 | Major 1 | Medium 3 | Minor 3
-Open findings:
+Open counts: Blocker 0 | Major 0 | Medium 0 | Minor 0
+Open findings: None — all iteration-1 findings (F-001…F-007) verified resolved in `ep-system-design.md`.
+Next action: Proceed to stage 8
+
+<!-- Iteration 1 open findings (now resolved) retained below for history -->
+Resolved (iteration 1) findings:
 - F-001 Major: Merged `validateToolsSelection` call-site vs tool-catalog load ordering can drop the `always_include` floor check → behaviour drift, breaks AC-37.003 parity.
 - F-002 Medium: `tools.tool_output_artifacts` present in operator `.config/config.json` is not in the proposed nested-key whitelist/struct; strict `validateToolsObjectKeys` (REQ-37.008) would reject it at load (AC-37.023). Design defers without a concrete decision.
 - F-003 Medium: testdata inventory inaccurate — design states "52 files"; actual is 62 testdata fixtures contain `tool_pre_selection`; enumerated grep baseline omits ≥5 files.
@@ -34,7 +38,6 @@ Open findings:
 - F-005 Minor: `integration_export.go` contract names inaccurate (`NewConversationHandlerParams` vs actual `IntegrationConversationParams`/`NewIntegrationConversationHandler`; today the integration handler never wires the dynamic cap).
 - F-006 Minor: Error-handling table link text "REQ-37.018" points to the REQ-37.020 anchor (should be REQ-37.020 / AC-37.018).
 - F-007 Minor: `tests/integration/runtime_skills_handler_test.go` (7 field sites) is absent from the file/test inventory.
-Next action: Return to stage 6
 
 ---
 
@@ -106,6 +109,87 @@ The design is well-targeted and correctly preserves the runtime selection algori
 | REQ-37.021 keep `tool_vector_top_k_cap` location | Stays under `runtime_skills`; handler `min` unchanged | OK |
 | REQ-37.022 no `vector_search_tools` DRY | Explicitly out of scope; `validateTools` block untouched | OK |
 | REQ-37.023 limit core changes | Wiring-only diff in `run.go`/`handler.go`/`integration_export.go` | OK |
+| REQ-37.024 no new selection features | No ranking/tier-cap changes | OK |
+
+### Traceability (this iteration)
+
+- **Architecture:** [ep-system-design.md](ep-system-design.md)
+- **Requirements:** [ep-requirements.md](ep-requirements.md)
+- **Acceptance criteria:** [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
+- **Scope:** [ep-scope.md](ep-scope.md)
+
+---
+
+## Review iteration 2
+
+**Review date:** 2026-05-30
+**Stage 7 iteration:** 2 of max 5
+**Document reviewed:** [ep-system-design.md](ep-system-design.md)
+**Iteration summary — open counts:** Blocker: 0 | Major: 0 | Medium: 0 | Minor: 0
+**Gate:** Pass (Blocker/Major/Medium/Minor all zero)
+
+### Overall assessment
+
+The revised design resolves all seven iteration-1 findings, each verified independently against the current code rather than taken on the document's word. The Major load-ordering risk (F-001) is fixed by splitting validation into a pre-catalog bounds check and a post-catalog `always_include` floor check pinned to the same site where `validateToolDynamicSelection` runs today; the three Medium issues (operator `tool_output_artifacts` whitelist with a concrete decision, corrected 64-file fixture count, and an added Risks/trade-offs section) and all three Minor issues are closed. The runtime-parity strengths (top-K `min` cap, dynamic-cap gate, `root_keys.go` change, struct-user inventory) remain accurate against the code. No new findings of any severity.
+
+**Verdict:** Pass gate
+
+### Strengths
+
+- **F-001 fix is code-correct.** Verified in `internal/config/load.go`: `validateToolPreSelection` is reached pre-catalog via `validate(raw)` (`prepareConfig:55` → `validateMandatoryJSONSectionsCore` → `validateToolPreSelection:264`), while `validateToolDynamicSelection` is called at `prepareConfig:86` **after** `raw.ToolCatalog = cat` (`:77-81`). `countValidAlwaysIncludeTools` returns 0 when `c.ToolCatalog == nil` (`load.go:749-768`), confirming the drift risk is real. The design now maps the `always_include` floor to `validateToolsSelectionAlwaysIncludeFloor` at the **same post-catalog site (B)** and keeps catalog-independent checks (incl. `enabled⇒max≥1`) at `validateToolsSelectionBounds` (site A) — preserving today's exact ordering and AC-37.003 parity.
+- **F-002 decision is concrete and operator-safe.** `.config/config.json:42` does carry `tools.tool_output_artifacts`, and `ToolsConfig` (`config.go:168`) has no field for it (so JSON silently drops it today). `allowedToolsKeys` now lists exactly `always_include`, `selection`, `vector_search_tools`, `create_tool_secret_patterns`, `tool_output_artifacts` — and **not** `dynamic_selection` (rejected earlier with the EP-037 message). Decision (a): whitelist-only, typed model deferred to a named follow-up — avoids fail-fast breaking the live operator config (AC-37.023).
+- **F-003 count corrected to authoritative grep.** `grep -rl 'tool_pre_selection' internal/config/testdata/ config.examples/ tests/` returns **64** (62 testdata + `config.example.json` + `tests/integration/.../minimal_ok/config.json`) — matching the design's stated counts and grep-as-source-of-truth.
+- **F-004 resolved.** "Risks and trade-offs" section present, covering floor-check ordering, operator-config break, bulk-fixture migration, runtime-ignored cap, and additive integration wiring.
+- **F-005/F-006/F-007 resolved.** Real symbols `IntegrationConversationParams` (`integration_export.go:114`) and `NewIntegrationConversationHandler` (`:143`) confirmed; the constructor wires **no** dynamic cap today (`:173-198`), so the design's "additive new field, not a rename" framing is correct. The Error-handling table now cites REQ-37.020 / AC-37.018; `runtime_skills_handler_test.go` is inventoried with a "no change required (preserved fields)" note.
+- **Strengths still hold.** `handler.go:318-321` retains the `min(tool_search_top_k, runtime_skills.tool_vector_top_k_cap)` cap unchanged; `root_keys.go:28` still lists `tool_pre_selection` (to drop) and keeps `tools`; the full struct-user/test inventory remains complete.
+
+### Issues and recommendations
+
+#### Blocker
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Major
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Medium
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+#### Minor
+
+| # | Issue | Context | Recommendation |
+|---|-------|---------|----------------|
+
+_None._
+
+### Project rules compliance (optional)
+
+| Rule | Compliance |
+|------|------------|
+| KISS | ✅ Single consolidated `tools.selection` block; no new abstractions; algorithms untouched; `tool_output_artifacts` kept whitelist-only rather than over-modelled now. |
+| Fail fast | ✅ F-001 floor-check ordering pinned post-catalog; F-002 operator-config break avoided by whitelisting the existing key; strict legacy-key and unknown-nested-key rejection retained. |
+| Security | ✅ No change to security model, secret patterns, or tool contract. |
+| Testability | ✅ Two-site validation, parity tables (merge/cap/top-K), and rejection tests are specified; AC-37.003 floor remains testable post-catalog. |
+
+### NFR coverage (optional)
+
+| NFR | Coverage | Status |
+|-----|----------|--------|
+| REQ-37.020 explicit-JSON preserved | Root keys drop `tool_pre_selection`; nested `tools` whitelist added with full key set incl. `tool_output_artifacts` | OK (F-002 resolved) |
+| REQ-37.021 keep `tool_vector_top_k_cap` location | Stays under `runtime_skills`; handler `min` unchanged | OK |
+| REQ-37.022 no `vector_search_tools` DRY | Explicitly out of scope; `validateTools` block untouched | OK |
+| REQ-37.023 limit core changes | Wiring-only diff in `run.go`/`handler.go`/`integration_export.go` (additive cap field) | OK |
 | REQ-37.024 no new selection features | No ranking/tier-cap changes | OK |
 
 ### Traceability (this iteration)
