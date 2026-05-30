@@ -43,7 +43,7 @@ Shrink the `internal/` package tree for increment 0.02 by removing empty/stub pa
 
 ## Current Gate Summary
 
-Stage 7 **Pass** ([ep-system-design-review.md](ep-system-design-review.md)). Stage 8 complete: [ep-implementation-plan.md](ep-implementation-plan.md) — **9 tasks** in four phases (logging → prompt merge → reliability relocation → final gates).
+Stage 7 **Pass** ([ep-system-design-review.md](ep-system-design-review.md)). Stage 8 complete: [ep-implementation-plan.md](ep-implementation-plan.md) — **9/9 tasks** done. Stage 10 **Pass** ([ep-code-review.md](ep-code-review.md), iteration 2). Stage 11 **Pass** ([ep-audit-report.md](ep-audit-report.md), 2026-05-30): `make check` 75.9% coverage; `./bin/validate EP-035` in-scope 11/11 traced + 9 manual ACs verified.
 
 ## Plan execution notes
 
@@ -57,6 +57,8 @@ Stage 7 **Pass** ([ep-system-design-review.md](ep-system-design-review.md)). Sta
 
 ## Links
 
+- [ep-audit-report.md](ep-audit-report.md)
+- [ep-code-review.md](ep-code-review.md)
 - [ep-implementation-plan.md](ep-implementation-plan.md)
 - [ep-system-design.md](ep-system-design.md)
 - [ep-system-design-review.md](ep-system-design-review.md)
