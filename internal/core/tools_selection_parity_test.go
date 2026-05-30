@@ -33,6 +33,9 @@ func TestToolsSelectionParity_mergeEquivalentPreSelection(t *testing.T) {
 	ctx := context.Background()
 	userText := "find tools"
 	var skills []*runtimeskills.Package
+	// Golden baseline: catalogFiveTools + vectorResultsFive yield the five
+	// catalog tools in vector-result order with no always_include/skills.
+	wantMerged := []string{"t1", "t2", "t3", "t4", "t5"}
 	sel := &config.ToolsSelection{
 		ToolSearchTopK:  10,
 		ToolMinCount:    1,
@@ -44,6 +47,11 @@ func TestToolsSelectionParity_mergeEquivalentPreSelection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("merge: %v", err)
 	}
+	if !reflect.DeepEqual(merged, wantMerged) {
+		t.Fatalf("merge golden: got %v want %v", merged, wantMerged)
+	}
+	// Equivalent post-EP-037 config (same operator-migrated values) must
+	// select the identical tool-id slice.
 	h2 := parityHandler(t, 10, 1, 50, &config.ToolsSelection{
 		ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50, Enabled: false,
 	}, nil)
@@ -51,8 +59,8 @@ func TestToolsSelectionParity_mergeEquivalentPreSelection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("merge2: %v", err)
 	}
-	if !reflect.DeepEqual(merged, merged2) {
-		t.Fatalf("merge parity: got %v want %v", merged, merged2)
+	if !reflect.DeepEqual(merged2, wantMerged) {
+		t.Fatalf("merge parity golden: got %v want %v", merged2, wantMerged)
 	}
 }
 
@@ -60,10 +68,18 @@ func TestToolsSelectionParity_mergeEquivalentPreSelection(t *testing.T) {
 func TestToolsSelectionParity_capEquivalentDynamicSelection(t *testing.T) {
 	ctx := context.Background()
 	merged := []string{"t3", "t1", "t5", "t2", "t4"}
+	// Golden baseline: disabled (or nil) selection leaves the merged slice
+	// untouched; enabled with max=3 yields the first three valid ids.
+	wantUncapped := []string{"t3", "t1", "t5", "t2", "t4"}
+	wantCapped := []string{"t3", "t1", "t5"}
+
 	disabled := parityHandler(t, 10, 1, 50, nil, nil)
 	outDisabled, ran := disabled.mergedAfterDynamicToolCap(ctx, merged)
 	if ran {
 		t.Fatal("nil selection should not run cap")
+	}
+	if !reflect.DeepEqual(outDisabled, wantUncapped) {
+		t.Fatalf("nil selection golden: got %v want %v", outDisabled, wantUncapped)
 	}
 	selOff := &config.ToolsSelection{Enabled: false, MaxToolsForLLMRequest: 99, ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50}
 	hOff := parityHandler(t, 10, 1, 50, selOff, nil)
@@ -71,8 +87,8 @@ func TestToolsSelectionParity_capEquivalentDynamicSelection(t *testing.T) {
 	if ran {
 		t.Fatal("disabled selection should not run cap")
 	}
-	if !reflect.DeepEqual(outDisabled, outOff) {
-		t.Fatalf("disabled cap parity: %v vs %v", outDisabled, outOff)
+	if !reflect.DeepEqual(outOff, wantUncapped) {
+		t.Fatalf("disabled selection golden: got %v want %v", outOff, wantUncapped)
 	}
 	selOn := &config.ToolsSelection{Enabled: true, MaxToolsForLLMRequest: 3, ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50}
 	hOn := parityHandler(t, 10, 1, 50, selOn, nil)
@@ -80,9 +96,8 @@ func TestToolsSelectionParity_capEquivalentDynamicSelection(t *testing.T) {
 	if !ran {
 		t.Fatal("enabled selection should run cap")
 	}
-	want := hOn.pickToolsForMainRequest(ctx, merged, 3)
-	if !reflect.DeepEqual(outOn, want) {
-		t.Fatalf("cap parity: got %v want %v", outOn, want)
+	if !reflect.DeepEqual(outOn, wantCapped) {
+		t.Fatalf("cap golden: got %v want %v", outOn, wantCapped)
 	}
 }
 

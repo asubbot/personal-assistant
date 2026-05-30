@@ -77,7 +77,8 @@ type conversationHandler struct {
 	paLoc *time.Location
 	// classifier is the optional EP-017 intent classifier; nil = disabled (always full tier).
 	classifier intent.Classifier
-	// toolsSelection is optional EP-018 main-LLM tool cap; nil = disabled for both tiers.
+	// toolsSelection holds the EP-037 tools.selection block (required in config; carries the
+	// main-LLM tool cap). nil is only the nil-config/test fallback and disables the cap.
 	toolsSelection *config.ToolsSelection
 }
 

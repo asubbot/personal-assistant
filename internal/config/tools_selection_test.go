@@ -148,8 +148,11 @@ func TestLoad_ToolsDynamicSelectionRejected(t *testing.T) {
 	if err == nil {
 		t.Fatal("Load: expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "dynamic_selection") {
-		t.Fatalf("Load: error = %v, want dynamic_selection rejection", err)
+	// Assert the production rejection message (not a bare substring) so a
+	// missing/renamed fixture fails loudly instead of passing on the OS
+	// "no such file" error path, which also contains "dynamic_selection".
+	if !strings.Contains(err.Error(), "tools.dynamic_selection is not supported") {
+		t.Fatalf("Load: error = %v, want tools.dynamic_selection rejection", err)
 	}
 }
 
