@@ -69,7 +69,7 @@ func TestEP018_configurationDoc_containsTierMatrix(t *testing.T) {
 		t.Fatalf("read %s: %v", p, err)
 	}
 	s := string(b)
-	for _, needle := range []string{"### Intent tiers", "simple", "full", "dynamic_selection"} {
+	for _, needle := range []string{"### Intent tiers", "simple", "full", "tools.selection"} {
 		if !strings.Contains(s, needle) {
 			t.Errorf("docs/configuration.md should mention %q", needle)
 		}
@@ -99,7 +99,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 		toolMinCount:               1,
 		toolFallbackCap:            50,
 		firstProviderSupportsTools: true,
-		toolsDynamic:               nil,
+		toolsSelection:             nil,
 	}
 	hCap := &conversationHandler{
 		router:                     mustRouterSingle(t, provYes),
@@ -114,9 +114,12 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 		toolMinCount:               1,
 		toolFallbackCap:            50,
 		firstProviderSupportsTools: true,
-		toolsDynamic: &config.ToolDynamicSelection{
+		toolsSelection: &config.ToolsSelection{
 			Enabled:               true,
 			MaxToolsForLLMRequest: 2,
+			ToolSearchTopK:        10,
+			ToolMinCount:          1,
+			ToolFallbackCap:       50,
 		},
 	}
 	if _, err := hNoCap.HandleMessage(context.Background(), 1, "", "FULLTOOLS"); err != nil {
@@ -279,9 +282,12 @@ func TestEP018_fullTier_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
 		toolMinCount:               1,
 		toolFallbackCap:            50,
 		firstProviderSupportsTools: true,
-		toolsDynamic: &config.ToolDynamicSelection{
+		toolsSelection: &config.ToolsSelection{
 			Enabled:               true,
 			MaxToolsForLLMRequest: 2,
+			ToolSearchTopK:        10,
+			ToolMinCount:          1,
+			ToolFallbackCap:       50,
 		},
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "LITEDYN")

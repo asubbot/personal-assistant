@@ -79,7 +79,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	var toolTopK, toolMin, toolCap int
 	if cfg != nil {
 		maxDynRunes, memVecTopK = conversationContextParams(cfg)
-		toolTopK, toolMin, toolCap = toolPreSelectionParams(cfg)
+		toolTopK, toolMin, toolCap = toolsSelectionParams(cfg)
 	} else {
 		// core.Run allows nil config only for narrow tests; match historical implicit defaults.
 		maxDynRunes = 4000
@@ -90,7 +90,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	byID := make(map[string]*runtimeskills.Package)
 	var rs *config.RuntimeSkillsConfig
 	var tc *config.ToolsConfig
-	var toolDynSel *config.ToolDynamicSelection
+	var toolSel *config.ToolsSelection
 	var sessCfg *config.ConversationSessionConfig
 	var sessStore *sessionWindowStore
 	paLoc := paLocationFromConfig(cfg)
@@ -98,7 +98,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		rs = cfg.RuntimeSkills
 		tc = cfg.Tools
 		if tc != nil {
-			toolDynSel = tc.DynamicSelection
+			toolSel = tc.Selection
 		}
 		for _, p := range cfg.RuntimeSkillPackages {
 			byID[p.ID] = p
@@ -134,7 +134,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		sessionStore:               sessStore,
 		paLoc:                      paLoc,
 		classifier:                 classifier,
-		toolsDynamic:               toolDynSel,
+		toolsSelection:             toolSel,
 	}
 	if cfg != nil && cfg.ToolCatalog != nil {
 		h.catalog = cfg.ToolCatalog
@@ -168,9 +168,10 @@ func baselineProviderSupportsTools(cfg *config.Config) bool {
 	return true
 }
 
-// toolPreSelectionParams returns tool pre-selection from config (validated at config.Load).
-func toolPreSelectionParams(cfg *config.Config) (topK, minCount, fallbackCap int) {
-	return cfg.ToolPreSelection.ToolSearchTopK, cfg.ToolPreSelection.ToolMinCount, cfg.ToolPreSelection.ToolFallbackCap
+// toolsSelectionParams returns tool pre-selection ints from config (validated at config.Load).
+func toolsSelectionParams(cfg *config.Config) (topK, minCount, fallbackCap int) {
+	s := cfg.Tools.Selection
+	return s.ToolSearchTopK, s.ToolMinCount, s.ToolFallbackCap
 }
 
 // conversationContextParams returns conversation context limits from config (validated at config.Load).

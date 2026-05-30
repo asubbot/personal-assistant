@@ -31,12 +31,14 @@
         "max_output_bytes": 4096,
         "snippet_runes": 200
       }
+    },
+    "selection": {
+      "tool_search_top_k": 10,
+      "tool_min_count": 1,
+      "tool_fallback_cap": 50,
+      "enabled": false,
+      "max_tools_for_llm_request": 0
     }
-  },
-  "tool_pre_selection": {
-    "tool_search_top_k": 10,
-    "tool_min_count": 1,
-    "tool_fallback_cap": 50
   },
   "llm_providers": [
     {

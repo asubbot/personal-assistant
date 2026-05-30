@@ -23,9 +23,10 @@ func ensureCoreRunConfigRequiredSections(cfg *config.Config) {
 	if strings.TrimSpace(cfg.PATimezone) == "" {
 		cfg.PATimezone = "UTC"
 	}
-	if cfg.ToolPreSelection == nil {
-		cfg.ToolPreSelection = &config.ToolPreSelection{
+	if cfg.Tools.Selection == nil {
+		cfg.Tools.Selection = &config.ToolsSelection{
 			ToolSearchTopK: 10, ToolMinCount: 1, ToolFallbackCap: 50,
+			Enabled: false, MaxToolsForLLMRequest: 0,
 		}
 	}
 	if cfg.ConversationContext == nil {

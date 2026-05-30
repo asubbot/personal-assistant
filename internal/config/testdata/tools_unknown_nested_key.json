@@ -16,12 +16,6 @@
       "http_timeout": "60s"
     }
   ],
-  "tools": {
-    "dynamic_selection": {
-      "enabled": true,
-      "max_tools_for_llm_request": 0
-    }
-  },
   "paths": {
     "memory_dir": "/data/memory",
     "log_path": "/data/pa.log",
@@ -40,15 +34,20 @@
     "http_timeout": "60s"
   },
   "nodes": {},
+  "tools": {
+    "selection": {
+      "tool_search_top_k": 10,
+      "tool_min_count": 1,
+      "tool_fallback_cap": 50,
+      "enabled": false,
+      "max_tools_for_llm_request": 0
+    },
+    "legacy_selection_stub": true
+  },
   "log_redaction": {
     "additional_patterns": []
   },
   "pa_timezone": "UTC",
-  "tool_pre_selection": {
-    "tool_search_top_k": 10,
-    "tool_min_count": 1,
-    "tool_fallback_cap": 50
-  },
   "conversation_context": {
     "max_dynamic_system_runes": 4000,
     "memory_vector": {

@@ -16,6 +16,15 @@
       "http_timeout": "60s"
     }
   ],
+  "tools": {
+    "selection": {
+      "tool_search_top_k": 10,
+      "tool_min_count": 1,
+      "tool_fallback_cap": 50,
+      "enabled": true,
+      "max_tools_for_llm_request": 0
+    }
+  },
   "paths": {
     "memory_dir": "/data/memory",
     "log_path": "/data/pa.log",
@@ -34,15 +43,6 @@
     "http_timeout": "60s"
   },
   "nodes": {},
-  "tools": {
-    "selection": {
-      "tool_search_top_k": 10,
-      "tool_min_count": 1,
-      "tool_fallback_cap": 50,
-      "enabled": false,
-      "max_tools_for_llm_request": 0
-    }
-  },
   "log_redaction": {
     "additional_patterns": []
   },
@@ -54,10 +54,6 @@
       "summaries_top_k": 10,
       "turns_top_k": 10
     }
-  },
-  "conversation_session": {
-    "enabled": true,
-    "max_session_exchanges": 0
   },
   "read_memory": {
     "max_span_days": 31,
@@ -82,5 +78,6 @@
   "intent_classifier": null,
   "observability_http": null,
   "web_tools": null,
-  "runtime_skills": null
+  "runtime_skills": null,
+  "conversation_session": null
 }
