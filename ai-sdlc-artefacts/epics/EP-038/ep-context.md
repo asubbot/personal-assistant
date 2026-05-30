@@ -27,7 +27,7 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 - **25 ACs** (`AC-38.001`–`AC-38.025`) trace 1:1 to **25 REQs**; structural gates (file split, grep, LOC) are **MANUAL ONLY**; behaviour parity leans on existing suites.
 - **Automated:** `handler_ep017_test.go`, `handler_ep018_test.go`, `handler_ep018_coverage_test.go`, `handler_ep034_regression_test.go`, `handler_ep036_test.go`, `tools_selection_parity_test.go`, `handler_tier_main_prompt_test.go`, `run_test.go`, integration handler tests; **`make check`** (AC-38.021).
 - **Contracts:** EP-034 transport-only routing, EP-036 two-tier, EP-037 `tools.selection` — no assertion changes except import fixes (AC-38.019–020).
-- **Gates:** `./tools/validate/validate ears EP-038` (AC-38.022); prerequisites EP-035/036/037 merged before land (AC-38.001).
+- **Gates:** `./bin/validate ears EP-038` and `./bin/validate req EP-038` (AC-38.022); prerequisites EP-035/036/037 merged before land (AC-38.001).
 
 ## Design Decisions
 
@@ -35,6 +35,13 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 - **Extraction order:** memory → tools → llm → slim `handler.go`; no logic edits on cut/paste.
 - **Leave prior extractions:** `system_tail.go`, `dynamic_tool_selection.go`, `runtime_tools.go`, `vector_merge.go`, `memory_vectors.go` unchanged in responsibility.
 - **Config frozen:** No `config.json` schema change; EP-037 `tools.selection` wiring preserved.
+
+## Implementation Plan (stage 8)
+
+- **Branch:** `epic/EP-038-refactor-core-handler`
+- **Phases:** 0 prerequisite gate → 1 `handler_memory.go` → 2 `handler_tools.go` → 3 `handler_llm.go` → 4 slim `handler.go` → 5 tier boundary guard → 6 existing test parity → 7 manual grep + `make check` + validate.
+- **Checkpoints:** `go test ./internal/core/...` after each extraction; **`make check`** after Phase 4 and Phase 6; final gates in Phase 7.
+- **Tests:** No new product tests unless compile-only helper fixes require one (`// Covers AC-38.xxx` if added). See [ep-implementation-plan.md](ep-implementation-plan.md).
 
 ## Interfaces / Contracts
 
@@ -46,14 +53,15 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 | Gate | Status |
 |------|--------|
 | Stage 3 ep-scope | draft |
-| Stage 4 ep-requirements | draft — canonical `### REQ-38.NNN` headings (stage 7 iter 1 F-001) |
+| Stage 4 ep-requirements | draft — canonical `### REQ-38.NNN` headings |
 | Stage 5 ep-acceptance-criteria | draft (25 ACs) |
-| Stage 6 ep-system-design | draft — package-level vs receiver mapping + manual grep (F-002) |
-| Stage 7 system-design-review | iter 1 findings F-001/F-002 addressed in artefacts |
+| Stage 6 ep-system-design | draft |
+| Stage 7 system-design-review | **pass** (iteration 2) |
+| Stage 8 ep-implementation-plan | draft — 7 phases, 16 tasks |
 
 ## Open Questions
 
-None — stage 6 confirms file-split approach; no tier-strategy framework.
+None — file-split approach confirmed; proceed to stage 9 implementation.
 
 ## Links
 
@@ -61,6 +69,8 @@ None — stage 6 confirms file-split approach; no tier-strategy framework.
 - [ep-requirements.md](ep-requirements.md)
 - [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [ep-system-design.md](ep-system-design.md)
+- [ep-system-design-review.md](ep-system-design-review.md)
+- [ep-implementation-plan.md](ep-implementation-plan.md)
 - [diagrams/c4-container.puml](diagrams/c4-container.puml)
 - [strategy.md](../../strategy.md) — Refactoring 0.02, direction F
 - [scope.md](../../scope.md)
