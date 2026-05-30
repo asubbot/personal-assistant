@@ -6,19 +6,18 @@ import (
 	"unicode/utf8"
 )
 
-// CascadeClassifier chains heuristic → model → default-full (REQ-17.010, REQ-17.011).
+// CascadeClassifier chains heuristic → default full (REQ-17.010, EP-036).
 type CascadeClassifier struct {
 	heuristic *HeuristicClassifier
-	model     *ModelClassifier
 	logger    *slog.Logger
 }
 
-// NewCascadeClassifier creates the two-stage cascade. Either or both stages may be nil.
-func NewCascadeClassifier(heuristic *HeuristicClassifier, model *ModelClassifier, logger *slog.Logger) *CascadeClassifier {
-	return &CascadeClassifier{heuristic: heuristic, model: model, logger: logger}
+// NewCascadeClassifier creates the heuristic-only cascade. Heuristic may be nil.
+func NewCascadeClassifier(heuristic *HeuristicClassifier, logger *slog.Logger) *CascadeClassifier {
+	return &CascadeClassifier{heuristic: heuristic, logger: logger}
 }
 
-// Classify runs the cascade: heuristic (if present) → model (if present and heuristic ambiguous) → default full.
+// Classify runs the cascade: heuristic (if present) → default full when ambiguous.
 func (c *CascadeClassifier) Classify(ctx context.Context, message string) Result {
 	msgLen := utf8.RuneCountInString(message)
 
@@ -26,19 +25,6 @@ func (c *CascadeClassifier) Classify(ctx context.Context, message string) Result
 		hr := c.heuristic.Classify(message)
 		if hr.Confident {
 			return Result{Tier: hr.Tier, Stage: "heuristic", MessageLen: msgLen}
-		}
-	}
-
-	if c.model != nil {
-		tier, err := c.model.Classify(ctx, message)
-		if err != nil {
-			if c.logger != nil {
-				c.logger.Warn("intent classifier model stage failed, defaulting to full",
-					"error", err,
-				)
-			}
-		} else {
-			return Result{Tier: tier, Stage: "model", MessageLen: msgLen}
 		}
 	}
 

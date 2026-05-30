@@ -1,0 +1,17 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-036 Simplify intent classification — C4 Context
+
+Person(user, "User", "Telegram operator")
+System(pa, "PersonalAssistant", "Heuristic intent classifier; tiered prompt assembly")
+System_Ext(telegram, "Telegram", "Messaging channel")
+System_Ext(llm, "Main LLM", "Chat completions for user turns")
+System_Ext(embed, "Embedding API", "RAG embeddings (full tier)")
+
+Rel(user, telegram, "Uses")
+Rel(telegram, pa, "Messages")
+Rel(pa, llm, "Main completion (simple or full prompt)")
+Rel(pa, embed, "Embed query when tier is full")
+
+@enduml

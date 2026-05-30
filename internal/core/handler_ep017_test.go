@@ -10,14 +10,13 @@ import (
 	"testing"
 )
 
-// Covers AC-17.002
+// Covers AC-17.002, AC-36.003, AC-36.011
 // Supporting AC-18.002 (simple tier unchanged vs EP-017)
 func TestHandleMessage_SimpleTier_NoToolsNoRAG(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hi there!"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40),
-		nil,
+		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, 40),
 		nil,
 	)
 	h := &conversationHandler{
@@ -39,13 +38,12 @@ func TestHandleMessage_SimpleTier_NoToolsNoRAG(t *testing.T) {
 	}
 }
 
-// Covers AC-17.003
+// Covers AC-17.003, AC-36.011
 func TestHandleMessage_FullTier_IncludesFullPromptPath(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "full response"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier(nil, []string{`напомни`}, nil, 40),
-		nil,
+		intent.NewHeuristicClassifier(nil, []string{`напомни`}, 40),
 		nil,
 	)
 	h := &conversationHandler{
@@ -83,8 +81,7 @@ func TestHandleMessage_SimpleTier_SkipsToolsAndRAG(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hi"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, nil, 40),
-		nil,
+		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, 40),
 		nil,
 	)
 	h := &conversationHandler{
@@ -107,7 +104,7 @@ func TestHandleMessage_SimpleTier_SkipsToolsAndRAG(t *testing.T) {
 func TestHandleMessage_FullTier_SameAsBaseline(t *testing.T) {
 	providerWithClassifier := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	routerWith := mustRouterSingle(t, providerWithClassifier)
-	classifier := intent.NewCascadeClassifier(nil, nil, nil)
+	classifier := intent.NewCascadeClassifier(nil, nil)
 	hWith := &conversationHandler{
 		router:                routerWith,
 		logger:                slog.Default(),
@@ -156,8 +153,7 @@ func TestHandleMessage_SimpleTier_FooterOnlyMainTokens(t *testing.T) {
 	}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, nil, 40),
-		nil,
+		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, 40),
 		nil,
 	)
 	h := &conversationHandler{
@@ -183,8 +179,7 @@ func TestHandleMessage_ClassificationLogsInfo(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	router := mustRouterSingle(t, provider)
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, nil, 40),
-		nil,
+		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, 40),
 		nil,
 	)
 	h := &conversationHandler{

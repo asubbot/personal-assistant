@@ -21,10 +21,10 @@ See also [configuration.md](configuration.md) for environment variables and the 
 - Summarization uses a dedicated adapter built from the **same** `llm_providers` slice.
 - Each summarization `Complete` also starts at index **0** and uses the same transport fallback rules as main chat.
 
-## Intent classifier (optional, EP-017)
+## Intent classifier (optional, EP-017 / EP-036)
 
-- When `intent_classifier` is enabled and the **model stage** is enabled, the process constructs a **separate** LLM client from `intent_classifier.model_stage` fields (`type`, `endpoint`, `model`, timeouts, and so on).
-- That classifier client is not selected by an index into `llm_providers`. Operators configure it explicitly under `intent_classifier.model_stage` (including its own `api_key_path` resolution via `PA_SECRETS_DIR`).
+- When `intent_classifier` is enabled, classification is **heuristic-only** (regex patterns and length guard). No extra LLM client is created for intent classification.
+- Ambiguous messages default to the **`full`** tier without calling any provider from `llm_providers`.
 
 ## Application log level (`PA_LOG_LEVEL`) and `PA_ENV`
 
@@ -59,25 +59,3 @@ Main chat and summarization both use index **0** only. Transport fallback has no
 ```
 
 Each new turn starts at provider **0**. If a `Complete` call fails with a retryable transport error, the router may retry on provider **1**. Tool failures during a turn do not advance the provider index.
-
-## Example: pool with intent classifier enabled
-
-Keep your main pool as above. Add a minimal `intent_classifier` block (patterns and timeouts omitted here for brevity — see [configuration.md](configuration.md) for required fields):
-
-```json
-"intent_classifier": {
-  "enabled": true,
-  "model_stage": {
-    "enabled": true,
-    "type": "openai",
-    "endpoint": "https://api.openai.com/v1",
-    "api_key_path": "openai_api_key.txt",
-    "model": "gpt-4o-mini",
-    "default_temperature": 0,
-    "default_max_tokens": 16,
-    "http_timeout": "30s"
-  }
-}
-```
-
-The classifier’s model is configured only under `intent_classifier.model_stage`, not by referencing an `llm_providers` index.

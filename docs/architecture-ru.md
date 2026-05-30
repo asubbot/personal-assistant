@@ -159,7 +159,7 @@ flowchart TB
         direction TB
         H["HandleMessage"]
         C["checkUserMessage<br/>пустое / max length"]
-        IC["intent.Classifier<br/>simple / full_lite / full"]
+        IC["intent.Classifier<br/>simple / full"]
         SH["systemStaticHead<br/>trust + дата + personality"]
         GR["gatherRetrievedChunkTexts<br/>vec_notes / summaries / turns"]
         SP["selectSkillPackages<br/>vec_skills top-K"]
@@ -227,8 +227,6 @@ sequenceDiagram
         alt tier = full
             H->>V: embed + search (notes, summaries, turns)
             H->>V: search skills, tools
-        else tier = full_lite
-            H->>V: search tools (без памяти и skills)
         else tier = simple
             Note over H: минимальный промпт, без tools
         end
@@ -255,9 +253,8 @@ sequenceDiagram
 
 1. **Telegram** — long polling, фильтр по `telegram.users_path`, typing indicator при обработке.
 2. **Валидация** — пустое или слишком длинное сообщение → ранний ответ без LLM.
-3. **Intent tier (EP-017/018)** — каскад: эвристики → опционально дешёвая модель → tier:
+3. **Intent tier (EP-017/EP-036)** — каскад: эвристики → tier (при неоднозначности — `full`):
    - `simple` — короткий промпт, без tools и RAG;
-   - `full_lite` — tools (и dynamic cap), без векторной памяти и runtime skills;
    - `full` — полный контекст: RAG + skills + tools.
 4. **Сборка промпта** — статическая «голова» + динамический «хвост» (chunks, skills, tool hints), урезание по `max_dynamic_system_runes`.
 5. **Session memory (EP-014)** — опционально последние N обменов в рамках `sessionKey` (обычно chat id).
@@ -294,7 +291,7 @@ flowchart LR
 | Основной диалог | `llm_providers` + `llmrouter` (каждый `Complete` — старт с index 0) |
 | Transport fallback | Следующий provider в массиве при retryable transport-ошибках (5xx, timeout, сеть); сбои tools не меняют index |
 | Суммаризация | Тот же пул, отдельный adapter (`SummarizeRouterConfig`) |
-| Intent classifier | **Отдельный** клиент в `intent_classifier.model_stage` (не индекс в пуле) |
+| Intent classifier | Эвристики только (без отдельного LLM-клиента) |
 
 Подробнее: [llm-provider-roles-and-logging.md](llm-provider-roles-and-logging.md).
 
@@ -516,7 +513,7 @@ PA — **не open-ended ReAct-агент** на десятки шагов, а *
 Поток `HandleMessage`:
 
 1. Валидация входа
-2. Intent classification → tier (`simple` / `full_lite` / `full`)
+2. Intent classification → tier (`simple` / `full`)
 3. Сборка промпта (статическая «голова» + динамический «хвост» с бюджетом runes)
 4. LLM call через `llmrouter`
 5. Tool loop **до 10 раундов**: execute → append results → repeat
@@ -569,7 +566,7 @@ Remote execution — **не sandbox с произвольным кодом**, а
 | Main chat | Старт с index 0 на каждый `Complete` |
 | Transport fallback | Следующий provider при retryable transport-ошибках (5xx / timeout / сеть) |
 | Summarization | Отдельный adapter, тот же pool |
-| Intent classifier | Отдельный клиент (`intent_classifier.model_stage`), не из пула |
+| Intent classifier | Эвристики (без отдельного клиента из пула) |
 
 **Зачем:** один конфиг для всех моделей; первая запись в пуле — основная; при transport-сбоях — резервные провайдеры; declarative policy в JSON.
 

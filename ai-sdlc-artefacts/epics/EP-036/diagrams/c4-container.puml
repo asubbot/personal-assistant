@@ -1,0 +1,42 @@
+@startuml c4-container
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+SetDefaultLegendEntries("")
+LAYOUT_TOP_DOWN()
+HIDE_STEREOTYPE()
+skinparam nodesep 60
+skinparam ranksep 80
+skinparam ArrowColor #707070
+
+title PersonalAssistant - Containers (C2) — EP-036 Two-tier heuristic intent
+
+Person(user, "User", "Telegram user")
+System_Ext(telegram, "Telegram", "Messaging / Bot API")
+System_Ext(llm_main, "Main LLM Provider", "Chat completions")
+System_Ext(embed_api, "Embedding API", "Embeddings (full tier only)")
+
+System_Boundary(pa, "PersonalAssistant") {
+  Container(tg_adapter, "Telegram Adapter", "Go", "Receives updates, routes to handler")
+  Container(classifier, "Intent Classifier", "Go", "Heuristic cascade; simple or full; ambiguous → default full")
+  Container(handler, "Conversation Handler", "Go", "Tiered prompt assembly (simple | full), LLM call, tool loop")
+  Container(sys_tail, "System Tail Builder", "Go", "Dynamic tail: tools, RAG, Hermes, skills (full tier)")
+  Container(tool_sel, "Tool Selector", "Go", "Skill/tool pre-selection (full tier only)")
+  Container(rag, "RAG Retrieval", "Go", "Vector search over memory (full tier only)")
+  ContainerDb(config_store, "Config", "JSON", "Heuristic patterns only; no model_stage")
+}
+
+Rel(user, telegram, "Uses")
+Rel(telegram, tg_adapter, "Bot API")
+Rel(tg_adapter, classifier, "User message")
+Rel(classifier, config_store, "Reads heuristic patterns")
+Rel(classifier, handler, "Tier: simple | full")
+Rel(handler, tool_sel, "Full tier only")
+Rel(handler, rag, "Full tier only")
+Rel(handler, sys_tail, "Full tier: build tail")
+Rel(handler, llm_main, "Completion request")
+Rel(rag, embed_api, "Embed query")
+Rel(handler, tg_adapter, "Reply")
+Rel(tg_adapter, telegram, "Send reply")
+
+@enduml

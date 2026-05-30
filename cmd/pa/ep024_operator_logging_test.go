@@ -54,7 +54,7 @@ func TestEP024_ProductionDockerDefaults(t *testing.T) {
 	}
 }
 
-// Covers AC-24.001, AC-24.002, AC-24.003, AC-24.004, AC-24.005, AC-24.006
+// Covers AC-24.001, AC-24.002, AC-24.003, AC-24.004, AC-24.005, AC-24.006, AC-36.017
 func TestEP024_ProviderRolesDocContent(t *testing.T) {
 	root := repoRoot(t)
 	b, err := os.ReadFile(filepath.Join(root, "docs", "llm-provider-roles-and-logging.md"))
@@ -68,13 +68,11 @@ func TestEP024_ProviderRolesDocContent(t *testing.T) {
 		"always starts at index **0**",
 		"transport fallback",
 		"intent_classifier",
-		"model_stage",
-		"not selected by an index",
+		"heuristic-only",
 		"PA_ENV",
 		"development",
 		"## Example: single-provider",
 		"## Example: multi-provider pool with transport fallback",
-		"## Example: pool with intent classifier",
 	}
 	for _, sub := range checks {
 		if !strings.Contains(s, sub) {

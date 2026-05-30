@@ -60,7 +60,7 @@ func vectorResultsFive() []vector.SearchResult {
 	return r
 }
 
-// Covers AC-18.001
+// Covers AC-18.001, AC-36.017
 func TestEP018_configurationDoc_containsTierMatrix(t *testing.T) {
 	root := moduleRootDir(t)
 	p := filepath.Join(root, "docs", "configuration.md")
@@ -69,7 +69,7 @@ func TestEP018_configurationDoc_containsTierMatrix(t *testing.T) {
 		t.Fatalf("read %s: %v", p, err)
 	}
 	s := string(b)
-	for _, needle := range []string{"### Intent tiers", "full_lite", "dynamic_selection"} {
+	for _, needle := range []string{"### Intent tiers", "simple", "full", "dynamic_selection"} {
 		if !strings.Contains(s, needle) {
 			t.Errorf("docs/configuration.md should mention %q", needle)
 		}
@@ -81,8 +81,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 	cat := catalogFiveTools(t)
 	idx := &mockToolIndex{store: &mockVectorStore{searchResults: vectorResultsFive()}, ready: true}
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier(nil, []string{`^FULLTOOLS$`}, nil, 100),
-		nil,
+		intent.NewHeuristicClassifier(nil, []string{`^FULLTOOLS$`}, 100),
 		nil,
 	)
 	provNo := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -135,14 +134,13 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 }
 
 // Covers AC-18.005
-func TestEP018_fullLite_includesSessionExchangesLikeFull(t *testing.T) {
+func TestEP018_fullTier_includesSessionExchanges(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	router := mustRouterSingle(t, provider)
 	store := newSessionWindowStore()
 	cfg := &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10}
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier(nil, nil, []string{`^LITESESS`}, 100),
-		nil,
+		intent.NewHeuristicClassifier(nil, []string{`^LITESESS`}, 100),
 		nil,
 	)
 	h := &conversationHandler{
@@ -178,12 +176,12 @@ func TestEP018_dynamicTail_nilSkillsOmitsPlaybookText(t *testing.T) {
 		t.Fatal("expected playbook when skills set")
 	}
 	if strings.Contains(without, "PLAYBOOK_UNIQUE_EP018") {
-		t.Fatal("nil skills must omit playbook (full_lite uses this shape)")
+		t.Fatal("nil skills must omit playbook")
 	}
 }
 
-// Covers AC-18.007 / AC-30.003: full_lite with catalog tools uses native tool defs.
-func TestEP018_fullLite_withCatalogTools_usesNativeToolDefs(t *testing.T) {
+// Covers AC-18.007 / AC-30.003: full tier with catalog tools uses native tool defs.
+func TestEP018_fullTier_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 	cat := &toolcatalog.Catalog{
 		Tools: map[string]*toolcatalog.Tool{
 			"run_echo": {
@@ -195,8 +193,7 @@ func TestEP018_fullLite_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 	idx := &mockToolIndex{store: &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo"}}}, ready: true}
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier(nil, nil, []string{`^LITEHERM`}, 100),
-		nil,
+		intent.NewHeuristicClassifier(nil, []string{`^LITEHERM`}, 100),
 		nil,
 	)
 	h := &conversationHandler{
@@ -223,11 +220,10 @@ func TestEP018_fullLite_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 }
 
 // Covers AC-18.008: without catalog tools, completion opts omit tools.
-func TestEP018_fullLite_noCatalogTools_omitsNativeTools(t *testing.T) {
+func TestEP018_fullTier_noCatalogTools_omitsNativeTools(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier(nil, nil, []string{`^LITENOTOOL`}, 100),
-		nil,
+		intent.NewHeuristicClassifier(nil, []string{`^LITENOTOOL`}, 100),
 		nil,
 	)
 	h := &conversationHandler{
@@ -260,15 +256,14 @@ func TestEP018_pickTools_preservesVectorOrderUnderCap(t *testing.T) {
 }
 
 // Covers AC-18.017
-func TestEP018_fullLite_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
+func TestEP018_fullTier_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
 	var cap captureHandlerWithAttrs
 	logger := slog.New(&cap)
 	cat := catalogFiveTools(t)
 	idx := &mockToolIndex{store: &mockVectorStore{searchResults: vectorResultsFive()}, ready: true}
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	classifier := intent.NewCascadeClassifier(
-		intent.NewHeuristicClassifier(nil, nil, []string{`^LITEDYN`}, 100),
-		nil,
+		intent.NewHeuristicClassifier(nil, []string{`^LITEDYN`}, 100),
 		nil,
 	)
 	h := &conversationHandler{

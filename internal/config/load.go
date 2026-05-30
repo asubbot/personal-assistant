@@ -105,7 +105,37 @@ func rejectRemovedUnsupportedConfigKeys(data []byte) error {
 			return err
 		}
 	}
+	if rawIC, ok := root["intent_classifier"]; ok {
+		if err := rejectRemovedIntentClassifierKeys(rawIC); err != nil {
+			return err
+		}
+	}
 	return rejectUnsupportedLLMProviderFields(data)
+}
+
+func rejectRemovedIntentClassifierKeys(rawIC json.RawMessage) error {
+	if len(rawIC) == 0 || string(rawIC) == "null" {
+		return nil
+	}
+	var ic map[string]json.RawMessage
+	if err := json.Unmarshal(rawIC, &ic); err != nil {
+		return fmt.Errorf("config: intent_classifier: %w", err)
+	}
+	if _, has := ic["model_stage"]; has {
+		return errors.New("config: intent_classifier.model_stage is not supported; intent classification is heuristic-only (EP-036)")
+	}
+	rawHeuristic, ok := ic["heuristic"]
+	if !ok {
+		return nil
+	}
+	var heuristic map[string]json.RawMessage
+	if err := json.Unmarshal(rawHeuristic, &heuristic); err != nil {
+		return fmt.Errorf("config: intent_classifier.heuristic: %w", err)
+	}
+	if _, has := heuristic["full_lite_patterns"]; has {
+		return errors.New("config: intent_classifier.heuristic.full_lite_patterns is not supported; use full_patterns or rely on default full tier (EP-036)")
+	}
+	return nil
 }
 
 func rejectRemovedToolsConfigKeys(rawTools json.RawMessage) error {
@@ -693,10 +723,7 @@ func validateIntentClassifier(c *Config) error {
 	if ic == nil || !ic.Enabled {
 		return nil
 	}
-	if err := validateICHeuristic(ic.Heuristic); err != nil {
-		return err
-	}
-	return validateICModelStage(ic.ModelStage)
+	return validateICHeuristic(ic.Heuristic)
 }
 
 func validateICHeuristic(h *HeuristicConfig) error {
@@ -714,11 +741,6 @@ func validateICHeuristic(h *HeuristicConfig) error {
 	for i, p := range h.FullPatterns {
 		if _, err := regexp.Compile("(?i)" + p); err != nil {
 			return fmt.Errorf("config: intent_classifier.heuristic.full_patterns[%d]: %w", i, err)
-		}
-	}
-	for i, p := range h.FullLitePatterns {
-		if _, err := regexp.Compile("(?i)" + p); err != nil {
-			return fmt.Errorf("config: intent_classifier.heuristic.full_lite_patterns[%d]: %w", i, err)
 		}
 	}
 	return nil
@@ -759,30 +781,6 @@ func validateToolDynamicSelection(c *Config) error {
 	n := countValidAlwaysIncludeTools(c)
 	if n > 0 && ds.MaxToolsForLLMRequest < n {
 		return fmt.Errorf("config: tools.dynamic_selection.max_tools_for_llm_request (%d) must be >= valid always_include count (%d)", ds.MaxToolsForLLMRequest, n)
-	}
-	return nil
-}
-
-func validateICModelStage(ms *ClassificationModelConfig) error {
-	if ms == nil || !ms.Enabled {
-		return nil
-	}
-	if strings.TrimSpace(ms.Endpoint) == "" {
-		return errors.New("config: intent_classifier.model_stage.endpoint is required when model_stage.enabled")
-	}
-	if strings.TrimSpace(ms.Model) == "" {
-		return errors.New("config: intent_classifier.model_stage.model is required when model_stage.enabled")
-	}
-	if ms.DefaultMaxTokens < 1 {
-		return errors.New("config: intent_classifier.model_stage.default_max_tokens must be >= 1")
-	}
-	if ms.Timeout != "" {
-		if _, err := time.ParseDuration(ms.Timeout); err != nil {
-			return fmt.Errorf("config: intent_classifier.model_stage.timeout: %w", err)
-		}
-	}
-	if err := validateHTTPTimeout("intent_classifier.model_stage.http_timeout", ms.HTTPTimeout); err != nil {
-		return err
 	}
 	return nil
 }

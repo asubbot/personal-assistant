@@ -1,4 +1,4 @@
-// Package intent provides a two-stage intent classifier for prompt optimization (EP-017, EP-018).
+// Package intent provides heuristic intent classification for prompt optimization (EP-017, EP-036).
 package intent
 
 import "context"
@@ -7,15 +7,14 @@ import "context"
 type Tier string
 
 const (
-	TierSimple   Tier = "simple"
-	TierFullLite Tier = "full_lite"
-	TierFull     Tier = "full"
+	TierSimple Tier = "simple"
+	TierFull   Tier = "full"
 )
 
 // Result holds the classification outcome for one user turn.
 type Result struct {
 	Tier       Tier
-	Stage      string // "heuristic", "model", or "default"
+	Stage      string // "heuristic" or "default"
 	MessageLen int    // original message length in runes
 }
 

@@ -102,14 +102,14 @@ In the following, *PersonalAssistant* means the PersonalAssistant (System) unles
 | REQ-18.001 | FR | Complexity tiers | Three tiers with documented prompt matrix |
 | REQ-18.002 | FR | Complexity tiers | `simple` excludes tools, RAG, tail skills, Hermes |
 | REQ-18.003 | FR | Complexity tiers | `full` matches EP-017 when full-tier dynamic off |
-| REQ-18.004 | FR | Prompt assembly — full_lite | `full_lite` skips RAG and chunk injection |
+| REQ-18.004 | FR | Prompt assembly — full_lite | `full_lite` skips RAG and chunk injection — **Superseded by EP-036** |
 | REQ-18.005 | FR | Prompt assembly — full_lite | `full_lite` keeps session exchanges like `full` |
 | REQ-18.006 | FR | Prompt assembly — full_lite | `full_lite` omits runtime skill playbook in tail |
 | REQ-18.007 | FR | Prompt assembly — full_lite | `full_lite` includes Hermes when tools present |
 | REQ-18.008 | FR | Prompt assembly — full_lite | `full_lite` omits Hermes when no tools |
-| REQ-18.009 | FR | Intent classification | Classifier assigns one of three tiers when enabled |
-| REQ-18.010 | FR | Intent classification | Model stage prompt lists three tiers on ambiguous |
-| REQ-18.011 | FR | Intent classification | Model failure defaults to `full` with WARN |
+| REQ-18.009 | FR | Intent classification | Classifier assigns one of three tiers when enabled — **Superseded by EP-036** |
+| REQ-18.010 | FR | Intent classification | Model stage prompt lists three tiers on ambiguous — **Superseded by EP-036** |
+| REQ-18.011 | FR | Intent classification | Model failure defaults to `full` with WARN — **Superseded by EP-036** |
 | REQ-18.012 | FR | Dynamic tool selection | Merge `always_include` before cap enforcement |
 | REQ-18.013 | FR | Dynamic tool selection | Enforce max tools when dynamic selection applies |
 | REQ-18.014 | FR | Dynamic tool selection | Ranked order from tool vector pre-selection when enabled |
@@ -144,7 +144,7 @@ WHILE a user turn is assigned the `full` tier, WHERE dynamic tool selection for 
 
 *REQ-18.004 – REQ-18.008*
 
-<a id="req-18-004"></a>**REQ-18.004** (State-driven)  
+<a id="req-18-004"></a>**REQ-18.004** (State-driven) **Superseded by EP-036:** the `full_lite` tier was removed; former `full_lite` turns now use the `full` assembly path. Retained for historical traceability.  
 WHILE a user turn is assigned the `full_lite` tier, THE PersonalAssistant SHALL skip semantic vector retrieval for RAG on that turn and SHALL omit retrieved memory chunk strings from the main LLM system message for that turn.
 
 <a id="req-18-005"></a>**REQ-18.005** (State-driven)  
@@ -165,13 +165,13 @@ WHILE a user turn is assigned the `full_lite` tier, WHERE the main LLM completio
 
 *REQ-18.009 – REQ-18.011*
 
-<a id="req-18-009"></a>**REQ-18.009** (Event-driven)  
+<a id="req-18-009"></a>**REQ-18.009** (Event-driven) **Superseded by EP-036:** classification is now heuristic-only with two tiers (`simple`, `full`); the three-tier assignment was removed. Retained for historical traceability.  
 WHEN the intent classifier is enabled in configuration, THE PersonalAssistant SHALL assign exactly one of `simple`, `full_lite`, or `full` to each user turn before main-model prompt assembly for that turn.
 
-<a id="req-18-010"></a>**REQ-18.010** (Event-driven)  
+<a id="req-18-010"></a>**REQ-18.010** (Event-driven) **Superseded by EP-036:** the model classification stage was removed; ambiguous heuristics default to `full` without an LLM call. Retained for historical traceability.  
 WHEN the heuristic stage returns `ambiguous` and the model stage is enabled in configuration, THE PersonalAssistant SHALL send a classification provider request whose prompt body contains only the user message text and three tier labels (`simple`, `full_lite`, `full`) each with a brief plain-text description.
 
-<a id="req-18-011"></a>**REQ-18.011** (Unwanted event)  
+<a id="req-18-011"></a>**REQ-18.011** (Unwanted event) **Superseded by EP-036:** the model classification stage was removed; there is no model failure path. Retained for historical traceability.  
 IF the model stage returns an unparseable tier label, times out, or returns an error, THEN THE PersonalAssistant SHALL assign the `full` tier for that turn and SHALL record a WARN-level log entry that contains error details.
 
 ---

@@ -177,7 +177,7 @@ type ToolsConfig struct {
 }
 
 // ToolDynamicSelection configures EP-018 dynamic narrowing of the main LLM tool list.
-// When Enabled is true, TierFull and TierFullLite apply the cap after merge.
+// When Enabled is true, TierFull applies the cap after merge.
 type ToolDynamicSelection struct {
 	Enabled               bool `json:"enabled"`
 	MaxToolsForLLMRequest int  `json:"max_tools_for_llm_request"`
@@ -216,36 +216,17 @@ type RedactionPattern struct {
 	Replacement string `json:"replacement"`
 }
 
-// IntentClassifierConfig holds EP-017 intent classification settings.
+// IntentClassifierConfig holds EP-017/EP-036 heuristic-only intent classification settings.
 type IntentClassifierConfig struct {
-	Enabled    bool                       `json:"enabled"`
-	Heuristic  *HeuristicConfig           `json:"heuristic,omitempty"`
-	ModelStage *ClassificationModelConfig `json:"model_stage,omitempty"`
+	Enabled   bool             `json:"enabled"`
+	Heuristic *HeuristicConfig `json:"heuristic,omitempty"`
 }
 
-// HeuristicConfig defines patterns for the heuristic classification stage (EP-017, EP-018).
+// HeuristicConfig defines patterns for the heuristic classification stage (EP-017, EP-036).
 type HeuristicConfig struct {
-	SimplePatterns   []string `json:"simple_patterns"`
-	FullPatterns     []string `json:"full_patterns"`
-	FullLitePatterns []string `json:"full_lite_patterns,omitempty"`
-	MaxSimpleLen     int      `json:"max_simple_len"`
-}
-
-// ClassificationModelConfig holds the cheap-model classification stage settings (EP-017).
-type ClassificationModelConfig struct {
-	Enabled            bool    `json:"enabled"`
-	Type               string  `json:"type"`
-	Endpoint           string  `json:"endpoint"`
-	APIKeyPath         string  `json:"api_key_path"`
-	Model              string  `json:"model"`
-	DefaultTemperature float64 `json:"default_temperature"`
-	DefaultMaxTokens   int     `json:"default_max_tokens"`
-	Timeout            string  `json:"timeout,omitempty"`
-	// HTTPTimeout is the total per-request timeout for the outbound classifier LLM call
-	// (EP-022, REQ-22.003). Required when model_stage.enabled; Go duration literal (e.g. "30s").
-	// Distinct from Timeout, which bounds the per-classification context deadline inside
-	// ModelClassifier. Both are independent and both may be set.
-	HTTPTimeout string `json:"http_timeout"`
+	SimplePatterns []string `json:"simple_patterns"`
+	FullPatterns   []string `json:"full_patterns"`
+	MaxSimpleLen   int      `json:"max_simple_len"`
 }
 
 // EmbeddingProvider is the dedicated provider for vector store embeddings (separate from chat LLM).
