@@ -18,7 +18,11 @@ Add required `tools.selection` (`tool_search_top_k`, `tool_min_count`, `tool_fal
 
 ## Key Requirements
 
-Not yet written (stage 4).
+- **REQ-37.001–004:** Required `tools.selection` (`tool_search_top_k`, `tool_min_count`, `tool_fallback_cap`, `enabled`, `max_tools_for_llm_request`) with same validation as legacy blocks.
+- **REQ-37.005–008, 020:** Reject `tool_pre_selection` and `tools.dynamic_selection`; drop former from root keys; preserve explicit-JSON rules.
+- **REQ-37.009–012:** Unchanged merge/cap behaviour and `min(top_k, tool_vector_top_k_cap)` for equivalent settings.
+- **REQ-37.013–017:** Update all configs/docs; regression tests for rejection and parity.
+- **REQ-37.022–024:** No `vector_search_tools` DRY, no EP-038 handler refactor, no new selection features.
 
 ## Acceptance Signals
 
@@ -40,6 +44,7 @@ Not yet written (stage 5).
 | Gate | Status |
 |------|--------|
 | Stage 3 ep-scope | draft |
+| Stage 4 ep-requirements | draft |
 
 ## Open Questions
 
@@ -47,6 +52,7 @@ None for stage 3 — HOTL default: defer `vector_search_tools` DRY; keep EP-038 
 
 ## Links
 
+- [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
 - [scope.md](../../scope.md)
 - [strategy.md](../../strategy.md) — Refactoring 0.02
