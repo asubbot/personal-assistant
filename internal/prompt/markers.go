@@ -1,5 +1,5 @@
-// Package promptmarkers defines canonical PA system-block marker lines (EP-013).
-package promptmarkers
+// Package prompt defines EP-013 canonical system-block markers, trust policy, and wrap helpers.
+package prompt
 
 import (
 	"bufio"

@@ -15,11 +15,10 @@ import (
 	"pa/internal/llm"
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
-	"pa/internal/promptmarkers"
+	"pa/internal/prompt"
 	"pa/internal/runtimeskills"
 	"pa/internal/skillindex"
 	"pa/internal/summarize"
-	"pa/internal/systemprompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/toolindex"
 	"pa/internal/tools"
@@ -146,7 +145,7 @@ func (h *conversationHandler) systemStaticHead() string {
 	dateStr := todayCalendarDateInPALocation(h)
 	dateLine := "Calendar date: " + dateStr + "\n\n"
 	personality := "You are a helpful assistant. Reply concisely.\n\n"
-	return systemprompt.TrustPolicy + "\n\n" + dateLine + personality
+	return prompt.TrustPolicy + "\n\n" + dateLine + personality
 }
 
 func todayCalendarDateInPALocation(h *conversationHandler) string {
@@ -628,7 +627,7 @@ func (h *conversationHandler) indexTurn(ctx context.Context, userText, reply str
 	}
 	dateStr := eventAlignedTurnDate(ctx, loc)
 	chunk := "Date: " + dateStr + "\n[turn]\nUser: " + userText + "\nAssistant: " + reply
-	if promptmarkers.TextContainsForbiddenMarkerLine(chunk) {
+	if prompt.TextContainsForbiddenMarkerLine(chunk) {
 		return fmt.Errorf("indexTurn: chunk contains forbidden PA marker line")
 	}
 	emb, err := h.embedder.Embed(ctx, chunk)

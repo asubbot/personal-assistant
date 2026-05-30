@@ -10,7 +10,7 @@ import (
 	"pa/internal/llmlog"
 	"pa/internal/llmrouter"
 	"pa/internal/memory"
-	"pa/internal/systemprompt"
+	"pa/internal/prompt"
 	"pa/internal/toolcatalog"
 	"pa/internal/tools"
 	"pa/internal/vector"
@@ -210,6 +210,7 @@ func TestHandleMessage_returnsProviderError(t *testing.T) {
 }
 
 // Supporting AC-01.001, REQ-01.001: handler passes system and user messages to LLM provider.
+// Covers AC-35.017: system message still begins with prompt.TrustPolicy after the prompt-package merge.
 func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
@@ -222,7 +223,7 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 		t.Fatalf("len(messages) = %d, want 2", len(provider.lastMessages))
 	}
 	sys := provider.lastMessages[0].Content
-	if provider.lastMessages[0].Role != "system" || !strings.HasPrefix(sys, systemprompt.TrustPolicy) {
+	if provider.lastMessages[0].Role != "system" || !strings.HasPrefix(sys, prompt.TrustPolicy) {
 		t.Errorf("messages[0] = %+v, want system starting with trust policy", provider.lastMessages[0])
 	}
 	if !strings.Contains(sys, "Calendar date: ") {

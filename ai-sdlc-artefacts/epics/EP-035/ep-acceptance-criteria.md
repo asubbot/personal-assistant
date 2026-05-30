@@ -22,7 +22,7 @@ Testable conditions for removing stub `internal/logging`, relocating the EP-022 
 | [AC-35.002](#ac-35-002) | [REQ-35.002](ep-requirements.md#req-35-002--no-logging-package-imports) | Integration | No Go imports of `pa/internal/logging` |
 | [AC-35.003](#ac-35-003) | [REQ-35.003](ep-requirements.md#req-35-003--delete-reliability-test-package) | Manual | `internal/reliability` directory removed |
 | [AC-35.004](#ac-35-004) | [REQ-35.004](ep-requirements.md#req-35-004--relocate-concurrent-write-test) | Integration | `TestConcurrentWrites_NoBusyErrors` lives under `tests/integration` |
-| [AC-35.005](#ac-35-005) | [REQ-35.005](ep-requirements.md#req-35-005--preserve-ac-22-010-race-test-intent) | Integration | Relocated test passes under `go test -race` (AC-22.010 intent) |
+| [AC-35.005](#ac-35-005) | [REQ-35.005](ep-requirements.md#req-35-005--preserve-ac-22-010-race-test-intent) | Integration | Relocated test passes under `go test -race` (EP-022 race-test intent) |
 | [AC-35.006](#ac-35-006) | [REQ-35.006](ep-requirements.md#req-35-006--update-reliability-test-documentation-path) | Manual | `docs/configuration.md` cites new test path |
 | [AC-35.007](#ac-35-007) | [REQ-35.007](ep-requirements.md#req-35-007--provide-merged-internalprompt-package) | Unit | `internal/prompt` exports merged marker, trust, and wrap API |
 | [AC-35.008](#ac-35-008) | [REQ-35.008](ep-requirements.md#req-35-008--byte-identical-trust-policy) | Unit | `TrustPolicy` byte-identical to pre-EP-035 `systemprompt` |
@@ -94,7 +94,8 @@ Then all such tests SHALL pass.
 ### AC-35.001
 
 **Trace:** [REQ-35.001](ep-requirements.md#req-35-001--delete-logging-stub-package)  
-**Test level:** Manual
+**Test level:** Manual  
+**Status:** AC-35.001 MANUAL ONLY — verified by repository tree inspection (directory removed) and `make check`; no unit test applies.
 
 Given the EP-035 change set is applied on the epic branch  
 When the repository tree is inspected  
@@ -107,7 +108,8 @@ Then the path `internal/logging/` SHALL NOT exist.
 ### AC-35.002
 
 **Trace:** [REQ-35.002](ep-requirements.md#req-35-002--no-logging-package-imports)  
-**Test level:** Integration
+**Test level:** Integration  
+**Status:** AC-35.002 MANUAL ONLY — verified by repository grep for `pa/internal/logging` (zero matches) and `make check`; no unit test applies.
 
 Given the EP-035 change set is applied  
 When searching all `*.go` files under `cmd/`, `internal/`, and `tests/` for the import path `pa/internal/logging`  
@@ -120,7 +122,8 @@ Then the search SHALL return zero matches.
 ### AC-35.003
 
 **Trace:** [REQ-35.003](ep-requirements.md#req-35-003--delete-reliability-test-package)  
-**Test level:** Manual
+**Test level:** Manual  
+**Status:** AC-35.003 MANUAL ONLY — verified by repository tree inspection (directory removed) and `make check`; no unit test applies.
 
 Given the EP-035 change set is applied  
 When the repository tree is inspected  
@@ -152,7 +155,7 @@ And that test SHALL import `internal/jobs`, `internal/vector/sqlite`, and `inter
 Given temporary vector and jobs SQLite stores opened with `sqlitepragma.RecommendedPolicy`  
 When `go test -race` runs `TestConcurrentWrites_NoBusyErrors` at its relocated package path for the full per-writer iteration budget  
 Then the test SHALL complete without `SQLITE_BUSY`, `database is locked`, or data-race failures  
-And the concurrent writers SHALL exercise both stores, preserving [AC-22.010](../EP-022/ep-acceptance-criteria.md#ac-22010) intent.
+And the concurrent writers SHALL exercise both stores, preserving the EP-022 concurrent-write reliability criterion ([EP-022 ac-22010](../EP-022/ep-acceptance-criteria.md#ac-22010)) intent. The relocated test retains its EP-022 coverage trace so that epic's own validation still recognises it.
 
 ---
 
@@ -161,7 +164,8 @@ And the concurrent writers SHALL exercise both stores, preserving [AC-22.010](..
 ### AC-35.006
 
 **Trace:** [REQ-35.006](ep-requirements.md#req-35-006--update-reliability-test-documentation-path)  
-**Test level:** Manual
+**Test level:** Manual  
+**Status:** AC-35.006 MANUAL ONLY — verified by reading `docs/configuration.md` (cites `tests/integration`, no `internal/reliability`); no unit test applies.
 
 Given `docs/configuration.md` on the epic branch  
 When the section describing concurrent-writer reliability under `-race` is read  
@@ -240,7 +244,8 @@ Then each wrapped result SHALL equal the output of the corresponding pre-EP-035 
 ### AC-35.012
 
 **Trace:** [REQ-35.012](ep-requirements.md#req-35-012--delete-legacy-prompt-packages)  
-**Test level:** Manual
+**Test level:** Manual  
+**Status:** AC-35.012 MANUAL ONLY — verified by repository tree inspection (directories removed) and `make check`; no unit test applies.
 
 Given the EP-035 change set is applied  
 When the repository tree is inspected  
@@ -253,7 +258,8 @@ Then the paths `internal/promptmarkers/` and `internal/systemprompt/` SHALL NOT 
 ### AC-35.013
 
 **Trace:** [REQ-35.013](ep-requirements.md#req-35-013--no-legacy-prompt-package-imports)  
-**Test level:** Integration
+**Test level:** Integration  
+**Status:** AC-35.013 MANUAL ONLY — verified by repository grep for `pa/internal/promptmarkers` and `pa/internal/systemprompt` (zero matches) and `make check`; no unit test applies.
 
 Given the EP-035 change set is applied  
 When searching all `*.go` files under `cmd/`, `internal/`, and `tests/` for `pa/internal/promptmarkers` or `pa/internal/systemprompt`  
@@ -266,7 +272,8 @@ Then the search SHALL return zero matches.
 ### AC-35.014
 
 **Trace:** [REQ-35.014](ep-requirements.md#req-35-014--update-prompt-package-importers)  
-**Test level:** Integration
+**Test level:** Integration  
+**Status:** AC-35.014 MANUAL ONLY — verified by `make check` (build/vet of all listed importers) and grep confirming `pa/internal/prompt`-only imports; behaviour is covered by the same packages' existing tests.
 
 Given the EP-035 change set is applied  
 When building packages that previously imported `internal/promptmarkers` or `internal/systemprompt` — namely `internal/core` (`handler.go`, `system_tail.go`, and related tests), `internal/tools` (`write_memory.go`), `internal/runtimeskills`, `tests/integration/runtime_skills_handler_test.go`, and `tests/integration/runtime_skills_config_test.go`  
@@ -280,7 +287,8 @@ And SHALL NOT reference the removed package paths.
 ### AC-35.015
 
 **Trace:** [REQ-35.015](ep-requirements.md#req-35-015--no-configjson-changes)  
-**Test level:** Manual
+**Test level:** Manual  
+**Status:** AC-35.015 MANUAL ONLY — verified by inspecting the EP-035 branch diff (no `config.json`, `config.examples/`, or `internal/config` validation changes); no unit test applies.
 
 Given the EP-035 branch diff against its merge base  
 When inspecting product configuration artefacts (`config.json`, `config.examples/`, and config load validation in `internal/config`)  
@@ -293,7 +301,8 @@ Then the diff SHALL introduce no new, removed, or altered top-level configuratio
 ### AC-35.016
 
 **Trace:** [REQ-35.016](ep-requirements.md#req-35-016--quality-gate-passes)  
-**Test level:** Integration
+**Test level:** Integration  
+**Status:** AC-35.016 MANUAL ONLY — verified by running `make check` from the repository root (exit 0); this is a process gate, not a unit test.
 
 Given the EP-035 implementation is complete on the epic branch  
 When `make check` runs from the repository root  

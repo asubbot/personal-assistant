@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"pa/internal/embedding"
 	"pa/internal/memory"
-	"pa/internal/promptmarkers"
+	"pa/internal/prompt"
 	"pa/internal/summarize"
 	"pa/internal/vector"
 	"strings"
@@ -62,7 +62,7 @@ func (t *WriteMemoryTool) indexNoteVector(ctx context.Context, day time.Time, lo
 	sum := sha256.Sum256([]byte(idSeed))
 	id := "notes:" + dateISO + ":" + hex.EncodeToString(sum[:8])
 	vecBody := summarize.FormatNotesVectorText(dateISO, text, kind)
-	if promptmarkers.TextContainsForbiddenMarkerLine(vecBody) {
+	if prompt.TextContainsForbiddenMarkerLine(vecBody) {
 		return "", fmt.Errorf("write_memory: indexed text contains forbidden PA marker line")
 	}
 	_ = t.noteVector.Delete(ctx, id)

@@ -1,9 +1,7 @@
-// Package systemprompt builds merged system message fragments (EP-013).
-package systemprompt
+package prompt
 
 import (
 	"fmt"
-	"pa/internal/promptmarkers"
 	"strings"
 )
 
@@ -18,11 +16,11 @@ func WrapRetrievedContext(inner string) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(promptmarkers.BeginContext)
+	b.WriteString(BeginContext)
 	b.WriteByte('\n')
 	b.WriteString(inner)
 	b.WriteByte('\n')
-	b.WriteString(promptmarkers.EndContext)
+	b.WriteString(EndContext)
 	b.WriteByte('\n')
 	return b.String()
 }
@@ -33,7 +31,7 @@ func WrapToolInstructions(inner string) string {
 	if inner == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginTools, inner, promptmarkers.EndTools)
+	return fmt.Sprintf("%s\n%s\n%s\n", BeginTools, inner, EndTools)
 }
 
 // WrapRuntimeSkills wraps non-empty runtime skill playbook text.
@@ -42,5 +40,5 @@ func WrapRuntimeSkills(inner string) string {
 	if inner == "" {
 		return ""
 	}
-	return fmt.Sprintf("%s\n%s\n%s\n", promptmarkers.BeginSkills, inner, promptmarkers.EndSkills)
+	return fmt.Sprintf("%s\n%s\n%s\n", BeginSkills, inner, EndSkills)
 }

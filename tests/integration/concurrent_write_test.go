@@ -1,10 +1,6 @@
-// Package reliability hosts EP-022 cross-store reliability tests.
-//
-// TestConcurrentWrites_NoBusyErrors (REQ-22.013, AC-22.010) exercises both
-// Local SQLite Stores (vector store on vec_summaries/vec_turns/vec_tools and
-// the jobs store) under four concurrent writers with the PRAGMA policy
-// produced by sqlitepragma.RecommendedPolicy. Must be run with -race.
-package reliability
+//go:build integration
+
+package integration_test
 
 import (
 	"context"
@@ -24,10 +20,11 @@ import (
 // completed the full budget (AC-22.010: no busy/locked under contention).
 const iterations = 200
 
-// Covers AC-22.010 (EP-022): with the PRAGMA policy applied, concurrent writers
+// Covers AC-22.010, AC-35.004: with the PRAGMA policy applied, concurrent writers
 // across vector tables and the jobs store complete their full iteration budget
 // without SQLITE_BUSY / database is locked, and are not silently aborted by
 // the deadline safety net.
+// Covers AC-35.005: relocated race test preserves EP-022 intent under integration tag.
 func TestConcurrentWrites_NoBusyErrors(t *testing.T) {
 	dir := t.TempDir()
 	vecPath := filepath.Join(dir, "vec.sqlite")
