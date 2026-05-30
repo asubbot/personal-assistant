@@ -33,9 +33,12 @@ Add required `tools.selection` (`tool_search_top_k`, `tool_min_count`, `tool_fal
 ## Design Decisions
 
 - `ToolsSelection` struct in `internal/config/config.go` on required `ToolsConfig.Selection` (five explicit JSON fields).
+- **Validation split across today's two call sites (iter2/F-001):** `validateToolsSelectionBounds` runs early/pre-catalog (bounds + `enabled⇒max≥1`); `validateToolsSelectionAlwaysIncludeFloor` runs post-`toolcatalog.Load` (the `always_include` floor needs `c.ToolCatalog`). Single early merge would skip the floor → drift.
 - Legacy keys rejected via `rejectRemovedUnsupportedConfigKeys` / `rejectRemovedToolsConfigKeys` (EP-034/036 raw-JSON pattern); `tool_pre_selection` dropped from `configRootJSONKeys`.
+- **`validateToolsObjectKeys` whitelist (iter2/F-002):** `always_include`, `selection`, `vector_search_tools`, `create_tool_secret_patterns`, `tool_output_artifacts` (kept parsed-but-ignored so operator `.config/config.json` still loads; typed modelling = follow-up).
 - `enabled` gates runtime cap only; when false, `max_tools_for_llm_request` may be 0 and is ignored at runtime.
 - `runtime_skills.tool_vector_top_k_cap` unchanged; `vector_search_tools` DRY deferred.
+- **Migration scale (iter2/F-003):** 64 JSON files carry `tool_pre_selection` (62 testdata + example + integration); all converted.
 
 ## Interfaces / Contracts
 
@@ -49,7 +52,7 @@ Add required `tools.selection` (`tool_search_top_k`, `tool_min_count`, `tool_fal
 | Stage 3 ep-scope | draft |
 | Stage 4 ep-requirements | draft |
 | Stage 5 ep-acceptance-criteria | draft |
-| Stage 6 ep-system-design | draft |
+| Stage 6 ep-system-design | draft (iter2) |
 
 ## Open Questions
 
