@@ -53,7 +53,7 @@ Cut intent-classification complexity for increment 0.02: drop the optional model
 
 ## Current Gate Summary
 
-Stage 6 iteration 2 complete ([ep-system-design.md](ep-system-design.md)): stage 7 iteration 1 findings F-001…F-005 resolved (exhaustive test inventory, manual `.config` verification, intent comment updates, `architecture-ru.md` docs, signature-edit notes). Awaiting stage 7 iteration 2.
+Stage 7 **pass** (iteration 3, [ep-system-design-review.md](ep-system-design-review.md)). Stage 10 **pass** (iteration 2, [ep-code-review.md](ep-code-review.md); zero open Blocker/Major/Medium/Minor). Stage 11 audit **pass** ([ep-audit-report.md](ep-audit-report.md); `make check` 76.0%; in-scope 15/15 AC traced). Cross-epic EP-018 artefact hygiene on branch acknowledged.
 
 ## Open Questions
 
