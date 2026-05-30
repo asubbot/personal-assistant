@@ -28,9 +28,7 @@ Shrink the `internal/` package tree for increment 0.02 by removing empty/stub pa
 
 ## Acceptance Signals
 
-- `make check` green; grep shows no imports of removed packages.
-- EP-013-related prompt/marker tests still pass.
-- `docs/configuration.md` updated if it still cites `internal/reliability`.
+- Stage 5: [ep-acceptance-criteria.md](ep-acceptance-criteria.md) — 20 ACs (AC-35.001–020), each REQ-35.001–020; grep/build for removed imports; `-race` on relocated concurrent-write test; byte-frozen `TrustPolicy`/markers; `make check` and unchanged `config.json`.
 
 ## Design Decisions
 
@@ -45,7 +43,7 @@ Shrink the `internal/` package tree for increment 0.02 by removing empty/stub pa
 
 ## Current Gate Summary
 
-Stage 3 complete (draft ep-scope + ep-context). Next: requirements (stage 4).
+Stage 5 complete (draft ep-acceptance-criteria). Next: system design (stage 6).
 
 ## Open Questions
 
@@ -53,6 +51,8 @@ Stage 3 complete (draft ep-scope + ep-context). Next: requirements (stage 4).
 
 ## Links
 
+- [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
+- [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
 - [scope.md](../../scope.md)
 - [strategy.md](../../strategy.md)
