@@ -16,7 +16,7 @@ Shrink the `internal/` package tree for increment 0.02 by removing empty/stub pa
 
 - Remove `internal/logging` (doc-only stub; zero imports).
 - Remove `internal/reliability`; move `TestConcurrentWrites_NoBusyErrors` to `tests/integration`.
-- Merge `internal/promptmarkers` + `internal/systemprompt` → `internal/prompt`; update six production/test import sites.
+- Merge `internal/promptmarkers` + `internal/systemprompt` → `internal/prompt`; update seven production/test import sites.
 - Defer `internal/lifecyclelog` (two importers; EP-029 attribute contract).
 
 ## Key Requirements
@@ -43,15 +43,23 @@ Shrink the `internal/` package tree for increment 0.02 by removing empty/stub pa
 
 ## Current Gate Summary
 
-Stage 6 complete (draft ep-system-design). Next: system design review (stage 7).
+Stage 7 **Pass** ([ep-system-design-review.md](ep-system-design-review.md)). Stage 8 complete: [ep-implementation-plan.md](ep-implementation-plan.md) — **9 tasks** in four phases (logging → prompt merge → reliability relocation → final gates).
+
+## Plan execution notes
+
+- Byte-identity tests: independent golden literals in test file (S-001), not self-comparison.
+- In-package `prompt` tests: unqualified identifiers only (N-001).
+- Tasks 4 and 5 must land together so legacy prompt packages are not imported after deletion.
 
 ## Open Questions
 
-- None for stage 6 (package name `internal/prompt` confirmed in system design).
+- None.
 
 ## Links
 
+- [ep-implementation-plan.md](ep-implementation-plan.md)
 - [ep-system-design.md](ep-system-design.md)
+- [ep-system-design-review.md](ep-system-design-review.md)
 - [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [ep-requirements.md](ep-requirements.md)
 - [ep-scope.md](ep-scope.md)
