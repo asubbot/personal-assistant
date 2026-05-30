@@ -24,7 +24,10 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 
 ## Acceptance Signals
 
-(To be defined in stage 5: `make check`, existing handler_ep0xx regression suites, no prompt/tool-list diffs on golden paths.)
+- **25 ACs** (`AC-38.001`–`AC-38.025`) trace 1:1 to **25 REQs**; structural gates (file split, grep, LOC) are **MANUAL ONLY**; behaviour parity leans on existing suites.
+- **Automated:** `handler_ep017_test.go`, `handler_ep018_test.go`, `handler_ep018_coverage_test.go`, `handler_ep034_regression_test.go`, `handler_ep036_test.go`, `tools_selection_parity_test.go`, `handler_tier_main_prompt_test.go`, `run_test.go`, integration handler tests; **`make check`** (AC-38.021).
+- **Contracts:** EP-034 transport-only routing, EP-036 two-tier, EP-037 `tools.selection` — no assertion changes except import fixes (AC-38.019–020).
+- **Gates:** `./tools/validate/validate ears EP-038` (AC-38.022); prerequisites EP-035/036/037 merged before land (AC-38.001).
 
 ## Design Decisions
 
@@ -43,7 +46,7 @@ Decompose ~663 LOC `handler.go` into: slim `handler.go` (orchestration), new `ha
 |------|--------|
 | Stage 3 ep-scope | draft |
 | Stage 4 ep-requirements | draft |
-| Stage 5 ep-acceptance-criteria | — |
+| Stage 5 ep-acceptance-criteria | draft (25 ACs) |
 | Stage 6 ep-system-design | — |
 
 ## Open Questions
@@ -54,6 +57,7 @@ None for stage 4 — HOTL: no config schema change; no tier-strategy framework u
 
 - [ep-scope.md](ep-scope.md)
 - [ep-requirements.md](ep-requirements.md)
+- [ep-acceptance-criteria.md](ep-acceptance-criteria.md)
 - [strategy.md](../../strategy.md) — Refactoring 0.02, direction F
 - [scope.md](../../scope.md)
 - [EP-037 ep-scope](../EP-037/ep-scope.md) — deferred handler decomposition
