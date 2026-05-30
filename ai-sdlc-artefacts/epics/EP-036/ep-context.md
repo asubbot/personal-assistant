@@ -41,6 +41,9 @@ Cut intent-classification complexity for increment 0.02: drop the optional model
 - Removed nested keys rejected via raw-JSON map check in `rejectRemovedUnsupportedConfigKeys` (EP-034 pattern), not silent struct drop.
 - `NewCascadeClassifier(heuristic, logger)` and `NewHeuristicClassifier(simple, full, maxSimpleLen)` — no model / full_lite parameters.
 - Top-level `intent_classifier` key retained; explicit-JSON rules unchanged.
+- Live `.config/config.json` updated and verified **manually** (no automated test loads it); schema unit coverage via `config.examples` + new testdata fixtures (AC-36.018).
+- Exhaustive test inventory: intent (`model_test`, `observability_test`, `cascade_test`, `heuristic_test`), core (`handler_ep017/ep018/ep018_coverage/tier_main_prompt`), config (`intent_classifier_test`), cmd/pa (`ep024_operator_logging_test`). Doc-content tests `TestEP018_configurationDoc_containsTierMatrix` and `TestEP024_ProviderRolesDocContent` rewritten with their docs.
+- Docs to update include `docs/architecture-ru.md` (stale full_lite / three-tier).
 
 ## Interfaces / Contracts
 
@@ -50,7 +53,7 @@ Cut intent-classification complexity for increment 0.02: drop the optional model
 
 ## Current Gate Summary
 
-Stage 6 system design draft complete ([ep-system-design.md](ep-system-design.md)); stage 7 not started.
+Stage 6 iteration 2 complete ([ep-system-design.md](ep-system-design.md)): stage 7 iteration 1 findings F-001…F-005 resolved (exhaustive test inventory, manual `.config` verification, intent comment updates, `architecture-ru.md` docs, signature-edit notes). Awaiting stage 7 iteration 2.
 
 ## Open Questions
 
