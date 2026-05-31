@@ -15,7 +15,7 @@ func parityHandler(t *testing.T, topK, minCount, fallbackCap int, sel *config.To
 	t.Helper()
 	cat := catalogFiveTools(t)
 	idx := &mockToolIndex{store: &mockVectorStore{searchResults: vectorResultsFive()}, ready: true}
-	return &conversationHandler{
+	return testHandlerDeps{
 		logger:           slog.New(slog.DiscardHandler),
 		catalog:          cat,
 		toolIndex:        idx,
@@ -25,7 +25,7 @@ func parityHandler(t *testing.T, topK, minCount, fallbackCap int, sel *config.To
 		toolFallbackCap:  fallbackCap,
 		toolsSelection:   sel,
 		runtimeSkillsCfg: rs,
-	}
+	}.handler()
 }
 
 // Covers AC-38.018, AC-38.019

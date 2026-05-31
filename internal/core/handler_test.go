@@ -183,7 +183,7 @@ func (m *mockNodeRunner) RunOnNode(ctx context.Context, nodeID, command string) 
 func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello back"}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 99, "", "hi")
 	if err != nil {
@@ -199,7 +199,7 @@ func TestHandleMessage_returnsProviderError(t *testing.T) {
 	wantErr := errors.New("provider failed")
 	logger := slog.Default()
 	provider := &mockProvider{err: wantErr}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if !errors.Is(err, wantErr) {
@@ -215,7 +215,7 @@ func TestHandleMessage_returnsProviderError(t *testing.T) {
 func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger}.handler()
 
 	userText := "what is 2+2?"
 	_, _ = h.HandleMessage(context.Background(), 42, "", userText)
@@ -249,7 +249,7 @@ func TestHandleMessage_passesSystemAndUserMessages(t *testing.T) {
 func TestHandleMessage_emptyReturnsRejectionMessage(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "x"}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger}.handler()
 
 	for _, text := range []string{"", "  ", "\t\n"} {
 		reply, err := h.HandleMessage(context.Background(), 1, "", text)
@@ -269,7 +269,7 @@ func TestHandleMessage_emptyReturnsRejectionMessage(t *testing.T) {
 func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 5}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 5}.handler()
 
 	// at limit: 5 runes — goes through
 	reply, err := h.HandleMessage(context.Background(), 1, "", "12345")
@@ -301,7 +301,7 @@ func TestHandleMessage_rejectsWhenOverMaxLength(t *testing.T) {
 func TestHandleMessage_noLimit_longMessageGoesToProvider(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 0}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 0}.handler()
 
 	longText := strings.Repeat("a", 10000)
 	reply, err := h.HandleMessage(context.Background(), 1, "", longText)
@@ -321,7 +321,7 @@ func TestHandleMessage_logsMetadataAtInfo(t *testing.T) {
 	cap := &captureHandler{level: slog.LevelInfo}
 	logger := slog.New(cap)
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{PromptTokens: 1, CompletionTokens: 2, TotalTokens: 3}}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger}.handler()
 
 	_, _ = h.HandleMessage(context.Background(), 1, "", "hi")
 
@@ -348,7 +348,7 @@ func TestHandleMessage_logsFullRequestResponseAtDebug(t *testing.T) {
 	cap := &captureHandler{level: slog.LevelDebug}
 	logger := slog.New(cap)
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hello", Usage: llm.Usage{}}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger}.handler()
 
 	_, _ = h.HandleMessage(context.Background(), 1, "", "hi")
 
@@ -381,7 +381,7 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 	// "привет" = 6 runes
 	cyrillic6 := "привет"
 
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 6}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 6}.handler()
 	reply, err := h.HandleMessage(context.Background(), 1, "", cyrillic6)
 	if err != nil {
 		t.Fatal(err)
@@ -395,7 +395,7 @@ func TestHandleMessage_maxLength_unicodeRunes(t *testing.T) {
 
 	// limit 5: 6 runes → rejected
 	provider.lastMessages = nil
-	h5 := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 5}
+	h5 := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger, maxMessageLength: 5}.handler()
 	reply, err = h5.HandleMessage(context.Background(), 1, "", cyrillic6)
 	if err != nil {
 		t.Fatal(err)
@@ -422,12 +422,12 @@ func TestHandleMessage_llmLogEntryRecordsResultModel(t *testing.T) {
 	capLog := &captureLLMLogWriter{}
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hi", Usage: llm.Usage{}, Model: "ollama/llama3"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router: mustRouterSingle(t, provider),
 		logger: logger,
 		llmLog: capLog,
 		model:  "openai/gpt-4o", // default from first provider
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
@@ -443,12 +443,12 @@ func TestHandleMessage_llmLogEntryUsesDefaultModelWhenResultModelEmpty(t *testin
 	capLog := &captureLLMLogWriter{}
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "hi", Usage: llm.Usage{}}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router: mustRouterSingle(t, provider),
 		logger: logger,
 		llmLog: capLog,
 		model:  "openai/gpt-4o",
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "hello")
 	if err != nil {
@@ -468,14 +468,14 @@ func TestHandleMessage_injectsVectorSearchContextIntoSystemMessage(t *testing.T)
 	}
 	turnM := &mockVectorStore{}
 	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		memVec:                &MemoryVectors{Summaries: summ, Turns: turnM},
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "what did I say about fruit?")
 	if err != nil {
@@ -496,14 +496,14 @@ func TestHandleMessage_indexTurnCallsAddWithUserAndReply(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "reply text", Usage: llm.Usage{}}}
 	vs := &mockVectorStore{}
 	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "user said this")
 	if err != nil {
@@ -525,11 +525,11 @@ func TestHandleMessage_logRedactorAppliedInDebugLogs(t *testing.T) {
 	logger := slog.New(cap)
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "response contains secret", Usage: llm.Usage{}}}
 	redactor := func(s string) string { return strings.ReplaceAll(s, "secret", "[REDACTED]") }
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:      mustRouterSingle(t, provider),
 		logger:      logger,
 		logRedactor: redactor,
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "user said secret")
 	if err != nil {
@@ -551,7 +551,7 @@ func TestHandleMessage_logRedactorAppliedInDebugLogs(t *testing.T) {
 func TestHandleMessage_llmLogNil_succeedsWithoutWrite(t *testing.T) {
 	logger := slog.Default()
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok", Usage: llm.Usage{}}}
-	h := &conversationHandler{router: mustRouterSingle(t, provider), logger: logger, llmLog: nil}
+	h := testHandlerDeps{router: mustRouterSingle(t, provider), logger: logger, llmLog: nil}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
@@ -572,14 +572,14 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 		searchResults: []vector.SearchResult{{Text: longText}},
 	}
 	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "query")
 	if err != nil {
@@ -600,14 +600,14 @@ func TestHandleMessage_gatherContextTailFitsWholeChunksOnly(t *testing.T) {
 			{Text: longY},
 		},
 	}
-	h2 := &conversationHandler{
+	h2 := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		memVec:                SingleStoreMemoryVectors(vs2),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
-	}
+	}.handler()
 	_, err = h2.HandleMessage(context.Background(), 1, "", "query")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -633,14 +633,14 @@ func TestHandleMessage_vectorSearchPrefixesSummaryDayLabel(t *testing.T) {
 		searchResults: []vector.SearchResult{{ID: "summary:day:2026-03-01", Text: stored}},
 	}
 	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "what did we save?")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -678,14 +678,14 @@ func TestHandleMessage_indexTurnError_stillReturnsReply(t *testing.T) {
 	emb := &mockEmbedder{err: embedErr}
 	vs := &mockVectorStore{}
 
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                logger,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
@@ -721,7 +721,7 @@ func TestExecuteOneToolCall_ValidCall_RunsViaRunOnNode(t *testing.T) {
 		},
 	}
 	runner := &mockNodeRunner{stdout: "hello from node"}
-	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+	h := testHandlerDeps{catalog: catalog, nodeRunner: runner, logger: slog.Default()}.handler()
 
 	stdout, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "hello"}`)
 	if err != nil {
@@ -740,12 +740,12 @@ func TestExecuteOneToolCall_nativeRunOnNode(t *testing.T) {
 	runner := &mockNodeRunner{stdout: "up"}
 	reg := tools.NewRegistry()
 	reg.Register(tools.NewRunOnNode(runner))
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		catalog:        &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		nativeRegistry: reg,
 		nodeRunner:     runner,
 		logger:         slog.Default(),
-	}
+	}.handler()
 	out, err := h.executeOneToolCall(context.Background(), "run_on_node", `{"node_id":"nas","command":"uptime"}`)
 	if err != nil {
 		t.Fatalf("executeOneToolCall: %v", err)
@@ -772,7 +772,7 @@ func TestRemoteCommandFromRunOnNodeArgs(t *testing.T) {
 func TestExecuteOneToolCall_UnknownTool_ReturnsErrorNoRun(t *testing.T) {
 	catalog := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
 	runner := &mockNodeRunner{}
-	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+	h := testHandlerDeps{catalog: catalog, nodeRunner: runner, logger: slog.Default()}.handler()
 
 	_, err := h.executeOneToolCall(context.Background(), "unknown", `{}`)
 	if err == nil {
@@ -807,12 +807,12 @@ func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
 		}
 		return &llm.CompletionResult{Content: "Done. Result: hello from node.", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
 		logger:     slog.Default(),
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo hi")
 	if err != nil {
@@ -831,7 +831,7 @@ func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
 
 // Covers AC-04.012: changed tool-loop prompt behavior is covered by unit tests.
 func TestTruncateToolResultForPrompt(t *testing.T) {
-	h := &conversationHandler{toolResultPromptBytes: maxToolResultPromptBytes}
+	h := testHandlerDeps{toolResultPromptBytes: maxToolResultPromptBytes}.handler()
 	small := "ok"
 	if got := h.truncateToolResultForPrompt(small); got != small {
 		t.Fatalf("small content changed: got %q", got)
@@ -852,7 +852,7 @@ func TestTruncateToolResultForPrompt(t *testing.T) {
 // Covers AC-39.006
 func TestTruncateToolResultForPrompt_usesConfiguredLimit(t *testing.T) {
 	const customLimit = 4096
-	h := &conversationHandler{toolResultPromptBytes: customLimit}
+	h := testHandlerDeps{toolResultPromptBytes: customLimit}.handler()
 	large := strings.Repeat("b", customLimit+37)
 	got := h.truncateToolResultForPrompt(large)
 	if !strings.Contains(got, "[tool output truncated: 37 bytes omitted]") {
@@ -887,13 +887,13 @@ func TestHandleMessage_toolResultLoop_largeToolOutput_truncatedForFollowUp(t *te
 		secondCallMessages = append([]llm.Message(nil), messages...)
 		return &llm.CompletionResult{Content: "done", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		catalog:               catalog,
 		nodeRunner:            runner,
 		logger:                slog.Default(),
 		toolResultPromptBytes: maxToolResultPromptBytes,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -943,12 +943,12 @@ func TestHandleMessage_toolResultLoop_invalidArgs_noRunOnNode_errorInChat(t *tes
 		secondCallMessages = messages
 		return &llm.CompletionResult{Content: "I could not run the tool: unknown tool.", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
 		logger:     slog.Default(),
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "do something")
 	if err != nil {
@@ -997,12 +997,12 @@ func TestHandleMessage_toolResultLoop_executionError_surfacedInChat(t *testing.T
 		secondCallMessages = messages
 		return &llm.CompletionResult{Content: "The tool failed: command not in allowlist.", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
 		logger:     slog.Default(),
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
@@ -1047,12 +1047,12 @@ func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {
 			ToolCalls: []llm.ToolCall{{ID: "call_x", Name: "run_echo", Arguments: `{"msg": "x"}`}},
 		}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
 		logger:     slog.Default(),
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "run")
 	if err != nil {
@@ -1090,12 +1090,12 @@ func TestHandleMessage_toolInvocation_loggedWithIdArgumentsAndResult(t *testing.
 		}
 		return &llm.CompletionResult{Content: "Done.", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
 		logger:     logger,
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "run echo hi")
 	if err != nil {
@@ -1154,13 +1154,13 @@ func TestHandleMessage_toolInvocation_redactsInfoLogAttrs(t *testing.T) {
 		}
 		return &llm.CompletionResult{Content: "Done.", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:      mustRouterSingle(t, provider),
 		catalog:     catalog,
 		nodeRunner:  runner,
 		logger:      logger,
 		logRedactor: redactor,
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
@@ -1210,7 +1210,7 @@ func TestHandleMessage_writeMemory_toolInvocation_redactsArguments(t *testing.T)
 		}
 		return &llm.CompletionResult{Content: "saved", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterSingle(t, provider),
 		catalog:                    &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		nativeRegistry:             reg,
@@ -1219,7 +1219,7 @@ func TestHandleMessage_writeMemory_toolInvocation_redactsArguments(t *testing.T)
 		firstProviderSupportsTools: true,
 		maxDynamicSystemRunes:      defaultMaxDynamicSystemRunes,
 		memoryVectorTopK:           testMemoryVectorTopK(10),
-	}
+	}.handler()
 	_, err = h.HandleMessage(context.Background(), 1, "", "remember this")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -1267,13 +1267,13 @@ func TestHandleMessage_toolInvocation_redactsErrorAttr(t *testing.T) {
 		}
 		return &llm.CompletionResult{Content: "after tool", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:      mustRouterSingle(t, provider),
 		catalog:     catalog,
 		nodeRunner:  runner,
 		logger:      logger,
 		logRedactor: redactor,
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
@@ -1320,12 +1320,12 @@ func TestHandleMessage_toolInvocation_loggedWithError(t *testing.T) {
 		}
 		return &llm.CompletionResult{Content: "Tool failed.", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
 		logger:     logger,
-	}
+	}.handler()
 
 	_, _ = h.HandleMessage(context.Background(), 1, "", "do something")
 	var found bool
@@ -1368,7 +1368,7 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 	ti := &mockToolIndex{store: toolStore, ready: true}
 	emb := &mockEmbedder{vec: []float32{0.1}}
 
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterSingle(t, provider),
 		catalog:                    catalog,
 		toolIndex:                  ti,
@@ -1378,7 +1378,7 @@ func TestHandleMessage_requestContainsPreselectedTools(t *testing.T) {
 		toolFallbackCap:            50,
 		logger:                     logger,
 		firstProviderSupportsTools: true,
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "check server status")
 	if err != nil {
@@ -1429,7 +1429,7 @@ func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testin
 	}
 	ti := &mockToolIndex{store: toolStore, ready: true}
 	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterSingle(t, provider),
 		catalog:                    catalog,
 		toolIndex:                  ti,
@@ -1439,7 +1439,7 @@ func TestHandleMessage_firstSystemMessage_includesSystemPromptSections(t *testin
 		toolFallbackCap:            50,
 		logger:                     logger,
 		firstProviderSupportsTools: true,
-	}
+	}.handler()
 
 	_, err := h.HandleMessage(context.Background(), 1, "", "use alpha")
 	if err != nil {
@@ -1484,7 +1484,7 @@ func TestHandleMessage_fakeToolCallMarkupWithoutNativeToolCalls_noToolExecution(
 	toolStore := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "run_echo", Text: "echo", Score: 0.9}}}
 	ti := &mockToolIndex{store: toolStore, ready: true}
 	emb := &mockEmbedder{vec: []float32{0.1}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterSingle(t, provider),
 		catalog:                    catalog,
 		nodeRunner:                 runner,
@@ -1495,7 +1495,7 @@ func TestHandleMessage_fakeToolCallMarkupWithoutNativeToolCalls_noToolExecution(
 		toolFallbackCap:            50,
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
-	}
+	}.handler()
 	if _, err := h.HandleMessage(context.Background(), 1, "", "run echo"); err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -1518,7 +1518,7 @@ func TestExecuteOneToolCall_substitutedCommandWithMetachar_noRunOnNode(t *testin
 		},
 	}
 	runner := &mockNodeRunner{}
-	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+	h := testHandlerDeps{catalog: catalog, nodeRunner: runner, logger: slog.Default()}.handler()
 	_, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "hi;rm -rf /"}`)
 	if err == nil {
 		t.Fatal("executeOneToolCall: expected error for metacharacter in substituted command")
@@ -1543,7 +1543,7 @@ func TestExecuteOneToolCall_substitutedCommandWithDisallowedRune_noRunOnNode(t *
 		},
 	}
 	runner := &mockNodeRunner{}
-	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: slog.Default()}
+	h := testHandlerDeps{catalog: catalog, nodeRunner: runner, logger: slog.Default()}.handler()
 	_, err := h.executeOneToolCall(context.Background(), "run_echo", "{\"msg\": \"x\\ty\"}")
 	if err == nil {
 		t.Fatal("executeOneToolCall: expected error for tab in substituted command")
@@ -1570,7 +1570,7 @@ func TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand(t *testing
 		},
 	}
 	runner := &mockNodeRunner{}
-	h := &conversationHandler{catalog: catalog, nodeRunner: runner, logger: logger}
+	h := testHandlerDeps{catalog: catalog, nodeRunner: runner, logger: logger}.handler()
 	_, err := h.executeOneToolCall(context.Background(), "run_echo", `{"msg": "bad;cmd"}`)
 	if err == nil {
 		t.Fatal("executeOneToolCall: expected cmdsafe error")
@@ -1601,14 +1601,14 @@ func TestExecuteOneToolCall_catalogCmdsafeRejection_logsRemoteCommand(t *testing
 func TestHandleMessage_sessionMemory_injectsHistoryBetweenSystemAndUser(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	p := &mockProvider{result: &llm.CompletionResult{Content: "first reply"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
-	}
+	}.handler()
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "chat-1", "hello"); err != nil {
 		t.Fatalf("first turn: %v", err)
@@ -1632,12 +1632,12 @@ func TestHandleMessage_sessionMemory_injectsHistoryBetweenSystemAndUser(t *testi
 func TestHandleMessage_sessionDisabled_singleUserAfterSystem(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	p := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
-	}
+	}.handler()
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "chat-1", "hi"); err != nil {
 		t.Fatal(err)
@@ -1651,14 +1651,14 @@ func TestHandleMessage_sessionDisabled_singleUserAfterSystem(t *testing.T) {
 func TestHandleMessage_sessionMemory_distinctKeysIsolated(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	p := &mockProvider{result: &llm.CompletionResult{Content: "r1"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
-	}
+	}.handler()
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "100", "only A"); err != nil {
 		t.Fatal(err)
@@ -1679,14 +1679,14 @@ func TestHandleMessage_sessionMemory_distinctKeysIsolated(t *testing.T) {
 func TestHandleMessage_sessionMemory_capEvictsOldest(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	p := &mockProvider{result: &llm.CompletionResult{Content: "r"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 1},
 		sessionStore:          newSessionWindowStore(),
-	}
+	}.handler()
 	ctx := context.Background()
 	for _, text := range []string{"m1", "m2", "m3"} {
 		if _, err := h.HandleMessage(ctx, 1, "k", text); err != nil {
@@ -1706,14 +1706,14 @@ func TestHandleMessage_sessionMemory_capEvictsOldest(t *testing.T) {
 func TestHandleMessage_sessionMemory_emptyUser_noAppend(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	p := &mockProvider{result: &llm.CompletionResult{Content: "r"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
-	}
+	}.handler()
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "k", "ok"); err != nil {
 		t.Fatal(err)
@@ -1737,7 +1737,7 @@ func TestHandleMessage_sessionMemory_emptyUser_noAppend(t *testing.T) {
 func TestHandleMessage_sessionMemory_overMaxLength_noAppend(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	p := &mockProvider{result: &llm.CompletionResult{Content: "r"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxMessageLength:      3,
@@ -1745,7 +1745,7 @@ func TestHandleMessage_sessionMemory_overMaxLength_noAppend(t *testing.T) {
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
-	}
+	}.handler()
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "k", "ok"); err != nil {
 		t.Fatal(err)
@@ -1768,7 +1768,7 @@ func TestHandleMessage_sessionMemory_withVectorStoreEmpty_coexists(t *testing.T)
 	vec := &mockVectorStore{}
 	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
 	p := &mockProvider{result: &llm.CompletionResult{Content: "r1"}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		memVec:                SingleStoreMemoryVectors(vec),
@@ -1777,7 +1777,7 @@ func TestHandleMessage_sessionMemory_withVectorStoreEmpty_coexists(t *testing.T)
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
-	}
+	}.handler()
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "k", "one"); err != nil {
 		t.Fatal(err)
@@ -1801,7 +1801,7 @@ func TestHandleMessage_sessionMemory_debugLogsRedactHistoryUserText(t *testing.T
 	secret := "SECRET_TOKEN_XYZ"
 	p := &mockProvider{result: &llm.CompletionResult{Content: "r1"}}
 	redact := func(s string) string { return strings.ReplaceAll(s, secret, "[REDACTED]") }
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, p),
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
@@ -1809,7 +1809,7 @@ func TestHandleMessage_sessionMemory_debugLogsRedactHistoryUserText(t *testing.T
 		logRedactor:           redact,
 		sessionCfg:            &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore:          newSessionWindowStore(),
-	}
+	}.handler()
 	ctx := context.Background()
 	if _, err := h.HandleMessage(ctx, 1, "k", "hello "+secret); err != nil {
 		t.Fatal(err)

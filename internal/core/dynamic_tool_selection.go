@@ -38,21 +38,21 @@ func (h *conversationHandler) pickToolsForMainRequest(ctx context.Context, merge
 			filtered = append(filtered, id)
 			continue
 		}
-		if h.logger != nil {
-			h.logger.WarnContext(ctx, "dynamic tool selection dropped unknown tool id", "tool_id", id)
+		if h.llm.logger != nil {
+			h.llm.logger.WarnContext(ctx, "dynamic tool selection dropped unknown tool id", "tool_id", id)
 		}
 	}
 	return ApplyDynamicToolCap(filtered, max)
 }
 
 func (h *conversationHandler) mainLLMToolIDValid(id string) bool {
-	if h.catalog != nil {
-		if _, ok := h.catalog.Tools[id]; ok {
+	if h.tools.catalog != nil {
+		if _, ok := h.tools.catalog.Tools[id]; ok {
 			return true
 		}
 	}
-	if h.nativeRegistry != nil {
-		if _, ok := h.nativeRegistry.Get(id); ok {
+	if h.tools.nativeRegistry != nil {
+		if _, ok := h.tools.nativeRegistry.Get(id); ok {
 			return true
 		}
 	}

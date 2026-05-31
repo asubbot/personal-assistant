@@ -24,10 +24,10 @@ func TestPickToolsForMainRequest_filtersUnknownAndCaps(t *testing.T) {
 			"keep_b": {ID: "keep_b"},
 		},
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		catalog: cat,
 		logger:  slog.New(slog.DiscardHandler),
-	}
+	}.handler()
 	ctx := context.Background()
 	merged := []string{"keep_a", "bogus", "keep_b", "keep_a"}
 	out := h.pickToolsForMainRequest(ctx, merged, 2)

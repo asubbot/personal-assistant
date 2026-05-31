@@ -80,11 +80,11 @@ func TestRun_wiresToolsSelectionFromConfig(t *testing.T) {
 	if !ok {
 		t.Fatalf("handler type %T", adapter.handler)
 	}
-	if h.toolsSelection == nil || !h.toolsSelection.Enabled || h.toolsSelection.MaxToolsForLLMRequest != 3 {
-		t.Fatalf("toolsSelection = %#v", h.toolsSelection)
+	if h.tools.toolsSelection == nil || !h.tools.toolsSelection.Enabled || h.tools.toolsSelection.MaxToolsForLLMRequest != 3 {
+		t.Fatalf("toolsSelection = %#v", h.tools.toolsSelection)
 	}
-	if h.toolSearchTopK != cfg.Tools.Selection.ToolSearchTopK {
-		t.Fatalf("toolSearchTopK = %d want %d", h.toolSearchTopK, cfg.Tools.Selection.ToolSearchTopK)
+	if h.tools.toolSearchTopK != cfg.Tools.Selection.ToolSearchTopK {
+		t.Fatalf("toolSearchTopK = %d want %d", h.tools.toolSearchTopK, cfg.Tools.Selection.ToolSearchTopK)
 	}
 }
 

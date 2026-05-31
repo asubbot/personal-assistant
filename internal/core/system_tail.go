@@ -35,8 +35,8 @@ func formatRetrievedInnerFromChunks(chunks []string) string {
 
 func (h *conversationHandler) buildDynamicTailString(st *tailFitState) string {
 	var b strings.Builder
-	if h.catalog != nil && len(st.merged) > 0 {
-		if block := toolcatalog.AggregateSystemPrompts(h.catalog, st.merged); block != "" {
+	if h.tools.catalog != nil && len(st.merged) > 0 {
+		if block := toolcatalog.AggregateSystemPrompts(h.tools.catalog, st.merged); block != "" {
 			b.WriteString(prompt.WrapToolInstructions(block))
 		}
 	}
@@ -74,8 +74,8 @@ func (h *conversationHandler) fitDynamicTailToBudget(ctx context.Context, st *ta
 		trimmed = true
 	}
 	after := h.dynamicTailRunes(st)
-	if trimmed && h.logger != nil {
-		h.logger.InfoContext(ctx, "system dynamic tail trimmed to rune budget",
+	if trimmed && h.llm.logger != nil {
+		h.llm.logger.InfoContext(ctx, "system dynamic tail trimmed to rune budget",
 			"max_dynamic_system_runes", maxRunes,
 			"tail_runes_before", before,
 			"tail_runes_after", after,

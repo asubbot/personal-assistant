@@ -21,7 +21,7 @@ func TestHandleMessage_formerFullLitePattern_usesFullAssemblyWithRAG(t *testing.
 		intent.NewHeuristicClassifier(nil, []string{`^LITEONLY$`}, 100),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 200_000,
@@ -29,7 +29,7 @@ func TestHandleMessage_formerFullLitePattern_usesFullAssemblyWithRAG(t *testing.
 		classifier:            classifier,
 		memVec:                &MemoryVectors{Notes: notes},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "LITEONLY")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -53,13 +53,13 @@ func TestHandleMessage_logsMainLLMPromptAssembled(t *testing.T) {
 		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, 40),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)

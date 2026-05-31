@@ -24,51 +24,61 @@ const (
 	maxToolResultPromptBytes     = 8 << 10
 )
 
+type handlerToolDeps struct {
+	catalog           *toolcatalog.Catalog
+	toolIndex         ToolIndex
+	skillIndex        SkillIndex
+	nativeRegistry    *tools.Registry
+	skillPackagesByID map[string]*runtimeskills.Package
+	toolsCfg          *config.ToolsConfig
+	toolsSelection    *config.ToolsSelection
+	toolSearchTopK    int
+	toolMinCount      int
+	toolFallbackCap   int
+	nodeRunner        NodeRunner
+	runtimeSkillsCfg  *config.RuntimeSkillsConfig
+}
+
+type handlerMemoryDeps struct {
+	memVec           *MemoryVectors
+	embedder         embedding.Embedder
+	memoryVectorTopK config.MemoryVectorConfig
+	paLoc            *time.Location
+}
+
+type handlerSessionDeps struct {
+	sessionCfg   *config.ConversationSessionConfig
+	sessionStore *sessionWindowStore
+}
+
+type handlerLLMDeps struct {
+	router                     *llmrouter.Router
+	llmLog                     llmlog.Writer
+	model                      string
+	firstProviderSupportsTools bool
+	logRedactor                func(string) string
+	logger                     *slog.Logger
+	classifier                 intent.Classifier
+	maxMessageLength           int
+	maxDynamicSystemRunes      int
+}
+
 // conversationHandler implements MessageHandler: vector search, LLM call, optional index (REQ-01.006, REQ-01.007, REQ-01.018).
 // Context is built only from vector store (turns and summaries); no full.md day file.
 type conversationHandler struct {
-	router                     *llmrouter.Router
-	memVec                     *MemoryVectors // optional; EP-016 split memory vectors (nil disables retrieval and turn indexing)
-	embedder                   embedding.Embedder
-	nodeRunner                 NodeRunner // optional; for tools that run allowlisted commands on nodes (REQ-01.004, REQ-01.005, REQ-01.013)
-	toolIndex                  ToolIndex  // optional; for tool pre-selection when Ready() (step 3.1)
-	skillIndex                 SkillIndex // optional; vec_skills when Ready() (EP-013)
-	runtimeSkillsCfg           *config.RuntimeSkillsConfig
-	toolsCfg                   *config.ToolsConfig // optional; always_include and other tools.* JSON (EP-013)
-	skillPackagesByID          map[string]*runtimeskills.Package
-	nativeRegistry             *tools.Registry // optional; native tools (run_on_node, create_tool) when not overridden by catalog id
-	catalog                    *toolcatalog.Catalog
-	toolSearchTopK             int
-	toolMinCount               int
-	toolFallbackCap            int
-	logger                     *slog.Logger
-	maxMessageLength           int
-	maxDynamicSystemRunes      int                       // max UTF-8 runes for dynamic system tail (from config; >= 1 when using loaded config)
-	memoryVectorTopK           config.MemoryVectorConfig // per-lane vector top-K for retrieved memory chunks (from config; 0 disables lane)
-	llmLog                     llmlog.Writer             // optional; when set, each LLM call is logged as JSONL
-	model                      string                    // configured model name for LLM log entries
-	logRedactor                func(string) string       // optional; redacts content in DEBUG app logs and INFO tool-invocation logs (REQ-01.026)
-	firstProviderSupportsTools bool                      // baseline LLM provider sends tools in HTTP (supports_tools)
-	// EP-014 sliding session memory (optional).
-	sessionCfg   *config.ConversationSessionConfig
-	sessionStore *sessionWindowStore
-	// paLoc is pa_timezone for vector turn dates (EP-002); nil means UTC.
-	paLoc *time.Location
-	// classifier is the optional EP-017 intent classifier; nil = disabled (always full tier).
-	classifier intent.Classifier
-	// toolsSelection holds the EP-037 tools.selection block (required in config; carries the
-	// main-LLM tool cap). nil is only the nil-config/test fallback and disables the cap.
-	toolsSelection *config.ToolsSelection
-	// toolResultPromptBytes caps tool-result bytes in the main LLM prompt (EP-039); defaults to maxToolResultPromptBytes when unset.
-	toolResultPromptBytes int
+	tools                 handlerToolDeps
+	memory                handlerMemoryDeps
+	session               handlerSessionDeps
+	llm                   handlerLLMDeps
+	toolResultPromptBytes int // EP-039; stays top-level (single int)
 }
 
 // checkUserMessage returns trimmed text, or earlyReply when the message must not reach the LLM.
 func (h *conversationHandler) redactLogString(s string) string {
-	if h == nil || h.logRedactor == nil {
+	if h == nil || h.llm.logRedactor == nil {
 		return s
 	}
-	return h.logRedactor(s)
+	return h.llm.logRedactor(s)
 }
 
 func (h *conversationHandler) checkUserMessage(text string) (trimmed string, earlyReply string, reject bool) {
@@ -76,14 +86,14 @@ func (h *conversationHandler) checkUserMessage(text string) (trimmed string, ear
 	if trimmed == "" {
 		return "", "Please send a non-empty message.", true
 	}
-	if h.maxMessageLength > 0 && utf8.RuneCountInString(trimmed) > h.maxMessageLength {
-		return "", fmt.Sprintf("Message is too long. Maximum length is %d characters.", h.maxMessageLength), true
+	if h.llm.maxMessageLength > 0 && utf8.RuneCountInString(trimmed) > h.llm.maxMessageLength {
+		return "", fmt.Sprintf("Message is too long. Maximum length is %d characters.", h.llm.maxMessageLength), true
 	}
 	return trimmed, "", false
 }
 
 func (h *conversationHandler) sessionMemoryEnabled() bool {
-	return h != nil && h.sessionCfg != nil && h.sessionCfg.Enabled && h.sessionStore != nil
+	return h != nil && h.session.sessionCfg != nil && h.session.sessionCfg.Enabled && h.session.sessionStore != nil
 }
 
 func (h *conversationHandler) appendSessionIfEnabled(sessionKey, userText, reply string) {
@@ -94,7 +104,7 @@ func (h *conversationHandler) appendSessionIfEnabled(sessionKey, userText, reply
 	if k == "" {
 		return
 	}
-	h.sessionStore.appendExchange(k, userText, reply, h.sessionCfg.MaxSessionExchanges)
+	h.session.sessionStore.appendExchange(k, userText, reply, h.session.sessionCfg.MaxSessionExchanges)
 }
 
 // HandleMessage sends the user message to the LLM and returns the assistant reply.

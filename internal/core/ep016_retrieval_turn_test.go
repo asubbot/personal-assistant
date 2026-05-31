@@ -18,13 +18,13 @@ func TestGatherRetrievedChunkTexts_splitTableOrder_notesSummaryTurn(t *testing.T
 	notes := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "notes:2026-04-01:1", Text: "NOTE_LINE"}}}
 	summ := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "summary:day:2026-04-01", Text: "SUM_LINE"}}}
 	turns := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:ab", Text: "TURN_LINE"}}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		memVec:                &MemoryVectors{Notes: notes, Summaries: summ, Turns: turns},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		logger:                slog.New(slog.DiscardHandler),
 		memoryVectorTopK:      testMemoryVectorTopK(5),
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 	chunks := h.gatherRetrievedChunkTexts(context.Background(), "query")
 	if len(chunks) != 3 {
 		t.Fatalf("want 3 chunks, got %d: %#v", len(chunks), chunks)
@@ -44,13 +44,13 @@ func TestGatherRetrievedChunkTexts_nonSummaryRowsDroppedFromSummaryMerge(t *test
 		searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:legacy", Text: "LEGACY_TURN_NOISE"}},
 	}
 	turns := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:ab", Text: "DEDICATED_TURN"}}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		memVec:                &MemoryVectors{Notes: nil, Summaries: summ, Turns: turns},
 		embedder:              &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		logger:                slog.New(slog.DiscardHandler),
 		memoryVectorTopK:      testMemoryVectorTopK(5),
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 	chunks := h.gatherRetrievedChunkTexts(context.Background(), "q")
 	if len(chunks) != 1 {
 		t.Fatalf("want 1 turn chunk, got %d: %#v", len(chunks), chunks)
@@ -73,12 +73,12 @@ func TestIndexTurn_eventAlignedDateFromTelegramContext(t *testing.T) {
 	defer func() { _ = turns.Close() }()
 	tUnix := time.Date(2026, 4, 2, 15, 0, 0, 0, time.UTC).Unix()
 	ctx := WithTelegramMessageDate(context.Background(), tUnix)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		memVec:   &MemoryVectors{Turns: turns},
 		embedder: &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		paLoc:    time.UTC,
 		logger:   slog.New(slog.DiscardHandler),
-	}
+	}.handler()
 	if err := h.indexTurn(ctx, "user", "assistant"); err != nil {
 		t.Fatal(err)
 	}
@@ -99,12 +99,12 @@ func TestIndexTurn_fallbackDateLineIsISOYMD(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = turns.Close() }()
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		memVec:   &MemoryVectors{Turns: turns},
 		embedder: &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		paLoc:    time.UTC,
 		logger:   slog.New(slog.DiscardHandler),
-	}
+	}.handler()
 	ctx := context.Background()
 	if err := h.indexTurn(ctx, "u", "a"); err != nil {
 		t.Fatal(err)
@@ -135,12 +135,12 @@ func TestIndexTurn_twiceSameCanonicalPair_oneRow(t *testing.T) {
 	defer func() { _ = turns.Close() }()
 	tUnix := time.Date(2026, 4, 2, 12, 0, 0, 0, time.UTC).Unix()
 	ctx := WithTelegramMessageDate(context.Background(), tUnix)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		memVec:   &MemoryVectors{Turns: turns},
 		embedder: &mockEmbedder{vec: []float32{1, 0, 0, 0}},
 		paLoc:    time.UTC,
 		logger:   slog.New(slog.DiscardHandler),
-	}
+	}.handler()
 	if err := h.indexTurn(ctx, "hello", "world"); err != nil {
 		t.Fatal(err)
 	}
@@ -164,13 +164,13 @@ func TestIndexTurn_twiceSameCanonicalPair_oneRow(t *testing.T) {
 func TestGatherRetrievedChunkTexts_allMemoryLanesZero_skipsEmbed(t *testing.T) {
 	vs := &mockVectorStore{}
 	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		memVec:                SingleStoreMemoryVectors(vs),
 		embedder:              emb,
 		logger:                slog.New(slog.DiscardHandler),
 		memoryVectorTopK:      config.MemoryVectorConfig{},
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 	chunks := h.gatherRetrievedChunkTexts(context.Background(), "query")
 	if len(chunks) != 0 {
 		t.Fatalf("want no chunks, got %d: %#v", len(chunks), chunks)
@@ -186,13 +186,13 @@ func TestGatherRetrievedChunkTexts_notesSummariesZero_onlyTurnsSearched(t *testi
 	summ := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "summary:day:2026-04-01", Text: "S"}}}
 	turns := &mockVectorStore{searchResults: []vector.SearchResult{{ID: "turn:2026-04-01:x", Text: "TURN_ONLY"}}}
 	emb := &mockEmbedder{vec: []float32{1, 0, 0, 0}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		memVec:                &MemoryVectors{Notes: notes, Summaries: summ, Turns: turns},
 		embedder:              emb,
 		logger:                slog.New(slog.DiscardHandler),
 		memoryVectorTopK:      config.MemoryVectorConfig{NotesTopK: 0, SummariesTopK: 0, TurnsTopK: 5},
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 	chunks := h.gatherRetrievedChunkTexts(context.Background(), "query")
 	if len(chunks) != 1 || !strings.Contains(chunks[0], "TURN_ONLY") {
 		t.Fatalf("want one turn chunk, got %#v", chunks)
