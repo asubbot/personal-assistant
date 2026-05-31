@@ -160,7 +160,7 @@ func (a *paApplication) buildMessageHandler(ctx context.Context, toolRegistry *t
 			state: state,
 		}
 		if sender, ok := a.infra.Adapter.(chatSender); ok {
-			initJobsRuntimeAsync(ctx, state, a.cfg.Paths.JobsDBPath, a.cfg.JobsStoreReliability.ToPolicy(), a.cfg.PATimezone, sender, baseHandler, a.logger)
+			initJobsRuntimeAsync(ctx, state, a.cfg.Paths.JobsDBPath, a.cfg.JobsStoreReliabilityPolicy(), a.cfg.PATimezone, sender, baseHandler, a.logger)
 		} else {
 			err := fmt.Errorf("adapter does not support direct chat sending")
 			a.logger.Warn("jobs runtime delivery disabled", "error", err)

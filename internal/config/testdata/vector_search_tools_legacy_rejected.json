@@ -41,6 +41,29 @@
       "tool_fallback_cap": 50,
       "enabled": false,
       "max_tools_for_llm_request": 0
+    },
+    "vector_search_tools": {
+      "search_vector_memory": {
+        "enabled": true,
+        "default_top_k": 5,
+        "max_top_k": 10,
+        "max_output_bytes": 4096,
+        "snippet_runes": 200
+      },
+      "search_vector_tool": {
+        "enabled": true,
+        "default_top_k": 5,
+        "max_top_k": 10,
+        "max_output_bytes": 4096,
+        "snippet_runes": 200
+      },
+      "search_vector_skill": {
+        "enabled": true,
+        "default_top_k": 5,
+        "max_top_k": 10,
+        "max_output_bytes": 4096,
+        "snippet_runes": 200
+      }
     }
   },
   "log_redaction": {
@@ -59,6 +82,15 @@
     "max_span_days": 31,
     "max_output_bytes": 262144
   },
+  "write_memory": {
+    "max_append_bytes": 65536,
+    "max_file_bytes": 5242880
+  },
+  "sqlite_store_defaults": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL"
+  },
   "vector_store_reliability": {
     "foreign_keys": false
   },
@@ -69,10 +101,5 @@
   "observability_http": null,
   "web_tools": null,
   "runtime_skills": null,
-  "conversation_session": null,
-  "sqlite_store_defaults": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL"
-  }
+  "conversation_session": null
 }

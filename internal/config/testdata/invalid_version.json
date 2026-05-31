@@ -56,15 +56,9 @@
     }
   },
   "vector_store_reliability": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL",
     "foreign_keys": false
   },
   "jobs_store_reliability": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL",
     "foreign_keys": true
   },
   "intent_classifier": null,
@@ -79,5 +73,10 @@
   "write_memory": {
     "max_append_bytes": 65536,
     "max_file_bytes": 5242880
+  },
+  "sqlite_store_defaults": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL"
   }
 }

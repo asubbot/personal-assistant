@@ -831,12 +831,13 @@ func TestHandleMessage_toolResultLoop_returnsFinalReply(t *testing.T) {
 
 // Covers AC-04.012: changed tool-loop prompt behavior is covered by unit tests.
 func TestTruncateToolResultForPrompt(t *testing.T) {
+	h := &conversationHandler{toolResultPromptBytes: maxToolResultPromptBytes}
 	small := "ok"
-	if got := truncateToolResultForPrompt(small); got != small {
+	if got := h.truncateToolResultForPrompt(small); got != small {
 		t.Fatalf("small content changed: got %q", got)
 	}
 	large := strings.Repeat("a", maxToolResultPromptBytes+73)
-	got := truncateToolResultForPrompt(large)
+	got := h.truncateToolResultForPrompt(large)
 	if got == large {
 		t.Fatal("expected large content to be truncated")
 	}
@@ -845,6 +846,17 @@ func TestTruncateToolResultForPrompt(t *testing.T) {
 	}
 	if len(got) >= len(large) {
 		t.Fatalf("expected shorter content after truncation; got=%d want<%d", len(got), len(large))
+	}
+}
+
+// Covers AC-39.006
+func TestTruncateToolResultForPrompt_usesConfiguredLimit(t *testing.T) {
+	const customLimit = 4096
+	h := &conversationHandler{toolResultPromptBytes: customLimit}
+	large := strings.Repeat("b", customLimit+37)
+	got := h.truncateToolResultForPrompt(large)
+	if !strings.Contains(got, "[tool output truncated: 37 bytes omitted]") {
+		t.Fatalf("missing truncation marker for configured limit: %q", got[len(got)-80:])
 	}
 }
 
@@ -876,10 +888,11 @@ func TestHandleMessage_toolResultLoop_largeToolOutput_truncatedForFollowUp(t *te
 		return &llm.CompletionResult{Content: "done", Usage: llm.Usage{}}, nil
 	}
 	h := &conversationHandler{
-		router:     mustRouterSingle(t, provider),
-		catalog:    catalog,
-		nodeRunner: runner,
-		logger:     slog.Default(),
+		router:                mustRouterSingle(t, provider),
+		catalog:               catalog,
+		nodeRunner:            runner,
+		logger:                slog.Default(),
+		toolResultPromptBytes: maxToolResultPromptBytes,
 	}
 	_, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {

@@ -24,6 +24,7 @@ var configRootJSONKeys = []string{
 	"paths",
 	"read_memory",
 	"runtime_skills",
+	"sqlite_store_defaults",
 	"telegram",
 	"tools",
 	"vector_store_reliability",

@@ -10,26 +10,21 @@
     "always_include": [],
     "create_tool_secret_patterns": [],
     "vector_search_tools": {
-      "search_vector_memory": {
+      "defaults": {
         "enabled": true,
         "default_top_k": 5,
         "max_top_k": 10,
         "max_output_bytes": 4096,
         "snippet_runes": 200
+      },
+      "search_vector_memory": {
+        "enabled": true
       },
       "search_vector_tool": {
-        "enabled": true,
-        "default_top_k": 5,
-        "max_top_k": 10,
-        "max_output_bytes": 4096,
-        "snippet_runes": 200
+        "enabled": true
       },
       "search_vector_skill": {
-        "enabled": true,
-        "default_top_k": 5,
-        "max_top_k": 10,
-        "max_output_bytes": 4096,
-        "snippet_runes": 200
+        "enabled": true
       }
     },
     "selection": {
@@ -38,6 +33,20 @@
       "tool_fallback_cap": 50,
       "enabled": false,
       "max_tools_for_llm_request": 0
+    },
+    "tool_output_artifacts": {
+      "enabled": true,
+      "directory": "tool_artifacts",
+      "tool_result_prompt_bytes": 8192,
+      "max_artifact_bytes": 10485760,
+      "omission_marker": "...[omitted]...",
+      "preview_min_tail_bytes": 128,
+      "max_stderr_bytes_in_prompt": 2048,
+      "max_reads_per_turn": 32,
+      "max_read_bytes_per_turn": 524288,
+      "max_bytes_per_read": 4096,
+      "retention_max_total_bytes": 1073741824,
+      "retention_max_files": 1000
     }
   },
   "llm_providers": [
@@ -142,15 +151,14 @@
   "intent_classifier": null,
   "observability_http": null,
   "vector_store_reliability": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL",
     "foreign_keys": false
   },
   "jobs_store_reliability": {
+    "foreign_keys": true
+  },
+  "sqlite_store_defaults": {
     "journal_mode": "WAL",
     "busy_timeout": "5s",
-    "synchronous": "NORMAL",
-    "foreign_keys": true
+    "synchronous": "NORMAL"
   }
 }
