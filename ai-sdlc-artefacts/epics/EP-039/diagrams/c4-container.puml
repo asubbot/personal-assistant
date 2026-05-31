@@ -1,0 +1,19 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title EP-039 Config surface simplification - C4 Containers
+
+Person(operator, "Operator", "config.json")
+Container_Boundary(pa, "PersonalAssistant") {
+  Container(config, "internal/config", "Go", "Load, validate, resolve DRY schemas")
+  Container(core, "internal/core", "Go", "Tool result truncation from config")
+  Container(tools, "internal/tools", "Go", "Vector-search native tools")
+}
+ContainerDb(sqlite, "SQLite stores", "vector + jobs DBs")
+
+Rel(operator, config, "JSON")
+Rel(config, core, "ToolOutputArtifactsConfig, resolved limits")
+Rel(config, tools, "VectorSearchToolSettings")
+Rel(config, sqlite, "Merged PRAGMA policy")
+
+@enduml
