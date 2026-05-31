@@ -13,7 +13,7 @@ import (
 func TestFitDynamicTail_trimsSkillsFromEnd(t *testing.T) {
 	a := &runtimeskills.Package{ID: "a", Name: "A", Description: "d", Body: "aaaa"}
 	b := &runtimeskills.Package{ID: "b", Name: "B", Description: "d", Body: "bbbbbbbb"}
-	h := &conversationHandler{}
+	h := testHandlerDeps{}.handler()
 	stBoth := &tailFitState{skills: []*runtimeskills.Package{a, b}}
 	stOne := &tailFitState{skills: []*runtimeskills.Package{a}}
 	bothRunes := utf8.RuneCountInString(h.buildDynamicTailString(stBoth))
@@ -32,7 +32,7 @@ func TestFitDynamicTail_trimsSkillsFromEnd(t *testing.T) {
 func TestFitDynamicTail_logsWhenTrimmed(t *testing.T) {
 	cap := &captureHandlerWithAttrs{level: slog.LevelInfo}
 	logger := slog.New(cap)
-	h := &conversationHandler{logger: logger, catalog: nil}
+	h := testHandlerDeps{logger: logger, catalog: nil}.handler()
 	p := &runtimeskills.Package{ID: "x", Name: "X", Description: "d", Body: strings.Repeat("Z", 800)}
 	st := &tailFitState{skills: []*runtimeskills.Package{p}}
 	h.fitDynamicTailToBudget(context.Background(), st, 80)

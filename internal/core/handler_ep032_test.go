@@ -66,13 +66,13 @@ func TestHandleMessage_searchVectorToolLoop_groundedAnswer(t *testing.T) {
 
 	reg := tools.NewRegistry()
 	reg.Register(fixedSearchVectorToolKnowledgeTool{})
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		nativeRegistry:        reg,
 		catalog:               &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "Which tool should I use for web lookup?")
 	if err != nil {
@@ -107,14 +107,14 @@ func TestHandleMessage_searchVectorSkill_toolInvocationRedactsSensitiveFields(t 
 
 	reg := tools.NewRegistry()
 	reg.Register(fixedSearchVectorSkillKnowledgeTool{})
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		nativeRegistry:        reg,
 		catalog:               &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		logger:                logger,
 		logRedactor:           redactor,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "Which secret skill should I use?")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)

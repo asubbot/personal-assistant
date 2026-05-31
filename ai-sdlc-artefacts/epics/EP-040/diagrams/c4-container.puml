@@ -1,0 +1,13 @@
+@startuml c4-container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title EP-040 Handler dependency grouping - C4 Containers
+
+Container_Boundary(core, "internal/core") {
+  Container(handler, "conversationHandler", "Go", "Orchestration + grouped deps")
+  Container(deps, "handler*Deps", "Go", "tool/memory/session/LLM groups")
+}
+
+Rel(handler, deps, "embeds")
+
+@enduml

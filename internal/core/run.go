@@ -111,36 +111,44 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		toolResultBytes = toolResultPromptBytesFromConfig(cfg)
 	}
 	h := &conversationHandler{
-		router:                     router,
-		memVec:                     memVec,
-		embedder:                   embedder,
-		nodeRunner:                 nodeRunner,
-		toolIndex:                  toolIndex,
-		skillIndex:                 skillIndex,
-		runtimeSkillsCfg:           rs,
-		toolsCfg:                   tc,
-		skillPackagesByID:          byID,
-		nativeRegistry:             nativeRegistry,
-		toolSearchTopK:             toolTopK,
-		toolMinCount:               toolMin,
-		toolFallbackCap:            toolCap,
-		logger:                     logger,
-		maxMessageLength:           maxLen,
-		maxDynamicSystemRunes:      maxDynRunes,
-		memoryVectorTopK:           memVecTopK,
-		llmLog:                     llmLog,
-		model:                      model,
-		logRedactor:                redactor,
-		firstProviderSupportsTools: firstSupportsTools,
-		sessionCfg:                 sessCfg,
-		sessionStore:               sessStore,
-		paLoc:                      paLoc,
-		classifier:                 classifier,
-		toolsSelection:             toolSel,
-		toolResultPromptBytes:      toolResultBytes,
+		tools: handlerToolDeps{
+			nodeRunner:        nodeRunner,
+			toolIndex:         toolIndex,
+			skillIndex:        skillIndex,
+			runtimeSkillsCfg:  rs,
+			toolsCfg:          tc,
+			skillPackagesByID: byID,
+			nativeRegistry:    nativeRegistry,
+			toolSearchTopK:    toolTopK,
+			toolMinCount:      toolMin,
+			toolFallbackCap:   toolCap,
+			toolsSelection:    toolSel,
+		},
+		memory: handlerMemoryDeps{
+			memVec:           memVec,
+			embedder:         embedder,
+			memoryVectorTopK: memVecTopK,
+			paLoc:            paLoc,
+		},
+		session: handlerSessionDeps{
+			sessionCfg:   sessCfg,
+			sessionStore: sessStore,
+		},
+		llm: handlerLLMDeps{
+			router:                     router,
+			llmLog:                     llmLog,
+			model:                      model,
+			logRedactor:                redactor,
+			firstProviderSupportsTools: firstSupportsTools,
+			logger:                     logger,
+			classifier:                 classifier,
+			maxMessageLength:           maxLen,
+			maxDynamicSystemRunes:      maxDynRunes,
+		},
+		toolResultPromptBytes: toolResultBytes,
 	}
 	if cfg != nil && cfg.ToolCatalog != nil {
-		h.catalog = cfg.ToolCatalog
+		h.tools.catalog = cfg.ToolCatalog
 	}
 	return h, nil
 }

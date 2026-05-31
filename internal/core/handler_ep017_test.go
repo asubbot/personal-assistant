@@ -20,13 +20,13 @@ func TestHandleMessage_SimpleTier_NoToolsNoRAG(t *testing.T) {
 		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, 40),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
-	}
+	}.handler()
 	reply, err := h.HandleMessage(context.Background(), 1, "", "привет")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -47,13 +47,13 @@ func TestHandleMessage_FullTier_IncludesFullPromptPath(t *testing.T) {
 		intent.NewHeuristicClassifier(nil, []string{`напомни`}, 40),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "напомни что было вчера")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -64,13 +64,13 @@ func TestHandleMessage_FullTier_IncludesFullPromptPath(t *testing.T) {
 func TestHandleMessage_ClassifierDisabled_FullPath(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	router := mustRouterSingle(t, provider)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            nil,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "привет")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -85,13 +85,13 @@ func TestHandleMessage_SimpleTier_SkipsToolsAndRAG(t *testing.T) {
 		intent.NewHeuristicClassifier([]string{`^привет$`}, nil, 40),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "привет")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -106,13 +106,13 @@ func TestHandleMessage_FullTier_SameAsBaseline(t *testing.T) {
 	providerWithClassifier := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	routerWith := mustRouterSingle(t, providerWithClassifier)
 	classifier := intent.NewCascadeClassifier(nil, nil)
-	hWith := &conversationHandler{
+	hWith := testHandlerDeps{
 		router:                routerWith,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
-	}
+	}.handler()
 	_, err := hWith.HandleMessage(context.Background(), 1, "", "напомни")
 	if err != nil {
 		t.Fatalf("HandleMessage with classifier: %v", err)
@@ -120,13 +120,13 @@ func TestHandleMessage_FullTier_SameAsBaseline(t *testing.T) {
 
 	providerWithout := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	routerWithout := mustRouterSingle(t, providerWithout)
-	hWithout := &conversationHandler{
+	hWithout := testHandlerDeps{
 		router:                routerWithout,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            nil,
-	}
+	}.handler()
 	_, err = hWithout.HandleMessage(context.Background(), 1, "", "напомни")
 	if err != nil {
 		t.Fatalf("HandleMessage without classifier: %v", err)
@@ -157,13 +157,13 @@ func TestHandleMessage_SimpleTier_FooterOnlyMainTokens(t *testing.T) {
 		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, 40),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
-	}
+	}.handler()
 	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -183,13 +183,13 @@ func TestHandleMessage_ClassificationLogsInfo(t *testing.T) {
 		intent.NewHeuristicClassifier([]string{`^hi$`}, nil, 40),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                logger,
 		maxDynamicSystemRunes: 4000,
 		memoryVectorTopK:      testMemoryVectorTopK(10),
 		classifier:            classifier,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)

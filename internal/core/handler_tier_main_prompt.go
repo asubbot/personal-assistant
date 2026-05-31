@@ -35,12 +35,12 @@ func (h *conversationHandler) buildMainTurnMessagesPreTail(ctx context.Context, 
 	}
 	tier = intent.TierFull
 	intentStage = "disabled"
-	if h.classifier != nil {
-		classResult := h.classifier.Classify(ctx, userText)
+	if h.llm.classifier != nil {
+		classResult := h.llm.classifier.Classify(ctx, userText)
 		tier = classResult.Tier
 		intentStage = classResult.Stage
-		if h.logger != nil {
-			h.logger.InfoContext(ctx, "intent classified",
+		if h.llm.logger != nil {
+			h.llm.logger.InfoContext(ctx, "intent classified",
 				"tier", string(tier),
 				"stage", classResult.Stage,
 				"message_len", classResult.MessageLen,
@@ -55,7 +55,7 @@ func (h *conversationHandler) buildMainTurnMessagesPreTail(ctx context.Context, 
 		{Role: "system", Content: sysHead},
 	}
 	if h.sessionMemoryEnabled() {
-		for _, ex := range h.sessionStore.snapshot(sk) {
+		for _, ex := range h.session.sessionStore.snapshot(sk) {
 			messages = append(messages, llm.Message{Role: "user", Content: ex.user}, llm.Message{Role: "assistant", Content: ex.assistant})
 		}
 	}
@@ -86,10 +86,10 @@ func (h *conversationHandler) buildTierFullMainPrompt(ctx context.Context, userT
 }
 
 func (h *conversationHandler) mergedAfterDynamicToolCap(ctx context.Context, merged []string) (picked []string, dynamicRan bool) {
-	if h.toolsSelection == nil || !h.toolsSelection.Enabled || len(merged) == 0 {
+	if h.tools.toolsSelection == nil || !h.tools.toolsSelection.Enabled || len(merged) == 0 {
 		return merged, false
 	}
-	return h.pickToolsForMainRequest(ctx, merged, h.toolsSelection.MaxToolsForLLMRequest), true
+	return h.pickToolsForMainRequest(ctx, merged, h.tools.toolsSelection.MaxToolsForLLMRequest), true
 }
 
 // mergeTailMergedToolsAndOptions implements the shared full-tier tail path.
@@ -106,7 +106,7 @@ func (h *conversationHandler) mergeTailMergedToolsAndOptions(ctx context.Context
 		chunks:  append([]string(nil), chunks...),
 		skills:  append([]*runtimeskills.Package(nil), skills...),
 	}
-	h.fitDynamicTailToBudget(ctx, tailState, h.maxDynamicSystemRunes)
+	h.fitDynamicTailToBudget(ctx, tailState, h.llm.maxDynamicSystemRunes)
 	opts, err := h.completionOptionsMergedCatalogNative(tailState.merged)
 	if err != nil {
 		return out, WrapUserError(UserErrorKindConfiguration, err)

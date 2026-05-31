@@ -40,12 +40,12 @@ func TestHandleMessage_EP015_tokenFooter_sumsAcrossToolRound(t *testing.T) {
 	}
 	cap := &captureHandler{level: slog.LevelInfo}
 	logger := slog.New(cap)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:     mustRouterSingle(t, provider),
 		catalog:    catalog,
 		nodeRunner: runner,
 		logger:     logger,
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo hi")
 	if err != nil {
@@ -72,11 +72,11 @@ func TestHandleMessage_EP015_noFooterWhenZeroUsage(t *testing.T) {
 		Content: "hello",
 		Usage:   llm.Usage{},
 	}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:  mustRouterSingle(t, provider),
 		catalog: nil,
 		logger:  slog.Default(),
-	}
+	}.handler()
 	reply, err := h.HandleMessage(context.Background(), 1, "", "hi")
 	if err != nil {
 		t.Fatal(err)
@@ -93,13 +93,13 @@ func TestHandleMessage_EP015_sessionMemoryExcludesFooter(t *testing.T) {
 		Content: "hello",
 		Usage:   llm.Usage{PromptTokens: 1, CompletionTokens: 2, TotalTokens: 3},
 	}}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:       mustRouterSingle(t, provider),
 		catalog:      nil,
 		logger:       slog.Default(),
 		sessionCfg:   &config.ConversationSessionConfig{Enabled: true, MaxSessionExchanges: 10},
 		sessionStore: store,
-	}
+	}.handler()
 	const sk = "chat-ep015"
 	reply, err := h.HandleMessage(context.Background(), 1, sk, "hi")
 	if err != nil {

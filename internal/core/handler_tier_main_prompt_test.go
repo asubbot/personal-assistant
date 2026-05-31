@@ -14,7 +14,7 @@ import (
 // Covers AC-26.001, AC-26.002, AC-26.003, AC-36.010
 func TestTierMainPromptBuilders_simpleTierUnchanged(t *testing.T) {
 	ctx := context.Background()
-	h := &conversationHandler{logger: slog.New(slog.DiscardHandler)}
+	h := testHandlerDeps{logger: slog.New(slog.DiscardHandler)}.handler()
 	sysHead := "system-head"
 	userText := "hello"
 	msgs := []llm.Message{{Role: "system", Content: sysHead}, {Role: "user", Content: userText}}
@@ -33,7 +33,7 @@ func TestTierMainPromptBuilders_simpleTierUnchanged(t *testing.T) {
 // Covers AC-26.001, AC-26.002, AC-26.003, AC-36.010
 func TestTierMainPromptBuilders_fullNilCatalog(t *testing.T) {
 	ctx := context.Background()
-	h := &conversationHandler{logger: slog.New(slog.DiscardHandler)}
+	h := testHandlerDeps{logger: slog.New(slog.DiscardHandler)}.handler()
 	sysHead := "system-head"
 	userText := "hello"
 	msgs := []llm.Message{{Role: "system", Content: sysHead}, {Role: "user", Content: userText}}
@@ -48,7 +48,7 @@ func TestTierMainPromptBuilders_fullNilCatalog(t *testing.T) {
 
 // Covers AC-26.001, AC-36.010
 func TestTierMainPromptBuilders_explicitEntryPoints(t *testing.T) {
-	h := &conversationHandler{logger: slog.New(slog.DiscardHandler)}
+	h := testHandlerDeps{logger: slog.New(slog.DiscardHandler)}.handler()
 	ctx := context.Background()
 	sysHead := "h"
 	if p := h.buildTierSimpleMainPrompt(); p.opts != nil || p.dynamicRan {

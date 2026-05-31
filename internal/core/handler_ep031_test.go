@@ -54,14 +54,14 @@ func TestHandleMessage_searchVectorMemoryToolLoop_whenAutoRAGDisabled(t *testing
 
 	reg := tools.NewRegistry()
 	reg.Register(fixedSearchVectorMemoryTool{})
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		nativeRegistry:        reg,
 		catalog:               &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		logger:                slog.Default(),
 		memoryVectorTopK:      config.MemoryVectorConfig{}, // all lanes zero = auto-RAG disabled
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 
 	reply, err := h.HandleMessage(context.Background(), 1, "", "When is my deadline?")
 	if err != nil {
@@ -100,14 +100,14 @@ func TestHandleMessage_searchVectorMemory_toolInvocationRedactsSensitiveFields(t
 
 	reg := tools.NewRegistry()
 	reg.Register(fixedSearchVectorMemoryTool{})
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                mustRouterSingle(t, provider),
 		nativeRegistry:        reg,
 		catalog:               &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		logger:                logger,
 		logRedactor:           redactor,
 		maxDynamicSystemRunes: defaultMaxDynamicSystemRunes,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "When is my secret deadline?")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)

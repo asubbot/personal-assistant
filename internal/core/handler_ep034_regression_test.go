@@ -49,13 +49,13 @@ func TestHandleMessage_toolFailure_doesNotAdvanceProvider(t *testing.T) {
 		call1++
 		return &llm.CompletionResult{Content: "wrong provider", Usage: llm.Usage{}}, nil
 	}
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterMulti(t, []llm.Provider{p0, p1}, []string{"m0", "m1"}),
 		catalog:                    catalog,
 		nodeRunner:                 runner,
 		logger:                     slog.Default(),
 		firstProviderSupportsTools: true,
-	}
+	}.handler()
 	reply, err := h.HandleMessage(context.Background(), 1, "", "run echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)

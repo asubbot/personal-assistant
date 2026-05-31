@@ -26,29 +26,29 @@ func genRequestID() string {
 
 func (h *conversationHandler) onRouteEvent(ctx context.Context, e llmrouter.Event) {
 	if e.Action == llmrouter.ActionSwitchNextTransport {
-		h.logger.WarnContext(ctx, "llm provider failed, trying next", e.LogAttrs()...)
+		h.llm.logger.WarnContext(ctx, "llm provider failed, trying next", e.LogAttrs()...)
 		return
 	}
-	h.logger.WarnContext(ctx, "llm routing stop", e.LogAttrs()...)
+	h.llm.logger.WarnContext(ctx, "llm routing stop", e.LogAttrs()...)
 }
 
 func (h *conversationHandler) completeViaRouter(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions) (*llm.CompletionResult, error) {
-	rs := h.router.NewState()
-	result, err := h.router.Complete(ctx, rs, messages, opts, func(e llmrouter.Event) {
+	rs := h.llm.router.NewState()
+	result, err := h.llm.router.Complete(ctx, rs, messages, opts, func(e llmrouter.Event) {
 		h.onRouteEvent(ctx, e)
 	})
 	if err != nil {
-		h.logger.Error("llm complete", "error", err)
+		h.llm.logger.Error("llm complete", "error", err)
 	}
 	return result, err
 }
 
 // completeAt runs Complete through the unified router. usageAcc receives API usage on success when non-nil (EP-015).
 func (h *conversationHandler) completeAt(ctx context.Context, messages []llm.Message, opts *llm.CompletionOptions, usageAcc *usageTurnAcc) (*llm.CompletionResult, error) {
-	if h.logger.Enabled(ctx, slog.LevelDebug) {
+	if h.llm.logger.Enabled(ctx, slog.LevelDebug) {
 		h.logLLMRequest(ctx, messages)
 	}
-	if h.router == nil {
+	if h.llm.router == nil {
 		return nil, fmt.Errorf("core: llm router is nil")
 	}
 	result, err := h.completeViaRouter(ctx, messages, opts)
@@ -74,8 +74,8 @@ func (h *conversationHandler) systemStaticHead() string {
 
 func todayCalendarDateInPALocation(h *conversationHandler) string {
 	loc := time.UTC
-	if h != nil && h.paLoc != nil {
-		loc = h.paLoc
+	if h != nil && h.memory.paLoc != nil {
+		loc = h.memory.paLoc
 	}
 	return time.Now().In(loc).Format("2006-01-02")
 }
@@ -107,14 +107,14 @@ func paLocationFromConfig(cfg *config.Config) *time.Location {
 }
 
 func (h *conversationHandler) logMainLLMPromptAssembled(ctx context.Context, tier intent.Tier, opts *llm.CompletionOptions, dynamicRan bool, intentStage string) {
-	if h == nil || h.logger == nil {
+	if h == nil || h.llm.logger == nil {
 		return
 	}
 	n := 0
 	if opts != nil {
 		n = len(opts.Tools)
 	}
-	h.logger.InfoContext(ctx, "main llm prompt assembled",
+	h.llm.logger.InfoContext(ctx, "main llm prompt assembled",
 		"tier", string(tier),
 		"main_tool_count", n,
 		"dynamic_tool_selection", dynamicRan,
@@ -129,7 +129,7 @@ func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []
 		var err error
 		result, err = h.completeAt(ctx, messages, opts, usageAcc)
 		if err != nil {
-			h.logger.Error("llm complete", "error", err)
+			h.llm.logger.Error("llm complete", "error", err)
 			return nil, nil, err
 		}
 	}
@@ -163,7 +163,7 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 		if execErr != nil {
 			content = execErr.Error()
 		}
-		if h.logger != nil {
+		if h.llm.logger != nil {
 			argsLog := h.redactLogString(tc.Arguments)
 			remoteCmd := remoteCommandFromRunOnNodeArgs(tc.Name, tc.Arguments)
 			if execErr != nil {
@@ -171,13 +171,13 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 				if remoteCmd != "" {
 					attrs = append(attrs, "remote_command", h.redactLogString(remoteCmd))
 				}
-				h.logger.InfoContext(ctx, "tool invocation", attrs...)
+				h.llm.logger.InfoContext(ctx, "tool invocation", attrs...)
 			} else {
 				attrs := []any{"tool_id", tc.Name, "arguments", argsLog, "invoked_via", "tool_calls", "result", h.redactLogString(stdout)}
 				if remoteCmd != "" {
 					attrs = append(attrs, "remote_command", h.redactLogString(remoteCmd))
 				}
-				h.logger.InfoContext(ctx, "tool invocation", attrs...)
+				h.llm.logger.InfoContext(ctx, "tool invocation", attrs...)
 			}
 		}
 		messages = append(messages, llm.Message{Role: "tool", Content: h.truncateToolResultForPrompt(content), ToolCallID: tc.ID})
@@ -192,24 +192,24 @@ func (h *conversationHandler) logLLMRequest(ctx context.Context, messages []llm.
 		if len(content) > logTruncateMaxLen {
 			content = content[:logTruncateMaxLen] + "...[truncated]"
 		}
-		if h.logRedactor != nil {
-			content = h.logRedactor(content)
+		if h.llm.logRedactor != nil {
+			content = h.llm.logRedactor(content)
 		}
-		h.logger.DebugContext(ctx, "llm request", "index", i, "role", m.Role, "content_len", len(m.Content), "content", content)
+		h.llm.logger.DebugContext(ctx, "llm request", "index", i, "role", m.Role, "content_len", len(m.Content), "content", content)
 	}
 }
 
 // logMainLLMCompletion logs per-completion usage for the main chat model at INFO (REQ-01.021: metadata only).
 // One line per successful Complete (including each tool-follow-up round).
 func (h *conversationHandler) logMainLLMCompletion(ctx context.Context, round, messageCount int, result *llm.CompletionResult) {
-	if h == nil || h.logger == nil || result == nil {
+	if h == nil || h.llm.logger == nil || result == nil {
 		return
 	}
 	model := result.Model
 	if model == "" {
-		model = h.model
+		model = h.llm.model
 	}
-	h.logger.InfoContext(ctx, "main llm completion",
+	h.llm.logger.InfoContext(ctx, "main llm completion",
 		"round", round,
 		"message_count", messageCount,
 		"response_len", len(result.Content),
@@ -227,8 +227,8 @@ func (h *conversationHandler) logLLMResponse(ctx context.Context, result *llm.Co
 	if len(content) > logTruncateMaxLen {
 		content = content[:logTruncateMaxLen] + "...[truncated]"
 	}
-	if h.logRedactor != nil {
-		content = h.logRedactor(content)
+	if h.llm.logRedactor != nil {
+		content = h.llm.logRedactor(content)
 	}
-	h.logger.DebugContext(ctx, "llm response", "content", content, "content_len", len(result.Content), "usage", result.Usage)
+	h.llm.logger.DebugContext(ctx, "llm response", "content", content, "content_len", len(result.Content), "usage", result.Usage)
 }

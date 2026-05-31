@@ -57,7 +57,7 @@ func TestEP039_Parity_ToolResultPromptBytes(t *testing.T) {
 			if gotLimit != tc.wantLimit {
 				t.Fatalf("toolResultPromptBytesFromConfig = %d, want %d", gotLimit, tc.wantLimit)
 			}
-			h := &conversationHandler{toolResultPromptBytes: gotLimit}
+			h := testHandlerDeps{toolResultPromptBytes: gotLimit}.handler()
 			large := strings.Repeat("x", gotLimit+tc.omitTail)
 			truncated := h.truncateToolResultForPrompt(large)
 			marker := fmt.Sprintf("[tool output truncated: %d bytes omitted]", tc.omitTail)

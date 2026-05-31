@@ -18,37 +18,37 @@ import (
 // mergeSelectedToolIDs merges tools.always_include, skill-linked, and vector-selected catalog tool ids (EP-013).
 // When the tool index is nil or the catalog is nil, it returns nil, nil (native-only or no tools path).
 func (h *conversationHandler) mergeSelectedToolIDs(ctx context.Context, userText string, skills []*runtimeskills.Package) (merged []string, sources map[string]toolOrigin, err error) {
-	if h.catalog == nil {
+	if h.tools.catalog == nil {
 		return nil, nil, nil
 	}
-	topK := h.toolSearchTopK
-	if h.runtimeSkillsCfg != nil && h.runtimeSkillsCfg.Enabled && h.runtimeSkillsCfg.ToolVectorTopKCap > 0 && topK > h.runtimeSkillsCfg.ToolVectorTopKCap {
-		topK = h.runtimeSkillsCfg.ToolVectorTopKCap
+	topK := h.tools.toolSearchTopK
+	if h.tools.runtimeSkillsCfg != nil && h.tools.runtimeSkillsCfg.Enabled && h.tools.runtimeSkillsCfg.ToolVectorTopKCap > 0 && topK > h.tools.runtimeSkillsCfg.ToolVectorTopKCap {
+		topK = h.tools.runtimeSkillsCfg.ToolVectorTopKCap
 	}
-	if h.toolIndex == nil {
+	if h.tools.toolIndex == nil {
 		return nil, nil, nil
 	}
-	ids, err := toolindex.SelectToolIDs(ctx, h.embedder, h.toolIndex.Store(), h.toolIndex.Ready(), h.catalog, userText, topK, h.toolMinCount, h.toolFallbackCap, h.logger)
+	ids, err := toolindex.SelectToolIDs(ctx, h.memory.embedder, h.tools.toolIndex.Store(), h.tools.toolIndex.Ready(), h.tools.catalog, userText, topK, h.tools.toolMinCount, h.tools.toolFallbackCap, h.llm.logger)
 	if err != nil {
-		h.logger.Error("tool pre-selection", "error", err)
+		h.llm.logger.Error("tool pre-selection", "error", err)
 		return nil, nil, err
 	}
-	merged, sources = mergeToolIDs(h.toolsCfg, h.runtimeSkillsCfg, skills, ids)
+	merged, sources = mergeToolIDs(h.tools.toolsCfg, h.tools.runtimeSkillsCfg, skills, ids)
 	return merged, sources, nil
 }
 
 func (h *conversationHandler) selectSkillPackages(ctx context.Context, userText string) ([]*runtimeskills.Package, error) {
-	if h.runtimeSkillsCfg == nil || !h.runtimeSkillsCfg.Enabled || h.skillIndex == nil || !h.skillIndex.Ready() || len(h.skillPackagesByID) == 0 {
+	if h.tools.runtimeSkillsCfg == nil || !h.tools.runtimeSkillsCfg.Enabled || h.tools.skillIndex == nil || !h.tools.skillIndex.Ready() || len(h.tools.skillPackagesByID) == 0 {
 		return nil, nil
 	}
-	k := h.runtimeSkillsCfg.MaxSkillsPerTurn
-	ids, err := skillindex.SearchSkillIDs(ctx, h.embedder, h.skillIndex.Store(), userText, k)
+	k := h.tools.runtimeSkillsCfg.MaxSkillsPerTurn
+	ids, err := skillindex.SearchSkillIDs(ctx, h.memory.embedder, h.tools.skillIndex.Store(), userText, k)
 	if err != nil {
 		return nil, err
 	}
 	var out []*runtimeskills.Package
 	for _, id := range ids {
-		if p, ok := h.skillPackagesByID[id]; ok {
+		if p, ok := h.tools.skillPackagesByID[id]; ok {
 			out = append(out, p)
 		}
 	}
@@ -56,14 +56,14 @@ func (h *conversationHandler) selectSkillPackages(ctx context.Context, userText 
 }
 
 func (h *conversationHandler) completionOptionsMergedCatalogNative(ids []string) (*llm.CompletionOptions, error) {
-	if !h.firstProviderSupportsTools {
+	if !h.llm.firstProviderSupportsTools {
 		return nil, nil
 	}
-	toolDefsForLLM, err := toolcatalog.BuildToolDefs(h.catalog, ids)
+	toolDefsForLLM, err := toolcatalog.BuildToolDefs(h.tools.catalog, ids)
 	if err != nil {
 		return nil, err
 	}
-	if len(toolDefsForLLM) == 0 && h.nativeRegistry == nil {
+	if len(toolDefsForLLM) == 0 && h.tools.nativeRegistry == nil {
 		return nil, nil
 	}
 	toolDefs := make([]llm.ToolDef, 0, len(toolDefsForLLM)+4)
@@ -83,17 +83,17 @@ func (h *conversationHandler) completionOptionsMergedCatalogNative(ids []string)
 
 // nativeToolDefs returns LLM defs for registered native tools whose names are not already in the catalog.
 func (h *conversationHandler) nativeToolDefs() []llm.ToolDef {
-	if h.nativeRegistry == nil || h.catalog == nil {
+	if h.tools.nativeRegistry == nil || h.tools.catalog == nil {
 		return nil
 	}
-	names := h.nativeRegistry.List()
+	names := h.tools.nativeRegistry.List()
 	sort.Strings(names)
 	var out []llm.ToolDef
 	for _, name := range names {
-		if _, inCat := h.catalog.Tools[name]; inCat {
+		if _, inCat := h.tools.catalog.Tools[name]; inCat {
 			continue
 		}
-		nt, ok := h.nativeRegistry.Get(name)
+		nt, ok := h.tools.nativeRegistry.Get(name)
 		if !ok {
 			continue
 		}
@@ -105,13 +105,13 @@ func (h *conversationHandler) nativeToolDefs() []llm.ToolDef {
 // executeOneToolCall dispatches catalog tools or native registry tools (REQ-04.009, REQ-04.010, EP-009).
 // Returns stdout or an error message string (deterministic) for validation/execution failures.
 func (h *conversationHandler) executeOneToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
-	if h.catalog != nil {
-		if _, ok := h.catalog.Tools[toolID]; ok {
+	if h.tools.catalog != nil {
+		if _, ok := h.tools.catalog.Tools[toolID]; ok {
 			return h.executeCatalogToolCall(ctx, toolID, argsJSON)
 		}
 	}
-	if h.nativeRegistry != nil {
-		if nt, ok := h.nativeRegistry.Get(toolID); ok {
+	if h.tools.nativeRegistry != nil {
+		if nt, ok := h.tools.nativeRegistry.Get(toolID); ok {
 			params, err := parseToolArgumentsJSON(argsJSON)
 			if err != nil {
 				return "", err
@@ -156,7 +156,7 @@ func remoteCommandFromRunOnNodeArgs(toolID, argsJSON string) string {
 }
 
 func (h *conversationHandler) executeCatalogToolCall(ctx context.Context, toolID, argsJSON string) (stdout string, err error) {
-	tool, args, err := toolcatalog.ValidateToolCall(h.catalog, toolID, argsJSON)
+	tool, args, err := toolcatalog.ValidateToolCall(h.tools.catalog, toolID, argsJSON)
 	if err != nil {
 		return "", err
 	}
@@ -165,13 +165,13 @@ func (h *conversationHandler) executeCatalogToolCall(ctx context.Context, toolID
 		return "", fmt.Errorf("tool %q: %w", toolID, err)
 	}
 	if err := cmdsafe.ValidateRemoteCommand(command); err != nil {
-		if h.logger != nil {
-			h.logger.InfoContext(ctx, "catalog tool remote command rejected", "tool_id", toolID, "node_id", tool.NodeID, "remote_command", h.redactLogString(command), "error", err)
+		if h.llm.logger != nil {
+			h.llm.logger.InfoContext(ctx, "catalog tool remote command rejected", "tool_id", toolID, "node_id", tool.NodeID, "remote_command", h.redactLogString(command), "error", err)
 		}
 		return "", fmt.Errorf("tool %q: %w", toolID, err)
 	}
-	if h.nodeRunner == nil {
+	if h.tools.nodeRunner == nil {
 		return "", fmt.Errorf("tool %q: no node runner configured", toolID)
 	}
-	return h.nodeRunner.RunOnNode(ctx, tool.NodeID, command)
+	return h.tools.nodeRunner.RunOnNode(ctx, tool.NodeID, command)
 }

@@ -87,7 +87,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 	)
 	provNo := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
 	provYes := &mockProvider{result: &llm.CompletionResult{Content: "ok"}}
-	hNoCap := &conversationHandler{
+	hNoCap := testHandlerDeps{
 		router:                     mustRouterSingle(t, provNo),
 		logger:                     slog.Default(),
 		maxDynamicSystemRunes:      200_000,
@@ -101,8 +101,8 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 		toolFallbackCap:            50,
 		firstProviderSupportsTools: true,
 		toolsSelection:             nil,
-	}
-	hCap := &conversationHandler{
+	}.handler()
+	hCap := testHandlerDeps{
 		router:                     mustRouterSingle(t, provYes),
 		logger:                     slog.Default(),
 		maxDynamicSystemRunes:      200_000,
@@ -122,7 +122,7 @@ func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *tes
 			ToolMinCount:          1,
 			ToolFallbackCap:       50,
 		},
-	}
+	}.handler()
 	if _, err := hNoCap.HandleMessage(context.Background(), 1, "", "FULLTOOLS"); err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestEP018_fullTier_includesSessionExchanges(t *testing.T) {
 		intent.NewHeuristicClassifier(nil, []string{`^LITESESS`}, 100),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                router,
 		logger:                slog.Default(),
 		maxDynamicSystemRunes: 4000,
@@ -155,7 +155,7 @@ func TestEP018_fullTier_includesSessionExchanges(t *testing.T) {
 		classifier:            classifier,
 		sessionCfg:            cfg,
 		sessionStore:          store,
-	}
+	}.handler()
 	store.appendExchange("k", "prior user", "prior assistant", cfg.MaxSessionExchanges)
 	_, err := h.HandleMessage(context.Background(), 1, "k", "LITESESS")
 	if err != nil {
@@ -172,7 +172,7 @@ func TestEP018_fullTier_includesSessionExchanges(t *testing.T) {
 
 // Covers AC-18.006
 func TestEP018_dynamicTail_nilSkillsOmitsPlaybookText(t *testing.T) {
-	h := &conversationHandler{}
+	h := testHandlerDeps{}.handler()
 	p := &runtimeskills.Package{ID: "s1", Name: "Skill", Description: "d", Body: "PLAYBOOK_UNIQUE_EP018"}
 	with := h.buildDynamicTailString(&tailFitState{skills: []*runtimeskills.Package{p}})
 	without := h.buildDynamicTailString(&tailFitState{skills: nil})
@@ -200,7 +200,7 @@ func TestEP018_fullTier_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 		intent.NewHeuristicClassifier(nil, []string{`^LITEHERM`}, 100),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterSingle(t, provider),
 		logger:                     slog.Default(),
 		maxDynamicSystemRunes:      200_000,
@@ -213,7 +213,7 @@ func TestEP018_fullTier_withCatalogTools_usesNativeToolDefs(t *testing.T) {
 		toolMinCount:               1,
 		toolFallbackCap:            50,
 		firstProviderSupportsTools: true,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "LITEHERM echo")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -230,7 +230,7 @@ func TestEP018_fullTier_noCatalogTools_omitsNativeTools(t *testing.T) {
 		intent.NewHeuristicClassifier(nil, []string{`^LITENOTOOL`}, 100),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterSingle(t, provider),
 		logger:                     slog.Default(),
 		maxDynamicSystemRunes:      200_000,
@@ -238,7 +238,7 @@ func TestEP018_fullTier_noCatalogTools_omitsNativeTools(t *testing.T) {
 		classifier:                 classifier,
 		catalog:                    nil,
 		firstProviderSupportsTools: true,
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "LITENOTOOL")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
@@ -251,7 +251,7 @@ func TestEP018_fullTier_noCatalogTools_omitsNativeTools(t *testing.T) {
 // Covers AC-18.014 (rank order preserved through filter+cap)
 func TestEP018_pickTools_preservesVectorOrderUnderCap(t *testing.T) {
 	cat := catalogFiveTools(t)
-	h := &conversationHandler{catalog: cat, logger: slog.New(slog.DiscardHandler)}
+	h := testHandlerDeps{catalog: cat, logger: slog.New(slog.DiscardHandler)}.handler()
 	merged := []string{"t3", "t1", "t5", "bogus", "t2"}
 	out := h.pickToolsForMainRequest(context.Background(), merged, 3)
 	if len(out) != 3 || out[0] != "t3" || out[1] != "t1" || out[2] != "t5" {
@@ -270,7 +270,7 @@ func TestEP018_fullTier_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
 		intent.NewHeuristicClassifier(nil, []string{`^LITEDYN`}, 100),
 		nil,
 	)
-	h := &conversationHandler{
+	h := testHandlerDeps{
 		router:                     mustRouterSingle(t, provider),
 		logger:                     logger,
 		maxDynamicSystemRunes:      200_000,
@@ -290,7 +290,7 @@ func TestEP018_fullTier_dynamicSelection_logsTrueWhenConfigured(t *testing.T) {
 			ToolMinCount:          1,
 			ToolFallbackCap:       50,
 		},
-	}
+	}.handler()
 	_, err := h.HandleMessage(context.Background(), 1, "", "LITEDYN")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
