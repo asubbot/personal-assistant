@@ -1,0 +1,13 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-039 Config surface simplification - C4 Context
+
+Person(operator, "Operator", "Edits config.json")
+System(pa, "PersonalAssistant", "Config loader + runtime consumers")
+System_Ext(tools, "Native vector-search tools", "search_vector_* tools")
+
+Rel(operator, pa, "config.json")
+Rel(pa, tools, "Resolved vector_search_tools settings")
+
+@enduml
