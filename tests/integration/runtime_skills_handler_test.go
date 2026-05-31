@@ -275,6 +275,7 @@ func TestRuntimeSkills_handler_toolUnionAlwaysInclude(t *testing.T) {
 	}
 }
 
+// Covers AC-38.016
 // Covers AC-13.009: forbidden PA marker lines must not be indexed into vector stores.
 // Covers AC-35.019: handler indexing still rejects forbidden marker lines after the prompt merge.
 func TestRuntimeSkills_handler_indexTurnRejectsForbiddenMarkerLine(t *testing.T) {

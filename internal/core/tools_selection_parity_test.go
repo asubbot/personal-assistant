@@ -28,6 +28,7 @@ func parityHandler(t *testing.T, topK, minCount, fallbackCap int, sel *config.To
 	}
 }
 
+// Covers AC-38.018, AC-38.019
 // Covers AC-37.010
 func TestToolsSelectionParity_mergeEquivalentPreSelection(t *testing.T) {
 	ctx := context.Background()

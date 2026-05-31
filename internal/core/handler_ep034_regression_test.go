@@ -20,6 +20,7 @@ func mustRouterMulti(t *testing.T, providers []llm.Provider, labels []string) *l
 	return r
 }
 
+// Covers AC-38.006, AC-38.019
 // Covers AC-34.001, AC-34.013, AC-34.014 (REQ-34.001, REQ-34.013, REQ-34.014): qualifying tool failure does not advance provider; replaces EP-006 escalation tests.
 func TestHandleMessage_toolFailure_doesNotAdvanceProvider(t *testing.T) {
 	catalog := &toolcatalog.Catalog{

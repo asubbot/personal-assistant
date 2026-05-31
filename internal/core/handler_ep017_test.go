@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// Covers AC-38.002, AC-38.011, AC-38.018
 // Covers AC-17.002, AC-36.003, AC-36.011
 // Supporting AC-18.002 (simple tier unchanged vs EP-017)
 func TestHandleMessage_SimpleTier_NoToolsNoRAG(t *testing.T) {

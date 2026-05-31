@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// Covers AC-38.011, AC-38.012
 // Covers AC-26.001, AC-26.002, AC-26.003, AC-36.010
 func TestTierMainPromptBuilders_simpleTierUnchanged(t *testing.T) {
 	ctx := context.Background()

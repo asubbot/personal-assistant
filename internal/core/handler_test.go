@@ -178,6 +178,7 @@ func (m *mockNodeRunner) RunOnNode(ctx context.Context, nodeID, command string) 
 	return m.stdout, nil
 }
 
+// Covers AC-38.002, AC-38.014
 // Supporting AC-01.001, REQ-01.001: handler returns provider content to caller.
 func TestHandleMessage_returnsProviderContent(t *testing.T) {
 	logger := slog.Default()
@@ -1009,6 +1010,7 @@ func TestHandleMessage_toolResultLoop_executionError_surfacedInChat(t *testing.T
 	}
 }
 
+// Covers AC-38.006
 // Covers REQ-04.006: loop stops after maxToolRounds to avoid infinite loop when provider keeps returning tool_calls.
 // Covers AC-01.002: traceability for TestHandleMessage_toolResultLoop_maxToolRounds_cap.
 func TestHandleMessage_toolResultLoop_maxToolRounds_cap(t *testing.T) {

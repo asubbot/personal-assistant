@@ -183,6 +183,7 @@ func fixtureShouldLoadOK(name string) bool {
 	}
 }
 
+// Covers AC-38.017
 // Covers AC-37.013
 func TestLoad_AllFixturesLoad(t *testing.T) {
 	entries, err := os.ReadDir("testdata")

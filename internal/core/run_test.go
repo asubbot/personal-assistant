@@ -88,6 +88,7 @@ func TestRun_wiresToolsSelectionFromConfig(t *testing.T) {
 	}
 }
 
+// Covers AC-38.015
 // Covers AC-01.003 (US-02): core.Run calls adapter.Run with non-nil handler (valid wiring).
 func TestRun_callsAdapterRunWithHandler(t *testing.T) {
 	cfg := minimalConfigForRun()
