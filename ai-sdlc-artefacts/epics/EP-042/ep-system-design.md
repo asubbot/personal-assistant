@@ -9,7 +9,7 @@ updated_at: 2026-05-31
 
 ## Overview
 
-Extract `cmd/pa/wire` package with `Build(cfg, configPath, logger) (*paApplication, error)`. Thin `main.go`. Explicit jobs runtime state enum (initializing/ready/failed) aligned with readiness ([ep-scope.md](ep-scope.md)).
+Extract `cmd/pa/wire` package with `Build(cfg, configPath, logger) (Application, error)` where **`Application`** is an exported interface implemented by unexported `*paApplication` in the wire package (avoids cross-package unexported type issue). Thin `main.go`. Explicit jobs runtime state enum (initializing/ready/failed) aligned with readiness ([ep-scope.md](ep-scope.md)).
 
 ## Components
 
