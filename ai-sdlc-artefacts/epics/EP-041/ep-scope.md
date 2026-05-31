@@ -12,7 +12,7 @@ git_branch: epic/EP-041-full-tier-pipeline
 | Field | Content |
 |-------|---------|
 | **ID** | EP-041 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Full-tier prompt pipeline |
 | **Description** | Make the tier-`full` main-LLM assembly path explicit via a single pipeline type or ordered step function, so maintainers can read the sequence (skills → merge tools → dynamic cap → tail budget → completion options) in one place without tracing multiple files. Structural refactor; no behaviour change. |
 | **First version date** | 2026-05-31 |

@@ -78,6 +78,7 @@ func TestEP018_configurationDoc_containsTierMatrix(t *testing.T) {
 
 // Covers AC-38.018
 // Covers AC-18.003, AC-18.015
+// Covers AC-41.003
 func TestEP018_fullTier_dynamicDisabled_preservesMoreToolsThanWhenEnabled(t *testing.T) {
 	cat := catalogFiveTools(t)
 	idx := &mockToolIndex{store: &mockVectorStore{searchResults: vectorResultsFive()}, ready: true}
