@@ -10,12 +10,12 @@ Testable criteria for tier builders in the conversation handler, traceable to [e
 
 | AC ID | REQ (trace) | Summary |
 |-------|-------------|---------|
-| [AC-26.001](#ac-26-001) | [REQ-26.001](ep-requirements.md#tier-builders) | Distinct tier builder entry points exist |
+| [AC-26.001](#ac-26-001) | [REQ-26.001](ep-requirements.md#tier-builders) | Tier builder entry points: `buildTierSimpleMainPrompt`, `buildTierFullMainPrompt` (EP-036 removed `full_lite`) |
 | [AC-26.002](#ac-26-002) | [REQ-26.002](ep-requirements.md#orchestrator) | Tier dispatch helper used from `HandleMessage` |
 | [AC-26.003](#ac-26-003) | [REQ-26.003](ep-requirements.md#tests) | Unit tests exercise tier builders with minimal handler |
 | [AC-26.004](#ac-26-004) | [REQ-26.004](ep-requirements.md#lint) | No `gocyclo` nolint on `HandleMessage` |
-| [AC-26.005](#ac-26-005) | [REQ-26.005](ep-requirements.md#parity) | Existing `internal/core` tests pass |
-| [AC-26.006](#ac-26-006) | [REQ-26.006](ep-requirements.md#verification) | `make check` and validate EP-026 pass |
+| [AC-26.005](#ac-26-005) | [REQ-26.005](ep-requirements.md#parity) | **MANUAL ONLY** — `go test ./internal/core/...` passes |
+| [AC-26.006](#ac-26-006) | [REQ-26.006](ep-requirements.md#verification) | **MANUAL ONLY** — `make check` and `./bin/validate EP-026` pass |
 
 ---
 
@@ -26,8 +26,8 @@ Testable criteria for tier builders in the conversation handler, traceable to [e
 **Trace:** [REQ-26.001](ep-requirements.md#tier-builders)
 
 Given the `internal/core` source tree  
-When a reviewer searches for `buildTierFullMainPrompt`, `buildTierFullLiteMainPrompt`, and `buildTierSimpleMainPrompt`  
-Then all three identifiers are defined as methods on `*conversationHandler`.
+When a reviewer searches for `buildTierFullMainPrompt` and `buildTierSimpleMainPrompt`  
+Then both identifiers are defined as methods on `*conversationHandler` in `handler_tier_main_prompt.go`.
 
 ### AC-26.002
 
@@ -57,6 +57,8 @@ Then there is no `//nolint:gocyclo` comment applied to `HandleMessage`.
 
 **Trace:** [REQ-26.005](ep-requirements.md#parity)
 
+**Status:** AC-26.005 MANUAL ONLY — verified by running `go test -tags=integration -count=1 ./internal/core/...` (exit 0) from the repository root during delivery review.
+
 Given the repository checkout  
 When `go test -tags=integration -count=1 ./internal/core/...` runs  
 Then the command exits with status zero.
@@ -64,6 +66,8 @@ Then the command exits with status zero.
 ### AC-26.006
 
 **Trace:** [REQ-26.006](ep-requirements.md#verification)
+
+**Status:** AC-26.006 MANUAL ONLY — verified by `make check` and `./bin/validate EP-026` (exit 0) from the repository root during delivery review.
 
 Given the epic branch  
 When `make check` and `make build && ./bin/validate EP-026` run from the repository root  

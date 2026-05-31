@@ -1,6 +1,6 @@
 # EP-017 — Acceptance criteria
 
-**Introduction:** Testable acceptance criteria for **EP-017** (two-stage intent classifier for prompt optimization: heuristic + model fallback, complexity tiers, tiered prompt assembly). Each AC traces to [ep-requirements.md](ep-requirements.md).
+**Introduction:** Testable acceptance criteria for **EP-017** (intent classifier for prompt optimization: heuristic cascade, complexity tiers, tiered prompt assembly). Model classification stage criteria are **Obsolete** after [EP-036](../EP-036/ep-scope.md). Each AC traces to [ep-requirements.md](ep-requirements.md).
 
 ---
 
@@ -15,16 +15,16 @@
 | [AC-17.005](#ac-17-005) | [REQ-17.004](ep-requirements.md#req-17-004), [REQ-17.005](ep-requirements.md#req-17-005) | Heuristic classifies tool-bearing message as full |
 | [AC-17.006](#ac-17-006) | [REQ-17.005](ep-requirements.md#req-17-005) | Heuristic returns ambiguous for borderline message |
 | [AC-17.007](#ac-17-007) | [REQ-17.006](ep-requirements.md#req-17-006) | Heuristic performs no I/O or network calls |
-| [AC-17.008](#ac-17-008) | [REQ-17.007](ep-requirements.md#req-17-007), [REQ-17.009](ep-requirements.md#req-17-009) | Model stage invoked on ambiguous, prompt is minimal |
-| [AC-17.009](#ac-17-009) | [REQ-17.008](ep-requirements.md#req-17-008) | Classification provider configured independently from main |
-| [AC-17.010](#ac-17-010) | [REQ-17.010](ep-requirements.md#req-17-010) | Cascade order: heuristic → model → default full |
-| [AC-17.011](#ac-17-011) | [REQ-17.011](ep-requirements.md#req-17-011) | Model failure defaults to full and logs WARN |
+| [AC-17.008](#ac-17-008) | [REQ-17.007](ep-requirements.md#req-17-007), [REQ-17.009](ep-requirements.md#req-17-009) | **Obsolete:** Model stage removed by [EP-036](../EP-036/ep-scope.md) |
+| [AC-17.009](#ac-17-009) | [REQ-17.008](ep-requirements.md#req-17-008) | **Obsolete:** Model stage removed by [EP-036](../EP-036/ep-scope.md) |
+| [AC-17.010](#ac-17-010) | [REQ-17.010](ep-requirements.md#req-17-010) | Cascade: heuristic → default `full` (EP-036; no model stage) |
+| [AC-17.011](#ac-17-011) | [REQ-17.011](ep-requirements.md#req-17-011) | **Obsolete:** Model stage removed by [EP-036](../EP-036/ep-scope.md) |
 | [AC-17.012](#ac-17-012) | [REQ-17.012](ep-requirements.md#req-17-012), [REQ-17.013](ep-requirements.md#req-17-013), [REQ-17.014](ep-requirements.md#req-17-014) | Simple tier prompt token count at least 50 % lower than full |
 | [AC-17.013](#ac-17-013) | [REQ-17.015](ep-requirements.md#req-17-015) | Full tier produces identical prompt to pre-epic baseline |
 | [AC-17.014](#ac-17-014) | [REQ-17.016](ep-requirements.md#req-17-016) | Classifier disabled via config restores pre-epic behaviour |
 | [AC-17.015](#ac-17-015) | [REQ-17.016](ep-requirements.md#req-17-016) | Heuristic patterns configurable without code changes |
 | [AC-17.016](#ac-17-016) | [REQ-17.017](ep-requirements.md#req-17-017) | INFO log contains tier, deciding stage, message length |
-| [AC-17.017](#ac-17-017) | [REQ-17.018](ep-requirements.md#req-17-018) | Model-stage tokens logged separately, excluded from footer |
+| [AC-17.017](#ac-17-017) | [REQ-17.018](ep-requirements.md#req-17-018) | **Obsolete:** Model stage removed by [EP-036](../EP-036/ep-scope.md) |
 | [AC-17.018](#ac-17-018) | [REQ-17.019](ep-requirements.md#req-17-019), [REQ-17.020](ep-requirements.md#req-17-020) | make check passes; AC coverage verified |
 
 ---
@@ -66,22 +66,22 @@ Given the heuristic stage implementation
 When classification runs
 Then the heuristic SHALL complete without any network, LLM, or filesystem I/O calls (verifiable by test with no mocks for external services).
 
-<a id="ac-17-008"></a>**AC-17.008** (Trace: REQ-17.007, REQ-17.009)
+<a id="ac-17-008"></a>**AC-17.008** (Trace: REQ-17.007, REQ-17.009) **Obsolete:** Model classification stage removed by [EP-036](../EP-036/ep-scope.md); retained for historical REQ traceability.
 Given the heuristic returned `ambiguous` and the model stage is enabled
 When the model stage runs
 Then it SHALL send a request to the classification provider containing only the user message and tier descriptions, and SHALL return a valid tier.
 
-<a id="ac-17-009"></a>**AC-17.009** (Trace: REQ-17.008)
+<a id="ac-17-009"></a>**AC-17.009** (Trace: REQ-17.008) **Obsolete:** Model classification stage removed by [EP-036](../EP-036/ep-scope.md); retained for historical REQ traceability.
 Given configuration with a classification provider endpoint and model distinct from the main provider
 When the model stage is invoked
 Then the classification request SHALL be sent to the configured classification provider, not the main provider.
 
-<a id="ac-17-010"></a>**AC-17.010** (Trace: REQ-17.010)
-Given the heuristic returns `ambiguous` and the model stage is disabled
+<a id="ac-17-010"></a>**AC-17.010** (Trace: REQ-17.010) **Amended (EP-036):** cascade is heuristic → default `full` when ambiguous; model stage removed.
+Given the heuristic returns `ambiguous`
 When the cascade resolves the tier
 Then the assigned tier SHALL be `full`.
 
-<a id="ac-17-011"></a>**AC-17.011** (Trace: REQ-17.011)
+<a id="ac-17-011"></a>**AC-17.011** (Trace: REQ-17.011) **Obsolete:** Model classification stage removed by [EP-036](../EP-036/ep-scope.md); retained for historical REQ traceability.
 Given the heuristic returns `ambiguous` and the model stage returns an error
 When the cascade resolves the tier
 Then the assigned tier SHALL be `full` and a WARN-level log entry SHALL be recorded with the error details.
@@ -106,12 +106,12 @@ Given updated heuristic pattern definitions in config (new regex added)
 When the system reloads configuration
 Then the heuristic stage SHALL use the updated patterns without a code deploy.
 
-<a id="ac-17-016"></a>**AC-17.016** (Trace: REQ-17.017)
+<a id="ac-17-016"></a>**AC-17.016** (Trace: REQ-17.017) **Amended (EP-036):** deciding stage values are `heuristic` or `default` (no model stage).
 Given a user turn is classified
 When the classification completes
-Then an INFO-level log entry SHALL contain fields: assigned tier, deciding stage ("heuristic" or "model"), and message length in characters.
+Then an INFO-level log entry SHALL contain fields: assigned tier, deciding stage ("heuristic" or "default"), and message length in characters.
 
-<a id="ac-17-017"></a>**AC-17.017** (Trace: REQ-17.018)
+<a id="ac-17-017"></a>**AC-17.017** (Trace: REQ-17.018) **Obsolete:** Model classification stage removed by [EP-036](../EP-036/ep-scope.md); retained for historical REQ traceability.
 Given the model stage is invoked for classification
 When the turn completes and usage is reported
 Then model-stage prompt and completion tokens SHALL appear in a separate log entry, and the user-facing Telegram footer SHALL report only the main-model tokens.

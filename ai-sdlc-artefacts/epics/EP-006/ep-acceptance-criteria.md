@@ -14,7 +14,7 @@
 
 This document defines epic-level acceptance criteria for **EP-006 Tool-call reliability and model escalation**. It contains testable conditions (Gherkin-style) for the epic. Traceability to [ep-requirements.md](ep-requirements.md) is given per AC below.
 
-**Purpose:** Verify configurable baseline provider, error classification and escalation policy, multi-provider chain behaviour, exhaustion without infinite loops, rollback at end of user turn, observability (no secrets), centralized policy mapping in `internal/escalationpolicy` ([AC-06.014](#ac-06-014)), and tests.
+**Purpose:** Historical acceptance criteria for EP-006 tool-path LLM escalation. Tool-path escalation behaviour was removed by [EP-034](../EP-034/ep-scope.md); most criteria are retained for REQ traceability. **AC-06.015** remains active for catalog `ValidateKind` typing (REQ-06.018).
 
 ---
 
@@ -22,27 +22,27 @@ This document defines epic-level acceptance criteria for **EP-006 Tool-call reli
 
 | AC ID | REQ | Summary |
 |-------|-----|---------|
-| [AC-06.001](#ac-06-001) | [REQ-06.001](ep-requirements.md#baseline-and-configuration) | New user message starts with configured baseline provider |
-| [AC-06.002](#ac-06-002) | [REQ-06.002](ep-requirements.md#baseline-and-configuration) | Escalation toggle, max escalations, baseline load and validate at startup |
-| [AC-06.003](#ac-06-003) | [REQ-06.003](ep-requirements.md#error-classification), [REQ-06.004](ep-requirements.md#error-classification) | Tool failures classified; each category maps to one allowed action |
-| [AC-06.004](#ac-06-004) | [REQ-06.005](ep-requirements.md#error-classification) | Allowlist denial and unknown tool id do not trigger escalation |
-| [AC-06.005](#ac-06-005) | [REQ-06.006](ep-requirements.md#escalation-policy-and-chain) | Qualifying failure escalates to next provider up to configured max per user message |
-| [AC-06.006](#ac-06-006) | [REQ-06.007](ep-requirements.md#escalation-policy-and-chain) | Ordered list of three+ providers; escalation follows configuration order |
-| [AC-06.007](#ac-06-007) | [REQ-06.008](ep-requirements.md#exhaustion-and-stop) | Chain exhausted or policy stops: deterministic outcome, structured logs, no further escalation |
-| [AC-06.008](#ac-06-008) | [REQ-06.009](ep-requirements.md#rollback-at-end-of-turn) | After final assistant reply, next user message uses baseline provider |
-| [AC-06.009](#ac-06-009) | [REQ-06.010](ep-requirements.md#observability), [REQ-06.011](ep-requirements.md#observability), [REQ-06.012](ep-requirements.md#nfr--security-testability-observability) | Logs contain classification, escalation flag, provider before/after; no secrets; optional tried_providers |
-| [AC-06.010](#ac-06-010) | [REQ-06.013](ep-requirements.md#nfr--security-testability-observability) | Tests cover classification, limits, exhaustion, rollback-at-end-of-turn |
-| [AC-06.011](#ac-06-011) | [REQ-06.014](ep-requirements.md#nfr--security-testability-observability) | Escalation disabled: only baseline; no advance on tool failure |
-| [AC-06.012](#ac-06-012) | [REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) | Qualifying decision uses typed tool errors; plain errors do not qualify alone |
+| [AC-06.001](#ac-06-001) | [REQ-06.001](ep-requirements.md#baseline-and-configuration) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.002](#ac-06-002) | [REQ-06.002](ep-requirements.md#baseline-and-configuration) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.003](#ac-06-003) | [REQ-06.003](ep-requirements.md#error-classification), [REQ-06.004](ep-requirements.md#error-classification) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.004](#ac-06-004) | [REQ-06.005](ep-requirements.md#error-classification) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.005](#ac-06-005) | [REQ-06.006](ep-requirements.md#escalation-policy-and-chain) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.006](#ac-06-006) | [REQ-06.007](ep-requirements.md#escalation-policy-and-chain) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.007](#ac-06-007) | [REQ-06.008](ep-requirements.md#exhaustion-and-stop) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.008](#ac-06-008) | [REQ-06.009](ep-requirements.md#rollback-at-end-of-turn) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.009](#ac-06-009) | [REQ-06.010](ep-requirements.md#observability), [REQ-06.011](ep-requirements.md#observability), [REQ-06.012](ep-requirements.md#nfr--security-testability-observability) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.010](#ac-06-010) | [REQ-06.013](ep-requirements.md#nfr--security-testability-observability) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.011](#ac-06-011) | [REQ-06.014](ep-requirements.md#nfr--security-testability-observability) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
+| [AC-06.012](#ac-06-012) | [REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) | **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md) |
 | [AC-06.013](#ac-06-013) | [REQ-06.016](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) | **Obsolete:** Text-markup tool parse + escalation path removed; native `tool_calls` only. |
-| [AC-06.014](#ac-06-014) | [REQ-06.017](ep-requirements.md#nfr--security-testability-observability) | Escalation policy mapping in `internal/escalationpolicy`; unit tests without full handler |
+| [AC-06.014](#ac-06-014) | [REQ-06.017](ep-requirements.md#nfr--security-testability-observability) | **Obsolete:** `internal/escalationpolicy` removed by [EP-034](../EP-034/ep-scope.md) |
 | [AC-06.015](#ac-06-015) | [REQ-06.018](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs) | Catalog validate errors: policy uses typed `ValidateKind` / `errors.As`, not `Error()` substring rules |
 
 ---
 
 ## Acceptance criteria
 
-<a id="ac-06-001"></a>**AC-06.001** (Trace: [REQ-06.001](ep-requirements.md#baseline-and-configuration))
+<a id="ac-06-001"></a>**AC-06.001** (Trace: [REQ-06.001](ep-requirements.md#baseline-and-configuration)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given PersonalAssistant is configured with a baseline provider **B** distinct from the first list entry (where supported),  
 When a new user message begins handling,  
@@ -50,7 +50,7 @@ Then the first Complete call for that user message uses provider **B** (the conf
 
 ---
 
-<a id="ac-06-002"></a>**AC-06.002** (Trace: [REQ-06.002](ep-requirements.md#baseline-and-configuration))
+<a id="ac-06-002"></a>**AC-06.002** (Trace: [REQ-06.002](ep-requirements.md#baseline-and-configuration)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given the operator sets enable/disable escalation, maximum escalations per user message, and baseline provider in configuration,  
 When the service starts,  
@@ -59,7 +59,7 @@ And invalid or missing required values result in startup failure or a defined do
 
 ---
 
-<a id="ac-06-003"></a>**AC-06.003** (Trace: [REQ-06.003](ep-requirements.md#error-classification), [REQ-06.004](ep-requirements.md#error-classification))
+<a id="ac-06-003"></a>**AC-06.003** (Trace: [REQ-06.003](ep-requirements.md#error-classification), [REQ-06.004](ep-requirements.md#error-classification)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given a tool-related or tool-flow failure occurs during handling of a user message,  
 When the core applies error classification,  
@@ -68,7 +68,7 @@ And that category maps to exactly one allowed action among: no escalation, one r
 
 ---
 
-<a id="ac-06-004"></a>**AC-06.004** (Trace: [REQ-06.005](ep-requirements.md#error-classification))
+<a id="ac-06-004"></a>**AC-06.004** (Trace: [REQ-06.005](ep-requirements.md#error-classification)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given escalation is enabled and a tool failure is an allowlist denial or an unknown tool id in the catalog,  
 When the core processes that failure,  
@@ -76,7 +76,7 @@ Then the provider index does not advance for escalation because of that failure 
 
 ---
 
-<a id="ac-06-005"></a>**AC-06.005** (Trace: [REQ-06.006](ep-requirements.md#escalation-policy-and-chain))
+<a id="ac-06-005"></a>**AC-06.005** (Trace: [REQ-06.006](ep-requirements.md#escalation-policy-and-chain)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given escalation is enabled, the maximum escalations per user message is **N**, and a qualifying tool failure occurs,  
 When the core handles that failure according to policy,  
@@ -85,7 +85,7 @@ And at most **N** escalations occur for that single user message (subject to exi
 
 ---
 
-<a id="ac-06-006"></a>**AC-06.006** (Trace: [REQ-06.007](ep-requirements.md#escalation-policy-and-chain))
+<a id="ac-06-006"></a>**AC-06.006** (Trace: [REQ-06.007](ep-requirements.md#escalation-policy-and-chain)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given at least three LLM providers are configured in list order **P0**, **P1**, **P2**,  
 When escalation advances the active provider within one user message,  
@@ -93,7 +93,7 @@ Then each advance moves to the immediate next entry in that list (no skipping en
 
 ---
 
-<a id="ac-06-007"></a>**AC-06.007** (Trace: [REQ-06.008](ep-requirements.md#exhaustion-and-stop))
+<a id="ac-06-007"></a>**AC-06.007** (Trace: [REQ-06.008](ep-requirements.md#exhaustion-and-stop)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given escalation is enabled and the provider chain is exhausted or policy dictates stop for the current user message,  
 When the core finishes handling for that user message,  
@@ -103,7 +103,7 @@ And the core does not issue further escalation attempts for that same user messa
 
 ---
 
-<a id="ac-06-008"></a>**AC-06.008** (Trace: [REQ-06.009](ep-requirements.md#rollback-at-end-of-turn))
+<a id="ac-06-008"></a>**AC-06.008** (Trace: [REQ-06.009](ep-requirements.md#rollback-at-end-of-turn)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given the assistant has sent the final text reply for user message **M** while using an escalated provider **P_k** (not the baseline),  
 When the user sends a new user message **M+1**,  
@@ -111,7 +111,7 @@ Then the first Complete call for **M+1** uses the configured baseline provider.
 
 ---
 
-<a id="ac-06-009"></a>**AC-06.009** (Trace: [REQ-06.010](ep-requirements.md#observability), [REQ-06.011](ep-requirements.md#observability), [REQ-06.012](ep-requirements.md#nfr--security-testability-observability))
+<a id="ac-06-009"></a>**AC-06.009** (Trace: [REQ-06.010](ep-requirements.md#observability), [REQ-06.011](ep-requirements.md#observability), [REQ-06.012](ep-requirements.md#nfr--security-testability-observability)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given a user message is handled with escalation decisions,  
 When an operator inspects logs for that path,  
@@ -121,7 +121,7 @@ And where **tried_providers** (or equivalent) is implemented, an optional summar
 
 ---
 
-<a id="ac-06-010"></a>**AC-06.010** (Trace: [REQ-06.013](ep-requirements.md#nfr--security-testability-observability))
+<a id="ac-06-010"></a>**AC-06.010** (Trace: [REQ-06.013](ep-requirements.md#nfr--security-testability-observability)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given the implementation is complete for this epic,  
 When the test suite runs,  
@@ -129,7 +129,7 @@ Then unit and/or integration tests exist that cover classification (tables or ke
 
 ---
 
-<a id="ac-06-011"></a>**AC-06.011** (Trace: [REQ-06.014](ep-requirements.md#nfr--security-testability-observability))
+<a id="ac-06-011"></a>**AC-06.011** (Trace: [REQ-06.014](ep-requirements.md#nfr--security-testability-observability)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given escalation is disabled in configuration,  
 When a tool failure that would qualify for escalation if escalation were enabled occurs,  
@@ -138,7 +138,7 @@ And the provider does not advance along the list solely because of that failure.
 
 ---
 
-<a id="ac-06-012"></a>**AC-06.012** (Trace: [REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs))
+<a id="ac-06-012"></a>**AC-06.012** (Trace: [REQ-06.015](ep-requirements.md#typed-tool-failures-and-hermes-parse-escalation-inputs)) **Obsolete:** Tool-path escalation removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given tool execution or node execution returns an error wrapped with the typed escalation policy used by the core,  
 When the core evaluates whether to escalate after that failure,  
@@ -159,7 +159,7 @@ Then the user receives the same deterministic invalid-format or parse-error outc
 
 ---
 
-<a id="ac-06-014"></a>**AC-06.014** (Trace: [REQ-06.017](ep-requirements.md#nfr--security-testability-observability))
+<a id="ac-06-014"></a>**AC-06.014** (Trace: [REQ-06.017](ep-requirements.md#nfr--security-testability-observability)) **Obsolete:** `internal/escalationpolicy` removed by [EP-034](../EP-034/ep-scope.md); retained for historical REQ traceability.
 
 Given the repository layout defined in [ep-system-design.md](ep-system-design.md),  
 When an engineer inspects the implementation of escalation-allowance mapping for tool-path failures used by the conversation handler,  

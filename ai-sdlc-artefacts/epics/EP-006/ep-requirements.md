@@ -101,23 +101,23 @@ In the following, *System* = PersonalAssistant (or the component stated).
 
 | Id | Type | Section | Summary |
 |----|------|---------|--------|
-| REQ-06.001 | FR | Baseline and configuration | Baseline provider chosen by configuration when starting a user message |
-| REQ-06.002 | FR | Baseline and configuration | Config: enable/disable escalation, max escalations per turn, baseline provider; validated at startup |
-| REQ-06.003 | FR | Error classification | Classify tool-related and tool-flow failures into stable categories |
-| REQ-06.004 | FR | Error classification | Map each category to allowed action: no escalation, one repair, escalate once, or stop |
-| REQ-06.005 | FR | Error classification | Failures that a stronger model cannot fix (e.g. allowlist denial, unknown tool id) do not trigger escalation |
-| REQ-06.006 | FR | Escalation policy and chain | Where escalation enabled, advance to next provider in ordered list up to configured max per user message |
-| REQ-06.007 | FR | Escalation policy and chain | Support ordered list of at least two LLM providers; escalation advances strictly along configuration order |
-| REQ-06.008 | FR | Exhaustion and stop | When escalation cannot help or chain exhausted: deterministic user-visible outcome and structured logs; no infinite loop |
-| REQ-06.009 | FR | Rollback at end of turn | After assistant's final text reply for a user message, next user message uses configured baseline provider |
-| REQ-06.010 | NFR | Observability | Log classification, escalation yes/no, provider index or label before and after; no secrets |
-| REQ-06.011 | NFR | Observability | Optional tried_providers summary in logs |
-| REQ-06.012 | NFR | NFR | No secrets in escalation or provider-selection logs |
-| REQ-06.013 | NFR | NFR | Unit or integration tests cover classification, escalation limits, exhaustion, rollback-at-end-of-turn |
-| REQ-06.014 | NFR | NFR | With escalation disabled, behaviour uses configured baseline only; no provider advance on failure |
-| REQ-06.015 | FR | Typed tool failures and Hermes parse | Tool outcomes for escalation policy use typed errors inspectable without substring matching on Error() alone |
-| REQ-06.016 | FR | Typed tool failures and Hermes parse | Hermes parser failure qualifies for escalation and triggers next Complete when policy allows |
-| REQ-06.017 | NFR | Security, testability, observability | Escalation-allowance mapping in `internal/escalationpolicy`; testable without full handler |
+| REQ-06.001 | FR | Baseline and configuration | Baseline provider — **Superseded by EP-034** |
+| REQ-06.002 | FR | Baseline and configuration | Escalation config — **Superseded by EP-034** |
+| REQ-06.003 | FR | Error classification | Failure categories — **Superseded by EP-034** |
+| REQ-06.004 | FR | Error classification | Category→action mapping — **Superseded by EP-034** |
+| REQ-06.005 | FR | Error classification | Non-escalating failures — **Superseded by EP-034** |
+| REQ-06.006 | FR | Escalation policy and chain | Advance provider on qualifying failure — **Superseded by EP-034** |
+| REQ-06.007 | FR | Escalation policy and chain | Ordered provider list — **Superseded by EP-034** |
+| REQ-06.008 | FR | Exhaustion and stop | Chain exhaustion — **Superseded by EP-034** |
+| REQ-06.009 | FR | Rollback at end of turn | Baseline on next message — **Superseded by EP-034** |
+| REQ-06.010 | NFR | Observability | Escalation logs — **Superseded by EP-034** |
+| REQ-06.011 | NFR | Observability | tried_providers — **Superseded by EP-034** |
+| REQ-06.012 | NFR | NFR | No secrets in escalation logs — **Superseded by EP-034** |
+| REQ-06.013 | NFR | NFR | Escalation test coverage — **Superseded by EP-034** |
+| REQ-06.014 | NFR | NFR | Escalation disabled behaviour — **Superseded by EP-034** |
+| REQ-06.015 | FR | Typed tool failures and Hermes parse | Typed tool errors for escalation — **Superseded by EP-034** |
+| REQ-06.016 | FR | Typed tool failures and Hermes parse | Hermes parse escalation — **Superseded by EP-034** |
+| REQ-06.017 | NFR | Security, testability, observability | `escalationpolicy` package — **Superseded by EP-034** |
 | REQ-06.018 | FR | Typed tool failures and Hermes parse | Catalog validation errors expose stable kind via dedicated type inspectable with errors.As; policy does not use Error() substrings for those failures |
 
 ---
@@ -128,7 +128,7 @@ In the following, *System* = PersonalAssistant (or the component stated).
 
 *REQ-06.001, REQ-06.002*
 
-**REQ-06.001** (Ubiquitous)  
+**REQ-06.001** (Ubiquitous) **Superseded by EP-034:** tool-path escalation removed; retained for historical traceability.  
 THE System SHALL use the configured baseline provider when starting handling of a new user message.
 
 **REQ-06.002** (Ubiquitous)  

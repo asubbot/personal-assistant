@@ -105,18 +105,18 @@ In the following, *PersonalAssistant* means the PersonalAssistant (System) unles
 | REQ-17.004 | FR | Heuristic stage | Heuristic matches configurable patterns |
 | REQ-17.005 | FR | Heuristic stage | Heuristic returns tier or ambiguous |
 | REQ-17.006 | FR | Heuristic stage | Heuristic performs no external calls |
-| REQ-17.007 | FR | Model stage | Model stage invoked on ambiguous heuristic result |
-| REQ-17.008 | FR | Model stage | Classification provider configurable separately |
-| REQ-17.009 | FR | Model stage | Model stage prompt contains only the message and tier choices |
-| REQ-17.010 | FR | Cascade and fallback | Cascade order: heuristic → model → default full |
-| REQ-17.011 | FR | Cascade and fallback | Model stage failure defaults to full tier |
+| REQ-17.007 | FR | Model stage | Model stage — **Superseded by EP-036** |
+| REQ-17.008 | FR | Model stage | Classification provider — **Superseded by EP-036** |
+| REQ-17.009 | FR | Model stage | Model stage prompt — **Superseded by EP-036** |
+| REQ-17.010 | FR | Cascade and fallback | Cascade: heuristic → default full (**Amended EP-036**) |
+| REQ-17.011 | FR | Cascade and fallback | Model failure path — **Superseded by EP-036** |
 | REQ-17.012 | FR | Prompt assembly | Simple tier skips RAG retrieval |
 | REQ-17.013 | FR | Prompt assembly | Simple tier skips tool selection and tool definitions |
 | REQ-17.014 | FR | Prompt assembly | Simple tier skips dynamic tail assembly |
 | REQ-17.015 | FR | Prompt assembly | Full tier prompt path unchanged |
 | REQ-17.016 | NFR | Configuration | Classifier enable/disable without code changes |
 | REQ-17.017 | FR | Observability | Log tier and deciding stage per turn |
-| REQ-17.018 | NFR | Observability | Classification model usage logged separately from main model |
+| REQ-17.018 | NFR | Observability | Model-stage token logging — **Superseded by EP-036** |
 | REQ-17.019 | NFR | Quality | make check passes on delivered branch |
 | REQ-17.020 | NFR | Verification | Each AC mapped to automated or manual test |
 
@@ -158,13 +158,13 @@ THE intent classifier heuristic stage SHALL perform no network calls, no LLM cal
 
 *REQ-17.007 – REQ-17.009*
 
-<a id="req-17-007"></a>**REQ-17.007** (Event-driven)
+<a id="req-17-007"></a>**REQ-17.007** (Event-driven) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
 WHEN the heuristic stage returns `ambiguous` and the model stage is enabled in configuration, THE intent classifier SHALL send a classification request to the configured classification provider.
 
-<a id="req-17-008"></a>**REQ-17.008** (Ubiquitous)
+<a id="req-17-008"></a>**REQ-17.008** (Ubiquitous) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
 THE PersonalAssistant SHALL allow the classification provider (endpoint, model name, parameters) to be configured independently from the main conversation LLM provider.
 
-<a id="req-17-009"></a>**REQ-17.009** (Ubiquitous)
+<a id="req-17-009"></a>**REQ-17.009** (Ubiquitous) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
 THE intent classifier model stage SHALL send a prompt that contains only the user message text and the list of available tier names with brief descriptions, without including tools, RAG context, or session history.
 
 ---
@@ -173,10 +173,10 @@ THE intent classifier model stage SHALL send a prompt that contains only the use
 
 *REQ-17.010 – REQ-17.011*
 
-<a id="req-17-010"></a>**REQ-17.010** (Ubiquitous)
+<a id="req-17-010"></a>**REQ-17.010** (Ubiquitous) **Amended (EP-036):** heuristic first; ambiguous → default `full`; model stage removed.
 THE intent classifier SHALL evaluate stages in the fixed order: heuristic stage first; model stage only when the heuristic returns `ambiguous` and the model stage is enabled; default to `full` tier when both stages are skipped or exhausted.
 
-<a id="req-17-011"></a>**REQ-17.011** (Unwanted event)
+<a id="req-17-011"></a>**REQ-17.011** (Unwanted event) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
 IF the model stage returns an unparseable response, times out, or produces an error, THEN THE intent classifier SHALL assign the `full` tier for that turn and log the failure at WARN level.
 
 ---
@@ -215,7 +215,7 @@ THE PersonalAssistant SHALL expose configuration parameters for: (a) intent clas
 <a id="req-17-017"></a>**REQ-17.017** (Event-driven)
 WHEN the intent classifier assigns a tier for a user turn, THE PersonalAssistant SHALL log at INFO level the assigned tier, the stage that decided (heuristic or model), and the original message length.
 
-<a id="req-17-018"></a>**REQ-17.018** (Event-driven)
+<a id="req-17-018"></a>**REQ-17.018** (Event-driven) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
 WHEN the model stage is invoked, THE PersonalAssistant SHALL record model-stage token usage (prompt and completion) in logs separately from main-model usage, and SHALL exclude model-stage tokens from the user-facing usage footer.
 
 ---
