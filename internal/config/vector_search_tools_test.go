@@ -71,6 +71,7 @@ func writeConfigAndCatalog(t *testing.T, dir, cfgJSON string) string {
 	return cfgPath
 }
 
+// Covers AC-32.004
 // Covers AC-39.001, AC-39.004
 func TestLoad_VectorSearchToolsConfig_Valid(t *testing.T) {
 	tools := `{
@@ -95,6 +96,7 @@ func TestLoad_VectorSearchToolsConfig_Valid(t *testing.T) {
 	}
 }
 
+// Covers AC-32.005
 // Covers AC-39.003
 // Covers AC-39.004
 func TestLoad_VectorSearchToolsConfig_InvalidBounds(t *testing.T) {
