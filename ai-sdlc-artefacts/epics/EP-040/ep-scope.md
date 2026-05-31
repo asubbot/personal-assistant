@@ -12,7 +12,7 @@ git_branch: epic/EP-040-handler-dependency-grouping
 | Field | Content |
 |-------|---------|
 | **ID** | EP-040 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Handler dependency grouping |
 | **Description** | Group the ~25 fields of `conversationHandler` into named sub-structs (tools, memory, session, LLM/observability) to reduce cognitive load and simplify construction in `run.go`, without changing runtime behaviour or public APIs. Structural refactor continuing increment 0.02 after EP-038. |
 | **First version date** | 2026-05-31 |
