@@ -3,7 +3,7 @@ artefact: ep-scope
 epic_id: EP-036
 status: draft
 source_of_truth: true
-updated_at: 2026-05-30
+updated_at: 2026-05-31
 ---
 
 # Epic scope — EP-036 Simplify intent classification (drop model stage, two tiers)
@@ -11,7 +11,7 @@ updated_at: 2026-05-30
 | Field | Content |
 |-------|---------|
 | **ID** | EP-036 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Simplify intent classification (drop model stage, two tiers) |
 | **Description** | Remove the optional intent-classifier model stage and the `full_lite` tier so classification is heuristic-only with two outcomes (`simple`, `full`). Reduces per-message LLM cost, latency, and branching in core prompt assembly as part of Refactoring increment 0.02. |
 | **First version date** | 2026-05-30 |

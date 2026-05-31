@@ -12,7 +12,13 @@ func TestEP043_loadConfigFixtureUsedInTests(t *testing.T) {
 	root := filepath.Join("..", "..", "internal", "config")
 	var count int
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, "_test.go") {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		if filepath.Base(path) == "ep043_traceability_test.go" {
 			return nil
 		}
 		raw, readErr := os.ReadFile(path)
@@ -20,6 +26,7 @@ func TestEP043_loadConfigFixtureUsedInTests(t *testing.T) {
 			return readErr
 		}
 		count += strings.Count(string(raw), "loadConfigFixture(")
+		count += strings.Count(string(raw), "loadConfigFixtureRaw(")
 		return nil
 	})
 	if count < 10 {

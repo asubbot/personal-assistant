@@ -11,7 +11,7 @@ updated_at: 2026-05-30
 | Field | Content |
 |-------|---------|
 | **ID** | EP-037 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Consolidate tool pre-selection configuration |
 | **Description** | Collapse overlapping configuration for catalog tool vector pre-selection and EP-018 per-request tool capping into one `tools.selection` block, remove the legacy top-level `tool_pre_selection` and `tools.dynamic_selection` keys, and keep runtime tool-selection outcomes unchanged for equivalent settings. Part of Refactoring increment 0.02 (architecture-simplification direction B). |
 | **First version date** | 2026-05-30 |

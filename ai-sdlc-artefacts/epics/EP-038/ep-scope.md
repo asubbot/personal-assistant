@@ -11,7 +11,7 @@ updated_at: 2026-05-31
 | Field | Content |
 |-------|---------|
 | **ID** | EP-038 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Refactor core conversation handler (god handler) |
 | **Description** | Decompose `internal/core/handler.go` (~663 LOC) into focused files and clearer tier/prompt boundaries while preserving all runtime behaviour, tests, and explicit JSON configuration. Part of Refactoring increment 0.02 (architecture-simplification direction F). |
 | **First version date** | 2026-05-30 |

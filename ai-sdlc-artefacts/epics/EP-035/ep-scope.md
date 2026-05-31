@@ -3,7 +3,7 @@ artefact: ep-scope
 epic_id: EP-035
 status: draft
 source_of_truth: true
-updated_at: 2026-05-30
+updated_at: 2026-05-31
 ---
 
 # Epic scope — EP-035 Consolidate small internal packages
@@ -11,7 +11,7 @@ updated_at: 2026-05-30
 | Field | Content |
 |-------|---------|
 | **ID** | EP-035 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Consolidate small internal packages |
 | **Description** | Reduce tiny or empty `internal/` packages as part of Refactoring increment 0.02, without changing product behaviour, explicit JSON configuration, or EP-013/EP-029 security-sensitive prompt and logging contracts. |
 | **First version date** | 2026-05-30 |

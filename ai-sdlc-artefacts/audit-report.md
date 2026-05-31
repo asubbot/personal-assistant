@@ -2,12 +2,12 @@
 artefact: audit-report
 status: draft
 source_of_truth: true
-updated_at: 2026-05-29
+updated_at: 2026-05-31
 ---
 
 # Project-level audit (stage 11)
 
-**Date and time of creation:** 2026-05-29 (UTC)
+**Date and time of creation:** 2026-05-31 (UTC)
 
 **Purpose:** Project-wide audit summary per pipeline stage 11 (project-level §2a–§3a in `ai-sdlc/specification/pipeline.spec.md` and stage-11 skill): epic inventory and last recorded stage-11 artefacts. This file does not substitute a fresh `make check` on the current branch.
 
@@ -17,7 +17,7 @@ updated_at: 2026-05-29
 
 ## Mode note (token optimization)
 
-DONE and CANCELED epic rows are preserved from the previous project audit (2026-04-21) unless a new epic was added to inventory. Only **EP-033** was added in this refresh (DONE, stage-11 report already on file). No epic had Status **IN_PROGRESS** at audit time, so no epic-level re-audit was run.
+DONE and CANCELED epic rows for **EP-001–EP-033** are preserved from the previous project audit (2026-05-29). **EP-034–EP-043** (Refactoring increment 0.02) are added from their existing `ep-audit-report.md` files; no epic had Status **IN_PROGRESS** at audit time, so no epic-level re-audit was run.
 
 ---
 
@@ -58,12 +58,24 @@ DONE and CANCELED epic rows are preserved from the previous project audit (2026-
 | [EP-031](epics/EP-031/ep-scope.md) | Vector Memory Search Tool | DONE | 72.9% | [ep-audit-report (2026-04-21)](epics/EP-031/ep-audit-report.md) |
 | [EP-032](epics/EP-032/ep-scope.md) | Specialized Knowledge Search Tools | DONE | 73.0% | [ep-audit-report (2026-04-21)](epics/EP-032/ep-audit-report.md) |
 | [EP-033](epics/EP-033/ep-scope.md) | Memory Summarization Retry | DONE | 73.2% | [ep-audit-report (2026-04-21)](epics/EP-033/ep-audit-report.md) |
+| [EP-034](epics/EP-034/ep-scope.md) | Remove tool-path LLM escalation | DONE | 75.8% | [ep-audit-report (2026-05-29)](epics/EP-034/ep-audit-report.md) |
+| [EP-035](epics/EP-035/ep-scope.md) | Consolidate small internal packages | DONE | 75.9% | [ep-audit-report (2026-05-30)](epics/EP-035/ep-audit-report.md) |
+| [EP-036](epics/EP-036/ep-scope.md) | Simplify intent classification (drop model stage, two tiers) | DONE | 76.0% | [ep-audit-report (2026-05-30)](epics/EP-036/ep-audit-report.md) |
+| [EP-037](epics/EP-037/ep-scope.md) | Consolidate tool pre-selection configuration | DONE | 76.0% | [ep-audit-report (2026-05-31)](epics/EP-037/ep-audit-report.md) |
+| [EP-038](epics/EP-038/ep-scope.md) | Refactor core conversation handler (god handler) | DONE | 76.0% | [ep-audit-report (2026-05-31)](epics/EP-038/ep-audit-report.md) |
+| [EP-039](epics/EP-039/ep-scope.md) | Config surface simplification | DONE | 76.1% | [ep-audit-report (2026-05-31)](epics/EP-039/ep-audit-report.md) |
+| [EP-040](epics/EP-040/ep-scope.md) | Handler dependency grouping | DONE | 76.1% | [ep-audit-report (2026-05-31)](epics/EP-040/ep-audit-report.md) |
+| [EP-041](epics/EP-041/ep-scope.md) | Full-tier prompt pipeline | DONE | 76.1% | [ep-audit-report (2026-05-31)](epics/EP-041/ep-audit-report.md) |
+| [EP-042](epics/EP-042/ep-scope.md) | Composition root refinement | DONE | 76.1% | [ep-audit-report (2026-05-31)](epics/EP-042/ep-audit-report.md) |
+| [EP-043](epics/EP-043/ep-scope.md) | Test suite organization | DONE | 76.3% | [ep-audit-report (2026-05-31)](epics/EP-043/ep-audit-report.md) |
 
 ---
 
 ## Notes
 
-- **Epics with `ep-scope.md`:** 33. **With `ep-audit-report.md`:** 28. **No stage-11 report yet:** EP-003, EP-005, EP-007, EP-010 (canceled), EP-028 (canceled).
-- **Pipeline §2a:** No epic was **IN_PROGRESS** at audit time; existing DONE/CANCELED rows were not recomputed.
+- **Epics with `ep-scope.md`:** 43. **With `ep-audit-report.md`:** 38. **No stage-11 report yet:** EP-003, EP-005, EP-007, EP-010 (canceled), EP-028 (canceled).
+- **Pipeline §2a:** No epic was **IN_PROGRESS** at audit time; existing DONE/CANCELED rows for EP-001–EP-033 were not recomputed.
+- **Added since last audit (2026-05-29):** EP-034–EP-043 (Refactoring increment 0.02); all ten have stage-11 reports on file.
+- **Increment 0.02:** All ten epics (EP-034–EP-043) are **DONE** on `main`; scope status updated 2026-05-31.
 - **Test coverage column:** Values are taken from each epic’s `ep-audit-report.md` at the time that report was written, not a new measurement on the current commit.
-- For a **current** quality gate on your branch, run `make check` and `make validate` (or `./bin/validate EP-XXX` as needed). Verified on 2026-05-29: `make check` pass, statement coverage **76.0%**; `make validate` pass, in-scope **386/386** AC traced (100%).
+- **Quality gate (2026-05-31):** `make validate` **pass** — in-scope **452/452** AC traced (100.0%), automated 431 (95.4%), manual-only 21. `make check` **pass** — statement coverage **76.3%**, module boundaries OK (after `nilerr` fix in `ep043_traceability_test.go`).

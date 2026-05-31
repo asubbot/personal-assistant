@@ -12,12 +12,13 @@ This document combines **delivery strategy** and **test strategy** for the proje
 | Feature | Version | Definition |
 |-------|---|---------|
 |**MVP** | 0.01 |A working personal assistant the user can talk to via Telegram. It runs in Docker on Synology DS220+, uses long-term memory and optional remote nodes, supports multiple LLM backends, and is built so we can evolve it without breaking the core.|
-| **Refactoring** | 0.02| Remove extra architecture complexity |
+| **Refactoring** | 0.02 | Remove extra architecture complexity — **DONE** (EP-034–EP-043, merged to `main` 2026-05-31) |
 
 ### 1.2 Success criteria (high level)
 
 - After each increment: existing behaviour still works; new behaviour is testable (unit and/or integration).
 - By end of 0.1: one E2E path — user message in Telegram → reply using memory and (where applicable) node/tool; runnable on target platform.
+- **Increment 0.02 (Refactoring):** ten epics delivered (EP-034–EP-043): tool-path escalation removal, package consolidation, intent classifier simplification, tool selection config, handler refactor, config surface DRY, handler grouping, full-tier pipeline, composition root (`cmd/pa/wire`), test suite organization. Operator `.config/config.json` migrated for EP-039 schema; `make validate` 452/452 AC traced.
 
 ---
 
