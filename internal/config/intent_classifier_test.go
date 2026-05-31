@@ -10,7 +10,7 @@ import (
 
 // Covers AC-36.013
 func TestLoad_RejectRemovedIntentClassifier_model_stage(t *testing.T) {
-	_, err := Load(filepath.Join("testdata", "intent_classifier_model_stage_rejected.json"))
+	_, err := Load(loadConfigFixtureRaw(t, "intent_classifier_model_stage_rejected"))
 	if err == nil {
 		t.Fatal("Load: expected error for model_stage, got nil")
 	}
@@ -21,7 +21,7 @@ func TestLoad_RejectRemovedIntentClassifier_model_stage(t *testing.T) {
 
 // Covers AC-36.014
 func TestLoad_RejectRemovedIntentClassifier_full_lite_patterns(t *testing.T) {
-	_, err := Load(filepath.Join("testdata", "intent_classifier_full_lite_patterns_rejected.json"))
+	_, err := Load(loadConfigFixtureRaw(t, "intent_classifier_full_lite_patterns_rejected"))
 	if err == nil {
 		t.Fatal("Load: expected error for full_lite_patterns, got nil")
 	}
@@ -32,10 +32,7 @@ func TestLoad_RejectRemovedIntentClassifier_full_lite_patterns(t *testing.T) {
 
 // Covers AC-36.015, AC-36.016
 func TestLoad_IntentClassifier_enabledHeuristicOnly(t *testing.T) {
-	cfg, err := Load(filepath.Join("testdata", "intent_classifier_enabled_heuristic_only.json"))
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := loadConfigFixture(t, "intent_classifier_enabled_heuristic_only")
 	if cfg.IntentClassifier == nil || !cfg.IntentClassifier.Enabled {
 		t.Fatal("Load: expected enabled intent_classifier")
 	}
@@ -53,29 +50,7 @@ func TestLoad_IntentClassifier_enabledHeuristicOnly(t *testing.T) {
 // Covers AC-36.015
 func TestLoad_IntentClassifier_invalidRegexRejected(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.json")
-	content := `{
-  "version": 1,
-  "telegram": {"token_path": "/run/secrets/token", "users_path": ""},
-  "llm_providers": [{"type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s"}],
-  "paths": {"memory_dir": "/data/memory", "log_path": "/data/pa.log", "vector_index_path": "/data/pa_vectors.sqlite", "llm_log_dir": "/data/llm_logs", "llm_log_retention_days": 7, "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "valid_tools.yaml"},
-  "embedding": {"type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic-embed-text", "dimensions": 768, "batch_size": 100, "http_timeout": "60s"},
-  "nodes": {},
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": {"additional_patterns": []},
-  "pa_timezone": "UTC",
-  "conversation_context": {"max_dynamic_system_runes": 4000, "memory_vector": {"notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10}},
-  "read_memory": {"max_span_days": 31, "max_output_bytes": 262144},
-  "write_memory": {"max_append_bytes": 65536, "max_file_bytes": 5242880},
-  "sqlite_store_defaults": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL"},
-  "vector_store_reliability": {"foreign_keys": false},
-  "jobs_store_reliability": {"foreign_keys": true},
-  "intent_classifier": {"enabled": true, "heuristic": {"simple_patterns": ["[invalid"], "max_simple_len": 40}},
-  "observability_http": null, "web_tools": null, "runtime_skills": null, "conversation_session": null
-}`
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	path := writeConfigFixtureToDir(t, dir, "intent_classifier_invalid_regex", nil)
 	if _, err := Load(path); err == nil {
 		t.Fatal("Load: expected invalid regex error")
 	}
@@ -84,29 +59,7 @@ func TestLoad_IntentClassifier_invalidRegexRejected(t *testing.T) {
 // Covers AC-36.015
 func TestLoad_IntentClassifier_maxSimpleLenBelowOneRejected(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.json")
-	content := `{
-  "version": 1,
-  "telegram": {"token_path": "/run/secrets/token", "users_path": ""},
-  "llm_providers": [{"type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s"}],
-  "paths": {"memory_dir": "/data/memory", "log_path": "/data/pa.log", "vector_index_path": "/data/pa_vectors.sqlite", "llm_log_dir": "/data/llm_logs", "llm_log_retention_days": 7, "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "valid_tools.yaml"},
-  "embedding": {"type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic-embed-text", "dimensions": 768, "batch_size": 100, "http_timeout": "60s"},
-  "nodes": {},
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": {"additional_patterns": []},
-  "pa_timezone": "UTC",
-  "conversation_context": {"max_dynamic_system_runes": 4000, "memory_vector": {"notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10}},
-  "read_memory": {"max_span_days": 31, "max_output_bytes": 262144},
-  "write_memory": {"max_append_bytes": 65536, "max_file_bytes": 5242880},
-  "sqlite_store_defaults": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL"},
-  "vector_store_reliability": {"foreign_keys": false},
-  "jobs_store_reliability": {"foreign_keys": true},
-  "intent_classifier": {"enabled": true, "heuristic": {"simple_patterns": ["^hi$"], "max_simple_len": 0}},
-  "observability_http": null, "web_tools": null, "runtime_skills": null, "conversation_session": null
-}`
-	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	path := writeConfigFixtureToDir(t, dir, "intent_classifier_max_simple_len_zero", nil)
 	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "max_simple_len") {
 		t.Fatalf("Load: want max_simple_len error, got %v", err)
 	}
@@ -114,10 +67,7 @@ func TestLoad_IntentClassifier_maxSimpleLenBelowOneRejected(t *testing.T) {
 
 // Covers AC-36.016
 func TestLoad_validWithToolCatalog_intentClassifierNull(t *testing.T) {
-	cfg, err := Load(filepath.Join("testdata", "valid_with_tool_catalog.json"))
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
+	cfg := loadConfigFixture(t, "valid_with_tool_catalog")
 	if cfg.IntentClassifier != nil {
 		t.Fatal("intent_classifier must be null")
 	}
