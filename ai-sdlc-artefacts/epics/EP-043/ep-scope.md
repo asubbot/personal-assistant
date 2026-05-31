@@ -12,7 +12,7 @@ git_branch: epic/EP-043-test-suite-organization
 | Field | Content |
 |-------|---------|
 | **ID** | EP-043 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Test suite organization |
 | **Description** | Reduce maintainability cost of the test suite by splitting oversized handler tests, introducing shared config test fixtures, and consolidating epic traceability guard tests — without changing product behaviour or reducing meaningful coverage. |
 | **First version date** | 2026-05-31 |

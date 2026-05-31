@@ -10,11 +10,7 @@ import (
 
 // Supporting AC-19.019: valid config with explicit jobs_db_path loads.
 func TestLoad_ValidConfig_JobsDBPath(t *testing.T) {
-	path := filepath.Join("testdata", "valid_no_users.json")
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load(config with jobs_db_path): unexpected error: %v", err)
-	}
+	cfg := loadConfigFixture(t, "valid_no_users")
 	if cfg == nil {
 		t.Fatal("Load(config with jobs_db_path): got nil config")
 	}
@@ -25,11 +21,7 @@ func TestLoad_ValidConfig_JobsDBPath(t *testing.T) {
 
 // TestLoad_ValidConfig_NoError — Supporting test for AC-01.005 (US-03): valid config loads without error.
 func TestLoad_ValidConfig_NoError(t *testing.T) {
-	path := filepath.Join("testdata", "valid_no_users.json")
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load(valid config): unexpected error: %v", err)
-	}
+	cfg := loadConfigFixture(t, "valid_no_users")
 	if cfg == nil {
 		t.Fatal("Load(valid config): got nil config")
 	}
@@ -53,20 +45,12 @@ func TestLoad_ValidConfig_NoError(t *testing.T) {
 // TestLoad_TelegramMaxMessageLength — Supporting test for AC-01.002 (US-01): max_message_length from config (0 when omitted, value when set).
 func TestLoad_TelegramMaxMessageLength(t *testing.T) {
 	// Without field: 0
-	pathNoField := filepath.Join("testdata", "valid_no_users.json")
-	cfg, err := Load(pathNoField)
-	if err != nil {
-		t.Fatalf("Load(valid_no_users): %v", err)
-	}
+	cfg := loadConfigFixture(t, "valid_no_users")
 	if cfg.Telegram.MaxMessageLength != 0 {
 		t.Errorf("MaxMessageLength without field = %d, want 0", cfg.Telegram.MaxMessageLength)
 	}
 	// With max_message_length: value loaded
-	pathWithField := filepath.Join("testdata", "valid_max_message_length.json")
-	cfg, err = Load(pathWithField)
-	if err != nil {
-		t.Fatalf("Load(valid_max_message_length): %v", err)
-	}
+	cfg = loadConfigFixture(t, "valid_max_message_length")
 	if cfg.Telegram.MaxMessageLength != 4096 {
 		t.Errorf("MaxMessageLength = %d, want 4096", cfg.Telegram.MaxMessageLength)
 	}
@@ -78,11 +62,7 @@ func TestLoad_ValidConfig_WithUsersFile_NoError(t *testing.T) {
 	prev := os.Getenv("PA_SECRETS_DIR")
 	_ = os.Setenv("PA_SECRETS_DIR", ".")
 	t.Cleanup(func() { _ = os.Setenv("PA_SECRETS_DIR", prev) })
-	path := filepath.Join("testdata", "valid_with_good_users.json")
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load(valid config with users): unexpected error: %v", err)
-	}
+	cfg := loadConfigFixture(t, "valid_with_good_users")
 	if cfg == nil {
 		t.Fatal("Load(valid config with users): got nil config")
 	}
@@ -138,8 +118,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := filepath.Join("testdata", tt.configFile)
-			_, err := Load(path)
+			_, err := Load(loadConfigFixtureRaw(t, strings.TrimSuffix(tt.configFile, ".json")))
 			if err == nil {
 				t.Fatal("Load: expected error, got nil")
 			}
@@ -152,8 +131,7 @@ func TestLoad_InvalidOrMissingFields_ReturnsError(t *testing.T) {
 
 // Covers AC-01.005, AC-37.018: config load rejects unknown top-level keys with a clear error.
 func TestLoad_UnknownTopLevelKey_ReturnsError(t *testing.T) {
-	path := filepath.Join("testdata", "unknown_root_key.json")
-	_, err := Load(path)
+	_, err := Load(loadConfigFixtureRaw(t, "unknown_root_key"))
 	if err == nil {
 		t.Fatal("Load: expected error, got nil")
 	}
@@ -165,24 +143,7 @@ func TestLoad_UnknownTopLevelKey_ReturnsError(t *testing.T) {
 // Covers AC-19.019: legacy paths.scheduled_tasks_path is rejected even when other fields are valid.
 func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
 	cfgDir := t.TempDir()
-	configPath := filepath.Join(cfgDir, "config.json")
-	content := `{
-  "version": 1,
-  "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "scheduled_tasks_path": "legacy.json", "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
-  "nodes": {},
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": { "additional_patterns": [] },
-  "pa_timezone": "UTC",
-  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
-  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" }, "vector_store_reliability": { "foreign_keys": false }, "jobs_store_reliability": { "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
-}`
-	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	configPath := writeConfigFixtureToDir(t, cfgDir, "legacy_scheduled_tasks_path", nil)
 	_, err := Load(configPath)
 	if err == nil {
 		t.Fatal("Load(config with legacy scheduled_tasks_path): expected error, got nil")
@@ -197,8 +158,7 @@ func TestLoad_LegacyScheduledTasksPath_ReturnsError(t *testing.T) {
 func TestLoad_LLMProviderDefaults_boundaryTemperature_loads(t *testing.T) {
 	for _, name := range []string{"llm_default_temperature_zero.json", "llm_default_temperature_two.json"} {
 		t.Run(name, func(t *testing.T) {
-			path := filepath.Join("testdata", name)
-			cfg, err := Load(path)
+			cfg, err := Load(loadConfigFixtureRaw(t, strings.TrimSuffix(name, ".json")))
 			if err != nil {
 				t.Fatalf("Load(%s): %v", name, err)
 			}
@@ -251,8 +211,7 @@ func TestLoad_InvalidJSON_ReturnsError(t *testing.T) {
 // Covers AC-01.005 (US-03): referenced users file with invalid role returns clear error.
 func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 	// Config points to invalid_users.json (role "superuser" not allowed)
-	path := filepath.Join("testdata", "valid_with_users.json")
-	_, err := Load(path)
+	_, err := Load(loadConfigFixtureRaw(t, "valid_with_users"))
 	if err == nil {
 		t.Fatal("Load(users file invalid role): expected error, got nil")
 	}
@@ -264,7 +223,7 @@ func TestLoad_UsersFileInvalidRole_ReturnsError(t *testing.T) {
 // TestLoad_LogRedactionReservedID_ReturnsError — REQ-01.029: reserved additional pattern id refuses start.
 // Covers AC-01.041 (US-16): log_redaction reserved pattern identifier or invalid regex → refuse start, clear error.
 func TestLoad_LogRedactionReservedID_ReturnsError(t *testing.T) {
-	_, err := Load(filepath.Join("testdata", "log_redaction_reserved_id.json"))
+	_, err := Load(loadConfigFixtureRaw(t, "log_redaction_reserved_id"))
 	if err == nil {
 		t.Fatal("Load(log_redaction reserved id): expected error")
 	}
@@ -276,7 +235,7 @@ func TestLoad_LogRedactionReservedID_ReturnsError(t *testing.T) {
 // TestLoad_LogRedactionInvalidRegex_ReturnsError — REQ-01.029: invalid regex in additional pattern refuses start.
 // Covers AC-01.041 (US-16): log_redaction invalid regex → refuse start, clear error.
 func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
-	_, err := Load(filepath.Join("testdata", "log_redaction_invalid_regex.json"))
+	_, err := Load(loadConfigFixtureRaw(t, "log_redaction_invalid_regex"))
 	if err == nil {
 		t.Fatal("Load(log_redaction invalid regex): expected error")
 	}
@@ -287,34 +246,8 @@ func TestLoad_LogRedactionInvalidRegex_ReturnsError(t *testing.T) {
 
 // Covers AC-04.001, AC-04.002: when tool_catalog_path is set, invalid path or invalid catalog causes startup failure.
 func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
-	// Config with tool_catalog_path pointing to nonexistent file; path resolved relative to config dir.
 	dir := t.TempDir()
-	cfgPath := filepath.Join(dir, "config.json")
-	cfgJSON := `{
-	  "version": 1,
-	  "telegram": { "token_path": "/run/secrets/token", "users_path": "" },
-	  "llm_providers": [ { "type": "ollama", "endpoint": "http://localhost:11434", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" } ],
-	  "paths": {
-	    "memory_dir": "/data/memory",
-	    "log_path": "/data/pa.log",
-	    "vector_index_path": "/data/pa.sqlite",
-	    "llm_log_dir": "/data/llm",
-	    "llm_log_retention_days": 7,
-	    "jobs_db_path": "jobs.sqlite",
-	    "tool_catalog_path": "nonexistent_catalog.yaml"
-	  },
-	  "embedding": { "type": "ollama", "endpoint": "http://localhost:11434", "model": "nomic", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
-	  "nodes": {},
-	  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-	  "log_redaction": { "additional_patterns": [] },
-	  "pa_timezone": "UTC",
-	  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
-	  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-	  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" }, "vector_store_reliability": { "foreign_keys": false }, "jobs_store_reliability": { "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
-	}`
-	if err := os.WriteFile(cfgPath, []byte(cfgJSON), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	cfgPath := writeConfigFixtureToDir(t, dir, "tool_catalog_nonexistent_path", nil)
 	_, err := Load(cfgPath)
 	if err == nil {
 		t.Fatal("Load(config with nonexistent tool_catalog_path): expected error, got nil")
@@ -326,8 +259,7 @@ func TestLoad_ToolCatalogPath_InvalidPath_ReturnsError(t *testing.T) {
 
 // Covers AC-04.002: when tool_catalog_path is set and file is valid, catalog is parsed at load.
 func TestLoad_ToolCatalogPath_ValidCatalog_LoadsCatalog(t *testing.T) {
-	path := filepath.Join("testdata", "valid_with_tool_catalog.json")
-	cfg, err := Load(path)
+	cfg, err := Load(loadConfigFixtureRaw(t, "valid_with_tool_catalog"))
 	if err != nil {
 		t.Fatalf("Load(valid config with tool catalog): %v", err)
 	}
@@ -348,7 +280,7 @@ func TestLoad_ToolCatalogPath_ValidCatalog_LoadsCatalog(t *testing.T) {
 
 // Supporting AC-01.033 (US-19): invalid IANA timezone in pa_timezone refuses start.
 func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
-	_, err := Load(filepath.Join("testdata", "invalid_pa_timezone.json"))
+	_, err := Load(loadConfigFixtureRaw(t, "invalid_pa_timezone"))
 	if err == nil {
 		t.Fatal("Load(invalid pa_timezone): expected error, got nil")
 	}
@@ -359,8 +291,7 @@ func TestLoad_InvalidPATimezone_ReturnsError(t *testing.T) {
 
 // Covers AC-30.004, AC-30.013: tools.text_based_enabled is rejected at load.
 func TestLoad_ToolsTextBasedEnabled_rejected(t *testing.T) {
-	path := filepath.Join("testdata", "tools_text_based_enabled_rejected.json")
-	_, err := Load(path)
+	_, err := Load(loadConfigFixtureRaw(t, "tools_text_based_enabled_rejected"))
 	if err == nil {
 		t.Fatal("Load: expected error, got nil")
 	}
@@ -371,7 +302,7 @@ func TestLoad_ToolsTextBasedEnabled_rejected(t *testing.T) {
 
 // Covers AC-30.005: supports_json_mode is rejected at load.
 func TestLoad_llmSupportsJSONMode_rejected(t *testing.T) {
-	_, err := Load(filepath.Join("testdata", "llm_supports_json_mode_rejected.json"))
+	_, err := Load(loadConfigFixtureRaw(t, "llm_supports_json_mode_rejected"))
 	if err == nil {
 		t.Fatal("Load: expected error, got nil")
 	}
@@ -431,7 +362,7 @@ func TestDocs_configuration_md_EP030(t *testing.T) {
 
 // Covers AC-34.007 (REQ-34.007): tools.llm_escalation is rejected at load.
 func TestLoad_ToolsLLMEscalation_rejected(t *testing.T) {
-	_, err := Load(filepath.Join("testdata", "tools_llm_escalation_rejected.json"))
+	_, err := Load(loadConfigFixtureRaw(t, "tools_llm_escalation_rejected"))
 	if err == nil {
 		t.Fatal("Load: expected error, got nil")
 	}
@@ -442,10 +373,7 @@ func TestLoad_ToolsLLMEscalation_rejected(t *testing.T) {
 
 // Supporting AC-01.033 (US-19): valid pa_timezone (e.g. Europe/Moscow, UTC) loads successfully.
 func TestLoad_ValidPATimezone_loads(t *testing.T) {
-	cfg, err := Load(filepath.Join("testdata", "valid_pa_timezone.json"))
-	if err != nil {
-		t.Fatalf("Load(valid_pa_timezone): %v", err)
-	}
+	cfg := loadConfigFixture(t, "valid_pa_timezone")
 	if cfg.PATimezone != "Europe/Moscow" {
 		t.Errorf("PATimezone = %q, want Europe/Moscow", cfg.PATimezone)
 	}
@@ -453,27 +381,11 @@ func TestLoad_ValidPATimezone_loads(t *testing.T) {
 
 // Covers AC-01.005 (US-03): users_path points to nonexistent file returns clear error.
 func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
-	// Config with users_path pointing to a file that does not exist (path is CWD-relative)
 	cfgDir := t.TempDir()
-	configPath := filepath.Join(cfgDir, "config.json")
 	usersPathRel := "nonexistent_users.json"
-	content := `{
-  "version": 1,
-  "telegram": { "token_path": "/t", "users_path": "` + usersPathRel + `" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
-  "paths": { "memory_dir": "/d", "log_path": "/d", "vector_index_path": "/d/pa_vectors.sqlite", "llm_log_dir": "/d", "llm_log_retention_days": 7, "jobs_db_path": "jobs.sqlite", "tool_catalog_path": "tools.yaml" },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
-  "nodes": {},
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": { "additional_patterns": [] },
-  "pa_timezone": "UTC",
-  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
-  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" }, "vector_store_reliability": { "foreign_keys": false }, "jobs_store_reliability": { "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
-}`
-	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
-		t.Fatalf("setup: %v", err)
-	}
+	configPath := writeConfigFixtureToDir(t, cfgDir, "users_path_nonexistent", map[string]string{
+		"__USERS_PATH__": usersPathRel,
+	})
 	// Catalog must exist so load fails on users file, not catalog.
 	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
 		t.Fatalf("setup tools.yaml: %v", err)
@@ -491,41 +403,11 @@ func TestLoad_UsersFileNonexistent_ReturnsError(t *testing.T) {
 // Covers AC-01.005: traceability for TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError.
 func TestLoad_NodesWithNonexistentSSHKnownHostsFile_ReturnsError(t *testing.T) {
 	cfgDir := t.TempDir()
-	configPath := filepath.Join(cfgDir, "config.json")
 	knownHostsRel := "nonexistent_known_hosts"
-	content := `{
-  "version": 1,
-  "telegram": { "token_path": "/t", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
-  "paths": {
-    "memory_dir": "` + cfgDir + `",
-    "log_path": "` + cfgDir + `/pa.log",
-    "vector_index_path": "` + cfgDir + `/pa_vectors.sqlite",
-    "llm_log_dir": "` + cfgDir + `",
-    "llm_log_retention_days": 7,
-    "jobs_db_path": "jobs.sqlite",
-    "tool_catalog_path": "tools.yaml",
-    "ssh_known_hosts_path": "` + knownHostsRel + `"
-  },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
-  "nodes": {
-    "n1": {
-      "host": "host.example.com",
-      "dedicated_user": "pa",
-      "auth": { "private_key_path": "/key" },
-      "command_allowlist_path": "/allowlist.txt"
-    }
-  },
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": { "additional_patterns": [] },
-  "pa_timezone": "UTC",
-  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
-  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" }, "vector_store_reliability": { "foreign_keys": false }, "jobs_store_reliability": { "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
-}`
-	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
-		t.Fatalf("setup: %v", err)
-	}
+	configPath := writeConfigFixtureToDir(t, cfgDir, "nodes_ssh_known_hosts_nonexistent", map[string]string{
+		"__CFG_DIR__":         cfgDir,
+		"__KNOWN_HOSTS_REL__": knownHostsRel,
+	})
 	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
 		t.Fatalf("setup tools.yaml: %v", err)
 	}
@@ -572,8 +454,7 @@ func findRepoRootFromConfigPackage(t *testing.T) string {
 
 // Covers AC-14.001: conversation_session with enabled and positive max loads.
 func TestLoad_ConversationSession_enabled_OK(t *testing.T) {
-	path := filepath.Join("testdata", "conversation_session_ok.json")
-	cfg, err := Load(path)
+	cfg, err := Load(loadConfigFixtureRaw(t, "conversation_session_ok"))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -584,8 +465,7 @@ func TestLoad_ConversationSession_enabled_OK(t *testing.T) {
 
 // Covers AC-14.002: enabled session with max < 1 fails load.
 func TestLoad_ConversationSession_enabled_badMax(t *testing.T) {
-	path := filepath.Join("testdata", "conversation_session_bad_max.json")
-	_, err := Load(path)
+	_, err := Load(loadConfigFixtureRaw(t, "conversation_session_bad_max"))
 	if err == nil {
 		t.Fatal("Load: expected error for max_session_exchanges < 1 when enabled")
 	}
@@ -596,8 +476,7 @@ func TestLoad_ConversationSession_enabled_badMax(t *testing.T) {
 
 // Covers AC-09.017: invalid create_tool_secret_patterns fails config load.
 func TestLoad_CreateToolSecretPatterns_InvalidRegex(t *testing.T) {
-	path := filepath.Join("testdata", "create_tool_bad_regex.json")
-	_, err := Load(path)
+	_, err := Load(loadConfigFixtureRaw(t, "create_tool_bad_regex"))
 	if err == nil {
 		t.Fatal("Load: expected error for invalid regexp in create_tool_secret_patterns")
 	}
@@ -626,36 +505,10 @@ func TestLoad_Nodes_duplicatePrivateKeyPath(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(cfgDir, "config.json")
-	content := `{
-  "version": 1,
-  "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
-  "paths": {
-    "memory_dir": "` + cfgDir + `",
-    "log_path": "` + cfgDir + `/pa.log",
-    "vector_index_path": "` + cfgDir + `/v.sqlite",
-    "llm_log_dir": "` + cfgDir + `",
-    "llm_log_retention_days": 7,
-    "jobs_db_path": "jobs.sqlite",
-    "tool_catalog_path": "tools.yaml",
-    "ssh_known_hosts_path": "known_hosts"
-  },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
-  "nodes": {
-    "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" },
-    "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "shared" }, "command_allowlist_path": "allow.txt" }
-  },
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": { "additional_patterns": [] },
-  "pa_timezone": "UTC",
-  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
-  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" }, "vector_store_reliability": { "foreign_keys": false }, "jobs_store_reliability": { "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
-}`
-	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	configPath := writeConfigFixtureToDir(t, cfgDir, "nodes_duplicate_private_key", map[string]string{
+		"__CFG_DIR__":    cfgDir,
+		"__TOKEN_PATH__": filepath.Join(cfgDir, "token"),
+	})
 	if err := os.WriteFile(filepath.Join(cfgDir, "token"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -691,36 +544,10 @@ func TestLoad_Nodes_distinctPrivateKeyPaths_OK(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(cfgDir, "config.json")
-	content := `{
-  "version": 1,
-  "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
-  "paths": {
-    "memory_dir": "` + cfgDir + `",
-    "log_path": "` + cfgDir + `/pa.log",
-    "vector_index_path": "` + cfgDir + `/v.sqlite",
-    "llm_log_dir": "` + cfgDir + `",
-    "llm_log_retention_days": 7,
-    "jobs_db_path": "jobs.sqlite",
-    "tool_catalog_path": "tools.yaml",
-    "ssh_known_hosts_path": "known_hosts"
-  },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
-  "nodes": {
-    "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "key1" }, "command_allowlist_path": "allow.txt" },
-    "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "key2" }, "command_allowlist_path": "allow.txt" }
-  },
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": { "additional_patterns": [] },
-  "pa_timezone": "UTC",
-  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
-  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" }, "vector_store_reliability": { "foreign_keys": false }, "jobs_store_reliability": { "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
-}`
-	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	configPath := writeConfigFixtureToDir(t, cfgDir, "nodes_distinct_private_keys", map[string]string{
+		"__CFG_DIR__":    cfgDir,
+		"__TOKEN_PATH__": filepath.Join(cfgDir, "token"),
+	})
 	if err := os.WriteFile(filepath.Join(cfgDir, "token"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -758,36 +585,10 @@ func TestLoad_Nodes_symlinkPrivateKeySameFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cfgDir, "tools.yaml"), []byte("tools:\n  - id: _x\n    index_text: x\n    template: echo x\n    node_id: _n\n    arguments: []\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	configPath := filepath.Join(cfgDir, "config.json")
-	content := `{
-  "version": 1,
-  "telegram": { "token_path": "` + filepath.Join(cfgDir, "token") + `", "users_path": "" },
-  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
-  "paths": {
-    "memory_dir": "` + cfgDir + `",
-    "log_path": "` + cfgDir + `/pa.log",
-    "vector_index_path": "` + cfgDir + `/v.sqlite",
-    "llm_log_dir": "` + cfgDir + `",
-    "llm_log_retention_days": 7,
-    "jobs_db_path": "jobs.sqlite",
-    "tool_catalog_path": "tools.yaml",
-    "ssh_known_hosts_path": "known_hosts"
-  },
-  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
-  "nodes": {
-    "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "real" }, "command_allowlist_path": "allow.txt" },
-    "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "alias" }, "command_allowlist_path": "allow.txt" }
-  },
-  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
-  "log_redaction": { "additional_patterns": [] },
-  "pa_timezone": "UTC",
-  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
-  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
-  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 }, "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" }, "vector_store_reliability": { "foreign_keys": false }, "jobs_store_reliability": { "foreign_keys": true }, "web_tools": null, "runtime_skills": null, "conversation_session": null, "intent_classifier": null, "observability_http": null
-}`
-	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	configPath := writeConfigFixtureToDir(t, cfgDir, "nodes_symlink_private_key", map[string]string{
+		"__CFG_DIR__":    cfgDir,
+		"__TOKEN_PATH__": filepath.Join(cfgDir, "token"),
+	})
 	if err := os.WriteFile(filepath.Join(cfgDir, "token"), []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}

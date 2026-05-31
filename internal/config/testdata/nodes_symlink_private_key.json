@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "telegram": { "token_path": "__TOKEN_PATH__", "users_path": "" },
+  "llm_providers": [{ "type": "ollama", "endpoint": "http://x", "model": "m", "supports_tools": true, "default_temperature": 0.3, "default_max_tokens": 1024, "default_response_format": "text", "http_timeout": "60s" }],
+  "paths": {
+    "memory_dir": "__CFG_DIR__",
+    "log_path": "__CFG_DIR__/pa.log",
+    "vector_index_path": "__CFG_DIR__/v.sqlite",
+    "llm_log_dir": "__CFG_DIR__",
+    "llm_log_retention_days": 7,
+    "jobs_db_path": "jobs.sqlite",
+    "tool_catalog_path": "tools.yaml",
+    "ssh_known_hosts_path": "known_hosts"
+  },
+  "embedding": { "type": "ollama", "endpoint": "http://x", "model": "m", "dimensions": 768, "batch_size": 100, "http_timeout": "60s" },
+  "nodes": {
+    "n1": { "host": "h1", "dedicated_user": "u1", "auth": { "private_key_path": "real" }, "command_allowlist_path": "allow.txt" },
+    "n2": { "host": "h2", "dedicated_user": "u2", "auth": { "private_key_path": "alias" }, "command_allowlist_path": "allow.txt" }
+  },
+  "tools": { "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 } },
+  "log_redaction": { "additional_patterns": [] },
+  "pa_timezone": "UTC",
+  "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
+  "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
+  "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 },
+  "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" },
+  "vector_store_reliability": { "foreign_keys": false },
+  "jobs_store_reliability": { "foreign_keys": true },
+  "web_tools": null,
+  "runtime_skills": null,
+  "conversation_session": null,
+  "intent_classifier": null,
+  "observability_http": null
+}
