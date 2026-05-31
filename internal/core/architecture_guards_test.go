@@ -205,6 +205,7 @@ func TestEP034_epScopeRecordsEP006Supersession(t *testing.T) {
 func TestEP034_makeCheckQualityGate(t *testing.T) {}
 
 // Covers AC-34.016 (REQ-34.016). Entrypoint: ./bin/validate EP-034 (via testutil.EnsureValidator).
+// Covers AC-43.004
 func TestEP034_validateCommandExitZero(t *testing.T) {
 	root := archModuleRoot(t)
 	testutil.RunValidateEpic(t, root, "EP-034")

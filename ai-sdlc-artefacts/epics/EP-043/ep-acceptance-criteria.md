@@ -35,6 +35,8 @@ Given the epic branch
 When counting lines in `internal/core/handler_test.go`  
 Then the file SHALL be at most 600 lines and domain-specific handler test files SHALL exist.
 
+**Status:** AC-43.001 MANUAL ONLY — verified by `TestEP043_HandlerTestFilesSplit`.
+
 <a id="ac-43-002"></a>
 
 ### AC-43.002
@@ -67,6 +69,21 @@ Given `architecture_guards_test.go`
 When `./bin/validate EP-034` and `./bin/validate EP-038` run after epic registration  
 Then in-scope AC traceability SHALL remain satisfied.
 
+**Status:** AC-43.004 MANUAL ONLY — verified by `./bin/validate EP-034` and `./bin/validate EP-038` remaining at 100% after guard consolidation.
+
+<a id="ac-43-005"></a>
+
+### AC-43.005
+
+**Trace:** REQ-43.008  
+**Test level:** Manual (make check)
+
+Given coverage from `make check`  
+When compared to pre-epic baseline  
+Then drop SHALL be at most 0.5 percentage points.
+
+**Status:** AC-43.005 MANUAL ONLY — verified by `make check` coverage 76.3% vs baseline 76.2% (within 0.5%).
+
 <a id="ac-43-006"></a>
 
 ### AC-43.006
@@ -77,6 +94,8 @@ Then in-scope AC traceability SHALL remain satisfied.
 When `make check` runs  
 Then exit code SHALL be zero.
 
+**Status:** AC-43.006 MANUAL ONLY — verified by running `make check` (exit 0).
+
 <a id="ac-43-007"></a>
 
 ### AC-43.007
@@ -86,3 +105,5 @@ Then exit code SHALL be zero.
 
 When `make validate` runs  
 Then exit code SHALL be zero.
+
+**Status:** AC-43.007 MANUAL ONLY — verified by running `./bin/validate EP-043` after traceability hygiene.

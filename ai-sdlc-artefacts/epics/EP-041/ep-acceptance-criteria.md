@@ -33,6 +33,21 @@ Given the epic branch source under `internal/core`
 When searching for full-tier assembly  
 Then a `fullTierAssembler` (or documented equivalent) SHALL be the sole entry from `buildTierFullMainPrompt`.
 
+**Status:** AC-41.001 MANUAL ONLY — verified by inspecting `handler_full_tier_pipeline.go` and `buildTierFullMainPrompt` delegate.
+
+<a id="ac-41-002"></a>
+
+### AC-41.002
+
+**Trace:** REQ-41.002, REQ-41.006  
+**Test level:** Manual
+
+Given `fullTierPipelineStepOrder` in `ep041_traceability_test.go`  
+When compared to implementation  
+Then five steps SHALL match documented order.
+
+**Status:** AC-41.002 MANUAL ONLY — verified by `TestEP041_fullTierPipelineStepOrder` and source step method names.
+
 <a id="ac-41-003"></a>
 
 ### AC-41.003
@@ -44,6 +59,17 @@ Given representative handler fixtures from EP-017/018/037 tier tests
 When full-tier assembly runs on pre- and post-refactor code paths  
 Then merged tool ids, `dynamicRan` flag, and system tail content SHALL match baseline captures.
 
+<a id="ac-41-004"></a>
+
+### AC-41.004
+
+**Trace:** REQ-41.005  
+**Test level:** Unit
+
+Given simple-tier dispatch tests  
+When run  
+Then simple tier behaviour SHALL remain unchanged.
+
 <a id="ac-41-005"></a>
 
 ### AC-41.005
@@ -53,3 +79,5 @@ Then merged tool ids, `dynamicRan` flag, and system tail content SHALL match bas
 
 When `make check` runs  
 Then exit code SHALL be zero.
+
+**Status:** AC-41.005 MANUAL ONLY — verified by running `make check` (exit 0).

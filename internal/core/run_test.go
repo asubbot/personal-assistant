@@ -7,6 +7,7 @@ import (
 	"pa/internal/config"
 	"pa/internal/llm"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -64,6 +65,24 @@ type capturingAdapter struct {
 func (a *capturingAdapter) Run(ctx context.Context, handler MessageHandler) error {
 	a.handler = handler
 	return nil
+}
+
+// Covers AC-40.004
+// Covers AC-40.005
+func TestBuildMessageHandler_returnsGroupedHandler(t *testing.T) {
+	cfg := minimalConfigForRun()
+	h, err := BuildMessageHandler(cfg, slog.Default(), nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("BuildMessageHandler: %v", err)
+	}
+	ch, ok := h.(*conversationHandler)
+	if !ok {
+		t.Fatalf("handler type %T", h)
+	}
+	rt := reflect.TypeOf(*ch)
+	if rt.NumField() != 5 {
+		t.Fatalf("field count = %d, want 5 grouped deps", rt.NumField())
+	}
 }
 
 // Covers AC-37.012: handler construction reads pre-selection from cfg.Tools.Selection only.

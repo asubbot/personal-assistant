@@ -34,6 +34,17 @@ func TestEP027_StartupSourcesHaveNoGocycloNolint(t *testing.T) {
 	}
 }
 
+// Covers AC-42.004
+func TestEP042_ApplicationCloseMethod(t *testing.T) {
+	raw, err := os.ReadFile("wire/application.go")
+	if err != nil {
+		t.Fatalf("read wire/application.go: %v", err)
+	}
+	if !strings.Contains(string(raw), "func (a *Application) Close()") {
+		t.Fatal("wire.Application must expose Close for coordinated teardown")
+	}
+}
+
 // Covers AC-27.001, AC-27.002, AC-27.003. Supporting AC-27.006: full gate via make check.
 func TestEP027_CompositionTypesLinkedInPackage(t *testing.T) {
 	var _ *paApplication

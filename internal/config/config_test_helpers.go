@@ -8,6 +8,7 @@ import (
 )
 
 // loadConfigFixture loads testdata/<name>.json and fails the test on error.
+// Covers AC-43.003
 func loadConfigFixture(t *testing.T, name string) *Config {
 	t.Helper()
 	path := loadConfigFixtureRaw(t, name)
