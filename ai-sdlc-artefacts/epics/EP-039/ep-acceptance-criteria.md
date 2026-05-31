@@ -117,6 +117,8 @@ Given the merged `docs/configuration.md` on the epic branch
 When an operator follows the migration section  
 Then they SHALL be able to transform a pre-EP-039 config to the new schema without undocumented steps.
 
+**Status:** AC-39.012 MANUAL ONLY — verified by reading `docs/configuration.md` EP-039 migration tables for vector_search_tools, sqlite_store_defaults, and tool_output_artifacts.
+
 <a id="ac-39-013"></a>
 
 ### AC-39.013
@@ -127,6 +129,8 @@ Then they SHALL be able to transform a pre-EP-039 config to the new schema witho
 Given the epic branch implementation  
 When `make check` runs from the repository root  
 Then the command SHALL exit zero.
+
+**Status:** AC-39.013 MANUAL ONLY — verified by running `make check` from the repository root (exit 0).
 
 <a id="ac-39-014"></a>
 
@@ -139,6 +143,8 @@ Given the epic branch diff
 When inspected for scope  
 Then `tools.selection` schema SHALL be unchanged and `internal/core` changes SHALL be limited to config field wiring.
 
+**Status:** AC-39.014 MANUAL ONLY — verified by reviewing the EP-039 branch diff (`tools.selection` unchanged; core limited to truncation wiring).
+
 <a id="ac-39-015"></a>
 
 ### AC-39.015
@@ -149,6 +155,8 @@ Then `tools.selection` schema SHALL be unchanged and `internal/core` changes SHA
 Given the operator `.config/config.json` migrated per docs  
 When PersonalAssistant starts  
 Then config load SHALL succeed without legacy keys.
+
+**Status:** AC-39.015 MANUAL ONLY — operator `.config/config.json` migrated per `docs/configuration.md` and verified at application startup.
 
 ---
 

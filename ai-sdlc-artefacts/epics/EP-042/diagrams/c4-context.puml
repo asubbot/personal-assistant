@@ -1,0 +1,13 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-042 Composition root refinement - C4 Context
+
+Person(operator, "Operator", "Starts PA / checks readiness")
+System(pa, "cmd/pa", "wire.Build + paApplication")
+System_Ext(jobsdb, "Jobs SQLite", "Async init")
+
+Rel(operator, pa, "HTTP readiness / Telegram")
+Rel(pa, jobsdb, "Background init")
+
+@enduml

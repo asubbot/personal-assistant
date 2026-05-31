@@ -12,7 +12,7 @@ git_branch: epic/EP-039-config-surface-simplification
 | Field | Content |
 |-------|---------|
 | **ID** | EP-039 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Config surface simplification |
 | **Description** | Reduce operator and repository config duplication by introducing DRY schemas for `tools.vector_search_tools` and SQLite store reliability blocks, and by typing and wiring `tools.tool_output_artifacts` so phantom JSON keys are validated and consumed at runtime. Part of Refactoring increment 0.02 (post EP-037/038). |
 | **First version date** | 2026-05-31 |

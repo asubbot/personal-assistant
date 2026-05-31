@@ -95,6 +95,7 @@ func TestLoad_VectorSearchToolsConfig_Valid(t *testing.T) {
 	}
 }
 
+// Covers AC-39.003
 // Covers AC-39.004
 func TestLoad_VectorSearchToolsConfig_InvalidBounds(t *testing.T) {
 	tools := `{
