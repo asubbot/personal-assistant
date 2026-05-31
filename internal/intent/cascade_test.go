@@ -25,21 +25,8 @@ func TestCascade_HeuristicConfident(t *testing.T) {
 	}
 }
 
-// Covers AC-36.006
-func TestCascade_AmbiguousDefaultsToFull(t *testing.T) {
-	h := NewHeuristicClassifier([]string{`^привет$`}, nil, 40)
-	c := NewCascadeClassifier(h, nil)
-	r := c.Classify(context.Background(), "погода")
-	if r.Tier != TierFull {
-		t.Errorf("tier = %s, want full", r.Tier)
-	}
-	if r.Stage != "default" {
-		t.Errorf("stage = %s, want default", r.Stage)
-	}
-}
-
 // Covers AC-17.010, AC-36.006
-func TestCascade_ModelDisabled_DefaultFull(t *testing.T) {
+func TestCascade_AmbiguousDefaultsToFull(t *testing.T) {
 	h := NewHeuristicClassifier([]string{`^привет$`}, nil, 40)
 	c := NewCascadeClassifier(h, nil)
 	r := c.Classify(context.Background(), "погода")

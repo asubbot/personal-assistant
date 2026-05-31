@@ -12,7 +12,7 @@ import (
 // Covers AC-15.003, AC-15.006: token footer appears only on the last chunk; Markdown footer has no angle brackets before send.
 func TestSendLongOutboundText_EP015_footerOnlyOnLastChunk(t *testing.T) {
 	body := strings.Repeat("x\n\n", 3000)
-	foot := "*Tokens 3 (in: 2 / out: 1) · full_lite*"
+	foot := "*Tokens 3 (in: 2 / out: 1) · full*"
 	src := body + "\n" + foot
 	m := &mockSender{}
 	if err := sendLongOutboundText(context.Background(), m, 1, src); err != nil {
@@ -28,7 +28,7 @@ func TestSendLongOutboundText_EP015_footerOnlyOnLastChunk(t *testing.T) {
 		}
 	}
 	last := texts[len(texts)-1]
-	if !strings.Contains(last, "<i>") || !strings.Contains(last, "Tokens 3 (in: 2 / out: 1) · full_lite") {
+	if !strings.Contains(last, "<i>") || !strings.Contains(last, "Tokens 3 (in: 2 / out: 1) · full") {
 		t.Fatalf("last chunk missing italic footer: %q", last)
 	}
 	if strings.ContainsAny(foot, "<>") {
@@ -100,7 +100,7 @@ func TestSendLongOutboundText_eachChunkWithinLimit(t *testing.T) {
 // Covers AC-15.003: SplitTokenFooterSuffix recognizes token footer with optional intent tier suffix.
 func TestSplitTokenFooterSuffix_withIntentTier(t *testing.T) {
 	const body = "reply text"
-	const foot = "*Tokens 10 (in: 8 / out: 2) · full_lite*"
+	const foot = "*Tokens 10 (in: 8 / out: 2) · full*"
 	src := body + "\n" + foot
 	gotBody, gotFoot := SplitTokenFooterSuffix(src)
 	if gotBody != body || gotFoot != foot {

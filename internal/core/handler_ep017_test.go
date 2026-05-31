@@ -146,7 +146,7 @@ func TestHandleMessage_FullTier_SameAsBaseline(t *testing.T) {
 	}
 }
 
-// Covers AC-17.017
+// Covers AC-17.002
 func TestHandleMessage_SimpleTier_FooterOnlyMainTokens(t *testing.T) {
 	provider := &mockProvider{result: &llm.CompletionResult{
 		Content: "hello!",
