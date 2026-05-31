@@ -31,6 +31,7 @@ func TestTierMainPromptBuilders_simpleTierUnchanged(t *testing.T) {
 }
 
 // Covers AC-26.001, AC-26.002, AC-26.003, AC-36.010
+// Covers AC-41.003
 func TestTierMainPromptBuilders_fullNilCatalog(t *testing.T) {
 	ctx := context.Background()
 	h := testHandlerDeps{logger: slog.New(slog.DiscardHandler)}.handler()

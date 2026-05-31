@@ -78,11 +78,7 @@ func (h *conversationHandler) buildTierSimpleMainPrompt() tierMainLLMParams {
 }
 
 func (h *conversationHandler) buildTierFullMainPrompt(ctx context.Context, userText, sysHead string, chunks []string, messages []llm.Message) (tierMainLLMParams, error) {
-	skills, err := h.selectSkillPackages(ctx, userText)
-	if err != nil {
-		return tierMainLLMParams{}, err
-	}
-	return h.mergeTailMergedToolsAndOptions(ctx, userText, sysHead, skills, chunks, messages)
+	return newFullTierAssembler(h, ctx, userText, sysHead, chunks, messages).run()
 }
 
 func (h *conversationHandler) mergedAfterDynamicToolCap(ctx context.Context, merged []string) (picked []string, dynamicRan bool) {
@@ -92,26 +88,9 @@ func (h *conversationHandler) mergedAfterDynamicToolCap(ctx context.Context, mer
 	return h.pickToolsForMainRequest(ctx, merged, h.tools.toolsSelection.MaxToolsForLLMRequest), true
 }
 
-// mergeTailMergedToolsAndOptions implements the shared full-tier tail path.
+// mergeTailMergedToolsAndOptions delegates to fullTierAssembler from step 2 when skills are pre-selected.
 func (h *conversationHandler) mergeTailMergedToolsAndOptions(ctx context.Context, userText, sysHead string, skills []*runtimeskills.Package, chunks []string, messages []llm.Message) (tierMainLLMParams, error) {
-	out := tierMainLLMParams{}
-	merged, sources, errMer := h.mergeSelectedToolIDs(ctx, userText, skills)
-	if errMer != nil {
-		return out, errMer
-	}
-	merged, out.dynamicRan = h.mergedAfterDynamicToolCap(ctx, merged)
-	tailState := &tailFitState{
-		merged:  append([]string(nil), merged...),
-		sources: copyToolOriginMap(sources),
-		chunks:  append([]string(nil), chunks...),
-		skills:  append([]*runtimeskills.Package(nil), skills...),
-	}
-	h.fitDynamicTailToBudget(ctx, tailState, h.llm.maxDynamicSystemRunes)
-	opts, err := h.completionOptionsMergedCatalogNative(tailState.merged)
-	if err != nil {
-		return out, WrapUserError(UserErrorKindConfiguration, err)
-	}
-	out.opts = opts
-	messages[0].Content = sysHead + h.buildDynamicTailString(tailState)
-	return out, nil
+	a := newFullTierAssembler(h, ctx, userText, sysHead, chunks, messages)
+	a.skills = skills
+	return a.runFromSkills()
 }
