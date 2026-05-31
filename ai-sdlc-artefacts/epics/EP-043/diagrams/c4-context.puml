@@ -1,0 +1,13 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-043 Test suite organization - C4 Context
+
+Person(dev, "Maintainer", "Runs make check")
+System(tests, "Test packages", "Split handler + config tests")
+System_Ext(ci, "CI", "make check / validate")
+
+Rel(dev, tests, "Maintains")
+Rel(tests, ci, "Gate quality")
+
+@enduml

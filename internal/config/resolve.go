@@ -44,6 +44,13 @@ func ResolvePaths(cfg *Config, configFilePath string) {
 		cfg.Nodes[id] = n
 	}
 
+	if cfg.Tools != nil && cfg.Tools.ToolOutputArtifacts != nil {
+		dir := strings.TrimSpace(cfg.Tools.ToolOutputArtifacts.Directory)
+		if dir != "" {
+			cfg.Tools.ToolOutputArtifacts.Directory = resolve(dataDir, dir)
+		}
+	}
+
 	if cfg.WebTools != nil && cfg.WebTools.Enabled {
 		cfg.WebTools.Search.BraveAPIKeyPath = resolve(secretsDir, cfg.WebTools.Search.BraveAPIKeyPath)
 	}

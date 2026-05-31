@@ -22,6 +22,10 @@ import (
 	"time"
 )
 
+func boolPtr(v bool) *bool { return &v }
+
+func intPtr(v int) *int { return &v }
+
 // Covers AC-11.001 — web_search and web_fetch register when web_tools.enabled.
 func TestRegisterWebToolsIfEnabled_RegistersBothTools(t *testing.T) {
 	cfg := &config.Config{
@@ -149,9 +153,16 @@ func TestRegisterMemoryToolsIfEnabled_VectorSearchMemorySettingsApplied(t *testi
 		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
 		Tools: &config.ToolsConfig{
 			VectorSearchTools: &config.VectorSearchToolsConfig{
-				SearchVectorMemory: config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 1, MaxTopK: 2, MaxOutputBytes: 1024, SnippetRunes: 80},
-				SearchVectorTool:   config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
-				SearchVectorSkill:  config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
+				Defaults: config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
+				SearchVectorMemory: config.VectorSearchToolOverride{
+					Enabled:        boolPtr(true),
+					DefaultTopK:    intPtr(1),
+					MaxTopK:        intPtr(2),
+					MaxOutputBytes: intPtr(1024),
+					SnippetRunes:   intPtr(80),
+				},
+				SearchVectorTool:  config.VectorSearchToolOverride{Enabled: boolPtr(true)},
+				SearchVectorSkill: config.VectorSearchToolOverride{Enabled: boolPtr(true)},
 			},
 		},
 	}
@@ -175,9 +186,22 @@ func TestRegisterKnowledgeToolsIfEnabled_RegistersSpecializedTools(t *testing.T)
 	cfg := &config.Config{
 		Tools: &config.ToolsConfig{
 			VectorSearchTools: &config.VectorSearchToolsConfig{
-				SearchVectorMemory: config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
-				SearchVectorTool:   config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 2, MaxTopK: 4, MaxOutputBytes: 512, SnippetRunes: 80},
-				SearchVectorSkill:  config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 2, MaxTopK: 4, MaxOutputBytes: 512, SnippetRunes: 80},
+				Defaults:           config.VectorSearchToolConfig{Enabled: true, DefaultTopK: 5, MaxTopK: 10, MaxOutputBytes: 4096, SnippetRunes: 200},
+				SearchVectorMemory: config.VectorSearchToolOverride{Enabled: boolPtr(true)},
+				SearchVectorTool: config.VectorSearchToolOverride{
+					Enabled:        boolPtr(true),
+					DefaultTopK:    intPtr(2),
+					MaxTopK:        intPtr(4),
+					MaxOutputBytes: intPtr(512),
+					SnippetRunes:   intPtr(80),
+				},
+				SearchVectorSkill: config.VectorSearchToolOverride{
+					Enabled:        boolPtr(true),
+					DefaultTopK:    intPtr(2),
+					MaxTopK:        intPtr(4),
+					MaxOutputBytes: intPtr(512),
+					SnippetRunes:   intPtr(80),
+				},
 			},
 		},
 	}
@@ -299,8 +323,9 @@ var validSummarizeConfig = `{
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 },
-  "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false },
-  "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true },
+  "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" },
+  "vector_store_reliability": { "foreign_keys": false },
+  "jobs_store_reliability": { "foreign_keys": true },
   "web_tools": null,
   "runtime_skills": null,
   "conversation_session": null,
@@ -568,9 +593,10 @@ func TestNewToolIndex_vectorStoreFails_returnsError(t *testing.T) {
 		ToolCatalog: &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}},
 		Embedding:   &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10},
 		Paths:       config.Paths{VectorIndexPath: badPath},
-		VectorStoreReliability: &config.SQLiteStoreReliabilityConfig{
-			JournalMode: "WAL", BusyTimeout: "5s", Synchronous: "NORMAL", ForeignKeys: &fkFalse,
+		SQLiteStoreDefaults: &config.SQLiteStoreDefaultsConfig{
+			JournalMode: "WAL", BusyTimeout: "5s", Synchronous: "NORMAL",
 		},
+		VectorStoreReliability: &config.SQLiteStoreReliabilityOverride{ForeignKeys: &fkFalse},
 	}
 
 	idx, err := newToolIndex(cfg, nil, logger)
@@ -590,12 +616,10 @@ func testClearContextConfig(vectorPath string) *config.Config {
 	return &config.Config{
 		Embedding: &config.EmbeddingProvider{Dimensions: 4, BatchSize: 10},
 		Paths:     config.Paths{VectorIndexPath: vectorPath},
-		VectorStoreReliability: &config.SQLiteStoreReliabilityConfig{
-			JournalMode: "WAL",
-			BusyTimeout: "5s",
-			Synchronous: "NORMAL",
-			ForeignKeys: &fkFalse,
+		SQLiteStoreDefaults: &config.SQLiteStoreDefaultsConfig{
+			JournalMode: "WAL", BusyTimeout: "5s", Synchronous: "NORMAL",
 		},
+		VectorStoreReliability: &config.SQLiteStoreReliabilityOverride{ForeignKeys: &fkFalse},
 	}
 }
 

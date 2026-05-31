@@ -1,0 +1,13 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-040 Handler dependency grouping - C4 Context
+
+Person(dev, "Maintainer", "Reads and extends core handler")
+System(pa, "PersonalAssistant", "conversationHandler with grouped deps")
+System_Ext(tests, "Handler tests", "Parity verification")
+
+Rel(dev, pa, "Maintains internal/core")
+Rel(tests, pa, "Asserts unchanged behaviour")
+
+@enduml

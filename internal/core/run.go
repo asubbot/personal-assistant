@@ -93,6 +93,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	var toolSel *config.ToolsSelection
 	var sessCfg *config.ConversationSessionConfig
 	var sessStore *sessionWindowStore
+	toolResultBytes := maxToolResultPromptBytes
 	paLoc := paLocationFromConfig(cfg)
 	if cfg != nil {
 		rs = cfg.RuntimeSkills
@@ -107,6 +108,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 			sessCfg = cfg.ConversationSession
 			sessStore = newSessionWindowStore()
 		}
+		toolResultBytes = toolResultPromptBytesFromConfig(cfg)
 	}
 	h := &conversationHandler{
 		router:                     router,
@@ -135,6 +137,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 		paLoc:                      paLoc,
 		classifier:                 classifier,
 		toolsSelection:             toolSel,
+		toolResultPromptBytes:      toolResultBytes,
 	}
 	if cfg != nil && cfg.ToolCatalog != nil {
 		h.catalog = cfg.ToolCatalog
@@ -178,6 +181,13 @@ func toolsSelectionParams(cfg *config.Config) (topK, minCount, fallbackCap int) 
 func conversationContextParams(cfg *config.Config) (maxDynamicSystemRunes int, memVec config.MemoryVectorConfig) {
 	cc := cfg.ConversationContext
 	return cc.MaxDynamicSystemRunes, cc.MemoryVector
+}
+
+func toolResultPromptBytesFromConfig(cfg *config.Config) int {
+	if cfg != nil && cfg.Tools != nil && cfg.Tools.ToolOutputArtifacts != nil && cfg.Tools.ToolOutputArtifacts.ToolResultPromptBytes > 0 {
+		return cfg.Tools.ToolOutputArtifacts.ToolResultPromptBytes
+	}
+	return maxToolResultPromptBytes
 }
 
 // buildRedactor returns a redactor from built-in patterns plus config additional_patterns (REQ-01.027, REQ-01.028).

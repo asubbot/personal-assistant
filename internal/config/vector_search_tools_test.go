@@ -14,7 +14,6 @@ func mergeToolsBlockWithSelection(toolsBlock string) string {
     "selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 }
   }`
 	}
-	// Insert selection after opening brace of tools object.
 	if strings.HasPrefix(toolsBlock, "{") && strings.HasSuffix(toolsBlock, "}") {
 		inner := strings.TrimSpace(toolsBlock[1 : len(toolsBlock)-1])
 		sel := `"selection": { "tool_search_top_k": 10, "tool_min_count": 1, "tool_fallback_cap": 50, "enabled": false, "max_tools_for_llm_request": 0 }`
@@ -48,8 +47,9 @@ func testConfigWithVectorSearchTools(toolsBlock string) string {
   "conversation_context": { "max_dynamic_system_runes": 4000, "memory_vector": { "notes_top_k": 0, "summaries_top_k": 0, "turns_top_k": 0 } },
   "read_memory": { "max_span_days": 31, "max_output_bytes": 262144 },
   "write_memory": { "max_append_bytes": 65536, "max_file_bytes": 5242880 },
-  "vector_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false },
-  "jobs_store_reliability": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true },
+  "sqlite_store_defaults": { "journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL" },
+  "vector_store_reliability": { "foreign_keys": false },
+  "jobs_store_reliability": { "foreign_keys": true },
   "web_tools": null,
   "runtime_skills": null,
   "conversation_session": null,
@@ -71,13 +71,14 @@ func writeConfigAndCatalog(t *testing.T, dir, cfgJSON string) string {
 	return cfgPath
 }
 
-// Covers AC-32.004 and AC-32.006: unified vector_search_tools block loads and is accessible for memory settings.
+// Covers AC-39.001, AC-39.004
 func TestLoad_VectorSearchToolsConfig_Valid(t *testing.T) {
 	tools := `{
     "vector_search_tools": {
+      "defaults": {"enabled": true, "default_top_k": 5, "max_top_k": 10, "max_output_bytes": 4096, "snippet_runes": 200},
       "search_vector_memory": {"enabled": true, "default_top_k": 4, "max_top_k": 9, "max_output_bytes": 5000, "snippet_runes": 180},
       "search_vector_tool": {"enabled": true, "default_top_k": 3, "max_top_k": 7, "max_output_bytes": 4096, "snippet_runes": 120},
-      "search_vector_skill": {"enabled": false, "default_top_k": 2, "max_top_k": 5, "max_output_bytes": 3072, "snippet_runes": 100}
+      "search_vector_skill": {"enabled": false}
     }
   }`
 	cfgPath := writeConfigAndCatalog(t, t.TempDir(), testConfigWithVectorSearchTools(tools))
@@ -94,13 +95,15 @@ func TestLoad_VectorSearchToolsConfig_Valid(t *testing.T) {
 	}
 }
 
-// Covers AC-32.005: invalid unified vector_search_tools bounds fail fast on config load.
+// Covers AC-39.003
+// Covers AC-39.004
 func TestLoad_VectorSearchToolsConfig_InvalidBounds(t *testing.T) {
 	tools := `{
     "vector_search_tools": {
-      "search_vector_memory": {"enabled": true, "default_top_k": 8, "max_top_k": 4, "max_output_bytes": 4096, "snippet_runes": 120},
-      "search_vector_tool": {"enabled": true, "default_top_k": 3, "max_top_k": 7, "max_output_bytes": 4096, "snippet_runes": 120},
-      "search_vector_skill": {"enabled": true, "default_top_k": 3, "max_top_k": 7, "max_output_bytes": 4096, "snippet_runes": 120}
+      "defaults": {"enabled": true, "default_top_k": 5, "max_top_k": 10, "max_output_bytes": 4096, "snippet_runes": 200},
+      "search_vector_memory": {"enabled": true, "default_top_k": 8, "max_top_k": 4},
+      "search_vector_tool": {"enabled": true},
+      "search_vector_skill": {"enabled": true}
     }
   }`
 	cfgPath := writeConfigAndCatalog(t, t.TempDir(), testConfigWithVectorSearchTools(tools))
@@ -110,5 +113,25 @@ func TestLoad_VectorSearchToolsConfig_InvalidBounds(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "tools.vector_search_tools.search_vector_memory.default_top_k") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// Covers AC-39.005, AC-39.006
+func TestMergeVectorSearchTool_InheritsDefaults(t *testing.T) {
+	defaults := VectorSearchToolConfig{
+		Enabled:        true,
+		DefaultTopK:    5,
+		MaxTopK:        10,
+		MaxOutputBytes: 4096,
+		SnippetRunes:   200,
+	}
+	disabled := false
+	topK := 3
+	merged := mergeVectorSearchTool(defaults, VectorSearchToolOverride{
+		Enabled:     &disabled,
+		DefaultTopK: &topK,
+	})
+	if merged.Enabled != false || merged.DefaultTopK != 3 || merged.MaxTopK != 10 {
+		t.Fatalf("merged = %+v", merged)
 	}
 }

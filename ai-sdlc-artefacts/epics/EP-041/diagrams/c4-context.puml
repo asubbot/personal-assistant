@@ -1,0 +1,14 @@
+@startuml c4-context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title EP-041 Full-tier prompt pipeline - C4 Context
+
+System(pa, "PersonalAssistant core", "fullTierAssembler")
+System_Ext(skills, "Runtime skills")
+System_Ext(catalog, "Tool catalog / index")
+
+Rel(pa, skills, "Step 1 select skills")
+Rel(pa, catalog, "Steps 2-3 merge and cap tools")
+Rel(pa, pa, "Steps 4-5 tail budget and options")
+
+@enduml

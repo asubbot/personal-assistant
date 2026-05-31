@@ -70,19 +70,18 @@
     "tool_vector_top_k_cap": 20
   },
   "vector_store_reliability": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL",
     "foreign_keys": false
   },
   "jobs_store_reliability": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL",
     "foreign_keys": true
   },
   "web_tools": null,
   "conversation_session": null,
   "intent_classifier": null,
-  "observability_http": null
+  "observability_http": null,
+  "sqlite_store_defaults": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL"
+  }
 }

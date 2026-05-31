@@ -136,11 +136,14 @@ func (h *conversationHandler) runToolResultLoop(ctx context.Context, messages []
 	return messages, result, nil
 }
 
-func truncateToolResultForPrompt(content string) string {
-	if len(content) <= maxToolResultPromptBytes {
+func (h *conversationHandler) truncateToolResultForPrompt(content string) string {
+	limit := maxToolResultPromptBytes
+	if h != nil && h.toolResultPromptBytes > 0 {
+		limit = h.toolResultPromptBytes
+	}
+	if len(content) <= limit {
 		return content
 	}
-	limit := maxToolResultPromptBytes
 	for limit > 0 && !utf8.ValidString(content[:limit]) {
 		limit--
 	}
@@ -177,7 +180,7 @@ func (h *conversationHandler) appendToolRound(ctx context.Context, messages []ll
 				h.logger.InfoContext(ctx, "tool invocation", attrs...)
 			}
 		}
-		messages = append(messages, llm.Message{Role: "tool", Content: truncateToolResultForPrompt(content), ToolCallID: tc.ID})
+		messages = append(messages, llm.Message{Role: "tool", Content: h.truncateToolResultForPrompt(content), ToolCallID: tc.ID})
 	}
 	return messages
 }

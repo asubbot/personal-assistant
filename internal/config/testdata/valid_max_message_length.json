@@ -65,20 +65,19 @@
     "max_file_bytes": 5242880
   },
   "vector_store_reliability": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL",
     "foreign_keys": false
   },
   "jobs_store_reliability": {
-    "journal_mode": "WAL",
-    "busy_timeout": "5s",
-    "synchronous": "NORMAL",
     "foreign_keys": true
   },
   "intent_classifier": null,
   "observability_http": null,
   "web_tools": null,
   "runtime_skills": null,
-  "conversation_session": null
+  "conversation_session": null,
+  "sqlite_store_defaults": {
+    "journal_mode": "WAL",
+    "busy_timeout": "5s",
+    "synchronous": "NORMAL"
+  }
 }

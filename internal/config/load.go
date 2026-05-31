@@ -35,6 +35,9 @@ func Load(path string) (*Config, error) {
 	if err := rejectLegacyScheduledTasksPath(data); err != nil {
 		return nil, err
 	}
+	if err := rejectLegacyEP039Shapes(data); err != nil {
+		return nil, err
+	}
 
 	var raw Config
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -167,7 +170,29 @@ func rejectRemovedToolsConfigKeys(rawTools json.RawMessage) error {
 	if _, has := tools["llm_escalation"]; has {
 		return errors.New("config: tools.llm_escalation is not supported; tool-path LLM escalation was removed (EP-034)")
 	}
-	return validateToolsObjectKeys(tools)
+	if err := validateToolsObjectKeys(tools); err != nil {
+		return err
+	}
+	if raw, ok := tools["tool_output_artifacts"]; ok {
+		return validateToolOutputArtifactsObjectKeys(raw)
+	}
+	return nil
+}
+
+func validateToolOutputArtifactsObjectKeys(raw json.RawMessage) error {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		return fmt.Errorf("config: tools.tool_output_artifacts: %w", err)
+	}
+	for got := range obj {
+		if !slices.Contains(allowedToolOutputArtifactsKeys, got) {
+			return fmt.Errorf("config: unknown tools.tool_output_artifacts key %q", got)
+		}
+	}
+	return nil
 }
 
 func validateToolsObjectKeys(tools map[string]json.RawMessage) error {
@@ -192,6 +217,96 @@ func rejectUnsupportedLLMProviderFields(data []byte) error {
 		}
 		if _, has := p["supports_json_mode"]; has {
 			return fmt.Errorf("config: llm_providers[%d].supports_json_mode is not supported; remove this field (response format is text-only)", i)
+		}
+	}
+	return nil
+}
+
+func rejectLegacyEP039Shapes(data []byte) error {
+	if !json.Valid(data) {
+		return nil
+	}
+	if err := rejectLegacyVectorSearchToolsShape(data); err != nil {
+		return err
+	}
+	return rejectLegacySQLiteReliabilityShape(data)
+}
+
+func parseJSONObject(raw []byte) (map[string]json.RawMessage, bool) {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return nil, false
+	}
+	return obj, true
+}
+
+func rejectLegacyVectorSearchToolsShape(data []byte) error {
+	root, ok := parseJSONObject(data)
+	if !ok {
+		return nil
+	}
+	rawTools, ok := root["tools"]
+	if !ok || len(rawTools) == 0 || string(rawTools) == "null" {
+		return nil
+	}
+	return rejectLegacyVectorSearchToolsInToolsBlock(rawTools)
+}
+
+func rejectLegacyVectorSearchToolsInToolsBlock(rawTools json.RawMessage) error {
+	tools, ok := parseJSONObject(rawTools)
+	if !ok {
+		return nil
+	}
+	rawVST, ok := tools["vector_search_tools"]
+	if !ok || len(rawVST) == 0 || string(rawVST) == "null" {
+		return nil
+	}
+	return rejectLegacyVectorSearchToolsBlock(rawVST)
+}
+
+func rejectLegacyVectorSearchToolsBlock(rawVST json.RawMessage) error {
+	vst, ok := parseJSONObject(rawVST)
+	if !ok {
+		return nil
+	}
+	_, hasDefaults := vst["defaults"]
+	for _, key := range []string{"search_vector_memory", "search_vector_tool", "search_vector_skill"} {
+		rawTool, ok := vst[key]
+		if !ok {
+			continue
+		}
+		tool, ok := parseJSONObject(rawTool)
+		if !ok {
+			continue
+		}
+		if _, has := tool["default_top_k"]; has && !hasDefaults {
+			return fmt.Errorf("config: tools.vector_search_tools: legacy per-tool shape without defaults is not supported (EP-039)")
+		}
+	}
+	return nil
+}
+
+func rejectLegacySQLiteReliabilityShape(data []byte) error {
+	root, ok := parseJSONObject(data)
+	if !ok {
+		return nil
+	}
+	if _, hasDefaults := root["sqlite_store_defaults"]; hasDefaults {
+		return nil
+	}
+	rawVector, okVector := root["vector_store_reliability"]
+	rawJobs, okJobs := root["jobs_store_reliability"]
+	if !okVector || !okJobs {
+		return nil
+	}
+	vector, okVector := parseJSONObject(rawVector)
+	jobs, okJobs := parseJSONObject(rawJobs)
+	if !okVector || !okJobs {
+		return nil
+	}
+	if _, hasVector := vector["journal_mode"]; hasVector {
+		if _, hasJobs := jobs["journal_mode"]; hasJobs {
+			return fmt.Errorf("config: vector_store_reliability and jobs_store_reliability: legacy full duplicate PRAGMA blocks without sqlite_store_defaults are not supported (EP-039); add sqlite_store_defaults and shrink store blocks to foreign_keys only")
 		}
 	}
 	return nil
@@ -373,19 +488,12 @@ func validateTools(c *Config) error {
 	if c.Tools == nil {
 		return errors.New("config: tools is required (use {\"tools\": {}} minimum)")
 	}
-	if c.Tools.VectorSearchTools == nil {
-		return nil
+	if c.Tools.VectorSearchTools != nil {
+		if err := validateVectorSearchTools(c.Tools.VectorSearchTools); err != nil {
+			return err
+		}
 	}
-	if err := validateVectorSearchToolConfig("tools.vector_search_tools.search_vector_memory", c.Tools.VectorSearchTools.SearchVectorMemory); err != nil {
-		return err
-	}
-	if err := validateVectorSearchToolConfig("tools.vector_search_tools.search_vector_tool", c.Tools.VectorSearchTools.SearchVectorTool); err != nil {
-		return err
-	}
-	if err := validateVectorSearchToolConfig("tools.vector_search_tools.search_vector_skill", c.Tools.VectorSearchTools.SearchVectorSkill); err != nil {
-		return err
-	}
-	return nil
+	return validateToolOutputArtifacts(c.Tools.ToolOutputArtifacts)
 }
 
 // compileCreateToolSecretPatterns compiles tools.create_tool_secret_patterns; invalid regex fails load (REQ-09.017).

@@ -59,6 +59,8 @@ type conversationHandler struct {
 	// toolsSelection holds the EP-037 tools.selection block (required in config; carries the
 	// main-LLM tool cap). nil is only the nil-config/test fallback and disables the cap.
 	toolsSelection *config.ToolsSelection
+	// toolResultPromptBytes caps tool-result bytes in the main LLM prompt (EP-039); defaults to maxToolResultPromptBytes when unset.
+	toolResultPromptBytes int
 }
 
 // checkUserMessage returns trimmed text, or earlyReply when the message must not reach the LLM.

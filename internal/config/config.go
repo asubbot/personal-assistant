@@ -44,10 +44,12 @@ type Config struct {
 	WriteMemory *WriteMemoryConfig `json:"write_memory"`
 	// IntentClassifier is optional; when enabled, classifies messages into complexity tiers before prompt assembly (EP-017).
 	IntentClassifier *IntentClassifierConfig `json:"intent_classifier,omitempty"`
-	// VectorStoreReliability is required; configures SQLite PRAGMA policy for the vector store (EP-022, REQ-22.001).
-	VectorStoreReliability *SQLiteStoreReliabilityConfig `json:"vector_store_reliability"`
-	// JobsStoreReliability is required; configures SQLite PRAGMA policy for the scheduled-jobs store (EP-022, REQ-22.002).
-	JobsStoreReliability *SQLiteStoreReliabilityConfig `json:"jobs_store_reliability"`
+	// SQLiteStoreDefaults is required; shared SQLite PRAGMA defaults for local stores (EP-039, REQ-39.012).
+	SQLiteStoreDefaults *SQLiteStoreDefaultsConfig `json:"sqlite_store_defaults"`
+	// VectorStoreReliability is required; per-store override for vector store PRAGMA policy (EP-039, REQ-39.013).
+	VectorStoreReliability *SQLiteStoreReliabilityOverride `json:"vector_store_reliability"`
+	// JobsStoreReliability is required; per-store override for jobs store PRAGMA policy (EP-039, REQ-39.013).
+	JobsStoreReliability *SQLiteStoreReliabilityOverride `json:"jobs_store_reliability"`
 	// ObservabilityHTTP is optional; when non-null in JSON, the main process serves operator health/readiness HTTP (EP-029). All fields in the object are required when present (no implicit defaults).
 	ObservabilityHTTP *ObservabilityHTTPConfig `json:"observability_http,omitempty"`
 }
@@ -61,8 +63,24 @@ type ObservabilityHTTPConfig struct {
 	ProbeLLM      bool   `json:"probe_llm"`
 }
 
-// SQLiteStoreReliabilityConfig is the explicit per-store PRAGMA policy for Local SQLite Stores (EP-022).
-// Every field must be set in JSON; the loader fails fast on missing or invalid values (no hidden defaults).
+// SQLiteStoreDefaultsConfig holds shared SQLite PRAGMA defaults for local stores (EP-039).
+// journal_mode, busy_timeout, and synchronous are required in JSON.
+type SQLiteStoreDefaultsConfig struct {
+	JournalMode string `json:"journal_mode"`
+	BusyTimeout string `json:"busy_timeout"`
+	Synchronous string `json:"synchronous"`
+}
+
+// SQLiteStoreReliabilityOverride is a per-store PRAGMA override block (EP-039).
+// foreign_keys is required; other fields inherit from sqlite_store_defaults when omitted.
+type SQLiteStoreReliabilityOverride struct {
+	JournalMode *string `json:"journal_mode,omitempty"`
+	BusyTimeout *string `json:"busy_timeout,omitempty"`
+	Synchronous *string `json:"synchronous,omitempty"`
+	ForeignKeys *bool   `json:"foreign_keys"`
+}
+
+// SQLiteStoreReliabilityConfig is the effective per-store PRAGMA policy after merging defaults and overrides.
 type SQLiteStoreReliabilityConfig struct {
 	JournalMode string `json:"journal_mode"` // e.g. "WAL"; required
 	BusyTimeout string `json:"busy_timeout"` // Go duration literal, e.g. "5s"; > 0 required
@@ -136,12 +154,26 @@ func validateSQLiteStoreReliability(store string, c *SQLiteStoreReliabilityConfi
 
 // ValidateVectorStoreReliability validates the vector store reliability block (foreign_keys must be false).
 func (c *Config) ValidateVectorStoreReliability() error {
-	return validateSQLiteStoreReliability("vector", c.VectorStoreReliability, false)
+	if err := validateSQLiteStoreDefaults(c.SQLiteStoreDefaults); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+	merged, err := mergeSQLiteStoreReliability(c.SQLiteStoreDefaults, c.VectorStoreReliability)
+	if err != nil {
+		return fmt.Errorf("config: vector_store_reliability: %w", err)
+	}
+	return validateSQLiteStoreReliability("vector", merged, false)
 }
 
 // ValidateJobsStoreReliability validates the jobs store reliability block (foreign_keys must be true).
 func (c *Config) ValidateJobsStoreReliability() error {
-	return validateSQLiteStoreReliability("jobs", c.JobsStoreReliability, true)
+	if err := validateSQLiteStoreDefaults(c.SQLiteStoreDefaults); err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
+	merged, err := mergeSQLiteStoreReliability(c.SQLiteStoreDefaults, c.JobsStoreReliability)
+	if err != nil {
+		return fmt.Errorf("config: jobs_store_reliability: %w", err)
+	}
+	return validateSQLiteStoreReliability("jobs", merged, true)
 }
 
 // ReadMemoryConfig limits the native read_memory tool (EP-002). The tool is always registered when memory is configured.
@@ -162,6 +194,22 @@ type ConversationSessionConfig struct {
 	MaxSessionExchanges int  `json:"max_session_exchanges"`
 }
 
+// ToolOutputArtifactsConfig configures persisted tool output artifacts and prompt truncation (EP-039).
+type ToolOutputArtifactsConfig struct {
+	Enabled                bool   `json:"enabled"`
+	Directory              string `json:"directory"`
+	ToolResultPromptBytes  int    `json:"tool_result_prompt_bytes"`
+	MaxArtifactBytes       int    `json:"max_artifact_bytes"`
+	OmissionMarker         string `json:"omission_marker"`
+	PreviewMinTailBytes    int    `json:"preview_min_tail_bytes"`
+	MaxStderrBytesInPrompt int    `json:"max_stderr_bytes_in_prompt"`
+	MaxReadsPerTurn        int    `json:"max_reads_per_turn"`
+	MaxReadBytesPerTurn    int    `json:"max_read_bytes_per_turn"`
+	MaxBytesPerRead        int    `json:"max_bytes_per_read"`
+	RetentionMaxTotalBytes int    `json:"retention_max_total_bytes"`
+	RetentionMaxFiles      int    `json:"retention_max_files"`
+}
+
 // ToolsConfig holds optional tool-invocation settings (REQ-04.030).
 type ToolsConfig struct {
 	// AlwaysInclude lists catalog or allowed-native tool ids merged into every turn’s tool set (EP-013, REQ-13.011).
@@ -172,6 +220,8 @@ type ToolsConfig struct {
 	VectorSearchTools *VectorSearchToolsConfig `json:"vector_search_tools,omitempty"`
 	// CreateToolSecretPatterns is optional; each entry is a Go regexp (RE2). Invalid regex fails config load (REQ-09.017).
 	CreateToolSecretPatterns []string `json:"create_tool_secret_patterns,omitempty"`
+	// ToolOutputArtifacts is optional (EP-039). When set, validates artifact limits and wires tool_result_prompt_bytes into core.
+	ToolOutputArtifacts *ToolOutputArtifactsConfig `json:"tool_output_artifacts,omitempty"`
 }
 
 // ToolsSelection configures catalog vector pre-selection and per-request main-LLM tool cap (EP-037).

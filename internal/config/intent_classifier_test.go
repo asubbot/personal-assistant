@@ -67,8 +67,9 @@ func TestLoad_IntentClassifier_invalidRegexRejected(t *testing.T) {
   "conversation_context": {"max_dynamic_system_runes": 4000, "memory_vector": {"notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10}},
   "read_memory": {"max_span_days": 31, "max_output_bytes": 262144},
   "write_memory": {"max_append_bytes": 65536, "max_file_bytes": 5242880},
-  "vector_store_reliability": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false},
-  "jobs_store_reliability": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true},
+  "sqlite_store_defaults": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL"},
+  "vector_store_reliability": {"foreign_keys": false},
+  "jobs_store_reliability": {"foreign_keys": true},
   "intent_classifier": {"enabled": true, "heuristic": {"simple_patterns": ["[invalid"], "max_simple_len": 40}},
   "observability_http": null, "web_tools": null, "runtime_skills": null, "conversation_session": null
 }`
@@ -97,8 +98,9 @@ func TestLoad_IntentClassifier_maxSimpleLenBelowOneRejected(t *testing.T) {
   "conversation_context": {"max_dynamic_system_runes": 4000, "memory_vector": {"notes_top_k": 10, "summaries_top_k": 10, "turns_top_k": 10}},
   "read_memory": {"max_span_days": 31, "max_output_bytes": 262144},
   "write_memory": {"max_append_bytes": 65536, "max_file_bytes": 5242880},
-  "vector_store_reliability": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": false},
-  "jobs_store_reliability": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL", "foreign_keys": true},
+  "sqlite_store_defaults": {"journal_mode": "WAL", "busy_timeout": "5s", "synchronous": "NORMAL"},
+  "vector_store_reliability": {"foreign_keys": false},
+  "jobs_store_reliability": {"foreign_keys": true},
   "intent_classifier": {"enabled": true, "heuristic": {"simple_patterns": ["^hi$"], "max_simple_len": 0}},
   "observability_http": null, "web_tools": null, "runtime_skills": null, "conversation_session": null
 }`
