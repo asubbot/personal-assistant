@@ -155,16 +155,22 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    subgraph core["internal/core — conversationHandler"]
+    subgraph core["internal/core — conversationHandler (EP-038 split)"]
         direction TB
-        H["HandleMessage"]
+        H["handler.go — HandleMessage orchestration"]
+        subgraph files["Focused handler files"]
+            LLM["handler_llm.go — router, tool loop, logs"]
+            TOOLS["handler_tools.go — tool merge/execute"]
+            MEM["handler_memory.go — RAG, turn index"]
+            TIER["handler_tier_main_prompt.go — simple/full dispatch"]
+        end
         C["checkUserMessage<br/>пустое / max length"]
         IC["intent.Classifier<br/>simple / full"]
         SH["systemStaticHead<br/>trust + дата + personality"]
         GR["gatherRetrievedChunkTexts<br/>vec_notes / summaries / turns"]
         SP["selectSkillPackages<br/>vec_skills top-K"]
         MT["mergeSelectedToolIDs<br/>always_include + skills + vec_tools"]
-        DT["pickToolsForMainRequest<br/>dynamic_selection cap"]
+        DT["pickToolsForMainRequest<br/>tools.selection cap"]
         FT["fitDynamicTailToBudget<br/>max_dynamic_system_runes"]
         OPT["completionOptionsMergedCatalogNative"]
         CR["completeAt → llmrouter"]
@@ -592,7 +598,6 @@ Remote execution — **не sandbox с произвольным кодом**, а
 
 **Слабые места / возможные улучшения:**
 
-- God handler в `internal/core`
 - Async init jobs runtime (tools доступны до полной готовности scheduler)
 - Один SQLite-файл под несколько writers (возможен `SQLITE_BUSY` под нагрузкой)
 - Нет in-app rate limiting
@@ -605,7 +610,7 @@ Remote execution — **не sandbox с произвольным кодом**, а
 >
 > LLM — pool провайдеров с transport fallback (переключение только при transport-ошибках, старт с index 0; сбои tools не меняют provider). Безопасность заложена в архитектуру: fail-fast config, cmdsafe + allowlist, redaction в логах.
 >
-> Trade-off — simplicity over scalability: один процесс, один оператор. Следующий рефакторинг — разбить tier-логику в core на стратегии, чтобы уменьшить god handler.
+> Trade-off — simplicity over scalability: один процесс, один оператор. Increment 0.02 (EP-035..038) упростил пакеты, intent (2 tier), config `tools.selection` и разбил `conversationHandler` на `handler.go` + `handler_llm/tools/memory.go`.
 
 ### Ответ на типичный follow-up: «Почему не microservices / LangChain?»
 
