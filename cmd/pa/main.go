@@ -6,24 +6,18 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
+	"pa/cmd/pa/wire"
 	"pa/internal/allowlist"
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/embedding"
-	"pa/internal/intent"
-	"pa/internal/llm"
 	"pa/internal/llmlog"
-	"pa/internal/llmrouter"
 	"pa/internal/memory"
 	"pa/internal/noderunner"
-	"pa/internal/skillindex"
 	"pa/internal/ssh"
 	"pa/internal/summarize"
-	"pa/internal/toolindex"
-	"pa/internal/tools"
 	"pa/internal/vector/sqlite"
 	"path/filepath"
 	"slices"
@@ -31,44 +25,6 @@ import (
 	"syscall"
 	"time"
 )
-
-// buildLLMProviders builds one Provider per cfg.LLMProviders entry and parallel labels (Type/Model).
-func buildLLMProviders(cfg *config.Config) ([]llm.Provider, []string, error) {
-	if len(cfg.LLMProviders) == 0 {
-		return nil, nil, fmt.Errorf("no llm providers configured")
-	}
-	var providers []llm.Provider
-	var labels []string
-	for i := range cfg.LLMProviders {
-		p, err := llm.NewProvider(&cfg.LLMProviders[i])
-		if err != nil {
-			return nil, nil, err
-		}
-		providers = append(providers, p)
-		typ := strings.TrimSpace(strings.ToLower(cfg.LLMProviders[i].Type))
-		model := strings.TrimSpace(cfg.LLMProviders[i].Model)
-		if model == "" {
-			model = "default"
-		}
-		labels = append(labels, typ+"/"+model)
-	}
-	return providers, labels, nil
-}
-
-// buildAppLLM constructs one set of LLM providers from cfg and a summarize-only adapter backed by the same
-// provider slice. Conversation (core) and summarization (memoryjob, -summarize CLI) share these instances;
-// each llm.Provider uses an http.Client safe for concurrent use.
-func buildAppLLM(cfg *config.Config, logger *slog.Logger) ([]llm.Provider, []string, llm.Provider, error) {
-	providers, labels, err := buildLLMProviders(cfg)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	summarizeLLM, err := llmrouter.NewProviderAdapter(providers, labels, llmrouter.SummarizeRouterConfig(), logger)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return providers, labels, summarizeLLM, nil
-}
 
 // configFilePath returns the path to the main config file: PA_CONFIG_DIR (default "./.config") joined with config.ConfigFileName.
 func configFilePath() string {
@@ -160,16 +116,16 @@ func main() {
 
 // runServer constructs the application from config, then runs the adapter until context is canceled.
 func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error {
-	app, err := newPAApplication(cfg, configPath, logger)
+	app, err := wire.Build(cfg, configPath, logger)
 	if err != nil {
 		return err
 	}
 	defer app.Close()
-	defer app.stopMemorySummarization()
+	defer app.StopMemorySummarization()
 
 	warnIfNodesSSHUnreachable(context.Background(), cfg, logger)
 
-	if err := app.startLLMProviders(); err != nil {
+	if err := app.StartLLMProviders(); err != nil {
 		return err
 	}
 	logLLMStartupInfo(cfg, logger)
@@ -177,24 +133,25 @@ func runServer(cfg *config.Config, configPath string, logger *slog.Logger) error
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if err := app.maybeStartMemorySummarization(ctx); err != nil {
+	if err := app.MaybeStartMemorySummarization(ctx); err != nil {
 		return err
 	}
 
-	toolRegistry, err := app.buildToolRegistry()
+	toolRegistry, err := app.BuildToolRegistry()
 	if err != nil {
 		return err
 	}
-	handler, err := app.buildMessageHandler(ctx, toolRegistry)
+	baseHandler, err := app.BuildMessageHandler(ctx, toolRegistry)
 	if err != nil {
 		return err
 	}
+	handler := wrapJobsHandler(ctx, app, baseHandler)
 
 	shutdownObservability := startObservabilityHTTPServer(ctx, cfg, app, logger)
 	defer shutdownObservability()
 
 	logger.Info("starting", "adapter", "telegram", "model", mainConversationModelName(cfg))
-	return app.infra.Adapter.Run(ctx, handler)
+	return app.Infra.Adapter.Run(ctx, handler)
 }
 
 const sshStartupCheckTimeout = 5 * time.Second
@@ -301,7 +258,7 @@ func runSummarizeDay(cfg *config.Config, day time.Time, logger *slog.Logger) err
 	}
 
 	logger.Info("summarize: building llm provider")
-	_, _, llmProvider, err := buildAppLLM(cfg, logger)
+	_, _, llmProvider, err := wire.BuildAppLLM(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
@@ -361,7 +318,7 @@ func runSummarizeMonth(cfg *config.Config, year int, month int, logger *slog.Log
 	}
 
 	logger.Info("summarize: building llm provider")
-	_, _, llmProvider, err := buildAppLLM(cfg, logger)
+	_, _, llmProvider, err := wire.BuildAppLLM(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
@@ -417,7 +374,7 @@ func runSummarizeYear(cfg *config.Config, year int, logger *slog.Logger) error {
 	}
 
 	logger.Info("summarize: building llm provider")
-	_, _, llmProvider, err := buildAppLLM(cfg, logger)
+	_, _, llmProvider, err := wire.BuildAppLLM(cfg, logger)
 	if err != nil {
 		return fmt.Errorf("summarize: llm provider: %w", err)
 	}
@@ -482,152 +439,6 @@ func runVerifyNodes(cfg *config.Config, command string, logger *slog.Logger) err
 		}
 	}
 	return nil
-}
-
-// newToolIndex creates the tool vector store and starts building the index from the catalog in the background. Caller must close the returned Index.
-// Requires cfg.ToolCatalog to be non-nil; returns error otherwise. Logs INFO on success, ERROR on build failure.
-func newToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.Logger) (*toolindex.Index, error) {
-	if cfg.ToolCatalog == nil {
-		return nil, fmt.Errorf("tool catalog is required")
-	}
-	toolVectorStore, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableTools, cfg.VectorStoreReliabilityPolicy())
-	if err != nil {
-		return nil, err
-	}
-	idx := toolindex.NewIndex(toolVectorStore)
-	catalog := cfg.ToolCatalog
-	go func() {
-		t0 := time.Now()
-		err := idx.BuildAndSetReady(context.Background(), catalog, embedder)
-		toolindex.LogBuildOutcome(logger, len(catalog.Tools), time.Since(t0), err)
-	}()
-	return idx, nil
-}
-
-// newSkillIndex builds vec_skills synchronously when runtime skills are enabled (EP-013).
-func newSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.Logger) (*skillindex.Index, error) {
-	if cfg.RuntimeSkills == nil || !cfg.RuntimeSkills.Enabled || len(cfg.RuntimeSkillPackages) == 0 {
-		return nil, nil
-	}
-	store, err := sqlite.NewWithTable(cfg.Paths.VectorIndexPath, cfg.Embedding.Dimensions, sqlite.TableSkills, cfg.VectorStoreReliabilityPolicy())
-	if err != nil {
-		return nil, err
-	}
-	idx := skillindex.NewIndex(store)
-	if err := idx.BuildAndSetReady(context.Background(), cfg.RuntimeSkillPackages, embedder); err != nil {
-		_ = store.Close()
-		return nil, fmt.Errorf("skill index: %w", err)
-	}
-	logger.Info("runtime skill index ready", "packages", len(cfg.RuntimeSkillPackages))
-	return idx, nil
-}
-
-// openMemoryVectorBundle opens EP-016 split memory tables on the configured vector DB path.
-func openMemoryVectorBundle(cfg *config.Config) (*core.MemoryVectors, error) {
-	dim := cfg.Embedding.Dimensions
-	path := cfg.Paths.VectorIndexPath
-	vecPolicy := cfg.VectorStoreReliabilityPolicy()
-	summ, err := sqlite.NewWithTable(path, dim, sqlite.TableSummaries, vecPolicy)
-	if err != nil {
-		return nil, err
-	}
-	turns, err := sqlite.NewWithTable(path, dim, sqlite.TableTurns, vecPolicy)
-	if err != nil {
-		_ = summ.Close()
-		return nil, err
-	}
-	notes, err := sqlite.NewWithTable(path, dim, sqlite.TableNotes, vecPolicy)
-	if err != nil {
-		_ = summ.Close()
-		_ = turns.Close()
-		return nil, err
-	}
-	return &core.MemoryVectors{
-		Summaries: summ,
-		Turns:     turns,
-		Notes:     notes,
-	}, nil
-}
-
-func registerWebToolsIfEnabled(cfg *config.Config, reg *tools.Registry, logger *slog.Logger) error {
-	if cfg == nil || cfg.WebTools == nil || !cfg.WebTools.Enabled {
-		return nil
-	}
-	timeout, err := time.ParseDuration(strings.TrimSpace(cfg.WebTools.HTTPTimeout))
-	if err != nil || timeout <= 0 {
-		return fmt.Errorf("web tools: invalid http_timeout %q (validated at config.Load; unreachable unless bypassed)", cfg.WebTools.HTTPTimeout)
-	}
-	webHTTP := &http.Client{
-		Timeout: timeout,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	reg.Register(tools.NewWebSearchTool(cfg.WebTools, webHTTP, nil))
-	reg.Register(tools.NewWebFetchTool(&cfg.WebTools.Fetch, webHTTP))
-	logger.Info("web tools enabled", "search_provider", cfg.WebTools.Search.Provider, "http_timeout", timeout)
-	return nil
-}
-
-func registerMemoryToolsIfEnabled(cfg *config.Config, reg *tools.Registry, memoryStore *memory.Store, memVec *core.MemoryVectors, embedder embedding.Embedder) error {
-	if reg == nil {
-		return fmt.Errorf("memory tools: registry is nil")
-	}
-	if memoryStore == nil {
-		return fmt.Errorf("memory tools: memory store is required")
-	}
-	if cfg.ReadMemory == nil || cfg.WriteMemory == nil {
-		return fmt.Errorf("memory tools: read_memory and write_memory are required in config")
-	}
-	rm := cfg.ReadMemory
-	wm := cfg.WriteMemory
-	reg.Register(tools.NewReadMemoryTool(memoryStore, rm.MaxSpanDays, rm.MaxOutputBytes))
-
-	// write_memory is a core feature and must be available in full mode at startup.
-	if !writeMemoryRuntimeReady(memVec, embedder) {
-		return fmt.Errorf("memory tools: write_memory requires notes vector and embedding provider")
-	}
-	reg.Register(tools.NewWriteMemoryTool(memoryStore, memVec.Notes, embedder, wm.MaxAppendBytes, wm.MaxFileBytes))
-	searchMemoryCfg := cfg.VectorSearchToolSettings("search_vector_memory")
-	// search_vector_memory is read-only semantic retrieval over vector memory lanes.
-	reg.Register(tools.NewSearchVectorMemoryTool(memVec.Notes, memVec.Summaries, memVec.Turns, embedder, searchMemoryCfg.DefaultTopK, searchMemoryCfg.MaxTopK, searchMemoryCfg.MaxOutputBytes, searchMemoryCfg.SnippetRunes))
-	return nil
-}
-
-func writeMemoryRuntimeReady(memVec *core.MemoryVectors, embedder embedding.Embedder) bool {
-	return memVec != nil && memVec.Notes != nil && embedder != nil
-}
-
-func registerKnowledgeToolsIfEnabled(cfg *config.Config, reg *tools.Registry, toolIdx *toolindex.Index, skillIdx *skillindex.Index, embedder embedding.Embedder) {
-	if cfg == nil || reg == nil || embedder == nil {
-		return
-	}
-	toolCfg := cfg.VectorSearchToolSettings("search_vector_tool")
-	if toolCfg.Enabled && toolIdx != nil && toolIdx.Store() != nil {
-		reg.Register(tools.NewSearchVectorToolKnowledgeTool(toolIdx.Store(), embedder, toolCfg.DefaultTopK, toolCfg.MaxTopK, toolCfg.MaxOutputBytes, toolCfg.SnippetRunes))
-	}
-	skillCfg := cfg.VectorSearchToolSettings("search_vector_skill")
-	if skillCfg.Enabled && skillIdx != nil && skillIdx.Store() != nil {
-		reg.Register(tools.NewSearchVectorSkillKnowledgeTool(skillIdx.Store(), embedder, skillCfg.DefaultTopK, skillCfg.MaxTopK, skillCfg.MaxOutputBytes, skillCfg.SnippetRunes))
-	}
-}
-
-// buildIntentClassifier constructs the EP-017/EP-036 heuristic cascade from config. Returns nil when disabled.
-func buildIntentClassifier(cfg *config.Config, logger *slog.Logger) intent.Classifier {
-	ic := cfg.IntentClassifier
-	if ic == nil || !ic.Enabled {
-		return nil
-	}
-	var heuristic *intent.HeuristicClassifier
-	if ic.Heuristic != nil {
-		heuristic = intent.NewHeuristicClassifier(
-			ic.Heuristic.SimplePatterns,
-			ic.Heuristic.FullPatterns,
-			ic.Heuristic.MaxSimpleLen,
-		)
-	}
-	logger.Info("intent classifier enabled", "heuristic", heuristic != nil)
-	return intent.NewCascadeClassifier(heuristic, logger)
 }
 
 // clearConversationContext deletes turn rows from vec_turns. vec_summaries, vec_notes, and vec_tools are unchanged.

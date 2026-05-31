@@ -4,6 +4,7 @@ Operator-focused guides for installing, configuring, running, and troubleshootin
 
 | Document | Description |
 |----------|-------------|
+| [architecture.md](architecture.md) | Composition root (`cmd/pa/wire`), jobs runtime phases, subsystem insertion checklist (EP-042). |
 | [architecture-ru.md](architecture-ru.md) | Architecture overview (Russian): C4 diagrams, message flow, subsystems, security. |
 | [installation.md](installation.md) | Prerequisites (Go, CGO/SQLite), clone, dependencies, first build. |
 | [configuration.md](configuration.md) | Environment variables, `config.json`, path resolution, secrets, key JSON sections. |

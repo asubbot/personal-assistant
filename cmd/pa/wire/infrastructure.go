@@ -1,4 +1,4 @@
-package main
+package wire
 
 import (
 	"fmt"
@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 )
 
-// paInfrastructure holds subsystem handles constructed by the composition root (EP-027).
-type paInfrastructure struct {
+// Infrastructure holds subsystem handles constructed by the composition root (EP-027, EP-042).
+type Infrastructure struct {
 	Adapter     core.Adapter
 	MemoryStore *memory.Store
 	MemVec      *core.MemoryVectors
@@ -27,7 +27,8 @@ type paInfrastructure struct {
 	SkillIndex  *skillindex.Index
 }
 
-func (i *paInfrastructure) close(logger *slog.Logger) {
+// Close releases infrastructure acquired during construction (vector stores, indices).
+func (i *Infrastructure) Close(logger *slog.Logger) {
 	if i == nil {
 		return
 	}
@@ -89,16 +90,16 @@ func setupNodeRunnerIfConfigured(cfg *config.Config, logger *slog.Logger) (core.
 }
 
 func setupToolIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.Logger) (*toolindex.Index, error) {
-	return newToolIndex(cfg, embedder, logger)
+	return NewToolIndex(cfg, embedder, logger)
 }
 
 func setupSkillIndex(cfg *config.Config, embedder embedding.Embedder, logger *slog.Logger) (*skillindex.Index, error) {
 	return newSkillIndex(cfg, embedder, logger)
 }
 
-// buildPAInfrastructure constructs adapter, optional memory store, vectors, embedder, indices, and optional node runner.
-func buildPAInfrastructure(cfg *config.Config, configPath string, logger *slog.Logger) (paInfrastructure, error) {
-	var out paInfrastructure
+// BuildInfrastructure constructs adapter, optional memory store, vectors, embedder, indices, and optional node runner.
+func BuildInfrastructure(cfg *config.Config, configPath string, logger *slog.Logger) (Infrastructure, error) {
+	var out Infrastructure
 	adapter, err := setupTelegramAdapter(cfg, configPath)
 	if err != nil {
 		return out, err
@@ -128,21 +129,21 @@ func buildPAInfrastructure(cfg *config.Config, configPath string, logger *slog.L
 
 	toolIndex, err := setupToolIndex(cfg, embedder, logger)
 	if err != nil {
-		out.close(logger)
+		out.Close(logger)
 		return out, err
 	}
 	out.ToolIndex = toolIndex
 
 	skillIndex, err := setupSkillIndex(cfg, embedder, logger)
 	if err != nil {
-		out.close(logger)
+		out.Close(logger)
 		return out, err
 	}
 	out.SkillIndex = skillIndex
 
 	nodeRunner, err := setupNodeRunnerIfConfigured(cfg, logger)
 	if err != nil {
-		out.close(logger)
+		out.Close(logger)
 		return out, err
 	}
 	out.NodeRunner = nodeRunner

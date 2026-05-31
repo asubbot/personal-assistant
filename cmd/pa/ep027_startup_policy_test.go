@@ -6,24 +6,24 @@ import (
 	"testing"
 )
 
-// Covers AC-27.003
+// Covers AC-27.003, AC-42.001
 func TestEP027_MainRunServerDelegatesToApplication(t *testing.T) {
 	raw, err := os.ReadFile("main.go")
 	if err != nil {
 		t.Fatalf("read main.go: %v", err)
 	}
 	s := string(raw)
-	if !strings.Contains(s, "newPAApplication(") {
-		t.Fatal("main.go runServer should construct paApplication via newPAApplication")
+	if !strings.Contains(s, "wire.Build(") {
+		t.Fatal("main.go runServer should construct application via wire.Build")
 	}
-	if !strings.Contains(s, "app.buildToolRegistry()") || !strings.Contains(s, "app.buildMessageHandler(") {
-		t.Fatal("main.go runServer should delegate to paApplication wiring methods")
+	if !strings.Contains(s, "app.BuildToolRegistry()") || !strings.Contains(s, "app.BuildMessageHandler(") {
+		t.Fatal("main.go runServer should delegate to application wiring methods")
 	}
 }
 
 // Covers AC-27.005. Supporting AC-27.006: exercised under full make check.
 func TestEP027_StartupSourcesHaveNoGocycloNolint(t *testing.T) {
-	for _, name := range []string{"main.go", "application.go", "setup_infra.go"} {
+	for _, name := range []string{"main.go", "wire/build.go", "wire/application.go", "wire/infrastructure.go"} {
 		raw, err := os.ReadFile(name)
 		if err != nil {
 			t.Fatalf("read %s: %v", name, err)
