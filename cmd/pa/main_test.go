@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"pa/cmd/pa/wire"
 	"pa/internal/config"
 	"pa/internal/core"
 	"pa/internal/memory"
@@ -47,8 +48,8 @@ func TestRegisterWebToolsIfEnabled_RegistersBothTools(t *testing.T) {
 	}
 	reg := patools.NewRegistry()
 	logger := slog.New(slog.DiscardHandler)
-	if err := registerWebToolsIfEnabled(cfg, reg, logger); err != nil {
-		t.Fatalf("registerWebToolsIfEnabled: %v", err)
+	if err := wire.RegisterWebToolsIfEnabled(cfg, reg, logger); err != nil {
+		t.Fatalf("RegisterWebToolsIfEnabled: %v", err)
 	}
 	if _, ok := reg.Get("web_search"); !ok {
 		t.Fatal("expected web_search in registry")
@@ -91,8 +92,8 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) 
 		Tools:       &config.ToolsConfig{},
 	}
 	regNoBlock := patools.NewRegistry()
-	if err := registerMemoryToolsIfEnabled(cfgNoBlock, regNoBlock, store, memVec, embedder); err != nil {
-		t.Fatalf("registerMemoryToolsIfEnabled: %v", err)
+	if err := wire.RegisterMemoryToolsIfEnabled(cfgNoBlock, regNoBlock, store, memVec, embedder); err != nil {
+		t.Fatalf("RegisterMemoryToolsIfEnabled: %v", err)
 	}
 	if _, ok := regNoBlock.Get("read_memory"); !ok {
 		t.Fatal("expected read_memory in registry")
@@ -111,8 +112,8 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryAlwaysRegistered(t *testing.T) 
 		Tools:       &config.ToolsConfig{},
 	}
 	regWrite := patools.NewRegistry()
-	if err := registerMemoryToolsIfEnabled(cfgWrite, regWrite, store, memVec, embedder); err != nil {
-		t.Fatalf("registerMemoryToolsIfEnabled(write_memory block): %v", err)
+	if err := wire.RegisterMemoryToolsIfEnabled(cfgWrite, regWrite, store, memVec, embedder); err != nil {
+		t.Fatalf("RegisterMemoryToolsIfEnabled(write_memory block): %v", err)
 	}
 	if _, ok := regWrite.Get("write_memory"); !ok {
 		t.Fatal("expected write_memory in registry when cfg.write_memory is present")
@@ -133,10 +134,10 @@ func TestRegisterMemoryToolsIfEnabled_WriteMemoryCoreDepsRequired(t *testing.T) 
 		WriteMemory: &config.WriteMemoryConfig{MaxAppendBytes: 1024, MaxFileBytes: 4096},
 		Tools:       &config.ToolsConfig{},
 	}
-	if err := registerMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{}, stubEmbedder{}); err == nil {
+	if err := wire.RegisterMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{}, stubEmbedder{}); err == nil {
 		t.Fatal("expected error when notes vector is missing")
 	}
-	if err := registerMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{Notes: noopVectorStore{}}, nil); err == nil {
+	if err := wire.RegisterMemoryToolsIfEnabled(cfg, patools.NewRegistry(), store, &core.MemoryVectors{Notes: noopVectorStore{}}, nil); err == nil {
 		t.Fatal("expected error when embedder is missing")
 	}
 }
@@ -168,8 +169,8 @@ func TestRegisterMemoryToolsIfEnabled_VectorSearchMemorySettingsApplied(t *testi
 	}
 	reg := patools.NewRegistry()
 	memVec := &core.MemoryVectors{Notes: noopVectorStore{}}
-	if err := registerMemoryToolsIfEnabled(cfgVectorSettings, reg, store, memVec, stubEmbedder{}); err != nil {
-		t.Fatalf("registerMemoryToolsIfEnabled(vector settings): %v", err)
+	if err := wire.RegisterMemoryToolsIfEnabled(cfgVectorSettings, reg, store, memVec, stubEmbedder{}); err != nil {
+		t.Fatalf("RegisterMemoryToolsIfEnabled(vector settings): %v", err)
 	}
 	toolAny, ok := reg.Get("search_vector_memory")
 	if !ok {
@@ -206,7 +207,7 @@ func TestRegisterKnowledgeToolsIfEnabled_RegistersSpecializedTools(t *testing.T)
 		},
 	}
 	reg := patools.NewRegistry()
-	registerKnowledgeToolsIfEnabled(cfg, reg, toolindex.NewIndex(noopVectorStore{}), skillindex.NewIndex(noopVectorStore{}), stubEmbedder{})
+	wire.RegisterKnowledgeToolsIfEnabled(cfg, reg, toolindex.NewIndex(noopVectorStore{}), skillindex.NewIndex(noopVectorStore{}), stubEmbedder{})
 	if _, ok := reg.Get("search_vector_tool"); !ok {
 		t.Fatal("expected search_vector_tool in registry")
 	}
@@ -567,18 +568,18 @@ func TestNewToolIndex_nilCatalog_returnsError(t *testing.T) {
 		Paths:       config.Paths{VectorIndexPath: filepath.Join(t.TempDir(), "vec.db")},
 	}
 
-	idx, err := newToolIndex(cfg, nil, logger)
+	idx, err := wire.NewToolIndex(cfg, nil, logger)
 	if err == nil {
 		if idx != nil {
 			_ = idx.Close()
 		}
-		t.Fatal("newToolIndex(nil catalog): expected error, got nil")
+		t.Fatal("NewToolIndex(nil catalog): expected error, got nil")
 	}
 	if idx != nil {
-		t.Error("newToolIndex(nil catalog): expected nil index")
+		t.Error("NewToolIndex(nil catalog): expected nil index")
 	}
 	if !strings.Contains(err.Error(), "tool catalog is required") {
-		t.Errorf("newToolIndex: err = %v", err)
+		t.Errorf("NewToolIndex: err = %v", err)
 	}
 }
 
@@ -599,15 +600,15 @@ func TestNewToolIndex_vectorStoreFails_returnsError(t *testing.T) {
 		VectorStoreReliability: &config.SQLiteStoreReliabilityOverride{ForeignKeys: &fkFalse},
 	}
 
-	idx, err := newToolIndex(cfg, nil, logger)
+	idx, err := wire.NewToolIndex(cfg, nil, logger)
 	if err == nil {
 		if idx != nil {
 			_ = idx.Close()
 		}
-		t.Fatal("newToolIndex(bad path): expected error, got nil")
+		t.Fatal("NewToolIndex(bad path): expected error, got nil")
 	}
 	if idx != nil {
-		t.Error("newToolIndex(bad path): expected nil index")
+		t.Error("NewToolIndex(bad path): expected nil index")
 	}
 }
 

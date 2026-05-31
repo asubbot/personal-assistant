@@ -17,7 +17,7 @@ func observabilityHTTPHandler(cfg *config.Config, app *paApplication, logger *sl
 		writeJSON(logger, w, http.StatusOK, map[string]string{"status": "alive"})
 	})
 	mux.HandleFunc("GET "+o.ReadinessPath, func(w http.ResponseWriter, r *http.Request) {
-		body := app.evalReadiness(r.Context())
+		body := app.EvalReadiness(r.Context())
 		status := http.StatusOK
 		if !body.Ready {
 			status = http.StatusServiceUnavailable

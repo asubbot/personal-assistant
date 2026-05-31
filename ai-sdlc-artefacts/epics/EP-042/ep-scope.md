@@ -12,7 +12,7 @@ git_branch: epic/EP-042-composition-root-refinement
 | Field | Content |
 |-------|---------|
 | **ID** | EP-042 |
-| **Status** | NEW |
+| **Status** | DONE |
 | **Title** | Composition root refinement |
 | **Description** | Refine `cmd/pa` startup wiring after EP-027: extract a dedicated wire/build package, clarify scheduled-jobs initialization contract (ready vs initializing vs failed), and reduce `main.go` / `application.go` sprawl so new subsystems have an obvious insertion point. No product behaviour change beyond clearer jobs-not-ready responses and readiness alignment. |
 | **First version date** | 2026-05-31 |

@@ -34,7 +34,7 @@ func TestEvalReadiness_AllOKWithoutJobsOrMemoryWorker(t *testing.T) {
 	idx := toolindex.NewIndex(noopVectorStore{})
 	idx.SetReady(true)
 	app := &paApplication{
-		cfg: &config.Config{
+		Cfg: &config.Config{
 			Paths: config.Paths{},
 			ObservabilityHTTP: &config.ObservabilityHTTPConfig{
 				ListenAddress: "unused",
@@ -43,8 +43,8 @@ func TestEvalReadiness_AllOKWithoutJobsOrMemoryWorker(t *testing.T) {
 				ProbeLLM:      false,
 			},
 		},
-		llmProviders: []llm.Provider{stubLLMProvider{}},
-		infra: paInfrastructure{
+		LLMProviders: []llm.Provider{stubLLMProvider{}},
+		Infra: paInfrastructure{
 			MemVec: &core.MemoryVectors{
 				Summaries: noopVectorStore{},
 				Turns:     noopVectorStore{},
@@ -53,7 +53,7 @@ func TestEvalReadiness_AllOKWithoutJobsOrMemoryWorker(t *testing.T) {
 			ToolIndex: idx,
 		},
 	}
-	body := app.evalReadiness(context.Background())
+	body := app.EvalReadiness(context.Background())
 	if !body.Ready {
 		t.Fatalf("expected ready, got %+v", body)
 	}
@@ -64,7 +64,7 @@ func TestObservabilityHTTPHandler_HealthAndReadiness(t *testing.T) {
 	idx := toolindex.NewIndex(noopVectorStore{})
 	idx.SetReady(true)
 	app := &paApplication{
-		cfg: &config.Config{
+		Cfg: &config.Config{
 			Paths: config.Paths{},
 			ObservabilityHTTP: &config.ObservabilityHTTPConfig{
 				ListenAddress: "unused",
@@ -73,8 +73,8 @@ func TestObservabilityHTTPHandler_HealthAndReadiness(t *testing.T) {
 				ProbeLLM:      false,
 			},
 		},
-		llmProviders: []llm.Provider{stubLLMProvider{}},
-		infra: paInfrastructure{
+		LLMProviders: []llm.Provider{stubLLMProvider{}},
+		Infra: paInfrastructure{
 			MemVec: &core.MemoryVectors{
 				Summaries: noopVectorStore{},
 				Turns:     noopVectorStore{},
@@ -83,7 +83,7 @@ func TestObservabilityHTTPHandler_HealthAndReadiness(t *testing.T) {
 			ToolIndex: idx,
 		},
 	}
-	srv := httptest.NewServer(observabilityHTTPHandler(app.cfg, app, slog.New(slog.DiscardHandler)))
+	srv := httptest.NewServer(observabilityHTTPHandler(app.Cfg, app, slog.New(slog.DiscardHandler)))
 	t.Cleanup(srv.Close)
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -167,7 +167,7 @@ func TestEP029_validateCommandExitZero(t *testing.T) {
 func TestEvalReadiness_ToolIndexNotReady(t *testing.T) {
 	idx := toolindex.NewIndex(noopVectorStore{})
 	app := &paApplication{
-		cfg: &config.Config{
+		Cfg: &config.Config{
 			Paths: config.Paths{},
 			ObservabilityHTTP: &config.ObservabilityHTTPConfig{
 				ListenAddress: "unused",
@@ -176,8 +176,8 @@ func TestEvalReadiness_ToolIndexNotReady(t *testing.T) {
 				ProbeLLM:      false,
 			},
 		},
-		llmProviders: []llm.Provider{stubLLMProvider{}},
-		infra: paInfrastructure{
+		LLMProviders: []llm.Provider{stubLLMProvider{}},
+		Infra: paInfrastructure{
 			MemVec: &core.MemoryVectors{
 				Summaries: noopVectorStore{},
 				Turns:     noopVectorStore{},
@@ -186,7 +186,7 @@ func TestEvalReadiness_ToolIndexNotReady(t *testing.T) {
 			ToolIndex: idx,
 		},
 	}
-	body := app.evalReadiness(context.Background())
+	body := app.EvalReadiness(context.Background())
 	if body.Ready {
 		t.Fatal("expected not ready when tool index is not ready")
 	}
