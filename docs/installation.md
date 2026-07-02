@@ -29,6 +29,8 @@ Works for **tags and full commit SHAs** in [`ai-sdlc.version`](../ai-sdlc.versio
 
 After a pin bump: `git -C ai-sdlc fetch && git -C ai-sdlc checkout <pin>`. Do **not** commit `ai-sdlc/` — it is listed in [`.gitignore`](../.gitignore).
 
+**Pin enforcement:** `make check` runs [`scripts/verify-ai-sdlc-pin.sh`](../scripts/verify-ai-sdlc-pin.sh) first and fails fast if `ai-sdlc/` HEAD does not match the pin. Standalone `make build` and `make validate` do not run this check.
+
 After checkout: process index at [`ai-sdlc/README.md`](../ai-sdlc/README.md); agents see [AGENTS.md](../AGENTS.md).
 
 ## Local environment file (optional)
@@ -76,7 +78,7 @@ Requires nested **`ai-sdlc/`** checkout at the pin in **`ai-sdlc.version`** (see
 
 Gate order (matches CI): clone process → **`make build`** → **`make check`** → **`make validate`**.
 
-**`make check` does not install or deploy PersonalAssistant.** It runs the full automated verification of the **source tree**, in order: `go fmt`, `go vet`, `golangci-lint` (with the integration build tag), **`go test -race -tags=integration ./...`** (race detector; slower than plain tests), **`go test` with coverage** across `./...`, and the **module-boundaries** script.
+**`make check` does not install or deploy PersonalAssistant.** It runs the full automated verification of the **source tree**, in order: **ai-sdlc pin verify** ([`scripts/verify-ai-sdlc-pin.sh`](../scripts/verify-ai-sdlc-pin.sh)), `go fmt`, `go vet`, `golangci-lint` (with the integration build tag), **`go test -race -tags=integration ./...`** (race detector; slower than plain tests), **`go test` with coverage** across `./...`, and the **module-boundaries** script.
 
 ```bash
 make check

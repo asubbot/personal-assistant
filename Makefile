@@ -1,4 +1,4 @@
-.PHONY: help fmt test test-race test-e2e test-integration vet vuln lint coverage coverage-e2e coverage-html check check-boundaries build validate
+.PHONY: help fmt test test-race test-e2e test-integration vet vuln lint coverage coverage-e2e coverage-html check check-boundaries verify-ai-sdlc-pin build validate
 
 GOLANGCI_LINT_VERSION ?= v2.5.0
 
@@ -26,7 +26,7 @@ help:
 	@echo "  make validate - Run AC coverage validator for all epics"
 	@echo "  make validate EP-009 - Validate a single epic"
 	@echo ""
-	@echo "  make check  - Run fmt + vet + vuln + lint + test-race + test-e2e + coverage + check-boundaries"
+	@echo "  make check  - Verify ai-sdlc pin, then fmt + vet + vuln + lint + test-race + test-e2e + coverage + check-boundaries"
 
 # Build targets
 build: bin/pa bin/validate
@@ -89,7 +89,10 @@ coverage-e2e:
 check-boundaries:
 	@./scripts/check-module-boundaries.sh
 
-check: fmt vet vuln lint test-race test-e2e coverage check-boundaries
+verify-ai-sdlc-pin:
+	@./scripts/verify-ai-sdlc-pin.sh
+
+check: verify-ai-sdlc-pin fmt vet vuln lint test-race test-e2e coverage check-boundaries
 
 # Allow `make validate EP-XXX` without "No rule to make target EP-XXX".
 %:
