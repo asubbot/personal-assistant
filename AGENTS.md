@@ -3,7 +3,7 @@
 Instructions for AI agents working in a **git-backed software repository**.
 
 ## How to read this file
-- **From Cooperation through Security (basics):** baseline agent and workspace habits; broadly reusable in similar repos.
+- **From Cooperation through Security (basics), including Execution habits:** baseline agent and workspace habits; broadly reusable in similar repos.
 - **`## This repository (PersonalAssistant)`:** paths, tooling, and where to open SDLC files for **this** repository only.
 - **Normative pipeline** (stages, delegation, artefact rules, agent execution expectations): **[ai-sdlc/specification/pipeline.spec.md](ai-sdlc/specification/pipeline.spec.md)** and the stage skills it maps to. **[ai-sdlc/README.md](ai-sdlc/README.md)** is the **directory index** for `ai-sdlc/` (what each path is for).
 
@@ -11,9 +11,15 @@ Instructions for AI agents working in a **git-backed software repository**.
 - Work **with** the user: when several valid options exist (design, naming, artefact placement, approach, or interpretation), list them (e.g. A / B) with short pros/cons if useful and **ask for a choice**. Do not decide alone; wait for an explicit choice.
 - **Chat language:** match the user’s language unless they ask otherwise. (Code, commits, and in-repo technical docs stay English per **Language** below.)
 
+## Execution habits
+- **Verification before done** — do not mark work complete without evidence (relevant tests, `make check`, or a demonstrated fix for the reported issue).
+- **Re-plan when stuck** — when the approach stalls or an assumption fails, stop and re-plan through the agreed plan/pipeline instead of pushing the same path.
+- **Autonomous fix for reproducible bugs** — for clearly reproducible issues (failing tests, CI, logs), diagnose and implement the fix without step-by-step hand-holding; still follow **Cooperation with the user**, **File changing**, and **Commits** (ask when several valid options exist, act autonomously on a reproducible defect).
+
 ## Principles
 - **KISS** — prefer the smallest change that solves the problem; avoid unnecessary abstraction and scope creep.
 - **Fail fast** — detect invalid state and errors early; do not swallow failures without a clear, documented reason.
+- **Root cause over workarounds** — fix the underlying cause; do not leave temporary patches unless the owner explicitly agrees to a bounded workaround.
 - **Explicit JSON configuration** — product **`config.json`** must list **every** documented top-level key exactly once. Optional product blocks are **disabled with JSON `null`**, not by omitting the key. Unknown top-level keys are rejected. Missing keys, invalid values, or structural drift must fail **config load** so the process does not start with an implicit or partial configuration.
 - **nolint:gocyclo** - DO NOT use nolint:gocyclo
 
