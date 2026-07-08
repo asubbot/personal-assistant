@@ -12,7 +12,7 @@ This document combines **delivery strategy** and **test strategy** for the proje
 | Feature | Version | Definition |
 |-------|---|---------|
 |**MVP** | 0.01 |A working personal assistant the user can talk to via Telegram. It runs in Docker on Synology DS220+, uses long-term memory and optional remote nodes, supports multiple LLM backends, and is built so we can evolve it without breaking the core.|
-| **Refactoring** | 0.02 | Remove extra architecture complexity — **DONE** (EP-034–EP-043, merged to `main` 2026-05-31) |
+| **Refactoring** | 0.02 | Remove extra architecture complexity |
 
 ### 1.2 Success criteria (high level)
 
