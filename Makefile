@@ -1,12 +1,19 @@
-.PHONY: help fmt test test-race test-e2e test-integration vet vuln lint coverage coverage-e2e coverage-html check check-boundaries verify-ai-sdlc-pin build validate
+.PHONY: help fmt test test-race test-e2e test-integration vet vuln lint coverage coverage-e2e coverage-html check check-boundaries verify-ai-sdlc-pin build run validate docker-build
 
 GOLANGCI_LINT_VERSION ?= v2.5.0
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)
+PA_LDFLAGS := -s -w \
+	-X pa/internal/version.Commit=$(GIT_COMMIT) \
+	-X pa/internal/version.BuildTime=$(BUILD_TIME)
 
 help:
 	@echo "Available commands:"
 	@echo ""
 	@echo "Build:"
-	@echo "  make build  - Build all binaries (pa + validate)"
+	@echo "  make build        - Build all binaries (pa + validate)"
+	@echo "  make run          - Run pa via go run with embedded git commit (dev)"
+	@echo "  make docker-build - Build and start Docker image with git commit in binary"
 	@echo ""
 	@echo "Testing & Quality:"
 	@echo "  make fmt    - Format Go code"
@@ -34,7 +41,13 @@ build: bin/pa bin/validate
 
 bin/pa: cmd/pa/main.go
 	@mkdir -p bin
-	go build -o ./bin/pa ./cmd/pa
+	go build -ldflags="$(PA_LDFLAGS)" -o ./bin/pa ./cmd/pa
+
+run:
+	go run -ldflags="$(PA_LDFLAGS)" ./cmd/pa
+
+docker-build:
+	GIT_COMMIT=$(GIT_COMMIT) BUILD_TIME=$(BUILD_TIME) docker compose up --build -d
 
 bin/validate:
 	@test -f ai-sdlc/tools/validate/go.mod || (echo "Missing ai-sdlc/: clone https://github.com/asubbot/ai-sdlc at pin in ai-sdlc.version (see docs/installation.md)" >&2; exit 1)

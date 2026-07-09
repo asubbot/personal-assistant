@@ -19,6 +19,7 @@ import (
 	"pa/internal/ssh"
 	"pa/internal/summarize"
 	"pa/internal/vector/sqlite"
+	"pa/internal/version"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -69,12 +70,19 @@ func main() {
 	verifyNodesCommand := flag.String("verify-nodes-command", "uptime", "Command to run on each node when using -verify-nodes (must be in node allowlist)")
 	summarizeFlag := flag.String("summarize", "", "Run summarization and exit: YYYY-MM-DD (day), YYYY-MM (month), YYYY (year). No default.")
 	clearContextOnStart := flag.Bool("clear-context-on-start", false, "Clear conversation turn context index (vec_turns) before starting the bot; does not affect vec_tools or memory files")
+	showVersion := flag.Bool("version", false, "Print build identity (commit and build time) and exit")
 	flag.Parse()
+
+	if *showVersion {
+		_, _ = os.Stdout.WriteString("pa " + version.String() + "\n")
+		os.Exit(0)
+	}
 
 	configFilePath := configFilePath()
 
 	logLevel := logLevelFromEnv()
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel}))
+	logger.Info("pa starting", "commit", version.Commit, "built", version.BuildTime)
 	warnSensitiveLLMLogging(logger, logLevel)
 	cfg, err := config.Load(configFilePath)
 	if err != nil {

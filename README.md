@@ -29,9 +29,13 @@ cp config.examples/tools.yaml .config/tools.yaml
 ```
 
 ```bash
-go build -o pa ./cmd/pa
-PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./pa
+make build
+PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./bin/pa
 ```
+
+Or for local dev without installing to `bin/`: `make run` (same commit embedding as `make build`).
+
+Use `make build` or `make run` (not plain `go build` / `go run`) so the binary records the current git commit and build time. Check with `./bin/pa -version` or the `pa starting` line in logs.
 
 More detail: [docs/installation.md](docs/installation.md), [docs/configuration.md](docs/configuration.md).
 
@@ -62,8 +66,11 @@ Full behaviour: [docs/configuration.md](docs/configuration.md#environment-variab
 
 ```bash
 # Node SSH check (does not start the bot)
-./pa -verify-nodes
-./pa -verify-nodes -verify-nodes-command "echo ok"
+./bin/pa -verify-nodes
+./bin/pa -verify-nodes -verify-nodes-command "echo ok"
+
+# Build identity (no config required)
+./bin/pa -version
 
 # Summarization (then exit)
 ./pa -summarize=2026-03-19

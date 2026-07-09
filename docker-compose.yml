@@ -25,6 +25,9 @@ services:
   pa:
     build:
       context: .
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
     restart: unless-stopped
     # Optional: copy .env.example → .env for PA_LOG_LEVEL etc. (see docs/docker.md).
     env_file:
