@@ -128,10 +128,10 @@ In the following, *System* = PersonalAssistant (or the component stated).
 
 *REQ-06.001, REQ-06.002*
 
-**REQ-06.001** (Ubiquitous) **Superseded by EP-034:** tool-path escalation removed; retained for historical traceability.  
+### REQ-06.001 — Baseline provider — **Superseded by EP-034**
 THE System SHALL use the configured baseline provider when starting handling of a new user message.
 
-**REQ-06.002** (Ubiquitous)  
+### REQ-06.002 — Escalation config — **Superseded by EP-034**
 THE System SHALL load and validate at startup: enable/disable escalation, maximum number of escalations per user message, and which provider is the baseline. Optional cooldown hints MAY be supported. Invalid or missing values SHALL cause startup failure or a defined default consistent with ep-scope.
 
 ---
@@ -140,13 +140,13 @@ THE System SHALL load and validate at startup: enable/disable escalation, maximu
 
 *REQ-06.003, REQ-06.004, REQ-06.005*
 
-**REQ-06.003** (Ubiquitous)  
+### REQ-06.003 — Failure categories — **Superseded by EP-034**
 THE System SHALL classify tool-related and tool-flow failures into stable categories (e.g. policy/security, transient execution, model-format).
 
-**REQ-06.004** (Ubiquitous)  
+### REQ-06.004 — Category→action mapping — **Superseded by EP-034**
 THE System SHALL map each failure category to exactly one allowed action: no escalation, one repair attempt on the same provider, escalate once to the next provider, or stop (no further escalation for that user message).
 
-**REQ-06.005** (Ubiquitous)  
+### REQ-06.005 — Non-escalating failures — **Superseded by EP-034**
 THE System SHALL classify failures such that allowlist denial, unknown tool id in the catalog, and other errors that a stronger model cannot fix do not trigger escalation.
 
 ---
@@ -155,10 +155,10 @@ THE System SHALL classify failures such that allowlist denial, unknown tool id i
 
 *REQ-06.006, REQ-06.007*
 
-**REQ-06.006** (Event-driven)  
+### REQ-06.006 — Advance provider on qualifying failure — **Superseded by EP-034**
 WHERE escalation is enabled and a qualifying tool failure occurs, THE System SHALL advance to the next provider in the configured ordered list for the next Complete call, up to the configured maximum number of escalations per user message and subject to existing tool-round caps.
 
-**REQ-06.007** (Ubiquitous)  
+### REQ-06.007 — Ordered provider list — **Superseded by EP-034**
 THE System SHALL support an ordered list of two or more LLM providers for escalation; escalation SHALL advance strictly along configuration order until policy stops or the list is exhausted.
 
 ---
@@ -167,13 +167,13 @@ THE System SHALL support an ordered list of two or more LLM providers for escala
 
 *REQ-06.015, REQ-06.016, REQ-06.018*
 
-**REQ-06.015** (Ubiquitous)  
+### REQ-06.015 — Typed tool errors for escalation — **Superseded by EP-034**
 THE System SHALL represent tool-invocation outcomes that participate in escalation policy using error values distinguishable by type (for example a dedicated wrapper type with an explicit escalation-allowed flag) that callers inspect with the language standard error inspection API, so that the decision whether a failure qualifies for escalation does not depend solely on matching substrings in the string returned by the error `Error()` method.
 
-**REQ-06.016** (Event-driven)  
+### REQ-06.016 — Hermes parse escalation — **Superseded by EP-034**
 WHERE escalation is enabled and the assistant reply is interpreted with the Hermes text-tool markup parser after a Complete call (including the first completion for a user message and follow-up completions inside the tool-result loop), WHEN that parser reports a failure, THE System SHALL treat that outcome as qualifying for the same escalation policy as a qualifying tool execution failure, subject to the configured maximum escalations per user message and provider chain limits, and SHALL perform a new Complete call on the next provider when policy permits, or SHALL produce the deterministic user-visible outcome for exhausted escalation when policy does not permit further advance.
 
-**REQ-06.018** (Ubiquitous)  
+### REQ-06.018 — Catalog validation errors expose stable kind via dedicated type inspectable with errors.As; policy does not use Error() substrings for those failures
 THE System SHALL attach every failure returned from tool catalog validation (`ValidateToolCall` and its argument validation helpers) to a stable enumerated classification (`ValidateKind` or equivalent) carried in a dedicated error type that callers inspect with the language standard error inspection API (`errors.As`), so that the mapping from catalog validation outcomes to escalation allowance in `internal/escalationpolicy` does not rely on matching substrings in the string returned by the error `Error()` method for those failures.
 
 ---
@@ -182,7 +182,7 @@ THE System SHALL attach every failure returned from tool catalog validation (`Va
 
 *REQ-06.008*
 
-**REQ-06.008** (Event-driven)  
+### REQ-06.008 — Chain exhaustion — **Superseded by EP-034**
 WHEN escalation cannot help (e.g. policy dictates stop) or the provider chain is exhausted, THE System SHALL produce a deterministic user-visible outcome and structured logs and SHALL NOT attempt further escalation for that user message.
 
 ---
@@ -191,7 +191,7 @@ WHEN escalation cannot help (e.g. policy dictates stop) or the provider chain is
 
 *REQ-06.009*
 
-**REQ-06.009** (Ubiquitous)  
+### REQ-06.009 — Baseline on next message — **Superseded by EP-034**
 THE System SHALL use the configured baseline provider for the next user message after the assistant's final text reply has been sent for the current user message (rollback at end of turn).
 
 ---
@@ -200,11 +200,11 @@ THE System SHALL use the configured baseline provider for the next user message 
 
 *REQ-06.010, REQ-06.011*
 
-**REQ-06.010** (Ubiquitous)  
+### REQ-06.010 — Escalation logs — **Superseded by EP-034**
 THE System SHALL log for each relevant decision: the classification result, whether escalation occurred, and the provider index or label before and after the decision; logs SHALL NOT contain secrets.
 
-**REQ-06.011** (Optional feature)  
-WHERE supported, THE System MAY include an optional tried_providers summary in logs for a user message.
+### REQ-06.011 — tried_providers — **Superseded by EP-034**
+WHERE supported, THE System SHALL allow an optional tried_providers summary in logs for a user message.
 
 ---
 
@@ -212,16 +212,16 @@ WHERE supported, THE System MAY include an optional tried_providers summary in l
 
 *REQ-06.012, REQ-06.013, REQ-06.014, REQ-06.017*
 
-**REQ-06.012** (Ubiquitous)  
+### REQ-06.012 — No secrets in escalation logs — **Superseded by EP-034**
 THE System SHALL NOT include secrets (e.g. API keys, tokens) in escalation or provider-selection logs.
 
-**REQ-06.013** (Ubiquitous)  
-THE System SHALL be covered by unit and/or integration tests for: classification tables or key branches, escalation limits, exhaustion behaviour, and rollback-at-end-of-turn with a mock provider chain.
+### REQ-06.013 — Escalation test coverage — **Superseded by EP-034**
+THE System SHALL be covered by unit or integration tests for: classification tables or key branches, escalation limits, exhaustion behaviour, and rollback-at-end-of-turn with a mock provider chain.
 
-**REQ-06.014** (Optional feature)  
+### REQ-06.014 — Escalation disabled behaviour — **Superseded by EP-034**
 WHERE escalation is disabled, THE System SHALL use only the configured baseline provider for each user message and SHALL NOT advance the provider on tool failure.
 
-**REQ-06.017** (Ubiquitous)  
+### REQ-06.017 — `escalationpolicy` package — **Superseded by EP-034**
 THE System SHALL implement the mapping from classified tool-path and tool-flow failure causes to escalation allowance for the conversation tool path in the Go package `pa/internal/escalationpolicy` (see [ep-system-design.md](ep-system-design.md)), and SHALL cover that mapping with unit tests that do not require constructing the full conversation handler, Telegram adapter, or LLM transport.
 
 ---

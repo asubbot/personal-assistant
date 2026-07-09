@@ -17,7 +17,7 @@ This document lists testable acceptance criteria for atomic catalog persistence 
 | [AC-23.005](#ac-23-005) | [REQ-23.005](ep-requirements.md#runtime-catalog-and-tool-index-consistency) | In-memory catalog gains tool only after validated persist |
 | [AC-23.006](#ac-23-006) | [REQ-23.006](ep-requirements.md#runtime-catalog-and-tool-index-consistency) | Index upsert runs only after memory contains new tool |
 | [AC-23.007](#ac-23-007) | [REQ-23.007](ep-requirements.md#runtime-catalog-and-tool-index-consistency) | Embed failure rolls back file and memory when embedder configured |
-| [AC-23.008](#ac-23-008) | [REQ-23.008](ep-requirements.md#verification-and-operator-documentation) | Tests cover short write, rename failure, invalid post-write |
+| [AC-23.008](#ac-23-008) | [REQ-23.008](ep-requirements.md#verification-and-operator-documentation), [REQ-23.010](ep-requirements.md#req-23-010--fail-fast-on-unexpected-persistence-state-in-tests) | Tests cover short write, rename failure, invalid post-write |
 | [AC-23.009](#ac-23-009) | [REQ-23.009](ep-requirements.md#verification-and-operator-documentation) | Operator doc section for replace and sync |
 | [AC-23.010](#ac-23-010) | [REQ-23.011](ep-requirements.md#verification-and-operator-documentation) | `make check` passes |
 

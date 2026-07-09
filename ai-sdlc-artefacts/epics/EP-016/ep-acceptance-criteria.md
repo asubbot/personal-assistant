@@ -20,7 +20,7 @@
 | [AC-16.010](#ac-16-010) | [REQ-16.017](ep-requirements.md#req-16-017) | Retrieved chunk ordering places notes before summary before turn for equal scores fixture |
 | [AC-16.011](#ac-16-011) | [REQ-16.018](ep-requirements.md#req-16-018) | Legacy vec_items query path returns only summary-prefixed ids |
 | [AC-16.012](#ac-16-012) | [REQ-16.019](ep-requirements.md#req-16-019) | Turn retrieval does not duplicate legacy vec_items turn with dedicated turn row |
-| [AC-16.013](#ac-16-013) | [REQ-16.020](ep-requirements.md#req-16-020) | Turn chunk Date line matches adapter-supplied message calendar day in pa_timezone |
+| [AC-16.013](#ac-16-013) | [REQ-16.003](ep-requirements.md#req-16-003--calendar-interpretation-uses-pa_timezone), [REQ-16.020](ep-requirements.md#req-16-020) | Turn chunk Date line matches adapter-supplied message calendar day in pa_timezone |
 | [AC-16.014](#ac-16-014) | [REQ-16.021](ep-requirements.md#req-16-021) | When adapter timestamp absent, Date line follows documented fallback |
 | [AC-16.015](#ac-16-015) | [REQ-16.022](ep-requirements.md#req-16-022), [REQ-16.023](ep-requirements.md#req-16-023) | Re-indexing same turn twice does not increase dedicated turn table row count by two |
 | [AC-16.016](#ac-16-016) | [REQ-16.010](ep-requirements.md#req-16-010) | After write_memory, notes vector search returns the new entry |

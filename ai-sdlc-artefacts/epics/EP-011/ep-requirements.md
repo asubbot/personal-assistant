@@ -140,34 +140,34 @@ In the following, the implementing system is **PersonalAssistant** unless a requ
 
 *REQ-11.001, REQ-11.002, REQ-11.003, REQ-11.004, REQ-11.005, REQ-11.006, REQ-11.007, REQ-11.008, REQ-11.025, REQ-11.026*
 
-**REQ-11.001** (Ubiquitous)  
+### REQ-11.001 — Register **web_search** as a native tool from the **configuration file**
 THE PersonalAssistant SHALL register **web_search** as a **Native tool** using entries in the **configuration file** alongside existing tools.
 
-**REQ-11.002** (Ubiquitous)  
+### REQ-11.002 — Register **web_fetch** as a native tool from the **configuration file**
 THE PersonalAssistant SHALL register **web_fetch** as a **Native tool** using entries in the **configuration file** alongside existing tools.
 
-**REQ-11.003** (Ubiquitous)  
+### REQ-11.003 — **web_search** accepts a validated query string per the tool contract
 THE **web_search** tool SHALL accept a search query string as validated input defined by the tool contract.
 
-**REQ-11.004** (Optional feature)  
+### REQ-11.004 — **Brave Search** path when **search provider** is Brave Search
 WHERE the **configuration file** sets the **primary search provider** to **Brave Search**, THE **web_search** tool SHALL obtain ranked results from **Brave Search** when the **primary search provider** attempt succeeds.
 
-**REQ-11.005** (Optional feature)  
+### REQ-11.005 — **DuckDuckGo** path when **search provider** is DuckDuckGo
 WHERE the **configuration file** sets the **primary search provider** to **DuckDuckGo**, THE **web_search** tool SHALL obtain ranked results from **DuckDuckGo** over HTTPS using the programmatic interface recorded in the **system design artefact** when the **primary search provider** attempt succeeds.
 
-**REQ-11.006** (Event-driven)  
+### REQ-11.006 — Read Brave Search credential from configured filesystem path
 WHEN **web_search** performs an **upstream search request** to **Brave Search** for either the **primary search provider** or the **fallback search provider**, THE PersonalAssistant SHALL read the **Brave Search** API credential from the filesystem path declared in the **configuration file**.
 
-**REQ-11.007** (Unwanted event)  
+### REQ-11.007 — Structured error when Brave credential file is unusable
 IF the **Brave Search** API credential file is missing, unreadable, or empty at the time **web_search** attempts **Brave Search** for the **primary search provider** or the **fallback search provider**, THEN THE **web_search** tool SHALL return a **structured error** for that attempt.
 
-**REQ-11.008** (Ubiquitous)  
+### REQ-11.008 — **web_search** returns structured ranked items
 THE **web_search** tool SHALL return structured ranked items that each contain a title field, a URL field, and a snippet field or equivalent summary field.
 
-**REQ-11.025** (Ubiquitous)  
+### REQ-11.025 — **Primary** and optional distinct **fallback search provider** in configuration
 THE PersonalAssistant SHALL read a **primary search provider** and MAY read a **fallback search provider** from the **configuration file** when **web_tools** is enabled; WHERE a **fallback search provider** is configured, THE **fallback search provider** SHALL identify a **search provider** that differs from the **primary search provider**.
 
-**REQ-11.026** (Event-driven)  
+### REQ-11.026 — **Fallback** **upstream search request** after **primary** failure
 WHEN **web_search** performs an **upstream search request** using the **primary search provider** and receives a failure outcome listed in the **system design artefact**, AND a **fallback search provider** is configured, THEN THE **web_search** tool SHALL perform one **upstream search request** using the **fallback search provider** before the tool invocation returns an outcome to the agent.
 
 ---
@@ -176,16 +176,16 @@ WHEN **web_search** performs an **upstream search request** using the **primary 
 
 *REQ-11.009, REQ-11.010, REQ-11.011, REQ-11.012*
 
-**REQ-11.009** (Ubiquitous)  
+### REQ-11.009 — In-memory **search result cache** with **time-to-live**
 THE PersonalAssistant SHALL store **web_search** responses in a **search result cache** that resides in process memory and uses a configurable **time-to-live**.
 
-**REQ-11.010** (Event-driven)  
+### REQ-11.010 — **cache lookup key** from normalized query and provider
 WHEN PersonalAssistant handles a **web_search** request, THE PersonalAssistant SHALL compute the **cache lookup key** from a normalized form of the query string, an ordered **search provider** chain consisting of the **primary search provider** identifier and, when configured, the **fallback search provider** identifier, and every additional cache facet named in the **system design artefact**.
 
-**REQ-11.011** (Event-driven)  
+### REQ-11.011 — Cache hit avoids new **upstream search request**
 WHEN a **search result cache** entry exists for the computed **cache lookup key** and the entry age is less than the configured **time-to-live**, THE PersonalAssistant SHALL return the cached **web_search** response without issuing a new **upstream search request**.
 
-**REQ-11.012** (Ubiquitous)  
+### REQ-11.012 — Maximum cache entries with **eviction policy**
 THE PersonalAssistant SHALL enforce a configurable maximum entry count on the **search result cache** using an **eviction policy** defined in the **system design artefact**.
 
 ---
@@ -194,16 +194,16 @@ THE PersonalAssistant SHALL enforce a configurable maximum entry count on the **
 
 *REQ-11.013, REQ-11.014, REQ-11.015, REQ-11.016*
 
-**REQ-11.013** (Unwanted event)  
+### REQ-11.013 — Reject non-HTTPS **web_fetch** URLs with **structured error**
 IF a **web_fetch** request supplies a URL whose scheme is not `https`, THEN THE **web_fetch** tool SHALL reject the request with a **structured error**.
 
-**REQ-11.014** (Ubiquitous)  
+### REQ-11.014 — **SSRF mitigation** blocks disallowed destinations
 THE **web_fetch** tool SHALL reject requests whose resolved destinations match loopback IPv4 addresses, loopback IPv6 addresses, private IPv4 ranges, IPv6 unique local addresses, IPv6 link-local addresses, link-local IPv4 addresses, and **SSRF mitigation** metadata endpoints listed in the **system design artefact**.
 
-**REQ-11.015** (Ubiquitous)  
+### REQ-11.015 — Redirect hop limit and rejection of non-HTTPS redirect targets
 THE **web_fetch** tool SHALL follow HTTP redirects with a configurable maximum redirect hop count and SHALL reject the fetch when any redirect target URL uses a scheme other than `https`.
 
-**REQ-11.016** (Ubiquitous)  
+### REQ-11.016 — Cap retrieved body size in bytes
 THE **web_fetch** tool SHALL stop reading response body bytes after a configurable maximum byte count for the stored result.
 
 ---
@@ -212,16 +212,16 @@ THE **web_fetch** tool SHALL stop reading response body bytes after a configurab
 
 *REQ-11.017, REQ-11.018, REQ-11.019, REQ-11.020*
 
-**REQ-11.017** (Ubiquitous)  
+### REQ-11.017 — Configurable wall-clock bound for **web_fetch** completion
 THE **web_fetch** tool SHALL enforce a configurable wall-clock timeout bound that covers the full operation including redirects.
 
-**REQ-11.018** (Ubiquitous)  
+### REQ-11.018 — Configurable wall-clock bound for each **upstream search request**
 THE **web_search** tool SHALL enforce a configurable wall-clock timeout bound for each **upstream search request**.
 
-**REQ-11.019** (Ubiquitous)  
+### REQ-11.019 — Load tool and limit settings from the **configuration file**
 THE PersonalAssistant SHALL read **primary search provider** selection, optional **fallback search provider** selection, filesystem path for the **Brave Search** API credential, **search result cache** **time-to-live**, **search result cache** maximum entry count, **web_fetch** maximum body bytes, **web_fetch** maximum redirect hop count, **web_search** timeout bounds, and **web_fetch** timeout bounds from the **configuration file**.
 
-**REQ-11.020** (Unwanted event)  
+### REQ-11.020 — Fail fast on invalid required configuration at startup
 IF required entries for **web_search** or **web_fetch** in the **configuration file** are missing or invalid at process startup, THEN THE PersonalAssistant SHALL terminate startup and emit a configuration error message.
 
 ---
@@ -230,13 +230,13 @@ IF required entries for **web_search** or **web_fetch** in the **configuration f
 
 *REQ-11.021, REQ-11.022, REQ-11.023*
 
-**REQ-11.021** (Ubiquitous)  
+### REQ-11.021 — Keep Brave Search credential material out of logs and **LLM-visible content**
 THE PersonalAssistant SHALL exclude **Brave Search** API credential material from **operator-visible logs** and from **LLM-visible content** on the **web_search** execution path.
 
-**REQ-11.022** (Ubiquitous)  
+### REQ-11.022 — **Structured errors** for **web_search** and **web_fetch** failures
 THE PersonalAssistant SHALL surface **web_search** failures and **web_fetch** failures to the agent using **structured errors** aligned with the existing tool error contract.
 
-**REQ-11.023** (Ubiquitous)  
+### REQ-11.023 — Truncate or redact sensitive fields in **operator-visible logs**
 THE PersonalAssistant SHALL truncate or redact **web_search** query text, **web_fetch** URLs, and **web_fetch** body fragments in **operator-visible logs** according to project logging norms.
 
 ---
@@ -245,7 +245,7 @@ THE PersonalAssistant SHALL truncate or redact **web_search** query text, **web_
 
 *REQ-11.024*
 
-**REQ-11.024** (Ubiquitous)  
+### REQ-11.024 — Automated tests for validation, SSRF, cache, and local HTTPS **web_fetch**
 THE PersonalAssistant SHALL ship automated tests that cover **web_fetch** URL validation, **web_fetch** scheme enforcement, **SSRF mitigation** classification helpers, at least one **search result cache** hit path, at least one **search result cache** miss or expiry path, at least one **web_search** path where the **fallback search provider** supplies results after **primary search provider** failure, and **web_fetch** against a local HTTPS test server or fixture without relying on the public internet in default continuous integration jobs.
 
 ---

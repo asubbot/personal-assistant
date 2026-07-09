@@ -101,10 +101,10 @@ In the following, *System* = OpenAICompatible provider.
 
 *REQ-08.001, REQ-08.002*
 
-**REQ-08.001** (Optional feature)
+### REQ-08.001 — Provider default temperature applied to requests
 WHERE the LLMProvider has DefaultTemperature configured, THE OpenAICompatible provider SHALL include the temperature parameter in the HTTP request body.
 
-**REQ-08.002** (Event-driven)
+### REQ-08.002 — Request temperature overrides provider default
 WHEN CompletionOptions.Temperature is set, THE OpenAICompatible provider SHALL use the request temperature value instead of the provider default.
 
 ---
@@ -113,10 +113,10 @@ WHEN CompletionOptions.Temperature is set, THE OpenAICompatible provider SHALL u
 
 *REQ-08.003, REQ-08.004*
 
-**REQ-08.003** (Optional feature)
+### REQ-08.003 — Provider default max_tokens applied to requests
 WHERE the LLMProvider has DefaultMaxTokens greater than zero, THE OpenAICompatible provider SHALL include the max_tokens parameter in the HTTP request body.
 
-**REQ-08.004** (Event-driven)
+### REQ-08.004 — Request max_tokens overrides provider default
 WHEN CompletionOptions.MaxTokens is greater than zero, THE OpenAICompatible provider SHALL use the request max_tokens value instead of the provider default.
 
 ---
@@ -125,13 +125,13 @@ WHEN CompletionOptions.MaxTokens is greater than zero, THE OpenAICompatible prov
 
 *REQ-08.005, REQ-08.006, REQ-08.007*
 
-**REQ-08.005** (Optional feature)
+### REQ-08.005 — ForceJSONOutput enables JSON mode when supported
 WHERE the LLMProvider has SupportsJSONMode enabled AND CompletionOptions.ForceJSONOutput is true, THE OpenAICompatible provider SHALL include response_format with type "json_object" in the HTTP request body.
 
-**REQ-08.006** (Event-driven)
+### REQ-08.006 — Explicit ResponseFormat overrides ForceJSONOutput
 WHEN CompletionOptions.ResponseFormat is set, THE OpenAICompatible provider SHALL use the explicit ResponseFormat value instead of ForceJSONOutput or provider default.
 
-**REQ-08.007** (Optional feature)
+### REQ-08.007 — Provider default response format applied when no override
 WHERE the LLMProvider has DefaultResponseFormat configured AND no explicit ResponseFormat or ForceJSONOutput is set, THE OpenAICompatible provider SHALL include response_format with the configured type in the HTTP request body.
 
 ---

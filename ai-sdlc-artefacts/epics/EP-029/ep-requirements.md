@@ -67,7 +67,7 @@ EP-029 implements [ep-scope.md](ep-scope.md): operators need a standard way to p
 
 *REQ-29.001*
 
-**REQ-29.001** (Optional feature)  
+### REQ-29.001 — Explicit `observability_http` object enables HTTP; all fields required when present
 WHEN `observability_http` is present as a JSON object in `config.json` THE configuration loader SHALL require every field in that object (`listen_address`, `health_path`, `readiness_path`, `probe_llm`) to be set explicitly and SHALL reject duplicate health and readiness paths or invalid path shapes (for example paths not starting with `/`).
 
 ---
@@ -76,7 +76,7 @@ WHEN `observability_http` is present as a JSON object in `config.json` THE confi
 
 *REQ-29.002*
 
-**REQ-29.002** (Ubiquitous)  
+### REQ-29.002 — Health path returns 200 and JSON liveness body
 THE observability HTTP handler SHALL respond to `GET` on the configured health path with HTTP 200 and a JSON body that includes a process liveness field suitable for container healthchecks.
 
 ---
@@ -85,7 +85,7 @@ THE observability HTTP handler SHALL respond to `GET` on the configured health p
 
 *REQ-29.003*
 
-**REQ-29.003** (Ubiquitous)  
+### REQ-29.003 — Readiness path returns 200 when all checks pass, 503 otherwise
 THE observability HTTP handler SHALL respond to `GET` on the configured readiness path with HTTP 200 when all readiness checks pass, and with HTTP 503 when any check fails, returning JSON that lists per-check results.
 
 ---
@@ -94,7 +94,7 @@ THE observability HTTP handler SHALL respond to `GET` on the configured readines
 
 *REQ-29.004*
 
-**REQ-29.004** (Ubiquitous)  
+### REQ-29.004 — Readiness composes LLM, vectors, tool index, optional jobs, optional memory worker
 THE readiness evaluation SHALL include: configured LLM providers (and, when `probe_llm` is true, a bounded completion probe against the first configured provider), opened memory vector stores (`summaries`, `turns`, `notes`), tool vector index readiness, and—when `paths.jobs_db_path` is non-empty—the scheduled jobs runtime initialization outcome; WHEN memory summarization prerequisites from the composition root are satisfied THE evaluation SHALL require the memory summarization worker to be started.
 
 ---
@@ -103,7 +103,7 @@ THE readiness evaluation SHALL include: configured LLM providers (and, when `pro
 
 *REQ-29.005*
 
-**REQ-29.005** (Ubiquitous)  
+### REQ-29.005 — ep-scope — lifecycle events with consistent fields
 THE memory summarization worker, scheduled jobs runtime initialization, and tool vector index build completion SHALL emit structured `slog` records tagged as lifecycle events with stable keys `lifecycle_event`, `subsystem`, `lifecycle_phase`, and `duration_ms` where a duration applies.
 
 ---
@@ -112,7 +112,7 @@ THE memory summarization worker, scheduled jobs runtime initialization, and tool
 
 *REQ-29.006*
 
-**REQ-29.006** (Ubiquitous)  
+### REQ-29.006 — ep-scope — enable only when configuration is present
 THE main process SHALL NOT bind an observability HTTP listener unless `observability_http` is present in the loaded configuration.
 
 ---
@@ -121,7 +121,7 @@ THE main process SHALL NOT bind an observability HTTP listener unless `observabi
 
 *REQ-29.007*
 
-**REQ-29.007** (Ubiquitous)  
+### REQ-29.007 — ep-scope — operator documentation
 THE operator documentation under `docs/` SHALL describe how to configure `observability_http`, how to call health vs readiness from Docker (including `HEALTHCHECK` examples), and the lifecycle log field schema.
 
 ---
@@ -130,7 +130,7 @@ THE operator documentation under `docs/` SHALL describe how to configure `observ
 
 *REQ-29.008*
 
-**REQ-29.008** (NFR)  
+### REQ-29.008 — ep-scope — full quality gate
 THE change set SHALL pass `make check` from the repository root, and AC validation for EP-029 SHALL succeed via `./bin/validate EP-029` after `make build` from the repository root.
 
 ---

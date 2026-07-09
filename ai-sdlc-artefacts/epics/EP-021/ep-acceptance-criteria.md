@@ -6,11 +6,11 @@ Introduction: Testable conditions for scheduler routing without a Telegram-only 
 
 | AC ID | REQ | Summary |
 |-------|-----|---------|
-| [AC-21.001](#ac-21001) | [REQ-21.001](ep-requirements.md#requirements) | `/jobs list` works when runtime is ready |
+| [AC-21.001](#ac-21001) | [REQ-21.001](ep-requirements.md#requirements), [REQ-21.011](ep-requirements.md#req-21-011--keep-jobs-list-and-management-behaviour) | `/jobs list` works when runtime is ready |
 | [AC-21.002](#ac-21002) | [REQ-21.002](ep-requirements.md#requirements) | Plain chat delegates to base once |
 | [AC-21.003](#ac-21003) | [REQ-21.002](ep-requirements.md#requirements), [REQ-21.003](ep-requirements.md#requirements) | Schedule-shaped free text delegates to base once (no wrapper fallback) |
-| [AC-21.004](#ac-21004) | [REQ-21.004](ep-requirements.md#requirements), [REQ-21.005](ep-requirements.md#requirements), [REQ-21.009](ep-requirements.md#requirements) | Tool creates job with confirmation and audit path |
-| [AC-21.005](#ac-21005) | [REQ-21.010](ep-requirements.md#requirements) | Invalid clock fields yield message and nil tool error |
+| [AC-21.004](#ac-21004) | [REQ-21.004](ep-requirements.md#requirements), [REQ-21.005](ep-requirements.md#requirements), [REQ-21.009](ep-requirements.md#requirements), [REQ-21.012](ep-requirements.md#req-21-012--automated-tests-trace-acceptance-criteria) | Tool creates job with confirmation and audit path |
+| [AC-21.005](#ac-21005) | [REQ-21.010](ep-requirements.md#requirements), [REQ-21.012](ep-requirements.md#req-21-012--automated-tests-trace-acceptance-criteria) | Invalid clock fields yield message and nil tool error |
 | [AC-21.006](#ac-21006) | [REQ-21.006](ep-requirements.md#requirements) | Static system prompt unchanged (**Deferred** — manual diff review) |
 | [AC-21.007](#ac-21007) | [REQ-21.007](ep-requirements.md#requirements), [REQ-21.008](ep-requirements.md#requirements) | **Optional** example skill template loads; tool ref validates when jobs path set |
 
@@ -18,7 +18,7 @@ Introduction: Testable conditions for scheduler routing without a Telegram-only 
 
 ### AC-21.001
 
-**AC-21.001** (Trace: REQ-21.001)
+**AC-21.001** (Trace: REQ-21.001, REQ-21.011)
 
 Given a `jobsCommandHandler` with a ready `jobsRuntimeState` backed by an empty job store  
 When the user sends `/jobs list`  

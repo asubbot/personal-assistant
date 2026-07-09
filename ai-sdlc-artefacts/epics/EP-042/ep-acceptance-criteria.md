@@ -14,12 +14,12 @@ updated_at: 2026-05-31
 
 | AC ID | REQ | Test level | Summary |
 |-------|-----|------------|---------|
-| [AC-42.001](#ac-42-001) | REQ-42.001, REQ-42.002 | Manual | wire.Build exists; main.go thin |
-| [AC-42.002](#ac-42-002) | REQ-42.004, REQ-42.005 | Unit | Jobs states return deterministic messages |
+| [AC-42.001](#ac-42-001) | REQ-42.001, REQ-42.002, REQ-42.003, REQ-42.010 | Manual | wire.Build exists; main.go thin |
+| [AC-42.002](#ac-42-002) | REQ-42.004, REQ-42.005, REQ-42.008 | Unit | Jobs states return deterministic messages |
 | [AC-42.003](#ac-42-003) | REQ-42.006 | Unit | Readiness JSON reflects jobs state |
 | [AC-42.004](#ac-42-004) | REQ-42.007 | Unit | Close releases resources |
 | [AC-42.005](#ac-42-005) | REQ-42.009 | Manual | Subsystem insertion documented |
-| [AC-42.006](#ac-42-006) | REQ-42.012 | Manual (make check) | make check passes |
+| [AC-42.006](#ac-42-006) | REQ-42.011, REQ-42.012 | Manual (make check) | make check passes |
 
 ## Acceptance criteria
 
@@ -27,7 +27,7 @@ updated_at: 2026-05-31
 
 ### AC-42.001
 
-**Trace:** REQ-42.001, REQ-42.002  
+**Trace:** REQ-42.001, REQ-42.002, REQ-42.003  
 **Test level:** Manual
 
 Given the epic branch  
@@ -40,7 +40,7 @@ Then startup wiring SHALL be invoked via `wire.Build` and `main.go` SHALL not co
 
 ### AC-42.002
 
-**Trace:** REQ-42.004, REQ-42.005  
+**Trace:** REQ-42.004, REQ-42.005, REQ-42.008  
 **Test level:** Unit
 
 Given jobs runtime in initializing, ready, and failed states  
@@ -86,7 +86,7 @@ Then subsystem insertion checklist SHALL be present.
 
 ### AC-42.006
 
-**Trace:** REQ-42.012  
+**Trace:** REQ-42.011, REQ-42.012  
 **Test level:** Manual (make check)
 
 When `make check` runs  

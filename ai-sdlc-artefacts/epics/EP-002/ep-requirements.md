@@ -121,16 +121,16 @@ In the following, *System* = PersonalAssistant (or the relevant component as sta
 
 *REQ-02.001, REQ-02.002, REQ-02.003, REQ-02.004*
 
-**REQ-02.001** (Ubiquitous)  
+### REQ-02.001 — Day summarization for previous calendar day at fixed built-in local time (01:00) in pa_timezone
 THE system SHALL run day summarization for the **previous calendar day** in **pa_timezone** at a fixed built-in local wall-clock time of **01:00** in **pa_timezone**, without manual or external cron intervention.
 
-**REQ-02.002** (Ubiquitous)  
+### REQ-02.002 — Month summarization for previous calendar month on first local day at 01:00 in pa_timezone
 THE system SHALL run month summarization for the **previous calendar month** in **pa_timezone** on a defined built-in schedule: the **first calendar day** of the new month in **pa_timezone** at **01:00** local in **pa_timezone**, without manual or external cron intervention.
 
-**REQ-02.003** (Ubiquitous)  
+### REQ-02.003 — Year summarization for previous calendar year on first local day at 01:00 in pa_timezone
 THE system SHALL run year summarization for the **previous calendar year** in **pa_timezone** on a defined built-in schedule: the **first calendar day** of the new year in **pa_timezone** at **01:00** local in **pa_timezone**, without manual or external cron intervention.
 
-**REQ-02.004** (NFR)  
+### REQ-02.004 — Schedules built-in in code; no external cron; no JSON for summarization timing
 The schedules for day, month, and year summarization SHALL be built-in and mandatory; the system SHALL NOT rely on the operator to configure external cron or equivalent to trigger summarization. The wall-clock fire times above, the in-process scheduler tick interval, the per-summarization job timeout, and the bounded vector-reconciliation scan depth SHALL be defined in product code and SHALL NOT require operator JSON configuration for automatic summarization.
 
 ---
@@ -139,13 +139,13 @@ The schedules for day, month, and year summarization SHALL be built-in and manda
 
 *REQ-02.005, REQ-02.006, REQ-02.007*
 
-**REQ-02.005** (Event-driven)  
+### REQ-02.005 — Day catch-up when previous day has logs and no day summary
 WHEN the server starts AND the **previous calendar day** in **pa_timezone** has at least one LLM log entry AND no day summary exists for that day, THE system SHALL run day summarization for that day once (startup catch-up).
 
-**REQ-02.006** (Event-driven)  
+### REQ-02.006 — Month catch-up when previous month has day summaries and no month summary
 WHEN the server starts AND a **previous calendar month** in **pa_timezone** has at least one day summary AND no month summary exists for that month, THE system SHALL run month summarization for that month once (startup catch-up).
 
-**REQ-02.007** (Event-driven)  
+### REQ-02.007 — Year catch-up when previous year has month summaries and no year summary
 WHEN the server starts AND a **previous calendar year** in **pa_timezone** has at least one month summary AND no year summary exists for that year, THE system SHALL run year summarization for that year once (startup catch-up).
 
 ---
@@ -154,10 +154,10 @@ WHEN the server starts AND a **previous calendar year** in **pa_timezone** has a
 
 *REQ-02.008, REQ-02.009*
 
-**REQ-02.008** (Ubiquitous)  
+### REQ-02.008 — Vector documents include calendar date (or month/year) in stored text
 THE system SHALL store every document in the vector store (conversation turns and day, month, and year summaries) with the calendar date (or month/year) included in the stored text (e.g. "Date: YYYY-MM-DD" or equivalent) so that retrieved context is date-aware.
 
-**REQ-02.009** (Ubiquitous)  
+### REQ-02.009 — Retrieved vector chunks include type label in text passed to LLM
 WHEN the system injects vector search results into the LLM context, THE system SHALL prefix or otherwise label each chunk with its type in the text passed to the model using the set **turn**, **summary:day**, **summary:month**, and **summary:year**.
 
 ---
@@ -166,13 +166,13 @@ WHEN the system injects vector search results into the LLM context, THE system S
 
 *REQ-02.010, REQ-02.011, REQ-02.012*
 
-**REQ-02.010** (Ubiquitous)  
+### REQ-02.010 — Native **read_memory** tool; ISO date or bounded range; reject oversized range
 THE system SHALL provide a **native** tool identified as **read_memory** that returns long-term memory content from **memory_dir** for **structured ISO 8601 calendar date arguments** (a single date or a bounded **from**–**to** range), rejects arbitrary filesystem paths, and enforces configured maximum span and maximum output size. WHEN the requested range exceeds those limits, THE system SHALL **reject** the tool call with a structured error (no silent truncation of range reads in the baseline product behaviour).
 
-**REQ-02.011** (Ubiquitous)  
+### REQ-02.011 — Memory retrieval runtime skill governs tool use and phrase policy
 THE system SHALL ship or configure a **memory retrieval** runtime skill (per EP-013) whose documented policy states when the assistant invokes **read_memory** and how relative calendar phrases in **pa_timezone** are resolved or clarified with the user. THE skill package frontmatter SHALL list **read_memory** under `tools` so EP-013 tool validation passes against the native allowlist.
 
-**REQ-02.012** (Ubiquitous)  
+### REQ-02.012 — Semantic vector search remains available independently of memory tool calls
 THE system SHALL retain semantic search over the vector store for user messages regardless of whether the memory retrieval tool is invoked for the same message.
 
 ---
@@ -181,7 +181,7 @@ THE system SHALL retain semantic search over the vector store for user messages 
 
 *REQ-02.013*
 
-**REQ-02.013** (Event-driven)  
+### REQ-02.013 — Re-run replaces existing summary in memory and vector for that period
 WHEN summarization is run for a calendar day, month, or year that already has a summary in the memory store or vector store, THE system SHALL replace the existing summary (upsert semantics) so that no duplicate summary documents exist for that period.
 
 ---
@@ -190,11 +190,11 @@ WHEN summarization is run for a calendar day, month, or year that already has a 
 
 *REQ-02.014, REQ-02.015, REQ-02.016*
 
-**REQ-02.014** (NFR)  
-New or changed behaviour introduced in this epic SHALL be covered by unit and/or integration tests; all existing tests SHALL continue to pass.
+### REQ-02.014 — Automated tests; existing tests pass
+THE System SHALL cover new or changed behaviour introduced in this epic with unit or integration tests; all existing tests SHALL continue to pass.
 
-**REQ-02.015** (NFR)  
+### REQ-02.015 — Interactive LLM work takes precedence over background summarization
 WHEN both an interactive user LLM request and an automatic summarization job are pending, THE system SHALL schedule the interactive work ahead of the summarization job so that user-facing latency is not blocked indefinitely by background summarization.
 
-**REQ-02.016** (NFR)  
+### REQ-02.016 — Failed vector step after successful file write completes on a later run
 IF the system writes a day, month, or year summary file to **memory_dir** and a subsequent vector indexing step for that summary fails, THEN THE system SHALL complete vector indexing for that summary without requiring operator action by running **vector reconciliation** for that calendar period (embed and upsert from the existing file, without a new summarization LLM call). THAT reconciliation SHALL run on a subsequent **process startup** or **background reconciliation cycle** before normal operation continues, in addition to any path that re-runs summarization upsert for the same period.

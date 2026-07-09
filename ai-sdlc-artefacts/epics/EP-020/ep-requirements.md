@@ -60,47 +60,47 @@ flowchart LR
 
 ### NL Request Intake
 
-**REQ-20.001** (Event-driven)  
+### REQ-20.001 — Detect supported NL creation request in chat
 WHEN an authorized Telegram user sends a supported natural-language creation request, THE PersonalAssistant System SHALL treat that message as a scheduled-job creation operation.
 
-**REQ-20.002** (Event-driven)  
+### REQ-20.002 — Extract instruction and HH:MM daily time
 WHEN the Creation parser processes a supported creation request, THE PersonalAssistant System SHALL extract instruction text and requested delivery time in HH:MM daily format.
 
-**REQ-20.013** (Event-driven)  
+### REQ-20.013 — Use native-tool fallback after deterministic parser non-match
 WHEN the Creation parser does not match and an explicit schedule-intent message is detected, THE PersonalAssistant System SHALL invoke Native create tool fallback to extract instruction text and requested delivery time in HH:MM daily format for one creation attempt.
 
 ### Job Creation
 
-**REQ-20.003** (Event-driven)  
+### REQ-20.003 — Persist created job in active status
 WHEN a creation request is validated, THE Job Store SHALL persist a new Scheduled Agent Job in active status with a stable Job ID.
 
-**REQ-20.004** (Ubiquitous)  
+### REQ-20.004 — Apply pa_timezone to created jobs
 THE PersonalAssistant System SHALL assign the Default creation timezone to jobs created from natural-language requests.
 
-**REQ-20.005** (Event-driven)  
+### REQ-20.005 — Set delivery target to current Telegram chat
 WHEN a job is created from a Telegram request, THE PersonalAssistant System SHALL set the job Delivery Target to the current Telegram chat.
 
 ### User Feedback, Safety, and Compatibility
 
-**REQ-20.006** (Event-driven)  
+### REQ-20.006 — Return deterministic creation confirmation
 WHEN a job is created successfully, THE PersonalAssistant System SHALL return a deterministic creation confirmation containing Job ID, schedule, timezone, and next run timestamp.
 
-**REQ-20.007** (Unwanted event)  
+### REQ-20.007 — Escalate malformed explicit schedule-intent requests to LLM tool path
 IF a creation request has malformed time syntax for deterministic and native-tool parser paths, THEN THE PersonalAssistant System SHALL escalate handling to the base LLM flow with `create_scheduled_job` tool instruction and SHALL NOT persist a job before that escalation.
 
-**REQ-20.008** (Ubiquitous)  
+### REQ-20.008 — Created jobs are manageable with existing /jobs commands
 THE PersonalAssistant System SHALL expose jobs created by natural-language requests through existing `/jobs` management operations.
 
 ### Runtime, Security, and Observability
 
-**REQ-20.009** (Event-driven)  
+### REQ-20.009 — Created jobs execute and deliver on schedule
 WHEN the requested schedule time is reached for a created job, THE Scheduler SHALL execute the job as a standard agent turn and deliver output to Telegram.
 
-**REQ-20.010** (Unwanted event)  
+### REQ-20.010 — Unauthorized users cannot create jobs
 IF a Telegram user is not authorized, THEN THE PersonalAssistant System SHALL reject natural-language creation requests.
 
-**REQ-20.011** (State-driven)  
+### REQ-20.011 — Parser triggers only on explicit creation syntax
 WHILE processing regular conversational messages, THE PersonalAssistant System SHALL attempt deterministic parsing first and SHALL attempt Native create tool fallback only for explicit schedule-intent messages.
 
-**REQ-20.012** (Event-driven)  
+### REQ-20.012 — Creation outcomes are recorded in audit logs
 WHEN a creation attempt is processed, THE Audit Logger SHALL record actor identity, operation type, outcome, and Job ID when available.

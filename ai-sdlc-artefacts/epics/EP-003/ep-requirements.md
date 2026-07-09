@@ -86,7 +86,7 @@ In the following, *System* = PersonalAssistant (or the relevant component as sta
 
 *REQ-03.001*
 
-**REQ-03.001** (NFR)  
+### REQ-03.001 — System SHALL NOT expose a general shell/terminal tool to the agent
 THE system SHALL NOT expose a general “execute shell command” or “run terminal” tool to the agent. Execution on nodes SHALL occur only via defined tools (e.g. `run_on_node`) subject to the existing allowlist (REQ-01.004, REQ-01.005). This constraint SHALL be documented in the architecture or security documentation.
 
 ---
@@ -95,10 +95,10 @@ THE system SHALL NOT expose a general “execute shell command” or “run term
 
 *REQ-03.002, REQ-03.003*
 
-**REQ-03.002** (Ubiquitous)  
+### REQ-03.002 — Sensitive tools require confirmation implemented in code
 THE system SHALL require explicit user confirmation for any tool that performs a sensitive or destructive action (e.g. executing a command on a node). The requirement to ask for confirmation SHALL be implemented in the tool or in the core that invokes the tool (tool-level confirmation), not in the LLM.
 
-**REQ-03.003** (Unwanted event)  
+### REQ-03.003 — LLM SHALL NOT decide whether to ask user for confirmation
 THE system SHALL NOT delegate to the LLM the decision of whether to ask the user for confirmation before performing a sensitive or destructive action. The implementation SHALL enforce confirmation in code regardless of LLM output.
 
 ---
@@ -107,7 +107,7 @@ THE system SHALL NOT delegate to the LLM the decision of whether to ask the user
 
 *REQ-03.004*
 
-**REQ-03.004** (Ubiquitous)  
+### REQ-03.004 — Full parameters of the action SHALL be visible when user confirms
 WHEN the user is asked to confirm an action (e.g. run_on_node command), THE system SHALL present the full parameters of that action (e.g. full command string, node_id) in a way that the user can see them without relying on scrolling or truncated fields, so that hidden payloads (e.g. exfiltration in a long string) cannot rely on UI truncation.
 
 ---
@@ -116,10 +116,10 @@ WHEN the user is asked to confirm an action (e.g. run_on_node command), THE syst
 
 *REQ-03.005, REQ-03.006*
 
-**REQ-03.005** (Ubiquitous)  
+### REQ-03.005 — Each user request SHALL have a session/trace ID
 THE system SHALL assign a unique session or trace ID to each user request (e.g. each incoming message from the adapter that triggers the agent loop).
 
-**REQ-03.006** (Ubiquitous)  
+### REQ-03.006 — Trace ID SHALL be propagated to adapter, core, LLM logger, tool execution, scheduler logs
 THE system SHALL propagate the session/trace ID through the pipeline and SHALL include it in logs produced by the adapter, core, LLM logging subsystem, tool execution, and scheduler (where applicable), so that all events related to a single user request can be correlated.
 
 ---
@@ -128,7 +128,7 @@ THE system SHALL propagate the session/trace ID through the pipeline and SHALL i
 
 *REQ-03.007*
 
-**REQ-03.007** (Ubiquitous)  
+### REQ-03.007 — At least one E2E scenario with mocked tools asserting on tool call order/params
 THE system SHALL have at least one end-to-end test that runs the full agent flow (incoming message → core → LLM → tool dispatch) with tools replaced by mocks, and SHALL assert on the order and parameters of tool invocations (and optionally on the final reply), so that changes to prompts or models can be validated against expected tool usage.
 
 ---
@@ -137,7 +137,7 @@ THE system SHALL have at least one end-to-end test that runs the full agent flow
 
 *REQ-03.008*
 
-**REQ-03.008** (NFR)  
+### REQ-03.008 — No secrets in text sent to LLM or in operator-visible logs
 THE system SHALL NOT include secrets (passwords, API keys, tokens, or equivalent) in the plain text sent to the LLM or in log output that is visible to operators. Redaction or out-of-band handling (as in EP-001) SHALL be applied; any new code paths introduced in this epic that handle user or node data SHALL preserve this property.
 
 ---
@@ -146,10 +146,10 @@ THE system SHALL NOT include secrets (passwords, API keys, tokens, or equivalent
 
 *REQ-03.009, REQ-03.010*
 
-**REQ-03.009** (Ubiquitous)  
+### REQ-03.009 — New destructive tools SHALL default to soft delete where applicable
 WHERE the system gains a tool that deletes or overwrites user data, THE system SHALL default to soft delete (e.g. move to trash or archive) where applicable, unless the tool is explicitly defined as irreversible.
 
-**REQ-03.010** (Ubiquitous)  
+### REQ-03.010 — Irreversible delete only via explicit, separate capability or parameter
 WHERE the system provides irreversible delete or overwrite, THE system SHALL do so only via an explicit, separate capability or parameter (e.g. a dedicated “permanent delete” tool or an explicit “irreversible” flag), not as the default behaviour of a generic delete tool.
 
 ---
@@ -158,5 +158,5 @@ WHERE the system provides irreversible delete or overwrite, THE system SHALL do 
 
 *REQ-03.011*
 
-**REQ-03.011** (NFR)  
+### REQ-03.011 — New or changed behaviour covered by tests; existing tests pass
 New or changed behaviour introduced in this epic SHALL be covered by unit and/or integration tests; all existing tests SHALL continue to pass.

@@ -93,64 +93,64 @@ flowchart LR
 
 ### Retry policy scope
 
-**REQ-33.001** (Ubiquitous)  
+### REQ-33.001 — Apply retries to `catchup_day`
 THE PersonalAssistant SHALL apply automatic retry policy to `catchup_day` failures in `memoryjob.Runner`.
 
-**REQ-33.002** (Ubiquitous)  
+### REQ-33.002 — Apply retries to `summarize_yesterday`
 THE PersonalAssistant SHALL apply automatic retry policy to `summarize_yesterday` failures in `memoryjob.Runner`.
 
-**REQ-33.003** (Ubiquitous)  
+### REQ-33.003 — Keep month/year paths unchanged
 THE PersonalAssistant SHALL keep `catchup_month`, `catchup_year`, and month/year scheduled rollup retry behavior unchanged in EP-033.
 
 ---
 
 ### Retry scheduling behavior
 
-**REQ-33.004** (Event-driven)  
+### REQ-33.004 — Schedule retry with bounded backoff
 WHEN a retryable failure occurs in `catchup_day` or `summarize_yesterday`, THE PersonalAssistant SHALL enqueue a retry for the same day target using bounded backoff delay.
 
-**REQ-33.005** (State-driven)  
+### REQ-33.005 — Stop retries at configured max attempts
 WHILE retry attempts for one day target are below max attempts, THE PersonalAssistant SHALL continue scheduling retries, and THE PersonalAssistant SHALL stop automatic retries when retry exhaustion is reached.
 
-**REQ-33.006** (Unwanted event)  
+### REQ-33.006 — Avoid duplicate retry chains for same day target
 IF a retry queue item for the same day target is already pending, THEN THE PersonalAssistant SHALL prevent duplicate retry chain enqueue for that target.
 
 ---
 
 ### Queue semantics
 
-**REQ-33.007** (State-driven)  
+### REQ-33.007 — Keep user-turn deferral behavior for retryable day jobs
 WHILE user turn deferral is active, THE PersonalAssistant SHALL preserve existing deferral behavior for retryable day jobs and their retries.
 
-**REQ-33.008** (Ubiquitous)  
+### REQ-33.008 — Execute retry via existing memoryjob queue model
 THE PersonalAssistant SHALL execute retries through the existing `memoryjob` queue and worker loop instead of introducing a separate retry worker subsystem.
 
 ---
 
 ### Observability
 
-**REQ-33.009** (Event-driven)  
+### REQ-33.009 — Emit structured retry logs
 WHEN retry is scheduled or exhausted, THE PersonalAssistant SHALL emit structured logs with job name, day target, attempt index, and next delay or exhaustion outcome.
 
 ---
 
 ### Existing behavior preservation
 
-**REQ-33.010** (Ubiquitous)  
+### REQ-33.010 — Preserve successful day summarization behavior
 THE PersonalAssistant SHALL preserve current successful day summarization write and vector-index flow semantics when no error occurs.
 
 ---
 
 ### Verification
 
-**REQ-33.011** (NFR)  
+### REQ-33.011 — Keep deterministic retry timing policy
 THE PersonalAssistant SHALL use deterministic retry policy constants so repeated runs with identical clock and failures produce identical retry schedule.
 
-**REQ-33.012** (NFR)  
+### REQ-33.012 — Add unit tests for retry scheduling and exhaustion
 THE PersonalAssistant SHALL include automated tests that cover retry schedule timing, max-attempt exhaustion, and duplicate prevention for day-job retries.
 
-**REQ-33.013** (NFR)  
+### REQ-33.013 — `make check` passes
 THE EP-033 change set SHALL pass `make check`.
 
-**REQ-33.014** (NFR)  
+### REQ-33.014 — `./bin/validate EP-033` passes
 THE EP-033 change set SHALL pass `./bin/validate EP-033`.

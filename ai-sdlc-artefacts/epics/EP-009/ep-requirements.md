@@ -119,28 +119,28 @@ In the following, *System* = PersonalAssistant.
 
 *REQ-09.001, REQ-09.002, REQ-09.003, REQ-09.004, REQ-09.005, REQ-09.006, REQ-09.007, REQ-09.018*
 
-**REQ-09.001** (Event-driven)
+### REQ-09.001 — Use bridge network when template specifies bridge
 WHEN a catalog tool template specifies `docker run` with `--network bridge`, THE System SHALL execute the resulting command in a Docker container that uses bridge networking for outbound network access.
 
-**REQ-09.002** (Event-driven)
-WHEN the System executes code in a Docker sandbox, THE operator SHOULD supply a memory limit of 256MB via the Docker `--memory` flag with value `256m` in the persisted template (unquoted form `--memory=256m` for `cmdsafe`). THE System SHALL NOT require this substring in `create_tool` validation; enforcement is operational (template content and node policy).
+### REQ-09.002 — Apply 256MB memory limit
+WHEN the System executes code in a Docker sandbox, THE persisted template SHALL include a memory limit of 256MB via the Docker `--memory` flag with value `256m` in unquoted form `--memory=256m` for `cmdsafe`. THE System SHALL NOT require this substring in `create_tool` validation; enforcement is operational (template content and node policy).
 
-**REQ-09.003** (Event-driven)
-WHEN the System executes code in a Docker sandbox, THE operator SHOULD supply a CPU limit of 0.5 cores via the Docker `--cpus` flag (unquoted `--cpus=0.5`) in the template. THE System SHALL NOT require this substring in `create_tool` validation; enforcement is operational.
+### REQ-09.003 — Apply 0.5 CPU limit
+WHEN the System executes code in a Docker sandbox, THE persisted template SHALL include a CPU limit of 0.5 cores via the Docker `--cpus` flag (unquoted `--cpus=0.5`). THE System SHALL NOT require this substring in `create_tool` validation; enforcement is operational.
 
-**REQ-09.004** (Event-driven)
+### REQ-09.004 — Enforce 30s execution timeout
 WHEN the System executes code in a Docker sandbox, THE System SHALL enforce an execution timeout of 30 seconds and terminate the container if exceeded.
 
-**REQ-09.005** (Ubiquitous)
+### REQ-09.005 — Support Python 3.14 sandbox image
 THE System SHALL support the `pa-sandbox:python` Docker image containing Python 3.14 with the Python standard library `json` module and third-party packages requests, httpx, beautifulsoup4, and lxml, and standard library modules re, datetime, and math.
 
-**REQ-09.006** (Ubiquitous)
+### REQ-09.006 — Support Node.js 22 sandbox image
 THE System SHALL support the `pa-sandbox:node` Docker image containing Node.js 22 LTS with axios, node-fetch, and cheerio packages.
 
-**REQ-09.007** (Ubiquitous)
+### REQ-09.007 — Support Alpine base sandbox image
 THE System SHALL support the `pa-sandbox:base` Docker image based on Alpine Linux with curl and jq for simple HTTP and shell tasks.
 
-**REQ-09.018** (Event-driven)
+### REQ-09.018 — Enforce network isolation when none
 WHEN a catalog tool template specifies `docker run` with `--network none`, THE System SHALL execute the container such that outbound connectivity from inside the container to a public internet endpoint is not available, verifiable by a failed connection attempt in the integration test environment.
 
 ---
@@ -149,22 +149,22 @@ WHEN a catalog tool template specifies `docker run` with `--network none`, THE S
 
 *REQ-09.008, REQ-09.009, REQ-09.010, REQ-09.011, REQ-09.012, REQ-09.013*
 
-**REQ-09.008** (Event-driven)
+### REQ-09.008 — Accept tool definition parameters
 WHEN the LLM calls the `create_tool` tool, THE System SHALL accept parameters: id, index_text, template, node_id, arguments (optional), and system_prompt (optional).
 
-**REQ-09.009** (Complex)
+### REQ-09.009 — Validate template whitelist; reject invalid
 WHEN the System receives a tool definition from `create_tool`, THE System SHALL validate that the template starts with `docker run --rm --network bridge` or `docker run --rm --network none`; IF the template does not match, THEN THE System SHALL reject the tool definition with a validation error.
 
-**REQ-09.010** (Unwanted event)
+### REQ-09.010 — Reject duplicate tool IDs
 IF a tool definition contains an ID that already exists in the catalog, THEN THE System SHALL reject the tool definition and return a duplicate ID error.
 
-**REQ-09.011** (Event-driven)
+### REQ-09.011 — Append tool to tools.yaml
 WHEN a tool definition passes validation, THE System SHALL append the tool definition to tools.yaml in YAML format.
 
-**REQ-09.012** (Event-driven)
+### REQ-09.012 — Add tool to runtime catalog
 WHEN a tool definition is written to tools.yaml, THE System SHALL add the tool to the runtime catalog immediately without requiring a service restart.
 
-**REQ-09.013** (Event-driven)
+### REQ-09.013 — Return success message to LLM
 WHEN a tool is successfully created, THE System SHALL return a success message to the LLM indicating the tool ID and availability.
 
 ---
@@ -173,16 +173,16 @@ WHEN a tool is successfully created, THE System SHALL return a success message t
 
 *REQ-09.014, REQ-09.015, REQ-09.016, REQ-09.017*
 
-**REQ-09.014** (Ubiquitous)
+### REQ-09.014 — Sandbox startup within 5 seconds
 THE System SHALL start a Docker sandbox container and begin execution within 5 seconds when the image is cached on the node.
 
-**REQ-09.015** (Ubiquitous)
+### REQ-09.015 — create_tool within 1 second
 THE System SHALL complete the `create_tool` operation (validation, file write, runtime catalog update) within 1 second.
 
-**REQ-09.016** (Ubiquitous)
+### REQ-09.016 — Unit test coverage at least 70%
 THE System SHALL maintain unit test coverage of at least 70% for the `create_tool` tool and template validation logic.
 
-**REQ-09.017** (Unwanted event)
+### REQ-09.017 — Reject tool definitions containing secrets
 IF a tool definition matches configured patterns for secrets, API keys, or credentials, THEN THE System SHALL reject persistence of that tool definition.
 
 ---

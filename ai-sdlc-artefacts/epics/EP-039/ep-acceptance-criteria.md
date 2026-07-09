@@ -21,11 +21,11 @@ Testable acceptance criteria for **EP-039**: DRY `tools.vector_search_tools`, ty
 | AC ID | REQ (trace) | Test level | Summary |
 |-------|-------------|------------|---------|
 | [AC-39.001](#ac-39-001) | [REQ-39.001](ep-requirements.md#req-39-001--require-defaults-and-per-tool-overrides) | Unit | Load requires `defaults` + three tool override objects |
-| [AC-39.002](#ac-39-002) | [REQ-39.002](ep-requirements.md#req-39-002--reject-legacy-vector_search_tools-shape), [REQ-39.020](ep-requirements.md#req-39-020--negative-legacy-fixtures) | Unit | Legacy flat shape rejected |
+| [AC-39.002](#ac-39-002) | [REQ-39.002](ep-requirements.md#req-39-002--reject-legacy-vector_search_tools-shape), [REQ-39.018](ep-requirements.md#req-39-018--explicit-legacy-errors), [REQ-39.020](ep-requirements.md#req-39-020--negative-legacy-fixtures), [REQ-39.022](ep-requirements.md#req-39-022--preserve-explicit-json-rules) | Unit | Legacy flat shape rejected |
 | [AC-39.003](#ac-39-003) | [REQ-39.003](ep-requirements.md#req-39-003--validate-defaults-bounds), [REQ-39.004](ep-requirements.md#req-39-004--validate-per-tool-overrides) | Unit | Bounds validation on defaults and overrides |
 | [AC-39.004](#ac-39-004) | [REQ-39.005](ep-requirements.md#req-39-005--resolve-merged-settings), [REQ-39.006](ep-requirements.md#req-39-006--runtime-parity-for-vector-tools), [REQ-39.019](ep-requirements.md#req-39-019--equivalent-config-parity-tests) | Unit | Equivalent config → same resolved vector tool settings |
 | [AC-39.005](#ac-39-005) | [REQ-39.007](ep-requirements.md#req-39-007--typed-tooloutputartifactsconfig), [REQ-39.008](ep-requirements.md#req-39-008--validate-artifact-fields) | Unit | Typed artifact config validates at load |
-| [AC-39.006](#ac-39-006) | [REQ-39.009](ep-requirements.md#req-39-009--wire-tool_result_prompt_bytes) | Unit | Truncation uses `tool_result_prompt_bytes` from config |
+| [AC-39.006](#ac-39-006) | [REQ-39.009](ep-requirements.md#req-39-009--wire-tool_result_prompt_bytes), [REQ-39.010](ep-requirements.md#req-39-010--wire-artifact-directory) | Unit | Truncation uses `tool_result_prompt_bytes` from config |
 | [AC-39.007](#ac-39-007) | [REQ-39.011](ep-requirements.md#req-39-011--reject-unknown-artifact-keys) | Unit | Unknown nested artifact keys fail load |
 | [AC-39.008](#ac-39-008) | [REQ-39.012](ep-requirements.md#req-39-012--require-sqlite_store_defaults), [REQ-39.013](ep-requirements.md#req-39-013--per-store-override-blocks) | Unit | `sqlite_store_defaults` required; stores are overrides |
 | [AC-39.009](#ac-39-009) | [REQ-39.014](ep-requirements.md#req-39-014--effective-pragma-parity), [REQ-39.019](ep-requirements.md#req-39-019--equivalent-config-parity-tests) | Unit | Equivalent config → same effective SQLite policy |

@@ -25,7 +25,7 @@ EP-011 adds native **web_search** (Brave Search or DuckDuckGo, with optional **f
 | [AC-11.003](#ac-11-003) | [REQ-11.004](ep-requirements.md#tools--providers), [REQ-11.006](ep-requirements.md#tools--providers), [REQ-11.008](ep-requirements.md#tools--providers) | Brave provider returns ranked title, URL, snippet from API JSON |
 | [AC-11.004](#ac-11-004) | [REQ-11.005](ep-requirements.md#tools--providers), [REQ-11.008](ep-requirements.md#tools--providers) | DuckDuckGo provider returns ranked title, URL, snippet from HTML response |
 | [AC-11.005](#ac-11-005) | [REQ-11.007](ep-requirements.md#tools--providers) | Brave provider with missing API key file returns structured error |
-| [AC-11.006](#ac-11-006) | [REQ-11.009](ep-requirements.md#search-cache)–[REQ-11.012](ep-requirements.md#search-cache) | Cache hit returns same results without second upstream call; TTL expiry refetches; max entries evicts |
+| [AC-11.006](#ac-11-006) | [REQ-11.009](ep-requirements.md#search-cache)–[REQ-11.012](ep-requirements.md#search-cache), [REQ-11.011](ep-requirements.md#req-11-011--cache-hit-avoids-new-upstream-search-request) | Cache hit returns same results without second upstream call; TTL expiry refetches; max entries evicts |
 | [AC-11.007](#ac-11-007) | [REQ-11.010](ep-requirements.md#search-cache) | Different normalized queries or **search provider** chains produce distinct cache keys |
 | [AC-11.008](#ac-11-008) | [REQ-11.013](ep-requirements.md#web_fetch--ssrf) | **web_fetch** rejects `http://` and non-https schemes |
 | [AC-11.009](#ac-11-009) | [REQ-11.014](ep-requirements.md#web_fetch--ssrf) | **web_fetch** rejects loopback and private-range targets |
@@ -97,7 +97,7 @@ Then the tool SHALL return a structured error that names the failure class and S
 
 ### AC-11.006
 
-**AC-11.006** (Trace: [REQ-11.009](ep-requirements.md#search-cache)–[REQ-11.012](ep-requirements.md#search-cache))
+**AC-11.006** (Trace: [REQ-11.009](ep-requirements.md#search-cache)–[REQ-11.012](ep-requirements.md#search-cache), [REQ-11.011](ep-requirements.md#req-11-011--cache-hit-avoids-new-upstream-search-request))
 
 Given identical normalized query and provider and TTL not expired  
 When **web_search** is invoked twice  

@@ -88,61 +88,61 @@ flowchart LR
 
 ### Tool contract
 
-**REQ-31.001** (Ubiquitous)  
+### REQ-31.001 — Register native tool id `search_vector_memory`
 THE PersonalAssistant SHALL expose a native tool with id `search_vector_memory` in the main conversation tool registry when vector memory and embedding runtime dependencies are available.
 
-**REQ-31.002** (Unwanted event)  
+### REQ-31.002 — Require non-empty semantic query
 IF a `search_vector_memory` call omits `query` or provides an empty `query`, THEN THE PersonalAssistant SHALL reject the call with a deterministic validation error.
 
 ---
 
 ### Retrieval lanes
 
-**REQ-31.003** (Optional feature)  
+### REQ-31.003 — Search selected lane(s): notes/summaries/turns
 WHERE `lanes` is omitted, THE PersonalAssistant SHALL search all available memory lanes (`notes`, `summaries`, `turns`) for `search_vector_memory`.
 
-**REQ-31.004** (Unwanted event)  
+### REQ-31.004 — Validate lane values and reject unknown lanes
 IF a `search_vector_memory` call contains a lane value outside `{notes, summaries, turns}`, THEN THE PersonalAssistant SHALL reject the call with a deterministic validation error naming the invalid lane.
 
 ---
 
 ### Limits and output shaping
 
-**REQ-31.005** (Ubiquitous)  
+### REQ-31.005 — Enforce bounded top_k and deterministic ordering
 THE PersonalAssistant SHALL enforce configured limits for `top_k` and output bytes for `search_vector_memory`, and SHALL return results in deterministic lane-and-score order.
 
-**REQ-31.006** (Ubiquitous)  
+### REQ-31.006 — Return compact structured snippets with source ids
 THE PersonalAssistant SHALL return `search_vector_memory` results as compact structured snippets that include source identifiers and lane labels suitable for tool-result prompt insertion.
 
 ---
 
 ### Safety and integration
 
-**REQ-31.007** (Ubiquitous)  
+### REQ-31.007 — Tool is read-only and does not mutate memory files/index
 THE PersonalAssistant SHALL implement `search_vector_memory` as read-only behaviour that does not append, delete, or rewrite memory files or vector rows.
 
-**REQ-31.008** (Ubiquitous)  
+### REQ-31.008 — Allow runtime skills to reference `search_vector_memory`
 THE PersonalAssistant runtime skill validation SHALL accept `search_vector_memory` as an allowed native tool reference.
 
-**REQ-31.009** (Event-driven)  
+### REQ-31.009 — Emit structured invocation logs without sensitive leakage
 WHEN `search_vector_memory` is invoked, THE PersonalAssistant SHALL emit a structured tool-invocation log entry that records tool id, validated arguments, and result/error metadata with existing redaction policy applied.
 
 ---
 
 ### Retrieval policy
 
-**REQ-31.010** (Ubiquitous)  
+### REQ-31.010 — On-demand retrieval works without enabling auto-RAG lanes
 THE PersonalAssistant SHALL support `search_vector_memory` tool invocation and useful semantic retrieval even when `conversation_context.memory_vector` auto-retrieval top_k values are all zero.
 
 ---
 
 ### Verification
 
-**REQ-31.011** (NFR)  
+### REQ-31.011 — `make check` passes
 THE EP-031 change set SHALL pass `make check` on a clean working tree.
 
-**REQ-31.012** (NFR)  
+### REQ-31.012 — `make validate` passes
 THE EP-031 change set SHALL pass `make validate` without parameters on a clean working tree.
 
-**REQ-31.013** (NFR)  
+### REQ-31.013 — End-to-end conversational retrieval scenario passes
 WHEN a user asks a question that depends on prior semantic context, THE PersonalAssistant SHALL complete an end-to-end flow where the main LLM invokes `search_vector_memory`, receives bounded relevant snippets, and produces a grounded final answer without requiring auto-RAG system-tail retrieval.

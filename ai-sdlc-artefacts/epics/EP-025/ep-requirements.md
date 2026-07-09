@@ -78,10 +78,10 @@ flowchart LR
 
 *REQ-25.001, REQ-25.002*
 
-**REQ-25.001** (Ubiquitous)  
+### REQ-25.001 — Relocate job E2E tests under tests/e2e with e2e tag
 THE PersonalAssistant build SHALL store previously `cmd/pa` end-to-end job lifecycle tests under `tests/e2e` behind the E2E build tag so Default unit+integration run does not compile those files.
 
-**REQ-25.002** (Ubiquitous)  
+### REQ-25.002 — Keep non-e2e placeholder so default builds include the package
 THE `tests/e2e` package SHALL include at least one Go test file built when the E2E build tag is absent so `go list ./tests/e2e` remains a valid package for Default unit+integration run.
 
 ---
@@ -90,10 +90,10 @@ THE `tests/e2e` package SHALL include at least one Go test file built when the E
 
 *REQ-25.003, REQ-25.004*
 
-**REQ-25.003** (Ubiquitous)  
+### REQ-25.003 — Declare test-e2e target
 THE repository Makefile SHALL define a `test-e2e` target that runs `go test` with both `integration` and `e2e` tags against `./tests/e2e/...`.
 
-**REQ-25.004** (Ubiquitous)  
+### REQ-25.004 — Declare coverage-e2e target
 THE repository Makefile SHALL define a `coverage-e2e` target that writes a coverage profile distinct from the default `coverage.out` filename.
 
 ---
@@ -102,7 +102,7 @@ THE repository Makefile SHALL define a `coverage-e2e` target that writes a cover
 
 *REQ-25.005*
 
-**REQ-25.005** (Ubiquitous)  
+### REQ-25.005 — CI summary distinguishes coverage layers
 THE GitHub Actions workflow that runs `make check` SHALL document in its step summary that end-to-end coverage is tracked separately from the default `coverage.out` profile.
 
 ---
@@ -111,7 +111,7 @@ THE GitHub Actions workflow that runs `make check` SHALL document in its step su
 
 *REQ-25.006*
 
-**REQ-25.006** (Ubiquitous)  
+### REQ-25.006 — Default coverage recipe omits e2e tag
 THE default `coverage` Makefile target SHALL invoke `go test` with the `integration` tag only (without `e2e`) for the repository-wide coverage profile.
 
 ---
@@ -120,7 +120,7 @@ THE default `coverage` Makefile target SHALL invoke `go test` with the `integrat
 
 *REQ-25.007*
 
-**REQ-25.007** (Ubiquitous)  
+### REQ-25.007 — DeliveryRunner lives in internal/jobs
 THE scheduled job delivery runner previously defined in `cmd/pa` SHALL be implemented as `DeliveryRunner` inside `internal/jobs` and wired from `cmd/pa` using `NewDeliveryRunner`.
 
 ---
@@ -129,7 +129,7 @@ THE scheduled job delivery runner previously defined in `cmd/pa` SHALL be implem
 
 *REQ-25.008*
 
-**REQ-25.008** (Ubiquitous)  
+### REQ-25.008 — Quality gate passes
 THE change set SHALL pass `make check` from the repository root.
 
 ---
