@@ -23,8 +23,8 @@ help:
 	@echo "  make check-boundaries - Verify module boundaries (no cycles, forbidden edges)"
 	@echo ""
 	@echo "Validation:"
-	@echo "  make validate - Run AC coverage validator for all epics"
-	@echo "  make validate EP-009 - Validate a single epic"
+	@echo "  make validate - Run AC + ears + req (all in-scope epics)"
+	@echo "  make validate EP-009 - Run AC + ears + req for one epic"
 	@echo ""
 	@echo "  make check  - Verify ai-sdlc pin, then fmt + vet + vuln + lint + test-race + test-e2e + coverage + check-boundaries"
 

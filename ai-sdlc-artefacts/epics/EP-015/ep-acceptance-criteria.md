@@ -15,7 +15,7 @@ This document defines testable acceptance criteria for the Telegram token usage 
 
 | AC ID | REQ | Summary |
 |-------|-----|---------|
-| [AC-15.001](#ac-15-001) | REQ-15.001, REQ-15.002, REQ-15.004, REQ-15.006 | Multi-completion turn sums usage and appends a correctly formatted footer |
+| [AC-15.001](#ac-15-001) | REQ-15.001, REQ-15.002, REQ-15.003, REQ-15.004, REQ-15.006, REQ-15.011 | Multi-completion turn sums usage and appends a correctly formatted footer |
 | [AC-15.002](#ac-15-002) | REQ-15.005 | All completions report zero usage → outbound string has no token footer |
 | [AC-15.003](#ac-15-003) | REQ-15.007 | Long reply splits into multiple chunks; footer appears only on the last `sendMessage` payload |
 | [AC-15.004](#ac-15-004) | REQ-15.008 | Empty assistant body with non-zero usage → no outbound send (or no send containing only the footer) |
@@ -27,7 +27,7 @@ This document defines testable acceptance criteria for the Telegram token usage 
 
 ## Acceptance criteria
 
-<a id="ac-15-001"></a>**AC-15.001** ([REQ-15.001](ep-requirements.md#req-15-001), [REQ-15.002](ep-requirements.md#req-15-002), [REQ-15.004](ep-requirements.md#req-15-004), [REQ-15.006](ep-requirements.md#req-15-006))
+<a id="ac-15-001"></a>**AC-15.001** ([REQ-15.001](ep-requirements.md#req-15-001), [REQ-15.002](ep-requirements.md#req-15-002), [REQ-15.003](ep-requirements.md#req-15-003--counts-from-api-usage-only), [REQ-15.004](ep-requirements.md#req-15-004), [REQ-15.006](ep-requirements.md#req-15-006), [REQ-15.011](ep-requirements.md#req-15-011--footer-exposes-only-numeric-aggregates))
 
 Given a user turn that performs at least two successful LLM completions with API usage `prompt_tokens` 10 and 20 and `completion_tokens` 5 and 7 respectively, When the handler returns the Telegram-bound reply string, Then the string ends with a single new line followed by `*Tokens 42 (in: 30 / out: 12)*` (Markdown italic wrapper).
 

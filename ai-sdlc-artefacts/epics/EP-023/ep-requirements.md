@@ -105,16 +105,16 @@ flowchart LR
 
 *REQ-23.001, REQ-23.002, REQ-23.003, REQ-23.004*
 
-**REQ-23.001** (Ubiquitous)  
+### REQ-23.001 — Persist catalog updates with same-directory atomic replace
 THE PersonalAssistant System SHALL persist `create_tool` catalog updates by writing a complete replacement body to a temporary file in the same directory as the Catalog file and SHALL replace the Catalog file with that body using a single rename onto the existing catalog path.
 
-**REQ-23.002** (Ubiquitous)  
+### REQ-23.002 — Sync catalog file data and directory metadata before relying on the replace
 THE PersonalAssistant System SHALL synchronize catalog file data and the parent directory metadata to stable storage as part of the `create_tool` catalog persistence sequence before treating the replace as durable for the purposes of this epic.
 
-**REQ-23.003** (Event-driven)  
+### REQ-23.003 — Run post-write validation with toolcatalog.Load
 WHEN the atomic replace of the Catalog file completes successfully, THE PersonalAssistant System SHALL run Post-write validation by calling `toolcatalog.Load` with the catalog path.
 
-**REQ-23.004** (Unwanted event)  
+### REQ-23.004 — Restore prior catalog bytes when post-write validation fails
 IF Post-write validation returns an error, THEN THE PersonalAssistant System SHALL restore the Catalog file bytes from the snapshot taken immediately before the attempted update and SHALL return an error to the `create_tool` caller without adding the new tool to the In-memory catalog.
 
 ---
@@ -123,13 +123,13 @@ IF Post-write validation returns an error, THEN THE PersonalAssistant System SHA
 
 *REQ-23.005, REQ-23.006, REQ-23.007*
 
-**REQ-23.005** (Ubiquitous)  
+### REQ-23.005 — Advance in-memory catalog only after successful post-write validation
 THE PersonalAssistant System SHALL add the new tool to the In-memory catalog only after Post-write validation succeeds for the persisted Catalog file.
 
-**REQ-23.006** (Ubiquitous)  
+### REQ-23.006 — Update tool vector index only after in-memory catalog includes the new tool from a successful persist
 THE PersonalAssistant System SHALL invoke tool vector index upsert for the new tool only after the In-memory catalog contains that tool following a successful persist.
 
-**REQ-23.007** (Unwanted event)  
+### REQ-23.007 — On embedding upsert failure with embedder configured, roll back catalog file and in-memory addition
 IF an embedder and tool index are configured for `create_tool` and embedding upsert returns an error, THEN THE PersonalAssistant System SHALL remove the new tool from the In-memory catalog, SHALL restore the Catalog file bytes from the snapshot taken before the attempted update, and SHALL return an error to the caller.
 
 ---
@@ -138,14 +138,14 @@ IF an embedder and tool index are configured for `create_tool` and embedding ups
 
 *REQ-23.008, REQ-23.009, REQ-23.010, REQ-23.011*
 
-**REQ-23.008** (Ubiquitous)  
+### REQ-23.008 — Deterministic tests for short write, rename failure, invalid post-write
 THE PersonalAssistant System SHALL ship automated tests that deterministically cover simulated short catalog write, rename failure during replace, and invalid bytes after replace triggering restore behaviour.
 
-**REQ-23.009** (Ubiquitous)  
+### REQ-23.009 — Operator documentation describes atomic replace and sync contract
 THE PersonalAssistant System SHALL document for operators the atomic replace sequence, the role of file and directory sync, and the post-write validation step in the repository operator documentation linked from the project README.
 
-**REQ-23.010** (Ubiquitous)  
+### REQ-23.010 — Fail fast on unexpected persistence state in tests
 THE PersonalAssistant System SHALL fail tests immediately when assertions about catalog bytes, parse success, or index state are not met for the scenarios in REQ-23.008.
 
-**REQ-23.011** (Ubiquitous)  
+### REQ-23.011 — Quality gate passes on the change set
 THE PersonalAssistant System SHALL pass the repository quality gate (`make check`) for the epic change set.

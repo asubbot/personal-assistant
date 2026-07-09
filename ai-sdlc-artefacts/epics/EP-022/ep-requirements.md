@@ -97,56 +97,56 @@ flowchart LR
 
 *REQ-22.001, REQ-22.002, REQ-22.003, REQ-22.004, REQ-22.005*
 
-**REQ-22.001** (Ubiquitous)  
+### REQ-22.001 — Apply PRAGMA policy on every Local SQLite Store open
 THE PersonalAssistant System SHALL apply the PRAGMA Policy on every connection open to every Local SQLite Store.
 
-**REQ-22.002** (Ubiquitous)  
+### REQ-22.002 — Set journal_mode to WAL on every Local SQLite Store open
 THE PersonalAssistant System SHALL set `journal_mode=WAL` on every Local SQLite Store open.
 
-**REQ-22.003** (State-driven)  
+### REQ-22.003 — Set busy_timeout from configuration
 WHILE a Local SQLite Store is open, THE PersonalAssistant System SHALL set `busy_timeout` to the value declared for that store in configuration.
 
-**REQ-22.004** (State-driven)  
+### REQ-22.004 — Set synchronous from configuration
 WHILE a Local SQLite Store is open, THE PersonalAssistant System SHALL set `synchronous` to the value declared for that store in configuration.
 
-**REQ-22.005** (Ubiquitous)  
+### REQ-22.005 — Keep foreign_keys enabled on the jobs store
 THE PersonalAssistant System SHALL keep `foreign_keys=ON` on the jobs store.
 
 ### Outbound HTTP timeouts
 
 *REQ-22.006, REQ-22.007, REQ-22.008, REQ-22.009, REQ-22.010*
 
-**REQ-22.006** (Ubiquitous)  
+### REQ-22.006 — LLM provider client uses configured Bounded Timeout
 THE PersonalAssistant System SHALL build every LLM provider Outbound HTTP Client with a Bounded Timeout supplied from configuration.
 
-**REQ-22.007** (Ubiquitous)  
+### REQ-22.007 — Embedding provider client uses configured Bounded Timeout
 THE PersonalAssistant System SHALL build every embedding provider Outbound HTTP Client with a Bounded Timeout supplied from configuration.
 
-**REQ-22.008** (Ubiquitous)  
+### REQ-22.008 — Web tools client uses configured Bounded Timeout
 THE PersonalAssistant System SHALL build the web tools Outbound HTTP Client with a Bounded Timeout supplied from configuration.
 
-**REQ-22.009** (Event-driven)  
+### REQ-22.009 — Fail-fast configuration validation for every HTTP timeout
 WHEN the configuration loader reads the HTTP timeout value for any Outbound HTTP Client, THE configuration loader SHALL accept only a positive `time.Duration` value parsed from a string such as `"60s"`, and SHALL fail startup with an explicit error naming the field and the rejected value for any other input.
 
-**REQ-22.010** (Unwanted event)  
+### REQ-22.010 — Reject Timeout of zero for any Outbound HTTP Client
 IF the effective Bounded Timeout for any Outbound HTTP Client is zero, THEN THE PersonalAssistant System SHALL fail startup with an explicit error that names the offending client role.
 
 ### Operator documentation
 
 *REQ-22.011, REQ-22.012*
 
-**REQ-22.011** (Ubiquitous)  
+### REQ-22.011 — Document PRAGMA policy and Single-writer expectation
 THE operator documentation under `docs/` SHALL describe the PRAGMA Policy applied to each Local SQLite Store and the Single-Writer Expectation per SQLite file.
 
-**REQ-22.012** (Ubiquitous)  
+### REQ-22.012 — Document Bounded Timeout defaults and override paths
 THE operator documentation under `docs/` SHALL list the Bounded Timeout configuration fields for the LLM provider, embedding provider, and web tools Outbound HTTP Clients together with their default values.
 
 ### Testing
 
 *REQ-22.013, REQ-22.014*
 
-**REQ-22.013** (Event-driven)  
+### REQ-22.013 — Provide a Concurrent-Write Test under the race detector
 WHEN the Concurrent-Write Test runs under the Go race detector, THE test SHALL drive the background summarization worker path, the foreground conversation handler path, and the background tool vector index build path so that each writes to its respective Local SQLite Store, and SHALL finish with no `SQLITE_BUSY` outcome and no data race report.
 
-**REQ-22.014** (Ubiquitous)  
+### REQ-22.014 — Quality gate passes on the change set
 THE PersonalAssistant quality gate (`make check`) SHALL pass on the change set for EP-022.

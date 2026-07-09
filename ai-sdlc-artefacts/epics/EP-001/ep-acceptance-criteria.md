@@ -32,7 +32,7 @@ This document defines epic-level acceptance criteria for **EP-001 PersonalAssist
 | [AC-01.008](#ac-01-008) | [REQ-01.005](ep-requirements.md#nodes-and-ssh) | Requested action not on allow list → not executed, denial reported/logged |
 | [AC-01.009](#ac-01-009) | [REQ-01.013](ep-requirements.md#nodes-and-ssh) | One SSH user per node in config → core uses only that identity |
 | [AC-01.010](#ac-01-010) | [REQ-01.013](ep-requirements.md#nodes-and-ssh) | Multiple nodes → each uses its dedicated user, no shared account |
-| [AC-01.011](#ac-01-011) | [REQ-01.006](ep-requirements.md#memory-and-indexing), [REQ-01.019](ep-requirements.md#memory-and-indexing) | Assistant writes memory → markdown in designated structure (e.g. calendar) |
+| [AC-01.011](#ac-01-011) | [REQ-01.006](ep-requirements.md#memory-and-indexing), [REQ-01.018](ep-requirements.md#req-01-018--memory-is-assistants-single-store-not-partitioned-by-interlocutor-full-access-regardless-of-current-conversation-partner), [REQ-01.019](ep-requirements.md#memory-and-indexing), [REQ-01.020](ep-requirements.md#req-01-020--day-summary-inputs-llm-logs-tool-execution-results-scheduler-events-and-optionally-other-sources) | Assistant writes memory → markdown in designated structure (e.g. calendar) |
 | [AC-01.012](#ac-01-012) | [REQ-01.006](ep-requirements.md#memory-and-indexing) | Memory read from designated directory and structure |
 | [AC-01.013](#ac-01-013) | [REQ-01.007](ep-requirements.md#memory-and-indexing) | Memory store indexed → vector index maintained |
 | [AC-01.014](#ac-01-014) | [REQ-01.007](ep-requirements.md#memory-and-indexing) | Semantic search → relevant context from index returned |

@@ -16,7 +16,7 @@ updated_at: 2026-05-31
 |-------|-----|------------|---------|
 | [AC-43.001](#ac-43-001) | REQ-43.001, REQ-43.002 | Manual | handler_test.go split; ≤600 LOC |
 | [AC-43.002](#ac-43-002) | REQ-43.001 | Unit | All handler tests pass unchanged |
-| [AC-43.003](#ac-43-003) | REQ-43.004, REQ-43.005 | Unit | Fixture helper + ≥10 migrations |
+| [AC-43.003](#ac-43-003) | REQ-43.003, REQ-43.004, REQ-43.005 | Unit | Fixture helper + ≥10 migrations |
 | [AC-43.004](#ac-43-004) | REQ-43.006, REQ-43.007 | Unit/Manual | architecture_guards_test.go; AC comments preserved |
 | [AC-43.005](#ac-43-005) | REQ-43.008 | Manual (make check) | Coverage within 0.5% of baseline |
 | [AC-43.006](#ac-43-006) | REQ-43.009 | Manual (make check) | make check passes |
@@ -51,7 +51,7 @@ Then all tests SHALL pass with zero failures versus pre-epic baseline.
 
 ### AC-43.003
 
-**Trace:** REQ-43.004, REQ-43.005  
+**Trace:** REQ-43.003, REQ-43.004, REQ-43.005  
 **Test level:** Unit
 
 Given `config_test_helpers.go`  

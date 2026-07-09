@@ -78,44 +78,44 @@ flowchart LR
 
 ### Telegram wrapper
 
-**REQ-21.001** (State-driven)  
+### REQ-21.001 — Serve `/jobs` management through the wrapper
 WHILE `jobs_db_path` is configured and the scheduler runtime is ready, THE Jobs Telegram wrapper SHALL accept `/jobs` management commands and return the same class of responses as the job `Manager` for those commands.
 
-**REQ-21.002** (Event-driven)  
+### REQ-21.002 — Delegate non-command chat to the main handler with create context
 WHEN an incoming Telegram message is not a `/jobs` management command, THE Jobs Telegram wrapper SHALL call the main conversation handler with the original user text and a context enriched by `WithCreateContext`.
 
-**REQ-21.003** (Ubiquitous)  
+### REQ-21.003 — Omit legacy NL manager path and LLM create fallback from the wrapper
 THE Jobs Telegram wrapper SHALL omit calls to `HandleNaturalLanguageCreate`, regex schedule-intent detection for routing, and `runLLMCreateFallback` from the message handling path.
 
 ### Native create tool
 
-**REQ-21.004** (Ubiquitous)  
+### REQ-21.004 — Expose explicit create parameters on `create_scheduled_job`
 THE `create_scheduled_job` native tool SHALL declare required parameters `instruction` (string), `hour` (number), and `minute` (number), and optional parameters for timezone and actor or delivery overrides consistent with existing create context behaviour.
 
-**REQ-21.005** (Event-driven)  
+### REQ-21.005 — Persist jobs from tool using manager create spec
 WHEN the tool receives valid parameters and an initialized job manager, THE PersonalAssistant System SHALL persist one daily scheduled job and return the deterministic creation confirmation format used by `CreateScheduledJobFromSpec`.
 
-**REQ-21.010** (Unwanted event)  
+### REQ-21.010 — Return user-visible validation text without infrastructure error for bad tool args
 IF required numeric fields are outside the daily clock range or `instruction` is empty after trim, THEN THE `create_scheduled_job` tool SHALL return a concise English error message string and SHALL return a nil Go error to the tool runner for that validation outcome.
 
 ### Static prompt and skills
 
-**REQ-21.006** (Ubiquitous)  
+### REQ-21.006 — Preserve system static head unchanged
 THE PersonalAssistant System SHALL preserve the existing `systemStaticHead` implementation and the same TrustPolicy, MarkerSupplement, date line, and base personality prose as before this epic (no edits to those strings or their assembly order).
 
-**REQ-21.007** (Ubiquitous)  
+### REQ-21.007 — Ship an **optional** documented scheduling skill template
 THE PersonalAssistant repository SHALL include an **optional** runtime skill template under `config.examples/skills/` that operators may copy when `runtime_skills` is enabled; the template SHALL document daily scheduled jobs, instruct use of `create_scheduled_job` with explicit clock fields, and list `create_scheduled_job` in YAML `tools` frontmatter. **A deployment with `runtime_skills` disabled SHALL still support successful schedule creation from chat** when `jobs_db_path` is set and the main model calls `create_scheduled_job`.
 
-**REQ-21.008** (State-driven)  
+### REQ-21.008 — Allow skill frontmatter to reference native tool when jobs enabled
 WHILE `runtime_skills.enabled` is true and `paths.skills_dir` contains a package that lists `create_scheduled_job`, THE configuration loader SHALL accept that tool reference when `jobs_db_path` is non-empty.
 
 ### Observability, regression, tests
 
-**REQ-21.009** (Event-driven)  
+### REQ-21.009 — Keep audit fields for successful creates from the tool
 WHEN a job is created through the native tool with explicit parameters, THE audit logger SHALL record a successful `create_nl` (or equivalent agreed operation tag) outcome including `creation_path` distinguishing native explicit tool use from removed parser paths.
 
-**REQ-21.011** (Ubiquitous)  
+### REQ-21.011 — Keep `/jobs list` and management behaviour
 THE Job Store and `Manager` SHALL continue to support list, show, pause, resume, run-now, and delete flows for jobs created through the tool.
 
-**REQ-21.012** (Ubiquitous)  
+### REQ-21.012 — Automated tests trace acceptance criteria
 THE PersonalAssistant automated tests SHALL declare traceability comments for acceptance criteria AC-21.001 through AC-21.008 in the agreed validate format.

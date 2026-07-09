@@ -111,13 +111,13 @@ flowchart LR
 
 *REQ-13.001, REQ-13.002, REQ-13.003*
 
-**REQ-13.001** (Ubiquitous)  
+### REQ-13.001 — Skills directory path on Paths
 THE System SHALL expose `paths.skills_dir` as the filesystem root for runtime skill packages (subdirectory per skill).
 
-**REQ-13.002** (Optional feature)  
+### REQ-13.002 — Runtime skills enable and numeric caps in config
 WHERE the `runtime_skills` configuration object is present, THE System SHALL support `enabled`, `max_skills_per_turn` (>= 1), `tool_vector_top_k_cap` (>= 1), `max_skill_runes_per_turn` (>= 1), and `max_tool_instruction_runes_per_turn` (>= 1) with validation at config load.
 
-**REQ-13.003** (Ubiquitous)  
+### REQ-13.003 — always_include list validated at load
 THE System SHALL validate every tool id in `tools.always_include` at startup against the tool catalog or the allowed native tool id set used by the core.
 
 ---
@@ -126,16 +126,16 @@ THE System SHALL validate every tool id in `tools.always_include` at startup aga
 
 *REQ-13.004–REQ-13.007*
 
-**REQ-13.004** (Event-driven)  
+### REQ-13.004 — WHEN runtime skills enabled THE System SHALL load packages from skills_dir
 WHEN `runtime_skills.enabled` is true and `paths.skills_dir` is non-empty, THE System SHALL parse each skill package and retain `name`, `description`, optional `tools` list, and markdown body from `SKILL.md` at startup.
 
-**REQ-13.005** (Event-driven)  
+### REQ-13.005 — WHEN frontmatter invalid THE System SHALL fail startup
 WHEN a `SKILL.md` file lacks required frontmatter fields `name` and `description`, THE System SHALL fail startup with an error that identifies the skill directory.
 
-**REQ-13.006** (Event-driven)  
+### REQ-13.006 — WHEN tool ref from skill or always_include unresolved THE System SHALL fail startup
 WHEN a skill `tools` entry or `always_include` references a tool id that exists in neither the tool catalog nor the allowed native tool id set, THE System SHALL fail startup with an error that identifies the tool id.
 
-**REQ-13.007** (Event-driven)  
+### REQ-13.007 — WHEN SKILL.md contains forbidden marker line THE System SHALL fail startup
 WHEN any line in `SKILL.md` body or frontmatter values equals a canonical marker line after trim, THE System SHALL fail startup with an error that identifies the skill directory.
 
 ---
@@ -144,10 +144,10 @@ WHEN any line in `SKILL.md` body or frontmatter values equals a canonical marker
 
 *REQ-13.008, REQ-13.009*
 
-**REQ-13.008** (Ubiquitous)  
+### REQ-13.008 — vec_skills uses same DB file and embedding dimension as tool index
 THE System SHALL store skill embeddings in a dedicated `vec_skills` virtual table in the same SQLite database file as `vec_items` and `vec_tools`, using the same embedding model dimension as the tool index.
 
-**REQ-13.009** (Ubiquitous)  
+### REQ-13.009 — THE System SHALL rebuild vec_skills at process start
 THE System SHALL clear and fully rebuild the `vec_skills` table during process startup after skill packages are loaded.
 
 ---
@@ -156,13 +156,13 @@ THE System SHALL clear and fully rebuild the `vec_skills` table during process s
 
 *REQ-13.010–REQ-13.012*
 
-**REQ-13.010** (Event-driven)  
+### REQ-13.010 — WHEN runtime skills enabled THE System SHALL vector-search skills per user message
 WHEN `runtime_skills.enabled` is true and the skill index is ready, THE System SHALL run semantic search over `vec_skills` for the current user message text and select up to `max_skills_per_turn` skills by similarity score ordering.
 
-**REQ-13.011** (Ubiquitous)  
+### REQ-13.011 — THE System SHALL form tool id set as union of skill-declared, always_include, and tool-vector top-k
 THE System SHALL compute the candidate tool id set as the union of tool ids declared on selected skills, all `always_include` ids, and the tool ids returned by existing tool-vector pre-selection, with tool-vector results capped by `tool_vector_top_k_cap` before the union.
 
-**REQ-13.012** (Ubiquitous)  
+### REQ-13.012 — THE System SHALL apply rune budgets by dropping whole skills then whole vector-only tools
 THE System SHALL enforce `max_skill_runes_per_turn` across concatenated selected skill bodies by removing whole lowest-ranked selected skills first; THE System SHALL enforce `max_tool_instruction_runes_per_turn` across tool instruction aggregates by removing whole tools that appear only from uncapped vector pre-selection and are not pinned by a selected skill or `always_include`, in a deterministic order.
 
 ---
@@ -171,7 +171,7 @@ THE System SHALL enforce `max_skill_runes_per_turn` across concatenated selected
 
 *REQ-13.013*
 
-**REQ-13.013** (Optional feature)  
+### REQ-13.013 — WHERE runtime skills disabled or no skill match THE System SHALL retain prior tool pre-selection behaviour
 WHERE `runtime_skills.enabled` is false or skill semantic search yields zero skills, THE System SHALL build the tool list using the existing tool pre-selection and fallback rules from EP-004 without requiring skill packages.
 
 ---
@@ -180,13 +180,13 @@ WHERE `runtime_skills.enabled` is false or skill semantic search yields zero ski
 
 *REQ-13.014–REQ-13.016*
 
-**REQ-13.014** (Ubiquitous)  
+### REQ-13.014 — THE System SHALL prepend English trust policy before other dynamic assistant instructions in system
 THE System SHALL insert the agreed English trust-and-injection policy text at the beginning of the merged `role: system` content before retrieved context, tool instructions, and runtime skill bodies.
 
-**REQ-13.015** (Ubiquitous)  
+### REQ-13.015 — THE System SHALL wrap retrieved context, tool instructions, and runtime skills in canonical marker pairs when non-empty
 THE System SHALL wrap retrieved context in `<<<PA_BEGIN_CONTEXT>>>` / `<<<PA_END_CONTEXT>>>`, aggregate catalog tool instructions in `<<<PA_BEGIN_TOOLS>>>` / `<<<PA_END_TOOLS>>>`, and selected runtime skill bodies in `<<<PA_BEGIN_SKILLS>>>` / `<<<PA_END_SKILLS>>>` when the corresponding block is non-empty.
 
-**REQ-13.016** (Ubiquitous)  
+### REQ-13.016 — THE System SHALL place retrieved context and runtime skills toward the tail of the merged system string
 THE System SHALL order dynamic blocks so that retrieved context and runtime skills appear after the trust policy and tool instruction blocks inside the merged system string.
 
 ---
@@ -195,7 +195,7 @@ THE System SHALL order dynamic blocks so that retrieved context and runtime skil
 
 *REQ-13.017*
 
-**REQ-13.017** (Ubiquitous)  
+### REQ-13.017 — THE System SHALL rebuild merged system for each new user turn and keep the same merged system across tool rounds within that turn
 THE System SHALL construct the merged `role: system` message once per user turn before the first LLM call for that turn; THE System SHALL reuse that same merged system content for subsequent LLM calls in the same user turn (including tool-result follow-ups).
 
 ---
@@ -204,7 +204,7 @@ THE System SHALL construct the merged `role: system` message once per user turn 
 
 *REQ-13.018*
 
-**REQ-13.018** (Unwanted event)  
+### REQ-13.018 — IF conversation chunk for indexing contains forbidden marker line THEN THE System SHALL reject indexing that chunk
 IF the conversation chunk text prepared for vector indexing contains any line equal to a canonical marker line after trim, THEN THE System SHALL refuse to add that chunk to the vector store for that attempt and SHALL surface the failure through existing logging without silent truncation of marker text into the index.
 
 ---
@@ -213,8 +213,8 @@ IF the conversation chunk text prepared for vector indexing contains any line eq
 
 *REQ-13.019, REQ-13.020*
 
-**REQ-13.019** (Ubiquitous)  
+### REQ-13.019 — Startup validation errors SHALL include actionable messages
 THE System SHALL return startup errors for skill and marker validation that include the skill directory name or tool id sufficient for an operator to correct configuration.
 
-**REQ-13.020** (Ubiquitous)  
+### REQ-13.020 — Automated tests SHALL cover marker rules, load validation, prompt structure, and tool union; E2E path documented or automated
 THE System SHALL maintain automated tests that cover forbidden marker detection, skill load failures, merged system marker structure with non-empty blocks, tool union behaviour with `always_include`, and rejection of forbidden markers during indexing; THE System SHALL provide at least one integration or E2E-level test or documented manual scenario that exercises Telegram or an equivalent adapter boundary with runtime skills enabled and a mocked or real LLM client as stated in the implementation plan.

@@ -48,48 +48,48 @@ flowchart TD
 
 <a id="req-41-001"></a>
 
-#### REQ-41.001 — fullTierAssembler type
+### REQ-41.001 — fullTierAssembler type
 
 THE **PersonalAssistant** SHALL provide an unexported **`fullTierAssembler`** (or equivalent name) in `internal/core` that holds the handler reference and turn inputs for tier-`full` tail assembly.
 
 <a id="req-41-002"></a>
 
-#### REQ-41.002 — Fixed step order
+### REQ-41.002 — Fixed step order
 
 THE **fullTierAssembler** SHALL execute assembly steps in this order: (1) skill selection, (2) tool id merge, (3) dynamic tool cap, (4) dynamic tail budget fit, (5) completion options build.
 
 <a id="req-41-003"></a>
 
-#### REQ-41.003 — Single pipeline entry
+### REQ-41.003 — Single pipeline entry
 
 THE **PersonalAssistant** SHALL route `buildTierFullMainPrompt` through the pipeline entry point rather than an ad-hoc multi-file call chain without documented order.
 
 <a id="req-41-004"></a>
 
-#### REQ-41.004 — Parity
+### REQ-41.004 — Parity
 
 WHEN the same handler state, user text, and retrieval chunks are supplied, THE **PersonalAssistant** SHALL produce identical `tierMainLLMParams`, tool id lists, and system message tail content as before EP-041.
 
 <a id="req-41-005"></a>
 
-#### REQ-41.005 — Simple tier unchanged
+### REQ-41.005 — Simple tier unchanged
 
 THE **PersonalAssistant** SHALL leave `buildTierSimpleMainPrompt` and non-`full` tier dispatch unchanged.
 
 <a id="req-41-006"></a>
 
-#### REQ-41.006 — Documented order
+### REQ-41.006 — Documented order
 
 THE **repository** SHALL document the five step names in the pipeline source file (step method names or numbered comments adjacent to the call sequence).
 
 <a id="req-41-007"></a>
 
-#### REQ-41.007 — No config changes
+### REQ-41.007 — No config changes
 
 THE **Config loader** SHALL not change JSON schema.
 
 <a id="req-41-008"></a>
 
-#### REQ-41.008 — make check
+### REQ-41.008 — make check
 
 THE **repository** SHALL pass `make check`.

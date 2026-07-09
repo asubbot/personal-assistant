@@ -63,7 +63,7 @@ EP-026 implements [ep-scope.md](ep-scope.md): the intent tier decision (`simple`
 
 *REQ-26.001*
 
-**REQ-26.001** (Ubiquitous)  
+### REQ-26.001 — Each tier has an explicit builder entry point
 THE conversation handler SHALL expose distinct package-level entry methods on `*conversationHandler` for assembling main-LLM parameters for `intent.TierFull`, `intent.TierFullLite`, and the simple/default tier, such that `HandleMessage` selects among them by tier without duplicating the former full vs full_lite tail blocks inline.
 
 ---
@@ -72,7 +72,7 @@ THE conversation handler SHALL expose distinct package-level entry methods on `*
 
 *REQ-26.002*
 
-**REQ-26.002** (Ubiquitous)  
+### REQ-26.002 — HandleMessage delegates tier assembly then completes
 THE `HandleMessage` implementation SHALL read as a linear sequence: validate input, classify tier, gather optional retrieval chunks, build base `llm.Message` slice, invoke the tier builder for options and system tail, log assembled prompt metadata, then call the router completion and post-completion path unchanged except for wiring through builder outputs.
 
 ---
@@ -81,7 +81,7 @@ THE `HandleMessage` implementation SHALL read as a linear sequence: validate inp
 
 *REQ-26.003*
 
-**REQ-26.003** (Ubiquitous)  
+### REQ-26.003 — Unit tests cover tier builder contracts without full adapter graph
 THE repository SHALL include unit tests in package `core` that call the tier builder methods (or the single tier dispatch helper) with minimal `conversationHandler` fixtures and assert stable contracts (e.g. simple tier yields nil completion options without mutating the initial system head; full_lite path with nil catalog returns no error).
 
 ---
@@ -90,7 +90,7 @@ THE repository SHALL include unit tests in package `core` that call the tier bui
 
 *REQ-26.004*
 
-**REQ-26.004** (Ubiquitous)  
+### REQ-26.004 — HandleMessage no longer carries `gocyclo` nolint for this flow
 THE `//nolint:gocyclo` directive attached to `HandleMessage` for tier tail assembly SHALL be removed, and `golangci-lint` SHALL report zero `gocyclo` violations for `HandleMessage` at the configured minimum complexity.
 
 ---
@@ -99,7 +99,7 @@ THE `//nolint:gocyclo` directive attached to `HandleMessage` for tier tail assem
 
 *REQ-26.005*
 
-**REQ-26.005** (Ubiquitous)  
+### REQ-26.005 — Observable main-turn behaviour unchanged vs pre-refactor
 THE refactor SHALL not change merge rules, dynamic tool cap conditions per tier, Hermes text-path selection, or system message assembly semantics for any `intent.Tier` compared to the pre-EP-026 implementation on the parent branch.
 
 ---
@@ -108,7 +108,7 @@ THE refactor SHALL not change merge rules, dynamic tool cap conditions per tier,
 
 *REQ-26.006*
 
-**REQ-26.006** (Ubiquitous)  
+### REQ-26.006 — Quality gate and AC validation pass
 THE change set SHALL pass `make check` from the repository root and `./bin/validate EP-026` after `make build`.
 
 ---

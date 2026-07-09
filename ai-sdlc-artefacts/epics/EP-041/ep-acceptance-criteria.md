@@ -18,7 +18,7 @@ updated_at: 2026-05-31
 | [AC-41.002](#ac-41-002) | REQ-41.002, REQ-41.006 | Manual | Five steps in documented order |
 | [AC-41.003](#ac-41-003) | REQ-41.004 | Unit | Parity tests for full-tier assembly |
 | [AC-41.004](#ac-41-004) | REQ-41.005 | Unit | Simple tier tests unchanged |
-| [AC-41.005](#ac-41-005) | REQ-41.008 | Manual (make check) | make check passes |
+| [AC-41.005](#ac-41-005) | REQ-41.007, REQ-41.008 | Manual (make check) | make check passes |
 
 ## Acceptance criteria
 
@@ -74,7 +74,7 @@ Then simple tier behaviour SHALL remain unchanged.
 
 ### AC-41.005
 
-**Trace:** REQ-41.008  
+**Trace:** REQ-41.007, REQ-41.008  
 **Test level:** Manual (make check)
 
 When `make check` runs  

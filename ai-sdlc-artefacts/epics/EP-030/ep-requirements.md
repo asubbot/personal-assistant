@@ -91,17 +91,17 @@ flowchart LR
 
 *REQ-30.001*
 
-**REQ-30.001** (Ubiquitous)  
+### REQ-30.001 — No Hermes markup in main system prompts
 THE conversation handler SHALL NOT insert legacy text-tool protocol instructions or removed `tooltext` package prose into the main conversation system message for any intent tier; tool invocation for the main turn SHALL be driven by native provider tool definitions, not by instructing the model to emit tool markup in assistant text.
 
 *REQ-30.002*
 
-**REQ-30.002** (Ubiquitous)  
+### REQ-30.002 — No parsing of Hermes tool blocks from assistant text
 THE conversation handler SHALL obtain tool invocations for the main conversation completion only from native `tool_calls` supplied by the LLM provider implementation.
 
 *REQ-30.003*
 
-**REQ-30.003** (Ubiquitous)  
+### REQ-30.003 — Remove Hermes-only Go package `internal/tooltext`
 THE product codebase SHALL NOT retain package `internal/tooltext`; any remaining Hermes parsing or instruction helpers SHALL be deleted or relocated without reintroducing a text-markup tool protocol in this epic.
 
 ---
@@ -110,17 +110,17 @@ THE product codebase SHALL NOT retain package `internal/tooltext`; any remaining
 
 *REQ-30.004*
 
-**REQ-30.004** (Ubiquitous)  
+### REQ-30.004 — Remove `tools.text_based_enabled` from contract and code
 THE configuration loader SHALL reject `config.json` that contains a `tools.text_based_enabled` property after this epic, and the typed configuration model and all product code paths SHALL omit a `TextBasedEnabled` field.
 
 *REQ-30.005*
 
-**REQ-30.005** (Ubiquitous)  
+### REQ-30.005 — Remove `supports_json_mode` from each `llm_providers[]` entry
 THE configuration loader SHALL reject `config.json` that contains `supports_json_mode` on any `llm_providers[]` entry after this epic, and the typed `LLMProvider` model SHALL omit a `SupportsJSONMode` field.
 
 *REQ-30.013*
 
-**REQ-30.013** (Unwanted event)  
+### REQ-30.013 — Reject removed keys with explicit load errors
 IF `config.json` contains `tools.text_based_enabled` or `supports_json_mode` inside any `llm_providers[]` object after this epic, THEN THE configuration loader SHALL fail with an error message that names the unsupported key or field.
 
 ---
@@ -129,12 +129,12 @@ IF `config.json` contains `tools.text_based_enabled` or `supports_json_mode` ins
 
 *REQ-30.006*
 
-**REQ-30.006** (Ubiquitous)  
+### REQ-30.006 — `default_response_format` SHALL be `text` only
 THE configuration loader SHALL require every `llm_providers[]` entry to set `default_response_format` to the literal `text` and SHALL reject any other value.
 
 *REQ-30.007*
 
-**REQ-30.007** (Ubiquitous)  
+### REQ-30.007 — No `response_format: json_object` from removed JSON-mode flags
 THE OpenAI-compatible client SHALL NOT set HTTP `response_format` to `json_object` based on a removed configuration flag or on `CompletionOptions.ForceJSONOutput`; any `ForceJSONOutput` field or equivalent hint SHALL be removed from the completion options type and call sites in this epic.
 
 ---
@@ -143,7 +143,7 @@ THE OpenAI-compatible client SHALL NOT set HTTP `response_format` to `json_objec
 
 *REQ-30.008*
 
-**REQ-30.008** (Ubiquitous)  
+### REQ-30.008 — `full_lite` dynamic cap without `text_based_enabled` gate
 WHEN `tools.dynamic_selection.enabled` is true THE conversation handler SHALL apply the configured dynamic tool cap for tier `full_lite` the same way it applies for tier `full` for the shared merged-tail tool path, without requiring a former `text_based_enabled` precondition.
 
 ---
@@ -152,7 +152,7 @@ WHEN `tools.dynamic_selection.enabled` is true THE conversation handler SHALL ap
 
 *REQ-30.009*
 
-**REQ-30.009** (Event-driven)  
+### REQ-30.009 — Startup WARN when baseline lacks native tools but tools exist
 WHEN the baseline LLM provider has `supports_tools` set to false AND at least one conversation tool definition would be attached to the main conversation completion for a configured assistant, THEN THE process SHALL emit exactly one structured `WARN` log line in English after tool registry wiring and before serving user traffic, stating that native tool calling is disabled for the baseline provider and conversation tools will not run.
 
 ---
@@ -161,7 +161,7 @@ WHEN the baseline LLM provider has `supports_tools` set to false AND at least on
 
 *REQ-30.010*
 
-**REQ-30.010** (Ubiquitous)  
+### REQ-30.010 — Remove Hermes-specific log attributes and failure classes
 THE product SHALL remove Hermes-specific failure classes, metric labels, or log attribute values such as `hermes_parse` or `invoked_via=hermes`, replacing them with neutral or native-tool wording where logging is still required.
 
 ---
@@ -170,7 +170,7 @@ THE product SHALL remove Hermes-specific failure classes, metric labels, or log 
 
 *REQ-30.011*
 
-**REQ-30.011** (Ubiquitous)  
+### REQ-30.011 — Assembled prompts and native tool descriptions SHALL use `index_text` / `system_prompt` only
 THE main conversation system prompt assembly SHALL use **`index_text`** (and optional **`system_prompt`**) only for catalog-backed instructional content sent to the model. The product SHALL NOT define or read a separate catalog field for legacy text-tool list lines; any such keys in older YAML files are ignored by the parser and SHALL NOT appear in assembled prompts.
 
 ---
@@ -179,7 +179,7 @@ THE main conversation system prompt assembly SHALL use **`index_text`** (and opt
 
 *REQ-30.012*
 
-**REQ-30.012** (Ubiquitous)  
+### REQ-30.012 — Operator docs match post-epic behaviour and migration
 THE operator-facing documentation under `docs/` SHALL describe native-tool-only behaviour, list removed configuration keys, and SHALL document the startup warning from REQ-30.009.
 
 ---
@@ -188,7 +188,7 @@ THE operator-facing documentation under `docs/` SHALL describe native-tool-only 
 
 *REQ-30.016*
 
-**REQ-30.016** (Ubiquitous)  
+### REQ-30.016 — Main path tool execution uses native tool_calls only
 THE PersonalAssistant SHALL document in operator documentation that conversation tools require `supports_tools: true` on the baseline provider when tools are enabled; runtime behaviour for `supports_tools: false` SHALL match REQ-30.009 (warning) and SHALL NOT invoke tools on the main path.
 
 ---
@@ -197,12 +197,12 @@ THE PersonalAssistant SHALL document in operator documentation that conversation
 
 *REQ-30.014*
 
-**REQ-30.014** (NFR)  
+### REQ-30.014 — `make check` passes
 THE change set SHALL pass `make check` on a clean working tree.
 
 *REQ-30.015*
 
-**REQ-30.015** (NFR)  
+### REQ-30.015 — `./bin/validate EP-030` passes
 THE change set SHALL pass `./bin/validate EP-030` with every in-scope acceptance criterion traced to automated tests per repository validation rules.
 
 ---

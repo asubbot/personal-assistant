@@ -130,16 +130,16 @@ In this document, *System* = PersonalAssistant System (or the stated component).
 
 *REQ-19.001, REQ-19.002, REQ-19.003, REQ-19.004*
 
-**REQ-19.001** (Ubiquitous)
+### REQ-19.001 — Persist jobs with stable unique ID
 THE Job Store SHALL persist each Scheduled Agent Job with a stable Job ID that is unique within the PersonalAssistant System.
 
-**REQ-19.002** (Event-driven)
+### REQ-19.002 — Load persisted jobs on startup
 WHEN the PersonalAssistant System starts, THE Scheduler SHALL load all persisted Scheduled Agent Jobs from the Job Store before accepting Management Commands.
 
-**REQ-19.003** (Event-driven)
+### REQ-19.003 — Evaluate schedule using configured time zone
 WHEN the Scheduler evaluates a Scheduled Agent Job, THE Scheduler SHALL resolve the Cron Expression using the job Time Zone.
 
-**REQ-19.004** (Ubiquitous)
+### REQ-19.004 — Expose next run timestamp per job
 THE Scheduler SHALL maintain a computed next run timestamp for each Scheduled Agent Job.
 
 ---
@@ -148,22 +148,22 @@ THE Scheduler SHALL maintain a computed next run timestamp for each Scheduled Ag
 
 *REQ-19.005, REQ-19.006, REQ-19.007, REQ-19.008, REQ-19.009, REQ-19.010*
 
-**REQ-19.005** (Event-driven)
+### REQ-19.005 — Start job run on due trigger
 WHEN a Scheduled Agent Job becomes due, THE Scheduler SHALL create a new Job Run for that job.
 
-**REQ-19.006** (Event-driven)
+### REQ-19.006 — Execute instruction as agent turn
 WHEN a Job Run starts, THE PersonalAssistant System SHALL execute the job instruction as an agent turn through the standard LLM/tool/memory orchestration path.
 
-**REQ-19.007** (Event-driven)
+### REQ-19.007 — Deliver successful run result to Telegram
 WHEN a Job Run completes successfully, THE PersonalAssistant System SHALL send a delivery message with the generated result to the job Delivery Target in Telegram.
 
-**REQ-19.008** (Unwanted event)
+### REQ-19.008 — Deliver failure notification with reason class
 IF a Job Run fails, THEN THE PersonalAssistant System SHALL send a failure delivery message to the job Delivery Target including a failure reason class.
 
-**REQ-19.009** (State-driven)
+### REQ-19.009 — Enforce run timeout policy
 WHILE a Job Run is active, THE Scheduler SHALL enforce the configured run timeout policy for that run.
 
-**REQ-19.010** (State-driven)
+### REQ-19.010 — Enforce overlap policy
 WHILE the overlap policy is single-instance and a previous Job Run is active, THE Scheduler SHALL mark the newly due run as skipped and record the skip event.
 
 ---
@@ -172,28 +172,28 @@ WHILE the overlap policy is single-instance and a previous Job Run is active, TH
 
 *REQ-19.011, REQ-19.012, REQ-19.013, REQ-19.014, REQ-19.015, REQ-19.016, REQ-19.017, REQ-19.018*
 
-**REQ-19.011** (Event-driven)
+### REQ-19.011 — List jobs via Telegram command
 WHEN an Authorized Operator sends the `list` Management Command, THE PersonalAssistant System SHALL return all scheduled jobs with Job ID, schedule, Time Zone, status, and next run timestamp.
 
-**REQ-19.012** (Event-driven)
+### REQ-19.012 — Show job details via Telegram command
 WHEN an Authorized Operator sends the `show` Management Command with a valid Job ID, THE PersonalAssistant System SHALL return job details including instruction summary, Delivery Target, last run status, and next run timestamp.
 
-**REQ-19.013** (Event-driven)
+### REQ-19.013 — Pause job via Telegram command
 WHEN an Authorized Operator sends the `pause` Management Command with a valid Job ID, THE Scheduler SHALL set that job status to paused.
 
-**REQ-19.014** (Event-driven)
+### REQ-19.014 — Resume job via Telegram command
 WHEN an Authorized Operator sends the `resume` Management Command with a valid Job ID, THE Scheduler SHALL set that job status to active.
 
-**REQ-19.015** (Event-driven)
+### REQ-19.015 — Trigger run-now via Telegram command
 WHEN an Authorized Operator sends the `run-now` Management Command with a valid Job ID, THE Scheduler SHALL enqueue an immediate Job Run for that job.
 
-**REQ-19.016** (Event-driven)
+### REQ-19.016 — Delete requires confirmation challenge
 WHEN an Authorized Operator sends the `delete` Management Command with a valid Job ID, THE PersonalAssistant System SHALL return a confirmation challenge with a Confirmation Token bound to that Job ID.
 
-**REQ-19.017** (Event-driven)
+### REQ-19.017 — Delete on valid confirmation
 WHEN an Authorized Operator confirms deletion with a valid Confirmation Token for the matching Job ID, THE Job Store SHALL remove that Scheduled Agent Job.
 
-**REQ-19.018** (Unwanted event)
+### REQ-19.018 — Reject unauthorized management commands
 IF a Telegram user who is not an Authorized Operator sends a Management Command, THEN THE PersonalAssistant System SHALL reject the command and record an audit event with user ID and command name.
 
 ---
@@ -202,10 +202,10 @@ IF a Telegram user who is not an Authorized Operator sends a Management Command,
 
 *REQ-19.019, REQ-19.020*
 
-**REQ-19.019** (Event-driven)
+### REQ-19.019 — Reject legacy scheduled_tasks config
 WHEN configuration input contains legacy `scheduled_tasks` schema fields, THE Configuration Loader SHALL fail startup with a validation error that names each unsupported field.
 
-**REQ-19.020** (Ubiquitous)
+### REQ-19.020 — Expose only new job schema in docs/examples
 THE PersonalAssistant System SHALL provide examples and operational documentation that reference only the new Scheduled Agent Job schema.
 
 ---
@@ -214,8 +214,8 @@ THE PersonalAssistant System SHALL provide examples and operational documentatio
 
 *REQ-19.021, REQ-19.022*
 
-**REQ-19.021** (Event-driven)
+### REQ-19.021 — Audit all management and run lifecycle events
 WHEN a management operation or Job Run lifecycle transition occurs, THE Audit Logger SHALL record timestamp, actor identity, Job ID, operation type, and outcome.
 
-**REQ-19.022** (Ubiquitous)
+### REQ-19.022 — Keep management-list interaction responsive by deployment profile
 THE PersonalAssistant System SHALL provide responsive execution of the `list` Management Command under expected deployment load, and measurable performance thresholds SHALL be defined per deployment profile in acceptance criteria.

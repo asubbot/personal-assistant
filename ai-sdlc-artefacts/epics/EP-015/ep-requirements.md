@@ -93,13 +93,13 @@ flowchart LR
 
 *REQ-15.001, REQ-15.002, REQ-15.003*
 
-<a id="req-15-001"></a>**REQ-15.001** (Ubiquitous)  
+### REQ-15.001 — Sum prompt_tokens into aggregated in per turn
 THE PersonalAssistant SHALL add each successful LLM completion’s `prompt_tokens` value from API usage to **aggregated in** for the active user turn.
 
-<a id="req-15-002"></a>**REQ-15.002** (Ubiquitous)  
+### REQ-15.002 — Sum completion_tokens into aggregated out per turn
 THE PersonalAssistant SHALL add each successful LLM completion’s `completion_tokens` value from API usage to **aggregated out** for the active user turn.
 
-<a id="req-15-003"></a>**REQ-15.003** (Ubiquitous)  
+### REQ-15.003 — Counts from API usage only
 THE PersonalAssistant SHALL treat token counts used for the footer as authoritative only when they appear in provider-reported API usage fields on successful completions; client-side token estimation is outside scope for this epic.
 
 ---
@@ -108,16 +108,16 @@ THE PersonalAssistant SHALL treat token counts used for the footer as authoritat
 
 *REQ-15.004, REQ-15.005, REQ-15.006, REQ-15.008*
 
-<a id="req-15-004"></a>**REQ-15.004** (Event-driven)  
+### REQ-15.004 — Append footer when in or out is greater than zero
 WHEN **aggregated in** is greater than zero or **aggregated out** is greater than zero at the end of a user turn, THE PersonalAssistant SHALL include a **token footer** in the Telegram-bound reply string.
 
-<a id="req-15-005"></a>**REQ-15.005** (Event-driven)  
+### REQ-15.005 — Deliver body without footer when in and out are zero
 WHEN **aggregated in** and **aggregated out** are both zero at the end of a user turn, THE PersonalAssistant SHALL deliver the Telegram-bound reply string without a **token footer**.
 
-<a id="req-15-006"></a>**REQ-15.006** (Event-driven)  
+### REQ-15.006 — Inner `Tokens …` pattern; total equals in plus out; optional `*…*` for italic
 WHEN a **token footer** is present, THE PersonalAssistant SHALL format it as exactly one new line at the end of the logical reply consisting of the inner pattern `Tokens <total> (in: <aggregated in> / out: <aggregated out>)` wrapped as `*Tokens <total> (in: <aggregated in> / out: <aggregated out>)*` for Markdown italic, where `<total>` equals `<aggregated in>` plus `<aggregated out>`, using decimal integer literals and single ASCII spaces as shown in [ep-scope.md](ep-scope.md).
 
-<a id="req-15-008"></a>**REQ-15.008** (Event-driven)  
+### REQ-15.008 — No token-only outbound Telegram message
 WHEN the **assistant reply body** is empty at the end of a user turn, THE PersonalAssistant SHALL deliver no Telegram outbound message whose sole payload is the **token footer**.
 
 ---
@@ -126,7 +126,7 @@ WHEN the **assistant reply body** is empty at the end of a user turn, THE Person
 
 *REQ-15.007*
 
-<a id="req-15-007"></a>**REQ-15.007** (Ubiquitous)  
+### REQ-15.007 — Footer on last chunk; Markdown italic wrapper only
 THE Telegram adapter SHALL send the **token footer**, when present, only as part of the **last outbound chunk** for that reply, after Markdown-to-HTML length splitting of the **assistant reply body**; the **token footer** in Markdown source SHALL use only the single-italic wrapper from **REQ-15.006** and SHALL contain no raw `<` or `>` characters inside the inner pattern.
 
 ---
@@ -135,7 +135,7 @@ THE Telegram adapter SHALL send the **token footer**, when present, only as part
 
 *REQ-15.009*
 
-<a id="req-15-009"></a>**REQ-15.009** (Ubiquitous)  
+### REQ-15.009 — Store assistant body without token footer
 THE PersonalAssistant SHALL persist the **assistant reply body** in sliding session memory without appending the **token footer** line.
 
 ---
@@ -144,13 +144,13 @@ THE PersonalAssistant SHALL persist the **assistant reply body** in sliding sess
 
 *REQ-15.010, REQ-15.011, REQ-15.012*
 
-<a id="req-15-010"></a>**REQ-15.010** (Ubiquitous)  
+### REQ-15.010 — Automated tests with positive and negative cases
 THE PersonalAssistant SHALL maintain automated tests that cover at least one positive case (non-zero usage yields a footer on the last chunk) and at least one negative case (zero usage yields no footer), including multi-chunk splitting behaviour where applicable.
 
-<a id="req-15-011"></a>**REQ-15.011** (Ubiquitous)  
+### REQ-15.011 — Footer exposes only numeric aggregates
 THE **token footer** SHALL contain only the numeric aggregates, fixed punctuation, and the Markdown italic asterisk pair defined in **REQ-15.006**; the footer SHALL copy no user-provided text.
 
-<a id="req-15-012"></a>**REQ-15.012** (Ubiquitous)  
+### REQ-15.012 — `./bin/validate EP-015` passes
 THE repository validation command `./bin/validate EP-015` SHALL complete with exit code zero after this epic’s acceptance criteria are wired for coverage.
 
 ---

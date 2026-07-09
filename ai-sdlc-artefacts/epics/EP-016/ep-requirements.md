@@ -129,13 +129,13 @@ In the following, *PersonalAssistant* means the PersonalAssistant (System) unles
 
 *REQ-16.001 – REQ-16.003*
 
-<a id="req-16-001"></a>**REQ-16.001** (Ubiquitous)  
+### REQ-16.001 — notes.md path beside summary.md
 THE PersonalAssistant SHALL persist day notes for calendar day *D* in pa_timezone at `memory_dir/YYYY/MM/DD/notes.md` using the same directory depth as `summary.md` for that day.
 
-<a id="req-16-002"></a>**REQ-16.002** (Event-driven)  
+### REQ-16.002 — Summarize job preserves notes.md
 WHEN the Summarize job writes or replaces `summary.md` for a calendar day, THE PersonalAssistant SHALL leave `notes.md` for that day unchanged if the file exists.
 
-<a id="req-16-003"></a>**REQ-16.003** (Ubiquitous)  
+### REQ-16.003 — Calendar interpretation uses pa_timezone
 THE PersonalAssistant SHALL derive `YYYY`, `MM`, and `DD` path segments for day notes from calendar day *D* in pa_timezone.
 
 ---
@@ -144,13 +144,13 @@ THE PersonalAssistant SHALL derive `YYYY`, `MM`, and `DD` path segments for day 
 
 *REQ-16.004 – REQ-16.006*
 
-<a id="req-16-004"></a>**REQ-16.004** (Ubiquitous)  
+### REQ-16.004 — Each append starts with UTC RFC3339 timestamp
 THE PersonalAssistant SHALL begin each appended entry in `notes.md` with one line containing a UTC timestamp in RFC3339 format, followed by the remainder of the entry as defined in system design.
 
-<a id="req-16-005"></a>**REQ-16.005** (Optional feature)  
+### REQ-16.005 — Optional kind recorded in machine-readable form
 WHERE `write_memory` receives an optional `kind` argument from the allowed set defined in system design, THE PersonalAssistant SHALL encode that `kind` on the entry line or the immediately following line in the format defined in system design.
 
-<a id="req-16-006"></a>**REQ-16.006** (Unwanted event)  
+### REQ-16.006 — Reject append on configured byte limit breach
 IF an append would exceed the configured maximum bytes for a single append or the configured maximum bytes for the whole `notes.md` file, THEN THE PersonalAssistant SHALL reject the operation with an error message that states which limit was exceeded.
 
 ---
@@ -159,16 +159,16 @@ IF an append would exceed the configured maximum bytes for a single append or th
 
 *REQ-16.007 – REQ-16.010*
 
-<a id="req-16-007"></a>**REQ-16.007** (Ubiquitous)  
+### REQ-16.007 — Expose native tool when enabled in deployment
 THE PersonalAssistant SHALL register `write_memory` as a native tool on deployments where native tools are enabled and the operator configuration exposes `write_memory` per native-tool allowlist rules.
 
-<a id="req-16-008"></a>**REQ-16.008** (Event-driven)  
+### REQ-16.008 — Append one formatted entry for resolved day
 WHEN `write_memory` receives non-empty `text` and an optional ISO `date` defaulting to the current calendar date in pa_timezone, THE PersonalAssistant SHALL append exactly one new entry to `notes.md` for that resolved day, creating parent directories on first write for that path.
 
-<a id="req-16-009"></a>**REQ-16.009** (Ubiquitous)  
+### REQ-16.009 — Reject paths outside memory_dir
 THE PersonalAssistant SHALL resolve paths for `write_memory` only under `memory_dir` and SHALL reject requests whose resolved path leaves `memory_dir` using the same path validation strength as `read_memory`.
 
-<a id="req-16-010"></a>**REQ-16.010** (Event-driven)  
+### REQ-16.010 — Update notes vector slice after append
 WHEN the filesystem append for `write_memory` succeeds, THE PersonalAssistant SHALL upsert the corresponding notes vector document for that logical append in the dedicated notes vector table per system design.
 
 ---
@@ -177,16 +177,16 @@ WHEN the filesystem append for `write_memory` succeeds, THE PersonalAssistant SH
 
 *REQ-16.011 – REQ-16.014*
 
-<a id="req-16-011"></a>**REQ-16.011** (Event-driven)  
+### REQ-16.011 — Include summary.md per day when present
 WHEN `read_memory` returns content for a calendar day that has `summary.md`, THE PersonalAssistant SHALL include that summary body under the existing per-day heading pattern used for summaries.
 
-<a id="req-16-012"></a>**REQ-16.012** (Event-driven)  
+### REQ-16.012 — Include notes.md under distinct headings
 WHEN `read_memory` returns content for a calendar day that has `notes.md`, THE PersonalAssistant SHALL include the notes body in the same per-day block using section headings that differ unambiguously from the summary heading, with exact heading strings defined in system design.
 
-<a id="req-16-013"></a>**REQ-16.013** (Ubiquitous)  
+### REQ-16.013 — Omit days with neither file
 THE PersonalAssistant SHALL omit a calendar day entirely from `read_memory` output when that day has neither `summary.md` nor `notes.md`.
 
-<a id="req-16-014"></a>**REQ-16.014** (Ubiquitous)  
+### REQ-16.014 — Preserve span, byte limits, noon anchoring
 THE PersonalAssistant SHALL enforce the configured `max_span_days`, `max_output_bytes`, and noon-anchored day iteration for `read_memory` exactly as before this epic, aside from the added notes content.
 
 ---
@@ -195,19 +195,19 @@ THE PersonalAssistant SHALL enforce the configured `max_span_days`, `max_output_
 
 *REQ-16.015 – REQ-16.019*
 
-<a id="req-16-015"></a>**REQ-16.015** (Ubiquitous)  
+### REQ-16.015 — Rollup summary vectors isolated from turn vectors
 THE PersonalAssistant SHALL store rollup summary vector documents only in the dedicated summary vector storage defined in system design, separate from the dedicated turn vector storage.
 
-<a id="req-16-016"></a>**REQ-16.016** (Ubiquitous)  
+### REQ-16.016 — Notes vectors isolated from rollup and turn
 THE PersonalAssistant SHALL store notes vector documents only in the dedicated notes vector storage defined in system design, separate from the dedicated summary vector storage and the dedicated turn vector storage.
 
-<a id="req-16-017"></a>**REQ-16.017** (Ubiquitous)  
+### REQ-16.017 — Default merge order notes then summary then turn
 THE PersonalAssistant SHALL merge vector hits for the dynamic system tail in the order **notes**, then **rollup summaries**, then **turns**, each sub-list ordered by similarity from its own search, unless system design documents an optional configuration override.
 
-<a id="req-16-018"></a>**REQ-16.018** (State-driven)  
+### REQ-16.018 — Summary path filters legacy rows by id prefix
 WHILE legacy `vec_items` rows remain and the implementation queries that table for rollup summaries, THE PersonalAssistant SHALL include only rows whose `id` values match the stable `summary:day:`, `summary:month:`, or `summary:year:` prefixes in that query path.
 
-<a id="req-16-019"></a>**REQ-16.019** (State-driven)  
+### REQ-16.019 — Turn path avoids duplicate legacy plus new hits
 WHILE legacy turn rows remain in `vec_items` and dedicated turn vectors exist in the turn table, THE PersonalAssistant SHALL retrieve turn hits from the dedicated turn table path only and SHALL merge results so the same conversation turn does not appear twice from legacy and dedicated paths in one retrieval assembly.
 
 ---
@@ -216,16 +216,16 @@ WHILE legacy turn rows remain in `vec_items` and dedicated turn vectors exist in
 
 *REQ-16.020 – REQ-16.023*
 
-<a id="req-16-020"></a>**REQ-16.020** (Event-driven)  
+### REQ-16.020 — Date line uses event-aligned calendar date
 WHEN the core indexes a completed turn into the dedicated turn vector table, THE PersonalAssistant SHALL set the `Date: YYYY-MM-DD` line in the stored chunk body to the event-aligned calendar date in pa_timezone derived from the inbound message timestamp supplied by the Telegram adapter.
 
-<a id="req-16-021"></a>**REQ-16.021** (Unwanted event)  
+### REQ-16.021 — Documented fallback when adapter timestamp missing
 IF the Telegram adapter supplies no usable message timestamp for an inbound user message, THEN THE PersonalAssistant SHALL apply the fallback timestamp policy documented in system design and SHALL still produce a `Date` line consistent with pa_timezone calendar rules.
 
-<a id="req-16-022"></a>**REQ-16.022** (Event-driven)  
+### REQ-16.022 — Bounded growth under repeated identical indexing
 WHEN the same canonicalised user and assistant pair for the same event-aligned day is indexed again under the deduplication policy, THE PersonalAssistant SHALL keep the row count in the dedicated turn table bounded for that repeated operation as verified by tests referenced in acceptance criteria.
 
-<a id="req-16-023"></a>**REQ-16.023** (Ubiquitous)  
+### REQ-16.023 — Stable id from event-aligned date and content hash
 THE PersonalAssistant SHALL compute stable turn vector document ids from the event-aligned date string and a cryptographic hash of the canonicalised pair using the algorithm in system design.
 
 ---
@@ -234,14 +234,14 @@ THE PersonalAssistant SHALL compute stable turn vector document ids from the eve
 
 *REQ-16.024 – REQ-16.027*
 
-<a id="req-16-024"></a>**REQ-16.024** (Ubiquitous)  
+### REQ-16.024 — write_memory I/O follows memory redaction class
 THE PersonalAssistant SHALL apply the same redaction and sensitivity rules to `write_memory` tool arguments and outcomes in logs as applied to `read_memory` and other memory-class native tools.
 
-<a id="req-16-025"></a>**REQ-16.025** (Ubiquitous)  
+### REQ-16.025 — Each AC mapped to automated or manual verification
 THE PersonalAssistant SHALL map every acceptance criterion in [ep-acceptance-criteria.md](ep-acceptance-criteria.md) to at least one automated test with `Covers AC-16.NNN` or to an explicit manual scenario referenced from the acceptance criteria document.
 
-<a id="req-16-026"></a>**REQ-16.026** (Ubiquitous)  
+### REQ-16.026 — make check passes on delivered branch
 THE PersonalAssistant SHALL pass `make check` on the branch that delivers this epic.
 
-<a id="req-16-027"></a>**REQ-16.027** (Optional feature)  
+### REQ-16.027 — Runtime docs list write_memory when exposed
 WHERE runtime skill or operator documentation lists native tools available in a curated profile that includes memory writers, THE documentation SHALL list `write_memory` alongside `read_memory` when that profile enables `write_memory`.

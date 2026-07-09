@@ -128,13 +128,13 @@ In the following, *PersonalAssistant* means the PersonalAssistant (System) unles
 
 *REQ-17.001 – REQ-17.003*
 
-<a id="req-17-001"></a>**REQ-17.001** (Ubiquitous)
+### REQ-17.001 — Define at least simple and full tiers
 THE PersonalAssistant SHALL define at least two complexity tiers — `simple` and `full` — each specifying which prompt components (system prompt dynamic tail, tool definitions, RAG chunks, session history, runtime skills) are included in the main LLM call.
 
-<a id="req-17-002"></a>**REQ-17.002** (State-driven)
+### REQ-17.002 — Simple tier excludes tools, RAG, dynamic tail, skills
 WHILE a user turn is assigned to the `simple` tier, THE PersonalAssistant SHALL exclude tool definitions, RAG retrieval results, Hermes tool-format instructions, and runtime skill playbook text from the main LLM prompt for that turn.
 
-<a id="req-17-003"></a>**REQ-17.003** (State-driven)
+### REQ-17.003 — Full tier preserves current prompt assembly
 WHILE a user turn is assigned to the `full` tier, THE PersonalAssistant SHALL construct the main LLM prompt using the same components and assembly logic as before this epic (tools, RAG, dynamic tail, session history, runtime skills).
 
 ---
@@ -143,13 +143,13 @@ WHILE a user turn is assigned to the `full` tier, THE PersonalAssistant SHALL co
 
 *REQ-17.004 – REQ-17.006*
 
-<a id="req-17-004"></a>**REQ-17.004** (Ubiquitous)
+### REQ-17.004 — Heuristic matches configurable patterns
 THE intent classifier heuristic stage SHALL evaluate the incoming message against configurable pattern sets (keyword lists, regex patterns, message-length thresholds) loaded from the application configuration.
 
-<a id="req-17-005"></a>**REQ-17.005** (Event-driven)
+### REQ-17.005 — Heuristic returns tier or ambiguous
 WHEN the heuristic stage evaluates a message, THE intent classifier SHALL return one of: a confident complexity tier assignment, or an `ambiguous` result indicating the heuristic cannot decide.
 
-<a id="req-17-006"></a>**REQ-17.006** (Ubiquitous)
+### REQ-17.006 — Heuristic performs no external calls
 THE intent classifier heuristic stage SHALL perform no network calls, no LLM calls, and no filesystem I/O during classification.
 
 ---
@@ -158,13 +158,19 @@ THE intent classifier heuristic stage SHALL perform no network calls, no LLM cal
 
 *REQ-17.007 – REQ-17.009*
 
-<a id="req-17-007"></a>**REQ-17.007** (Event-driven) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
+<a id="req-17-007"></a>
+
+### REQ-17.007 — Model stage — **Superseded by EP-036**
 WHEN the heuristic stage returns `ambiguous` and the model stage is enabled in configuration, THE intent classifier SHALL send a classification request to the configured classification provider.
 
-<a id="req-17-008"></a>**REQ-17.008** (Ubiquitous) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
+<a id="req-17-008"></a>
+
+### REQ-17.008 — Classification provider — **Superseded by EP-036**
 THE PersonalAssistant SHALL allow the classification provider (endpoint, model name, parameters) to be configured independently from the main conversation LLM provider.
 
-<a id="req-17-009"></a>**REQ-17.009** (Ubiquitous) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
+<a id="req-17-009"></a>
+
+### REQ-17.009 — Model stage prompt — **Superseded by EP-036**
 THE intent classifier model stage SHALL send a prompt that contains only the user message text and the list of available tier names with brief descriptions, without including tools, RAG context, or session history.
 
 ---
@@ -173,10 +179,14 @@ THE intent classifier model stage SHALL send a prompt that contains only the use
 
 *REQ-17.010 – REQ-17.011*
 
-<a id="req-17-010"></a>**REQ-17.010** (Ubiquitous) **Amended (EP-036):** heuristic first; ambiguous → default `full`; model stage removed.
+<a id="req-17-010"></a>
+
+### REQ-17.010 — Cascade: heuristic → default full — **Amended EP-036**
 THE intent classifier SHALL evaluate stages in the fixed order: heuristic stage first; model stage only when the heuristic returns `ambiguous` and the model stage is enabled; default to `full` tier when both stages are skipped or exhausted.
 
-<a id="req-17-011"></a>**REQ-17.011** (Unwanted event) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
+<a id="req-17-011"></a>
+
+### REQ-17.011 — Model failure path — **Superseded by EP-036**
 IF the model stage returns an unparseable response, times out, or produces an error, THEN THE intent classifier SHALL assign the `full` tier for that turn and log the failure at WARN level.
 
 ---
@@ -185,16 +195,16 @@ IF the model stage returns an unparseable response, times out, or produces an er
 
 *REQ-17.012 – REQ-17.015*
 
-<a id="req-17-012"></a>**REQ-17.012** (State-driven)
+### REQ-17.012 — Simple tier skips RAG retrieval
 WHILE the assigned tier is `simple`, THE PersonalAssistant SHALL skip the call to `gatherRetrievedChunkTexts` (RAG retrieval) for that turn.
 
-<a id="req-17-013"></a>**REQ-17.013** (State-driven)
+### REQ-17.013 — Simple tier skips tool selection and tool definitions
 WHILE the assigned tier is `simple`, THE PersonalAssistant SHALL skip tool selection (`selectSkillPackages`, `mergeSelectedToolIDs`) and SHALL send no `tools` array in the main LLM request.
 
-<a id="req-17-014"></a>**REQ-17.014** (State-driven)
+### REQ-17.014 — Simple tier skips dynamic tail assembly
 WHILE the assigned tier is `simple`, THE PersonalAssistant SHALL omit the dynamic tail (tool instructions, Hermes block, retrieved context, runtime skills) from the system message for that turn.
 
-<a id="req-17-015"></a>**REQ-17.015** (State-driven)
+### REQ-17.015 — Full tier prompt path unchanged
 WHILE the assigned tier is `full`, THE PersonalAssistant SHALL construct the prompt using the same path as before this epic, with no change to tool selection, RAG retrieval, dynamic tail assembly, or session history inclusion.
 
 ---
@@ -203,7 +213,7 @@ WHILE the assigned tier is `full`, THE PersonalAssistant SHALL construct the pro
 
 *REQ-17.016*
 
-<a id="req-17-016"></a>**REQ-17.016** (Ubiquitous)
+### REQ-17.016 — Classifier enable/disable without code changes
 THE PersonalAssistant SHALL expose configuration parameters for: (a) intent classifier enabled/disabled flag, (b) heuristic pattern definitions, (c) model stage enabled/disabled flag, (d) classification provider endpoint and model name — all changeable via `config.yaml` or environment variables without code changes.
 
 ---
@@ -212,10 +222,12 @@ THE PersonalAssistant SHALL expose configuration parameters for: (a) intent clas
 
 *REQ-17.017 – REQ-17.018*
 
-<a id="req-17-017"></a>**REQ-17.017** (Event-driven)
+### REQ-17.017 — Log tier and deciding stage per turn
 WHEN the intent classifier assigns a tier for a user turn, THE PersonalAssistant SHALL log at INFO level the assigned tier, the stage that decided (heuristic or model), and the original message length.
 
-<a id="req-17-018"></a>**REQ-17.018** (Event-driven) **Superseded by EP-036:** model classification stage removed; retained for historical traceability.
+<a id="req-17-018"></a>
+
+### REQ-17.018 — Model-stage token logging — **Superseded by EP-036**
 WHEN the model stage is invoked, THE PersonalAssistant SHALL record model-stage token usage (prompt and completion) in logs separately from main-model usage, and SHALL exclude model-stage tokens from the user-facing usage footer.
 
 ---
@@ -224,8 +236,8 @@ WHEN the model stage is invoked, THE PersonalAssistant SHALL record model-stage 
 
 *REQ-17.019 – REQ-17.020*
 
-<a id="req-17-019"></a>**REQ-17.019** (Ubiquitous)
+### REQ-17.019 — make check passes on delivered branch
 THE PersonalAssistant SHALL pass `make check` on the branch that delivers this epic.
 
-<a id="req-17-020"></a>**REQ-17.020** (Ubiquitous)
+### REQ-17.020 — Each AC mapped to automated or manual test
 THE PersonalAssistant SHALL map every acceptance criterion in [ep-acceptance-criteria.md](ep-acceptance-criteria.md) to at least one automated test with `Covers AC-17.NNN` or to an explicit manual scenario referenced from the acceptance criteria document.

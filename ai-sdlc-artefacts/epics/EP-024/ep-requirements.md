@@ -97,22 +97,22 @@ In the following, *System* means **PersonalAssistant System** unless a different
 
 *REQ-24.001, REQ-24.002, REQ-24.003, REQ-24.004, REQ-24.005, REQ-24.009*
 
-**REQ-24.001** (Ubiquitous)  
+### REQ-24.001 — Document ordered provider pool and index semantics
 THE Operator documentation tree SHALL describe the Provider Pool as the ordered `llm_providers` list and SHALL state that indices are zero-based and stable for the lifetime of a configuration snapshot.
 
-**REQ-24.002** (Ubiquitous)  
+### REQ-24.002 — Document main conversation baseline and escalation
 THE Operator documentation tree SHALL describe how the main conversation path selects the starting Provider Pool index for each new user turn, including the use of Baseline Index when `tools.llm_escalation.enabled` is true, and the fact that transport fallback may advance to higher indices on qualifying errors.
 
-**REQ-24.003** (Ubiquitous)  
+### REQ-24.003 — Document summarization adapter pool usage
 THE Operator documentation tree SHALL describe that the Summarization Adapter is built from the same Provider Pool entries and labels, and that its router configuration follows `SummarizeRouterConfig` (baseline index when escalation is enabled, otherwise index zero).
 
-**REQ-24.004** (Ubiquitous)  
+### REQ-24.004 — Document intent classifier model stage separation
 THE Operator documentation tree SHALL state that the Intent Classifier Model Stage, when enabled, uses the `intent_classifier.model_stage` fields to construct a dedicated LLM client, and SHALL state that this path does not select a model by index into `llm_providers`.
 
-**REQ-24.005** (Ubiquitous)  
+### REQ-24.005 — Document minimal configuration examples
 THE Operator documentation tree SHALL include at least three concise configuration sketches: a single-provider pool, a multi-provider pool with escalation enabled, and a setup reference that mentions optional `intent_classifier` with model stage enabled (fields by name, without prescribing vendor values).
 
-**REQ-24.009** (Ubiquitous)  
+### REQ-24.009 — Document PA_ENV=development for diagnostics
 THE Operator documentation tree SHALL document `PA_ENV=development` (case-insensitive) as the operator-set acknowledgement that intentionally enables diagnostic application logging sessions on non-production hosts.
 
 ---
@@ -121,10 +121,10 @@ THE Operator documentation tree SHALL document `PA_ENV=development` (case-insens
 
 *REQ-24.006, REQ-24.007*
 
-**REQ-24.006** (Ubiquitous)  
+### REQ-24.006 — Dockerfile sets explicit PA_LOG_LEVEL=info
 THE Production-oriented Docker artefact files SHALL include `ENV PA_LOG_LEVEL=info` in the runtime stage of the root `Dockerfile` for the `pa` image.
 
-**REQ-24.007** (Ubiquitous)  
+### REQ-24.007 — Compose examples set PA_LOG_LEVEL=info
 THE `docker-compose.yml` service definition for `pa` SHALL declare `PA_LOG_LEVEL` in the `environment` list so that the container uses `info` when the operator does not override it (for example `PA_LOG_LEVEL=${PA_LOG_LEVEL:-info}`), alongside the existing path-related variables.
 
 ---
@@ -133,7 +133,7 @@ THE `docker-compose.yml` service definition for `pa` SHALL declare `PA_LOG_LEVEL
 
 *REQ-24.008*
 
-**REQ-24.008** (Event-driven)  
+### REQ-24.008 — Warn on debug logging without development acknowledgement
 WHEN the process starts AND the Effective application log level is `debug` AND (`PA_ENV` is unset OR `PA_ENV` is set to a value that differs from `development` under ASCII case-folding), THE PersonalAssistant System SHALL emit exactly one `WARN` level log record during that startup that states full LLM request and response text may appear in application logs and that the stream is sensitive.
 
 ---
@@ -142,7 +142,7 @@ WHEN the process starts AND the Effective application log level is `debug` AND (
 
 *REQ-24.010*
 
-**REQ-24.010** (Ubiquitous)  
+### REQ-24.010 — Quality gate passes on the change set
 THE PersonalAssistant System change set for EP-024 SHALL pass the repository quality gate command `make check`.
 
 ---

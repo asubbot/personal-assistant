@@ -15,17 +15,17 @@ Testable conditions for runtime skills, `vec_skills`, tool union with `always_in
 
 | AC ID | REQ | Summary |
 |-------|-----|---------|
-| [AC-13.001](#ac-13-001) | REQ-13.007 | Startup fails when SKILL.md contains a canonical marker line |
-| [AC-13.002](#ac-13-002) | REQ-13.006 | Startup fails when skill references unknown tool id |
-| [AC-13.003](#ac-13-003) | REQ-13.003 | Config load fails when always_include references unknown tool |
+| [AC-13.001](#ac-13-001) | REQ-13.007, REQ-13.019 | Startup fails when SKILL.md contains a canonical marker line |
+| [AC-13.002](#ac-13-002) | REQ-13.006, REQ-13.019 | Startup fails when skill references unknown tool id |
+| [AC-13.003](#ac-13-003) | REQ-13.002, REQ-13.003 | Config load fails when always_include references unknown tool |
 | [AC-13.004](#ac-13-004) | REQ-13.014, REQ-13.015 | Merged system begins with trust policy and wraps non-empty retrieved context in CONTEXT (`PA_BEGIN_CONTEXT` / `PA_END_CONTEXT`) markers |
 | [AC-13.005](#ac-13-005) | REQ-13.015 | Tool instruction aggregate wrapped in TOOLS (`PA_BEGIN_TOOLS` / `PA_END_TOOLS`) markers when non-empty |
-| [AC-13.006](#ac-13-006) | REQ-13.010, REQ-13.016 | When skills enabled and index ready, merged system contains SKILLS (`PA_BEGIN_SKILLS` / `PA_END_SKILLS`) block with selected skill body text |
+| [AC-13.006](#ac-13-006) | REQ-13.004, REQ-13.010, REQ-13.016 | When skills enabled and index ready, merged system contains SKILLS (`PA_BEGIN_SKILLS` / `PA_END_SKILLS`) block with selected skill body text |
 | [AC-13.007](#ac-13-007) | REQ-13.011 | Tool list includes union of always_include, skill-declared tools, and vector-selected tools |
-| [AC-13.008](#ac-13-008) | REQ-13.013 | When runtime skills disabled, handler behaviour matches pre-selection without skill packages |
+| [AC-13.008](#ac-13-008) | REQ-13.002, REQ-13.013 | When runtime skills disabled, handler behaviour matches pre-selection without skill packages |
 | [AC-13.009](#ac-13-009) | REQ-13.018 | indexTurn refuses chunk containing forbidden marker line |
-| [AC-13.010](#ac-13-010) | REQ-13.009 | vec_skills table accepts inserts after Clear+rebuild pattern |
-| [AC-13.011](#ac-13-011) | REQ-13.005 | Load fails when SKILL.md missing required frontmatter |
+| [AC-13.010](#ac-13-010) | REQ-13.008, REQ-13.009 | vec_skills table accepts inserts after Clear+rebuild pattern |
+| [AC-13.011](#ac-13-011) | REQ-13.001, REQ-13.004, REQ-13.005 | Load fails when SKILL.md missing required frontmatter |
 | [AC-13.012](#ac-13-012) | REQ-13.017 | Same system string reused across simulated tool round (no rebuild of messages[0] mid-turn) |
 | [AC-13.013](#ac-13-013) | REQ-13.020 | Integration test exercises core message path with mock LLM and runtime skills enabled |
 | [AC-13.014](#ac-13-014) | REQ-13.012 | When skill rune budget exceeded, lower-ranked selected skill is dropped entirely |

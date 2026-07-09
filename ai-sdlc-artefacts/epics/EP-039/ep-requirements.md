@@ -99,37 +99,37 @@ flowchart LR
 
 <a id="req-39-001"></a>
 
-#### REQ-39.001 — Require defaults and per-tool overrides
+### REQ-39.001 — Require defaults and per-tool overrides
 
 THE **Config loader** SHALL require `tools.vector_search_tools` to contain a **`defaults`** object with explicit fields `enabled`, `default_top_k`, `max_top_k`, `max_output_bytes`, and `snippet_runes`, and three objects **`search_vector_memory`**, **`search_vector_tool`**, and **`search_vector_skill`** that MAY specify only `enabled` and optional field overrides.
 
 <a id="req-39-002"></a>
 
-#### REQ-39.002 — Reject legacy vector_search_tools shape
+### REQ-39.002 — Reject legacy vector_search_tools shape
 
 IF a config file places the five tuning fields directly on each tool object without a **`defaults`** sibling, THEN THE **Config loader** SHALL fail load with an error naming `tools.vector_search_tools` and the legacy shape as unsupported.
 
 <a id="req-39-003"></a>
 
-#### REQ-39.003 — Validate defaults bounds
+### REQ-39.003 — Validate defaults bounds
 
 THE **Config loader** SHALL validate `tools.vector_search_tools.defaults` using the same numeric bounds as today’s per-tool validation (`default_top_k >= 1`, `max_top_k >= default_top_k`, positive output and snippet limits).
 
 <a id="req-39-004"></a>
 
-#### REQ-39.004 — Validate per-tool overrides
+### REQ-39.004 — Validate per-tool overrides
 
 WHERE a per-tool override specifies a tuning field, THE **Config loader** SHALL validate that field with the same rules as defaults; omitted fields SHALL inherit from defaults at resolve time.
 
 <a id="req-39-005"></a>
 
-#### REQ-39.005 — Resolve merged settings
+### REQ-39.005 — Resolve merged settings
 
 THE **Config loader** SHALL expose resolved per-tool settings through `VectorSearchToolSettings(toolID)` by merging `defaults` with the matching override object.
 
 <a id="req-39-006"></a>
 
-#### REQ-39.006 — Runtime parity for vector tools
+### REQ-39.006 — Runtime parity for vector tools
 
 WHEN an operator migrates field-for-field from the pre-EP-039 shape to the defaults+overrides shape, THE **PersonalAssistant** SHALL produce identical resolved settings and native tool behaviour for `search_vector_memory`, `search_vector_tool`, and `search_vector_skill`.
 
@@ -137,31 +137,31 @@ WHEN an operator migrates field-for-field from the pre-EP-039 shape to the defau
 
 <a id="req-39-007"></a>
 
-#### REQ-39.007 — Typed ToolOutputArtifactsConfig
+### REQ-39.007 — Typed ToolOutputArtifactsConfig
 
 THE **Config loader** SHALL map `tools.tool_output_artifacts` to a typed **`ToolOutputArtifactsConfig`** on `ToolsConfig` with fields matching operator documentation (including `enabled`, `directory`, `tool_result_prompt_bytes`, size and retention limits).
 
 <a id="req-39-008"></a>
 
-#### REQ-39.008 — Validate artifact fields
+### REQ-39.008 — Validate artifact fields
 
 THE **Config loader** SHALL validate all required artifact fields at load (positive byte limits where applicable, non-empty `directory` when `enabled` is true, valid `omission_marker`).
 
 <a id="req-39-009"></a>
 
-#### REQ-39.009 — Wire tool_result_prompt_bytes
+### REQ-39.009 — Wire tool_result_prompt_bytes
 
 THE **PersonalAssistant** SHALL use `tools.tool_output_artifacts.tool_result_prompt_bytes` as the maximum tool-result bytes included in the main LLM prompt, replacing the hardcoded core constant when config is loaded.
 
 <a id="req-39-010"></a>
 
-#### REQ-39.010 — Wire artifact directory
+### REQ-39.010 — Wire artifact directory
 
 WHERE `tools.tool_output_artifacts.enabled` is true, THE **PersonalAssistant** SHALL resolve artifact storage relative to configured paths using `tools.tool_output_artifacts.directory`.
 
 <a id="req-39-011"></a>
 
-#### REQ-39.011 — Reject unknown artifact keys
+### REQ-39.011 — Reject unknown artifact keys
 
 IF an unknown key appears under `tools.tool_output_artifacts`, THEN THE **Config loader** SHALL fail load with an explicit nested-key error.
 
@@ -169,25 +169,25 @@ IF an unknown key appears under `tools.tool_output_artifacts`, THEN THE **Config
 
 <a id="req-39-012"></a>
 
-#### REQ-39.012 — Require sqlite_store_defaults
+### REQ-39.012 — Require sqlite_store_defaults
 
 THE **Config loader** SHALL require a root-level **`sqlite_store_defaults`** object with explicit `journal_mode`, `busy_timeout`, and `synchronous` fields.
 
 <a id="req-39-013"></a>
 
-#### REQ-39-013 — Per-store override blocks
+### REQ-39.013 — Per-store override blocks
 
 THE **Config loader** SHALL require `vector_store_reliability` and `jobs_store_reliability` as root keys whose objects contain at minimum **`foreign_keys`** and MAY override any field from `sqlite_store_defaults`.
 
 <a id="req-39-014"></a>
 
-#### REQ-39.014 — Effective PRAGMA parity
+### REQ-39.014 — Effective PRAGMA parity
 
 WHEN per-store blocks specify only `foreign_keys` and inherit other fields from `sqlite_store_defaults`, THE **PersonalAssistant** SHALL produce the same effective SQLite PRAGMA policy as the pre-EP-039 full duplicate blocks for equivalent operator settings.
 
 <a id="req-39-015"></a>
 
-#### REQ-39.015 — Reject redundant legacy reliability-only shape
+### REQ-39.015 — Reject redundant legacy reliability-only shape
 
 IF a config uses the pre-EP-039 pattern where both store blocks repeat all PRAGMA fields without `sqlite_store_defaults`, THEN THE **Config loader** SHALL fail load with an error directing the operator to migrate to defaults + overrides.
 
@@ -195,61 +195,61 @@ IF a config uses the pre-EP-039 pattern where both store blocks repeat all PRAGM
 
 <a id="req-39-016"></a>
 
-#### REQ-39.016 — Update repository configs
+### REQ-39.016 — Update repository configs
 
 THE **repository** SHALL update `config.examples/`, `internal/config/testdata/`, and integration JSON configs to the new schemas before merge.
 
 <a id="req-39-017"></a>
 
-#### REQ-39.017 — Document migration
+### REQ-39.017 — Document migration
 
 THE **repository** SHALL document field-for-field migration from pre-EP-039 shapes in `docs/configuration.md`.
 
 <a id="req-39-018"></a>
 
-#### REQ-39.018 — Explicit legacy errors
+### REQ-39.018 — Explicit legacy errors
 
 THE **Config loader** SHALL include the unsupported JSON path in every legacy-shape rejection error introduced by this epic.
 
 <a id="req-39-019"></a>
 
-#### REQ-39.019 — Equivalent-config parity tests
+### REQ-39.019 — Equivalent-config parity tests
 
 THE **repository** SHALL include automated tests proving equivalent pre- and post-epic configs yield identical resolved vector-search settings, truncation limits, and SQLite policies.
 
 <a id="req-39-020"></a>
 
-#### REQ-39.020 — Negative legacy fixtures
+### REQ-39.020 — Negative legacy fixtures
 
 THE **repository** SHALL include negative testdata fixtures for each legacy shape rejected by REQ-39.002 and REQ-39.015 with assertions on the error message text.
 
 <a id="req-39-021"></a>
 
-#### REQ-39.021 — make check passes
+### REQ-39.021 — make check passes
 
 THE **repository** SHALL pass `make check` on the epic branch before merge.
 
 <a id="req-39-022"></a>
 
-#### REQ-39.022 — Preserve explicit JSON rules
+### REQ-39.022 — Preserve explicit JSON rules
 
 THE **Config loader** SHALL continue to reject unknown top-level keys and enforce single-occurrence documented keys per consumer repo rules.
 
 <a id="req-39-023"></a>
 
-#### REQ-39.023 — Limit core changes
+### REQ-39.023 — Limit core changes
 
 THE **PersonalAssistant** SHALL limit `internal/core` changes to reading new config fields for truncation and artifact paths; no handler file reorganization.
 
 <a id="req-39-024"></a>
 
-#### REQ-39.024 — No tools.selection changes
+### REQ-39.024 — No tools.selection changes
 
 THE **Config loader** SHALL leave the `tools.selection` schema unchanged.
 
 <a id="req-39-025"></a>
 
-#### REQ-39.025 — Operator config loads
+### REQ-39.025 — Operator config loads
 
 THE operator `.config/config.json` (migrated on the epic branch per operator procedure) SHALL load successfully at startup.
 

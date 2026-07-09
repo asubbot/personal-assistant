@@ -48,60 +48,60 @@ flowchart TB
 
 <a id="req-40-001"></a>
 
-#### REQ-40.001 — handlerToolDeps
+### REQ-40.001 — handlerToolDeps
 
 THE **PersonalAssistant** SHALL store tool-selection and execution dependencies on `conversationHandler` in an unexported **`handlerToolDeps`** struct containing at minimum: `catalog`, `toolIndex`, `skillIndex`, `nativeRegistry`, `skillPackagesByID`, `toolsCfg`, `toolsSelection`, `toolSearchTopK`, `toolMinCount`, `toolFallbackCap`, `nodeRunner`, and `runtimeSkillsCfg`.
 
 <a id="req-40-002"></a>
 
-#### REQ-40.002 — handlerMemoryDeps
+### REQ-40.002 — handlerMemoryDeps
 
 THE **PersonalAssistant** SHALL store memory and retrieval dependencies in **`handlerMemoryDeps`**: `memVec`, `embedder`, `memoryVectorTopK`, `paLoc`.
 
 <a id="req-40-003"></a>
 
-#### REQ-40.003 — handlerSessionDeps
+### REQ-40.003 — handlerSessionDeps
 
 THE **PersonalAssistant** SHALL store session-window dependencies in **`handlerSessionDeps`**: `sessionCfg`, `sessionStore`.
 
 <a id="req-40-004"></a>
 
-#### REQ-40.004 — handlerLLMDeps
+### REQ-40.004 — handlerLLMDeps
 
 THE **PersonalAssistant** SHALL store LLM and turn-limit dependencies in **`handlerLLMDeps`**: `router`, `llmLog`, `model`, `firstProviderSupportsTools`, `logRedactor`, `logger`, `classifier`, `maxMessageLength`, `maxDynamicSystemRunes`.
 
 <a id="req-40-005"></a>
 
-#### REQ-40.005 — Migrate field access
+### REQ-40.005 — Migrate field access
 
 THE **PersonalAssistant** SHALL update all methods in `handler*.go` to access dependencies through the grouped structs.
 
 <a id="req-40-006"></a>
 
-#### REQ-40.006 — Constructor builds groups
+### REQ-40.006 — Constructor builds groups
 
 THE **PersonalAssistant** SHALL construct the four dependency groups in `newRunConversationHandler` and assign them to `conversationHandler` in one struct literal per group.
 
 <a id="req-40-007"></a>
 
-#### REQ-40.007 — Public API unchanged
+### REQ-40.007 — Public API unchanged
 
 THE **PersonalAssistant** SHALL keep `MessageHandler`, `BuildMessageHandler`, `Run`, and `NewIntegrationConversationHandler` signatures and semantics unchanged.
 
 <a id="req-40-008"></a>
 
-#### REQ-40.008 — Test parity
+### REQ-40.008 — Test parity
 
 THE **repository** SHALL pass all existing `internal/core/handler*` tests without changing expected outputs.
 
 <a id="req-40-009"></a>
 
-#### REQ-40.009 — No config changes
+### REQ-40.009 — No config changes
 
 THE **Config loader** SHALL not change JSON schema as part of this epic.
 
 <a id="req-40-010"></a>
 
-#### REQ-40.010 — make check
+### REQ-40.010 — make check
 
 THE **repository** SHALL pass `make check` before merge.
