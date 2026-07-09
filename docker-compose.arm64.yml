@@ -5,5 +5,9 @@ include:
 services:
   pa:
     build:
+      context: .
       platforms:
         - linux/arm64
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}

@@ -7,6 +7,8 @@ FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS builder
 ARG TARGETOS=linux
 ARG TARGETARCH
 ARG BUILDARCH
+ARG GIT_COMMIT=unknown
+ARG BUILD_TIME=unknown
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libsqlite3-dev \
@@ -32,8 +34,9 @@ RUN set -eux; \
       ;; \
     *) echo "unsupported TARGETARCH=$ARCH (use amd64 or arm64)" >&2; exit 1 ;; \
   esac; \
+  LDFLAGS="-s -w -X pa/internal/version.Commit=${GIT_COMMIT} -X pa/internal/version.BuildTime=${BUILD_TIME}"; \
   CGO_ENABLED=1 GOOS="${TARGETOS:-linux}" GOARCH="$ARCH" \
-  go build -ldflags="-s -w" -o /pa ./cmd/pa
+  go build -ldflags="${LDFLAGS}" -o /pa ./cmd/pa
 
 ARG TARGETPLATFORM=linux/amd64
 FROM --platform=$TARGETPLATFORM debian:bookworm-slim

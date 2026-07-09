@@ -45,8 +45,10 @@ With [direnv](https://direnv.net/), you can use `.envrc` to load `.env` automati
 ## Build
 
 ```bash
-go build -o pa ./cmd/pa
+make build
 ```
+
+`make build` embeds the current git commit and UTC build time into `bin/pa`. Plain `go build` without `-ldflags` leaves `commit=unknown`.
 
 ## Configuration file
 
@@ -67,10 +69,12 @@ EP-019 note: scheduler persistence uses `paths.jobs_db_path` (default example va
 ## First run
 
 ```bash
-PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./pa
+PA_DATA_DIR=./data PA_SECRETS_DIR=.secrets ./bin/pa
 ```
 
-Or set the same variables in `.env` and run `./pa` from a shell where they are exported.
+Or set the same variables in `.env` and run `./bin/pa` from a shell where they are exported.
+
+Print build identity without starting the bot: `./bin/pa -version`.
 
 ## Contributors: full code quality gate (not installation)
 

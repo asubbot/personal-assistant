@@ -45,6 +45,20 @@ Plain **`docker build`** (no buildx platform) defaults to **linux/amd64** for th
 
 If you see **checksum mismatch** after a failed build, run **`docker builder prune`** and rebuild (stale BuildKit module cache).
 
+## Build identity in logs
+
+The `pa` binary records **git commit** and **UTC build time** at image build time (`.git/` is not in the Docker build context). Compose passes `GIT_COMMIT` and `BUILD_TIME` build-args; defaults are `unknown` if unset.
+
+Prefer **`make docker-build`** (sets both from the host git tree) or export them before `docker compose up --build`:
+
+```bash
+GIT_COMMIT=$(git rev-parse --short HEAD) \
+BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+docker compose up --build -d
+```
+
+After start, logs include `msg="pa starting" commit=… built=…`. Compare `commit` with `git rev-parse --short HEAD` on the host to confirm the running image matches your tree.
+
 ## Compose layout
 
 - **Config (read-only):** host **`./.config`** → container `/etc/pa` with `PA_CONFIG_DIR=/etc/pa`.
