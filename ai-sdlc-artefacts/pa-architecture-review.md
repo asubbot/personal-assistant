@@ -1,24 +1,31 @@
 # PersonalAssistant — Architecture review (code-grounded)
 
 **Document type:** architecture overview derived from this repository’s source code; not an independent audit or a performance benchmark.
-**Date:** 2026-04-17
-**Pinned revision:** `442aa014e9dab718734de679e83709e00d738dd1`
-**Scope:** `cmd/pa`, `internal/**`, `.config/config.json`, related docs (`README.md`, `ai-sdlc-artefacts/threat-model.md`, `docs/`).
-**Related artefacts:** [scope.md](scope.md), [strategy.md](strategy.md), [threat-model.md](threat-model.md), epics [EP-001 … EP-021](epics/).
+**Date:** 2026-07-27
+**Pinned revision:** `effd6aa5fa7a7100d23ae70b3561bebb37a2b429` (`main` at review time)
+**ai-sdlc pin:** `v1.0.7` (see `ai-sdlc.version`)
+**Scope:** `cmd/pa`, `internal/**`, related docs (`README.md`, `docs/`, `ai-sdlc-artefacts/threat-model.md`).
+**Related artefacts:** [scope.md](scope.md), [strategy.md](strategy.md), [threat-model.md](threat-model.md), [audit-report.md](audit-report.md), epics [EP-001 … EP-043](epics/).
+**Operator docs (canonical narrative):** [docs/architecture-ru.md](../docs/architecture-ru.md), [docs/architecture.md](../docs/architecture.md) (composition root).
+**Pattern consult:** [ai-sdlc/reference/architecture-patterns/](../ai-sdlc/reference/architecture-patterns/index.md) (advisory cards; not a mandate to adopt every pattern).
+
+**Supersedes:** earlier review dated 2026-04-17 (`442aa014…`). Many weaknesses listed there were addressed in EP-022…EP-043 (especially increment 0.02: EP-034…043).
 
 ---
 
 ## 1. Context and goals
 
-PersonalAssistant is a single Go binary `pa` that implements a personal assistant: a Telegram bot receives messages, `internal/core` builds context (RAG + session window + runtime skills + tool catalog), talks to a pool of LLM providers, and sends the reply back. Major subsystems:
+PersonalAssistant is a **single-process Go binary** `pa` (self-hosted personal assistant): Telegram long polling → `internal/core` builds context (RAG + session window + runtime skills + tool catalog) → LLM pool → reply. Major subsystems:
 
-- long-term memory as markdown + vectors (sqlite-vec) with hierarchical summarization day → month → year (EP-002);
-- extensible **tools** — catalog (YAML + command template on an SSH node) and native (`run_on_node`, `create_tool`, `read_memory`, `write_memory`, `web_search`, `web_fetch`);
-- **scheduled jobs** scheduler (EP-019/020/021, cron + SQLite store);
-- **tool-path escalation** across the provider chain (EP-006);
-- three-tier **intent classifier** (`simple` / `full_lite` / `full`, EP-017/018) to save tokens and latency.
+- long-term memory as markdown + vectors (sqlite-vec) with hierarchical summarization day → month → year (EP-002, EP-033 retry);
+- extensible **tools** — YAML catalog (command template on an SSH node) and native (`run_on_node`, `create_tool`, memory/web/search tools, `create_scheduled_job`, …);
+- **scheduled jobs** (EP-019/020/021) with explicit runtime phases and readiness (EP-042);
+- **llmrouter** transport fallback across `llm_providers` (tool-path LLM escalation removed in EP-034);
+- **intent** heuristics only: two tiers `simple` / `full` (EP-036; `full_lite` and model stage removed).
 
-Target host: Synology DS220+ (Docker, arm64/amd64). Configuration is explicit in `config.json` (“explicit JSON configuration”, no hidden defaults) and validated on load.
+Target host: Synology / NAS-style Docker (arm64/amd64). Configuration is explicit in `config.json` (every documented top-level key present; optional blocks are JSON `null`; unknown keys rejected) and validated on load — process does not start on invalid config.
+
+**Fit:** one operator, one process, simplicity over horizontal scale. Not multi-tenant SaaS.
 
 ---
 
@@ -48,14 +55,12 @@ flowchart TB
 
 **Trust zones**
 
-- Telegram users — **semi-trusted** (authenticated via `allowedUserIDs`); their text is **untrusted content**.
+- Telegram users — **semi-trusted** (authenticated via `allowedUserIDs`); message text is **untrusted content**.
 - Operator and files under `PA_CONFIG_DIR` / `PA_SECRETS_DIR` — **trusted**.
 - LLM / embedding APIs — **external**; they receive prompts and tool results.
 - Remote nodes — **external**; access only as the dedicated PA user with keys from `PA_SECRETS_DIR`.
 
-### 2.2 Container (C2) — internal processes and stores
-
-The system is single-process but decomposes into logical containers of one binary plus external dependencies:
+### 2.2 Container (C2) — logical subsystems in one process
 
 ```mermaid
 flowchart LR
@@ -70,26 +75,28 @@ flowchart LR
   subgraph PAProc["pa process"]
     direction TB
     ADP["telegram.Adapter<br/>long polling,<br/>allowed users filter"]
-    CORE["core.Handler<br/>conversationHandler"]
-    INT["intent.CascadeClassifier<br/>heuristic and model stage"]
-    ROUTER["llmrouter.Router<br/>transport retry +<br/>tool escalation"]
-    LLMP["llm.Provider x N<br/>openai, ollama,<br/>openai-compatible"]
-    TCAT["toolcatalog + toolindex<br/>tools.yaml + vec_tools"]
-    SIDX["skillindex<br/>runtime skills (EP-013)<br/>vec_skills"]
-    MEM["memory.Store<br/>markdown tree YYYY/MM/DD"]
-    VEC["vector.sqlite<br/>vec_turns, vec_summaries,<br/>vec_notes, vec_tools,<br/>vec_skills"]
-    MJOB["memoryjob.Runner<br/>summarization worker"]
-    JOBS["jobs.Runtime + Manager<br/>cron + jobs.sqlite"]
-    NR["noderunner + ssh + allowlist<br/>cmdsafe.ValidateRemoteCommand"]
-    TOOLS["tools.Registry<br/>run_on_node, create_tool,<br/>read_memory, write_memory,<br/>web_search, web_fetch"]
-    LREDACT["logredact +<br/>llmlog JSONL"]
-    CFG["config.Load<br/>fail-fast validation"]
+    CORE["core.conversationHandler<br/>orchestration"]
+    INT["intent.Classifier<br/>heuristic simple/full"]
+    ROUTER["llmrouter.Router<br/>transport fallback"]
+    LLMP["llm.Provider × N"]
+    TCAT["toolcatalog + toolindex"]
+    SIDX["skillindex + runtimeskills"]
+    MEM["memory.Store<br/>markdown YYYY/MM/DD"]
+    VEC["vector / sqlite-vec<br/>split tables"]
+    MJOB["memoryjob.Runner"]
+    JOBS["jobs.Runtime + Manager"]
+    NR["noderunner + ssh + allowlist<br/>cmdsafe"]
+    TOOLS["tools.Registry<br/>native tools"]
+    OBS["observability HTTP<br/>health + readiness"]
+    LREDACT["logredact + llmlog + lifecyclelog"]
+    CFG["config.Load<br/>fail-fast"]
+    WIRE["cmd/pa/wire<br/>composition root"]
   end
 
   subgraph LocalFS["Local filesystem"]
-    CONF[(PA_CONFIG_DIR<br/>config.json, tools.yaml,<br/>known_hosts, allowlists)]
-    SECRETS[(PA_SECRETS_DIR<br/>tokens, API keys, SSH keys)]
-    DATA[(PA_DATA_DIR<br/>memory, vectors, jobs,<br/>llm_logs)]
+    CONF[(PA_CONFIG_DIR)]
+    SECRETS[(PA_SECRETS_DIR)]
+    DATA[(PA_DATA_DIR)]
   end
 
   TGAPI <--> ADP --> CORE
@@ -108,6 +115,13 @@ flowchart LR
   MJOB --> VEC
   JOBS --> CORE
   CORE --> LREDACT
+  OBS -.-> CORE
+  OBS -.-> JOBS
+  OBS -.-> VEC
+  WIRE -.-> ADP
+  WIRE -.-> CORE
+  WIRE -.-> TOOLS
+  WIRE -.-> JOBS
   CFG --> CONF
   CORE --> SECRETS
   CORE --> DATA
@@ -119,243 +133,227 @@ flowchart LR
 
 ### 2.3 Component (C3) — inside `internal/core`
 
+Handler is split across focused files (EP-038+) with **grouped dependency structs** (EP-040): `handlerToolDeps`, `handlerMemoryDeps`, `handlerSessionDeps`, `handlerLLMDeps` (five top-level fields on `conversationHandler`).
+
 ```mermaid
 flowchart TB
-    subgraph core["internal/core (conversationHandler)"]
+    subgraph core["internal/core"]
         direction TB
-        H["HandleMessage"]
-        C["checkUserMessage<br/>empty + max length"]
-        IC["intent.Classifier"]
-        SH["systemStaticHead<br/>trust + marker + date + personality"]
-        GR["gatherRetrievedChunkTexts<br/>vec_turns top-K (EP-016)"]
-        SP["selectSkillPackages<br/>vec_skills top-K (EP-013)"]
-        MT["mergeSelectedToolIDs<br/>always_include + skills +<br/>vec_tools ids"]
-        DT["pickToolsForMainRequest<br/>dynamic_selection cap (EP-018)"]
-        TT["tooltext.Hermes prompt<br/>textPath when<br/>!supports_tools"]
-        FT["fitDynamicTailToBudget<br/>max_dynamic_system_runes"]
-        OPT["completionOptionsMergedCatalogNative"]
-        CR["completeAt -> llmrouter"]
-        LOOP["runToolResultLoop<br/>max 10 rounds"]
-        ETC["executeOneToolCall<br/>catalog vs native"]
-        CAT["executeCatalogToolCall<br/>ValidateToolCall + Substitute +<br/>cmdsafe + nodeRunner"]
-        NTV["nativeRegistry.Run"]
-        IDX["indexTurn<br/>sha256 dedup + Turns.Add"]
-        SESS["sessionWindowStore<br/>EP-014 sliding window"]
-        LLMLOG["llmlog.Writer<br/>JSONL per request"]
-        RED["logRedactor"]
+        H["handler.go — HandleMessage orchestration"]
+        LLM["handler_llm.go — completeAt, tool loop, logs"]
+        TOOLS["handler_tools.go — merge / execute"]
+        MEM["handler_memory.go — RAG, indexTurn"]
+        TIER["handler_tier_main_prompt.go + full_tier_pipeline"]
+        IC["intent.Classifier — simple / full"]
+        LOOP["runToolResultLoop — max 10 rounds"]
+        CAT["catalog: Validate + Substitute + cmdsafe + SSH"]
+        NTV["native Registry.Run"]
     end
 
-    U[User text] --> H --> C --> IC
-    IC -- "full / full_lite / simple" --> SH
-    SH --> GR
-    SH --> SP
-    SP --> MT
-    GR --> FT
-    MT --> DT --> FT
-    FT --> OPT --> CR
-    CR -->|tool_calls| LOOP --> ETC
-    ETC -->|catalog tool id| CAT
-    ETC -->|native tool id| NTV
-    LOOP --> CR
-    CR -->|no tool_calls| IDX
-    IDX --> LLMLOG
-    C --> SESS
-    LOOP --> SESS
-    H --> RED
-    LLMLOG --> RED
+    U[User text] --> H --> IC
+    IC --> TIER
+    TIER --> LLM
+    LLM -->|tool_calls| LOOP
+    LOOP --> CAT
+    LOOP --> NTV
+    LOOP --> LLM
+    LLM -->|final| MEM
 ```
 
 ---
 
-## 3. Source map (by size and role)
+## 3. Source map (by role)
 
-| Package | Role | Files (non-test) |
-|---------|------|:---:|
-| `internal/core` | dialogue orchestration, tool loop, routing glue, EP-013/14/17/18 logic | 15 |
-| `internal/tools` | native tools + registry + params | 10 |
-| `internal/toolcatalog` | YAML catalog, templates, `ValidateToolCall` + `Substitute` | 6 |
-| `internal/jobs` | store (sqlite), `Manager` (`/jobs` commands), `Runtime` (cron) | 6 |
-| `internal/config` | `Load`, fail-fast validation, types for all sections | 6 |
-| `internal/llmrouter` | transport retry + tool-escalation policy | 5 |
-| `internal/intent` | EP-017/018: heuristic + model stage + cascade | 4 |
-| `internal/llm` | provider interface, implementations (OpenAI-compatible, Ollama) | 4 |
-| `internal/embedding` | embeddings (batch, timeout) | 4 |
-| `internal/telegram` | Adapter: long polling, allowedUserIDs, HTML formatting | 4 |
-| `internal/summarize` | day/month/year summarization pipeline + labels | 4 |
-| `internal/toolindex` / `internal/skillindex` | vec_tools / vec_skills build + search | 4 + 2 |
-| `internal/ssh` / `internal/noderunner` / `internal/cmdsafe` / `internal/allowlist` | remote execution channel + validation | 2 + 2 + 3 + 2 |
-| `internal/memory`, `internal/vector`, `internal/memoryjob` | markdown store + sqlite-vec + summarization worker | 2 + 2 + 2 |
-| `internal/llmlog`, `internal/logredact`, `internal/logging` | JSONL LLM log, redaction, log level | 2 + 2 + 1 |
-| `internal/runtimeskills`, `internal/systemprompt`, `internal/promptmarkers`, `internal/tooltext`, `internal/escalationpolicy`, `internal/patime`, `internal/httpsafety` | runtime skills, strict system-prompt markers, text-tool path | 2 + 1 + 1 + 1 + 3 + 1 + 1 |
+| Package / area | Role |
+|----------------|------|
+| `cmd/pa` | Entry, CLI (`-summarize`, `-verify-nodes`, …), jobs wrapper, observability HTTP |
+| `cmd/pa/wire` | Composition root: infrastructure, LLM, tools, handler, readiness, jobs state (EP-027/042) |
+| `internal/core` | Dialogue orchestration, prompt assembly, tool loop, RAG glue |
+| `internal/telegram` | Adapter: long polling, allowlist users, typing, HTML |
+| `internal/llm` / `internal/llmrouter` | Providers + transport fallback policy |
+| `internal/intent` | Heuristic two-tier classifier |
+| `internal/memory` / `internal/vector` / `internal/summarize` / `internal/memoryjob` | Markdown SoT, sqlite-vec, day/month/year pipeline, background worker |
+| `internal/toolcatalog` / `internal/toolindex` / `internal/tools` | YAML catalog, vec_tools, native registry |
+| `internal/skillindex` / `internal/runtimeskills` | Runtime skills + vec_skills |
+| `internal/noderunner` / `internal/ssh` / `internal/allowlist` / `internal/cmdsafe` | Remote exec channel + validation |
+| `internal/jobs` | Cron runtime + `/jobs` manager + SQLite store |
+| `internal/config` | Strict JSON load / validation |
+| `internal/sqlitepragma` | Shared WAL / busy_timeout / synchronous policy (EP-022) |
+| `internal/llmlog` / `internal/logredact` / `internal/lifecyclelog` | Audit JSONL, redaction, structured lifecycle |
+| `internal/httpsafety` | SSRF policy for web tools |
+| `scripts/check-module-boundaries.sh` | No cycles; telegram may only import config+core; core must not import concrete LLM/vector impls |
 
-Roughly ≈11.8K LOC (non-test), “one team / one product” scale; few dependencies (`go-telegram/bot`, `sqlite-vec`, `mattn/go-sqlite3`, `robfig/cron/v3`, `golang.org/x/crypto`, `yaml.v3`).
+Rough scale at review time: ~30 packages under `internal/`, ~14k LOC non-test Go under `internal/`. Dependencies stay small (`go-telegram/bot`, sqlite-vec, go-sqlite3, robfig/cron, x/crypto, yaml).
 
 ---
 
 ## 4. Key flows
 
-### 4.1 Inbound message handling
+### 4.1 Inbound message
 
-1. `telegram.Adapter.Run` receives updates, filters by `allowedUserIDs`.
-2. `core.HandleMessage` → `checkUserMessage` (empty / too long → early reply, no LLM).
-3. `intent.Classifier.Classify` picks tier (`simple` / `full_lite` / `full`). Cascade: regex heuristics + optional cheap LLM in `ModelClassifier` (separate provider).
-4. By tier:
-   - `TierFull` → vector retrieval from `vec_turns`, runtime skills, tool pre-selection (`vec_tools`), EP-018 dynamic cap;
-   - `TierFullLite` → no retrieval and no skills; tools may still apply when `text_based_enabled`;
-   - `TierSimple` → plain LLM call without tools / extra context.
-5. Prompt = fixed “head” (trust policy + marker supplement + date in `pa_timezone` + personality) + dynamic “tail” (retrieved chunks, runtime skills, Hermes instructions), fitted to `max_dynamic_system_runes`.
-6. `llmrouter.Router` runs `Complete`; on transport errors (timeout, 5xx, network) → next provider; on qualifying tool failure → escalation (`tools.llm_escalation.baseline_index` → next, up to `max_per_user_message`).
-7. If the model returns `tool_calls` (or they are parsed from the Hermes text path) → `runToolResultLoop` for up to 10 rounds: catalog tool → `ValidateToolCall` → `Substitute` → `cmdsafe.ValidateRemoteCommand` → `noderunner.RunOnNode` (allowlist + SSH); native tool → `Registry.Run`.
-8. After final reply: sliding session store (EP-014), JSONL under `llm_logs/`, SHA-256 dedup turn indexing into `vec_turns`, Telegram usage footer (EP-015).
+1. `telegram.Adapter.Run` — filter by `allowedUserIDs` (empty users file = deny all).
+2. Optional `jobsCommandHandler` intercepts `/jobs …` before core.
+3. `core.HandleMessage` → empty / max-length early reply (no LLM).
+4. `intent.Classifier` → `simple` (minimal prompt, no tools/RAG) or `full` (RAG + skills + tool pre-selection).
+5. Prompt = static head (trust + date + personality) + dynamic tail fitted to `max_dynamic_system_runes`.
+6. `llmrouter.Router.Complete` — start at provider index 0; on retryable **transport** errors switch to next provider. Tool failures do **not** switch providers (EP-034).
+7. Tool loop up to **10** rounds: catalog → Validate → Substitute → `cmdsafe` → noderunner/allowlist/SSH; or native `Registry.Run`.
+8. Post-turn: session window, llmlog JSONL, `vec_turns` index, optional usage footer.
 
 ### 4.2 Memory summarization
 
-- `cmd/pa -summarize=YYYY[-MM[-DD]]` or background `memoryjob.Runner` runs `summarize.Day` / `Month` / `Year`.
-- Day source: JSONL `llm_logs` (saved turns); output → markdown `memory/YYYY/MM/DD/*.md` + `vec_summaries`.
-- Log retention bounded by `llm_log_retention_days`.
+- CLI `-summarize=…` or background `memoryjob.Runner`; day from llm_logs → markdown + `vec_summaries`; month/year rollups; retries (EP-033). Worker yields to interactive turns (`UserTurnInProgress`).
 
 ### 4.3 Scheduled jobs
 
-- User creates jobs (EP-020 natural language via native `create_scheduled_job_tool` + EP-021 runtime skill for routing; `/jobs list|show|run|pause|delete` handled by `jobs.Manager` before `baseHandler`).
-- `jobs.Runtime` uses `robfig/cron/v3`, persists state in a separate SQLite DB (`jobs.sqlite`), supports `single_instance` overlap policy and `cancel_after_limit` timeout policy; delivers results into chat via `chatSender`.
+- Create via native tool / skills; manage via `/jobs`.
+- `JobsRuntimeState` phases: **Initializing** / **Ready** / **Failed** — soft user messages + readiness check alignment (EP-042).
+- Runtime fires into the same `HandleMessage` path; notifies chat via Telegram sender.
+
+### 4.4 Composition root startup order
+
+See [docs/architecture.md](../docs/architecture.md): `wire.Build` → StartLLMProviders → MaybeStartMemorySummarization → BuildToolRegistry → BuildMessageHandler → wrapJobsHandler → `runServer` (+ optional observability HTTP).
 
 ---
 
 ## 5. Security model (in code)
 
-- **Fail-fast config load** (`internal/config/Load`) — validates all sections, no hidden defaults; invalid fields abort startup.
-- **Telegram gate** — empty `users_path` means deny everyone.
-- **SSH / remote exec** — two-layer check:
-  1. `cmdsafe.ValidateRemoteCommand` — rune set / length, then forbidden shell metacharacters (REQ-04.031), called both in `core.executeOneToolCall` (after `Substitute`) and again in `noderunner.RunOnNode`.
-  2. `allowlist.Checker` — per-node file, exact match or prefix wildcard (only one `*` at end).
-- **Dedicated PA user** per node + keys under `PA_SECRETS_DIR`.
-- **Redaction** — shared `logredact` (built-in + `log_redaction.additional_patterns`) on INFO tool-invocation logs, DEBUG LLM request/response, and JSONL llmlog; `noderunner` gets the same editor via `SetLogRedactor`.
-- **Prompt markers** — `promptmarkers.TextContainsForbiddenMarkerLine` rejects turn indexing when the model forges trust marker lines.
-- **Retention** of LLM logs by day count (`PruneRetention`).
-- STRIDE detail — [threat-model.md](threat-model.md).
+- **Fail-fast config** — `config.Load`; no hidden product defaults.
+- **Telegram gate** — allowlist; empty = deny everyone.
+- **SSH / remote exec** — defense in depth: `cmdsafe.ValidateRemoteCommand` (also re-checked in noderunner) + per-node allowlist + dedicated PA user + `known_hosts`; `-verify-nodes` without starting the bot.
+- **create_tool** — same-directory atomic replace + sync + post-write validation / restore (EP-023); secret-pattern scanning on new tools.
+- **Redaction** — shared `logredact` across app logs, tool invocation, JSONL, noderunner.
+- **Prompt markers** — reject turn indexing when trust marker lines are forged.
+- **SSRF** — `httpsafety` for web tools.
+- **LLM log retention** — day-bounded prune.
+- Detail: [threat-model.md](threat-model.md).
+
+**Pattern note (`authn-boundary`):** authentication concentrates at Telegram allowlist + operator FS trust; authorization for remote power is allowlist/cmdsafe at the tool/SSH boundary — not a full multi-tenant authn stack (appropriate for personal use).
 
 ---
 
 ## 6. Configuration and extensibility
 
-- **Single entry** — `.config/config.json` plus optional files: `tools.yaml`, `known_hosts`, `*_allowlist`, skill packages under `paths.skills_dir`.
-- **LLM providers** — array with explicit `type`, `supports_tools`, `supports_json_mode`, `default_temperature`, `default_max_tokens`. First provider is the “baseline” for normal replies; `baseline_index` from `tools.llm_escalation` drives the tool path.
-- **Tool extensibility** — three paths:
-  1. Catalog (`tools.yaml`): declarative `command`, `node_id`, `parameters`; no code change.
-  2. Native (`tools.Tool`): Go code registered in `tools.Registry` from `cmd/pa/main.go`.
-  3. Native `create_tool`: LLM appends catalog tools at runtime under a mutex with secret-pattern scanning.
-- **Runtime skills (EP-013)** — markdown packages + tool mapping; selected via `vec_skills`; instructions enter the system “tail” only when relevant.
-- **Three provider roles** over one pool:
-  - main chat (index 0 or `baseline_index`);
-  - escalation targets (following entries in the array);
-  - summarize (`llmrouter.SummarizeRouterConfig` — separate adapter, same pool);
-  - intent model stage (**separate** inline `LLMProvider`, e.g. local Ollama/Gemma).
+- Paths via `PA_CONFIG_DIR`, `PA_DATA_DIR`, `PA_SECRETS_DIR`.
+- **LLM pool:** one `llm_providers[]` array; main chat starts at 0; transport fallback walks the array; summarize uses a separate adapter over the same pool. Operator guidance: [docs/llm-provider-roles-and-logging.md](../docs/llm-provider-roles-and-logging.md) (EP-024).
+- **Tools:** catalog YAML (no recompile) / native Go (register in wire) / `create_tool` at runtime / runtime skills packages.
+- **Tool pre-selection:** `tools.selection` (always_include + skills + vec_tools + optional cap) — EP-037 consolidated config.
+- **Conversation tools require** baseline `supports_tools: true` (Hermes text path removed — EP-030); startup warning if baseline omits tools while catalog/native tools are wired.
 
 ---
 
-## 7. Strengths
+## 7. Observability and operations
 
-1. **Clear domain decomposition.** `internal/*` packages are narrow: `noderunner` executes, `allowlist` checks, `cmdsafe` validates commands, `toolcatalog` declares, `toolindex`/`skillindex` search, `llmrouter` owns provider policy. Readable dependency graph (see `cmd/pa/main.go`).
-2. **Fail-fast configuration.** `config.Load` refuses invalid/incomplete config; aligns with `AGENTS.md` (“Fail fast”, “Explicit JSON configuration”). No magic defaults.
-3. **Safe path to nodes.** Two-layer validation (`cmdsafe` → allowlist) + dedicated PA user + `ssh_known_hosts_path` + startup `VerifyDialAndHandshake`; CLI `-verify-nodes` checks reachability without starting the bot.
-4. **Redaction is platform-level, not bolt-on.** `BuildLogRedactor` is wired through `core`, `noderunner`, `llmlog`; applies to remote stdout/stderr and tool arguments.
-5. **Prompt tier system (EP-017/018)** saves tokens on short turns without breaking `full`-tier behaviour.
-6. **Smooth tool-calling without native tool support.** `tooltext.Hermes` + `ForceJSONOutput` + follow-up parsing supports local models with `supports_tools: false`.
-7. **Escalation policy is declarative.** `baseline_index`, `max_per_user_message`, provider list — all in JSON; `llmrouter` logic is explicit (`ClassifyCompleteError`, `DecideToolFailure`).
-8. **SQLite-vec + split tables (EP-016).** Separate `vec_turns` / `vec_summaries` / `vec_notes` / `vec_tools` / `vec_skills` tables make it explicit what enters the prompt (today: turns only); invariant documented in code (`gatherSplitTableChunks`).
-9. **Hierarchical memory (day → month → year)** separates fresh context from history while markdown stays human-readable.
-10. **Mature process.** 21 epics, `ai-sdlc` pipeline, `make check` (vet, govulncheck, golangci-lint, race tests, coverage), CI badge + codecov — strong for a personal project.
-11. **Traceability AC → REQ → code.** Comments like `REQ-01.018`, `EP-016 dedup`, `AC-01.032` tie code to epics.
-12. **Dynamic tool creation (EP-009)** under mutex + `create_tool_secret_patterns` scanning — uncommon for self-hosted assistants, implemented with care.
+- Structured `slog`; optional DEBUG dumps LLM I/O (redactor only as strong as patterns).
+- JSONL llm audit + lifecycle events (`lifecycle_event`, subsystem, phase, duration).
+- Opt-in **observability HTTP** (EP-029): liveness always 200 when listener up; readiness aggregates LLM/vectors/tool index/jobs/memoryjob (and optional LLM probe). Bind failure does not stop Telegram.
+- Docs: [observability-http.md](../docs/observability-http.md), [operations.md](../docs/operations.md).
 
 ---
 
-## 8. Weaknesses
+## 8. Strengths
 
-1. **“God handler” `conversationHandler`.** The struct has ≥25 fields; `HandleMessage` is `nolint:gocyclo`; `TierFull` and `TierFullLite` branches duplicate tailState / dynamicRan / opts / textPath logic. Tier builders or strategies would help.
-2. **`cmd/pa/main.go` as composition root.** Several `buildX` helpers, `setup` returns seven values and is `nolint:gocyclo`. Each new subsystem (EP-013, EP-017, EP-019, EP-021) grows this file. No DI/wire — KISS-justified, but the ceiling is near.
-3. **Core mixed with `jobs` via adapter.** `jobsCommandHandler` wraps `baseHandler` and intercepts `/jobs`; `create_scheduled_job_tool` depends on `jobsState.snapshot()` through a closure. Works, but `initJobsRuntimeAsync` is async and can expose tools before jobs are ready — users see errors instead of a warm-up state.
-4. **Opaque mapping of providers to roles.** One `llm_providers` array serves chat, summarize, and tool escalation; `baseline_index` and “next = escalation candidate” semantics are not documented in one operator-facing place — code and epics only. Wrong order changes behaviour silently.
-5. **`PA_LOG_LEVEL=debug` dumps full LLM I/O.** Protection is `logRedactor` only if patterns cover secrets; unknown patterns leak.
-6. **Vector store is one SQLite file.** Several goroutines (`memoryjob`, background `toolindex.BuildAndSetReady`, handlers) write through separate connections. Fine with WAL / single-writer, but the repo does not set explicit PRAGMAs or write-side locking; under load, `SQLITE_BUSY` is possible.
-7. **No in-app rate limiting.** Threat model notes this; one `/jobs run` → up to 10 tool rounds × escalation × tokens. Reliance on Telegram limits and allowlists only.
-8. **No health/readiness HTTP endpoint.** `pa` is long-poll only; operators infer liveness from logs. OK for self-hosted; any HTTP evolution needs new surface.
-9. **`create_tool` writes `tools.yaml` directly.** Mutex helps, but no atomic rename / COW; a failed write can leave a half-valid catalog. Fail-fast reload applies only on next restart; until then `toolindex` may keep stale in-memory state.
-10. **Intent model stage with a long timeout** (e.g. 20s) per “uncertain” message adds latency and another billable/resource call. Fine for local models; costly for cloud.
-11. **Hermes text-tool path** — JSON extracted from free text; even with `SuspectedBrokenHermesMarkup`, parsing varies across models. `hermes_parse` escalation helps at the cost of another `Complete`.
-12. **Duplicate `cmdsafe.ValidateRemoteCommand`.** Called in `core.executeCatalogToolCall` and again in `noderunner.RunOnNode`. Defense-in-depth, but duplicate error paths can clutter logs.
-13. **Tests under `cmd/pa`** mix `main_test.go` with `ep019_e2e_test.go`, `ep020_e2e_test.go` — unit and E2E together. Coverage works; readability suffers.
-14. **Embedding batch size 100 in config** but `embedding.Embedder` is invoked per turn / per query / per chunk in many places — the field looks half-used.
+1. **Clear domain packages** with one-way dependencies and CI boundary checks — aligns with `module-boundaries` kiss_default (flat packages + enforced edges).
+2. **Fail-fast explicit JSON configuration** — matches project principles; process never boots half-configured.
+3. **Safe remote path** — cmdsafe + allowlist + dedicated user + known_hosts + verify CLI.
+4. **Platform-level redaction** and SSRF policy — not bolted on after the fact.
+5. **Controlled agent loop** — tier + rune budget + max tool rounds (predictable cost/blast radius); not an open-ended ReAct agent.
+6. **Memory duality** — human-readable markdown SoT + split vector tables for retrieval.
+7. **Composition root** in `cmd/pa/wire` with subsystem checklist and readiness hooks (EP-027/042).
+8. **Handler structure** — file split + grouped deps (EP-038/040/041); no longer a single 25+ flat-field god struct.
+9. **Reliability hardening** — SQLite PRAGMA policy + concurrent-write tests (EP-022); atomic catalog writes (EP-023); jobs init phases (EP-042).
+10. **Simplified LLM/intent surface** — transport-only fallback; two-tier heuristics; Hermes and tool-escalation removed (EP-030/034/036).
+11. **Ops surface** — health/readiness HTTP + lifecycle logging (EP-029).
+12. **Process maturity** — 43 epics, REQ/AC traceability, `make check` (vet, govulncheck, lint, race, coverage, boundaries), validate gate historically green.
 
 ---
 
-## 9. Risks
+## 9. Weaknesses and residual gaps
 
-| # | Risk | Probability | Impact | Triggers / evidence |
-|---|------|:-:|:-:|---|
-| R1 | **Compromised Telegram token or SSH key file** → full bot and node takeover | medium | critical | `threat-model.md` §3, §5 Spoofing/Elevation; depends on host FS permissions |
-| R2 | **Abuse by an allowed Telegram user** (prompt injection → tool raid) | medium | high | `HandleMessage` allows up to 10 tool rounds × escalation; no rate limit |
-| R3 | **Misconfigured allowlist or wide `*` prefix** | medium | critical | `allowlist.validateAllowlistPattern` constrains syntax, not semantics; `threat-model.md` §5 Elevation |
-| R4 | **`create_tool` write corrupts `tools.yaml`** | low | high | race between file write and `toolindex`; no atomic rename evidenced in review |
-| R5 | **Secrets leak via LLM JSONL / DEBUG logs** | low by default | high | completeness of `log_redaction.additional_patterns`; `PA_LOG_LEVEL=debug` widens blast radius |
-| R6 | **Single SQLite file** (memory + vectors + jobs) | medium | medium | one filesystem corruption loses memory, history, jobs |
-| R7 | **Hang on external LLM API** | high | medium | router retries only on transport-class errors; some hanging 2xx/stream responses need `context` timeouts |
-| R8 | **Intent model stage adds latency/cost** | medium | low | `enabled=true` with a cloud `model_stage` gets expensive fast |
-| R9 | **Tight coupling in `cmd/pa/main.go`** → regressions when adding epics | medium | medium | `setup` already at gocyclo edge; each EP-N adds branches |
-| R10 | **No health endpoint** → silent failures in Docker/Compose | medium | low | operators wrap with scripts; “healthy” means log silence |
-| R11 | **Hermes text-tool path unstable across models** | medium | medium | local models emit different JSON; escalation costs a round |
-| R12 | **`memoryjob` as background actor** without visible queue/metrics | low | medium | summarization errors land in `slog` only |
-| R13 | **Docker mounts with absolute paths** in `config.json` | low | high | `threat-model.md` §7.5 — wrong mount can expose keys or break paths |
-| R14 | **Runtime skills grow** → system tail hits `max_dynamic_system_runes` | low | low | `fitDynamicTailToBudget` trims safely but drops RAG chunks first |
+1. **`internal/core` remains the change hotspot** — still the largest module; most agent behaviour changes touch it. Grouping helped; it is not a small package.
+2. **`cmd/pa/main.go` still holds CLI/ops paths** (~470 LOC) — wire owns assembly, but entry remains thick with summarize/verify/logging helpers.
+3. **No in-app rate limiting** — EP-028 canceled (single trusted user). Prompt injection → allowlisted tool raid remains the main residual abuse path for an allowed Telegram user.
+4. **Allowlist semantics** — syntax constrained; a wide `*` prefix is still an operator footgun (critical blast radius).
+5. **DEBUG / incomplete redaction** — secrets can leak if patterns miss material (`PA_LOG_LEVEL=debug` widens blast radius).
+6. **Single-host data plane** — markdown + SQLite under `PA_DATA_DIR`; backup/corruption are operator concerns (PRAGMAs reduce busy contention, not backup risk).
+7. **CGO + sqlite-vec** — non-trivial static builds; documented in Docker docs.
+8. **Open epics (NEW):** EP-003 agent security hardening; EP-005 SSH subsystem (pa-runner); EP-007 correlation / local analytics / metrics — gaps in depth of hardening and rich observability, not in basic architecture.
+9. **Document drift risk** — keep this file and `docs/architecture-ru.md` aligned when wire/core/LLM policy change materially.
+10. **Duplicate cmdsafe checks** — intentional defense-in-depth; duplicate error paths can clutter logs under failure storms.
 
 ---
 
-## 10. Recommendations (optional, non-binding)
+## 10. Risks
 
-Conditional steps; none is mandatory — repository owner decides.
+| # | Risk | Prob. | Impact | Notes |
+|---|------|:-----:|:------:|-------|
+| R1 | Compromised Telegram token or SSH key on host | med | critical | Host FS permissions; threat-model Spoofing/Elevation |
+| R2 | Allowed user prompt injection → tool raid | med | high | Up to 10 tool rounds; no rate limit (EP-028 canceled by design) |
+| R3 | Misconfigured allowlist / wide `*` | med | critical | Semantic width not enforced by code |
+| R4 | Secrets in DEBUG / llm JSONL | low–med | high | Depends on redaction patterns |
+| R5 | Local SQLite/FS corruption or bad Docker mounts | low | high | Paths in config vs mounts |
+| R6 | External LLM hang / slow providers | med | med | Timeouts + transport fallback; not all failure modes are transport-class |
+| R7 | Core/wire growth regressions when adding features | med | med | Mitigated by wire checklist + boundaries; still the main edit surface |
+| R8 | Observability depth (no rich metrics/correlation yet) | med | low–med | EP-007 still NEW; health/ready cover basic ops |
 
-1. **Extract tier builders** (e.g. `buildTierFullOptions(h, userText, sh)`) so `HandleMessage` becomes a linear orchestrator; eases gocyclo and branch tests.
-2. **Split composition root** into `setupMemory`, `setupTools`, `setupJobs` with an explicit `*Application` / `*Runtime` instead of a seven-value `setup`. Still KISS: one struct + one constructor per subsystem.
-3. **Document `llm_providers` pool semantics** in `docs/configuration.md` with examples: which indices serve escalation / summarize / classifier. Today this is tribal knowledge.
-4. **Atomic catalog writes** from `create_tool` (tmp + `os.Rename`) + post-validation rollback — mitigates R4.
-5. **Per-user rate limits** in `telegram.Adapter` or `conversationHandler` (messages/minute, tool rounds/minute) — mitigates R2 without external components.
-6. **Health/readiness** (`/healthz` on `0.0.0.0:PORT` when `PA_HEALTH_ADDR` is set) — optional but simplifies Docker/Compose.
-7. **SQLite PRAGMAs** (`journal_mode=WAL`, `busy_timeout`, `synchronous=NORMAL`) + a short concurrent-write test — reduces R6/R7 write contention.
-8. **Move E2E tests** `cmd/pa/ep0*_e2e_test.go` under `tests/e2e/...` (alongside `tests/integration/`) — clearer coverage story.
-9. **Structured slog events** for `memoryjob` and `jobs.Runtime` (start/success/error/duration) — supports local analytics (EP-007).
-10. **Explicit deny of `PA_LOG_LEVEL=debug`** in production Dockerfile/Compose (docs + gate) — mitigates R5.
-11. **Tier-specific `max_tool_rounds`:** e.g. 0–1 for `TierSimple` / `TierFullLite` instead of 10.
-
----
-
-## 11. Dependencies and compatibility
-
-- Go 1.26 + CGO (`sqlite-vec`, `go-sqlite3`) — needs a proper toolchain at build time and is **not** trivially `static` without extra steps (documented in `Dockerfile`, `docs/docker.md`).
-- Runtime externals: Telegram API + chosen LLM endpoints; outbound HTTPS.
-- Platform: Synology DS220+ (arm64) and Apple Silicon per README; CI runs `-race` to catch data races.
+**Resolved vs 2026-04-17 review (do not re-list as open):** non-atomic `create_tool` (EP-023); missing health endpoint (EP-029); missing SQLite PRAGMA policy (EP-022); opaque provider-role docs (EP-024); Hermes instability (EP-030); tool-path escalation complexity (EP-034); three-tier + model intent latency (EP-036); flat god-handler field soup / unsplit composition root (EP-027/038/040/042); E2E mixed under `cmd/pa` without layout cleanup (EP-025/043).
 
 ---
 
-## 12. References
+## 11. Pattern checklist (ai-sdlc reference)
+
+Advisory read of [architecture-patterns/index.md](../ai-sdlc/reference/architecture-patterns/index.md) against current PA:
+
+| Pattern id | Status in PA | Comment |
+|------------|--------------|---------|
+| `module-boundaries` | **adopted** | Packages + `check-module-boundaries.sh` |
+| `authn-boundary` | **partial** | Telegram allowlist + SSH/tool gates; personal-scale |
+| `sync-vs-async` | **partial** | Sync turn path; async jobs init, memoryjob, index builds |
+| `retry-and-timeouts` | **partial** | HTTP timeouts; LLM transport fallback; memoryjob retries; not a universal retry framework |
+| `health-liveness-readiness` | **adopted** | EP-029 opt-in HTTP |
+| `idempotency` | **partial** | Turn SHA dedup; jobs overlap policies; not end-to-end request idempotency keys |
+| `rate-limiting` | **explicitly declined** | EP-028 canceled for single-user model |
+| `circuit-breaker` / `bulkhead` | **not adopted** | Transport fallback is simpler; KISS for one process |
+| `transactional-outbox` / `publisher-subscriber` / `saga-or-compensating` / `dead-letter-queue` | **not adopted** | No broker; monolith filesystem + SQLite |
+| `caching` | **not as a subsystem** | Session window + vector retrieval only |
+| `strangler-fig` | **n/a** | Greenfield monolith |
+
+---
+
+## 12. Recommendations (optional, non-binding)
+
+Owner decides; none are mandatory for personal single-user deployment.
+
+1. Keep **EP-003 / EP-005 / EP-007** as the intentional backlog for deeper security and observability — or cancel with an explicit product reason (as EP-028).
+2. Treat **allowlist review** as an operational ritual (especially any trailing `*`).
+3. Prefer **`PA_LOG_LEVEL=info`** in production compose; document DEBUG as break-glass only.
+4. When adding subsystems, follow the **wire checklist** in [docs/architecture.md](../docs/architecture.md) and extend readiness names/details stably.
+5. Refresh this artefact when composition root, core interfaces, LLM routing policy, or the security model change materially.
+
+---
+
+## 13. Dependencies and compatibility
+
+- Go 1.26+ with **CGO** (sqlite-vec, go-sqlite3).
+- Runtime: Telegram API + configured LLM/embedding endpoints; outbound HTTPS.
+- Platforms: linux/amd64 and linux/arm64 Docker images; local macOS/Apple Silicon for development.
+- Quality gate: `make check` includes format, vet, govulncheck, lint, race tests, coverage, module boundaries, ai-sdlc pin verify.
+
+---
+
+## 14. References
 
 | Resource | Path |
 |----------|------|
-| Scope | [scope.md](scope.md) |
-| Strategy | [strategy.md](strategy.md) |
-| Threat model | [threat-model.md](threat-model.md) |
-| Audit report | [audit-report.md](audit-report.md) |
+| Scope / strategy / threat model / audit | [scope.md](scope.md), [strategy.md](strategy.md), [threat-model.md](threat-model.md), [audit-report.md](audit-report.md) |
 | Epics | [epics/](epics/) |
-| Entry point | `cmd/pa/main.go` |
-| Dialogue core | `internal/core/handler.go` |
-| LLM policy | `internal/llmrouter/` |
-| Intent classifier | `internal/intent/` |
-| Tools / catalog | `internal/tools/`, `internal/toolcatalog/`, `internal/toolindex/` |
-| Remote exec | `internal/noderunner/`, `internal/ssh/`, `internal/allowlist/`, `internal/cmdsafe/` |
-| Memory | `internal/memory/`, `internal/vector/`, `internal/memoryjob/`, `internal/summarize/` |
-| Jobs | `internal/jobs/` |
-| Config | `internal/config/`, `.config/config.json` |
-| Operator docs | `docs/` |
+| Architecture (RU narrative / EN wire) | `docs/architecture-ru.md`, `docs/architecture.md` |
+| Configuration / LLM roles / observability | `docs/configuration.md`, `docs/llm-provider-roles-and-logging.md`, `docs/observability-http.md` |
+| Pattern cards | `ai-sdlc/reference/architecture-patterns/` |
+| Entry / wire | `cmd/pa/main.go`, `cmd/pa/wire/` |
+| Dialogue core | `internal/core/` |
+| Boundaries script | `scripts/check-module-boundaries.sh` |
 
 ---
 
-*This document reflects revision `442aa014e9dab718734de679e83709e00d738dd1`. Update when `cmd/pa` structure, `core` interfaces, `llmrouter` policy, config schema, or the security model change materially.*
+*This document reflects revision `effd6aa5fa7a7100d23ae70b3561bebb37a2b429` and ai-sdlc pin `v1.0.7`. Update when `cmd/pa/wire`, `core` interfaces, `llmrouter` policy, config schema, or the security model change materially.*

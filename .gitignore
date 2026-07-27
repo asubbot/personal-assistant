@@ -38,3 +38,4 @@ Thumbs.db
 
 # Integration test temp dir
 tests/integration/tmp/
+.code-graph/
