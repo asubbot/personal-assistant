@@ -7,7 +7,7 @@
 **Scope:** `cmd/pa`, `internal/**`, related docs (`README.md`, `docs/`, `ai-sdlc-artefacts/threat-model.md`).
 **Related artefacts:** [scope.md](scope.md), [strategy.md](strategy.md), [threat-model.md](threat-model.md), [audit-report.md](audit-report.md), epics [EP-001 … EP-043](epics/).
 **Operator docs (canonical narrative):** [docs/architecture-ru.md](../docs/architecture-ru.md), [docs/architecture.md](../docs/architecture.md) (composition root).
-**Pattern consult:** [ai-sdlc/reference/architecture-patterns/](../ai-sdlc/reference/architecture-patterns/index.md) (advisory cards; not a mandate to adopt every pattern).
+**Pattern consult:** advisory catalog `reference/architecture-patterns/` at the ai-sdlc checkout (pin in `ai-sdlc.version`); product defaults in [architecture-patterns-playbook.md](architecture-patterns-playbook.md).
 
 **Supersedes:** earlier review dated 2026-04-17 (`442aa014…`). Many weaknesses listed there were addressed in EP-022…EP-043 (especially increment 0.02: EP-034…043).
 
@@ -302,7 +302,8 @@ See [docs/architecture.md](../docs/architecture.md): `wire.Build` → StartLLMPr
 
 ## 11. Pattern checklist (ai-sdlc reference)
 
-Advisory read of [architecture-patterns/index.md](../ai-sdlc/reference/architecture-patterns/index.md) against current PA:
+Advisory read of the catalog `reference/architecture-patterns/` (ai-sdlc checkout; pin in `ai-sdlc.version`) against current PA.
+Product defaults: [architecture-patterns-playbook.md](architecture-patterns-playbook.md).
 
 | Pattern id | Status in PA | Comment |
 |------------|--------------|---------|
@@ -349,7 +350,8 @@ Owner decides; none are mandatory for personal single-user deployment.
 | Epics | [epics/](epics/) |
 | Architecture (RU narrative / EN wire) | `docs/architecture-ru.md`, `docs/architecture.md` |
 | Configuration / LLM roles / observability | `docs/configuration.md`, `docs/llm-provider-roles-and-logging.md`, `docs/observability-http.md` |
-| Pattern cards | `ai-sdlc/reference/architecture-patterns/` |
+| Architecture patterns playbook (PA defaults) | [architecture-patterns-playbook.md](architecture-patterns-playbook.md) |
+| Pattern cards (ai-sdlc checkout) | `reference/architecture-patterns/` at pin in `ai-sdlc.version` |
 | Entry / wire | `cmd/pa/main.go`, `cmd/pa/wire/` |
 | Dialogue core | `internal/core/` |
 | Boundaries script | `scripts/check-module-boundaries.sh` |

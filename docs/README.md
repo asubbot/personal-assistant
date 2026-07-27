@@ -14,3 +14,4 @@ Operator-focused guides for installing, configuring, running, and troubleshootin
 | [observability-http.md](observability-http.md) | Optional health/readiness HTTP (`observability_http`), Docker probes, lifecycle log fields (EP-029). |
 | [troubleshooting.md](troubleshooting.md) | Common failures and checks. |
 | [Threat model (artefact)](../ai-sdlc-artefacts/threat-model.md) | Code-grounded security overview for operators (not a pentest report). |
+| [Architecture patterns playbook](../ai-sdlc-artefacts/architecture-patterns-playbook.md) | Product defaults for consulting the ai-sdlc architecture-patterns catalog (ASD hints; not a substitute for card `when_not` / `kiss_default`). |
