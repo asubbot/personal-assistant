@@ -65,6 +65,7 @@ func (c *searchCache) set(key, payload string) {
 		if oldest == nil {
 			break
 		}
+		// type-assertion: safe — this private LRU stores only *searchCacheEntry values
 		oe := oldest.Value.(*searchCacheEntry)
 		c.removeEntry(oe)
 	}

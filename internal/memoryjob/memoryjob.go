@@ -113,6 +113,7 @@ func (pq priorityQueue) Less(i, j int) bool {
 func (pq priorityQueue) Swap(i, j int) { pq[i], pq[j] = pq[j], pq[i] }
 
 func (pq *priorityQueue) Push(x any) {
+	// type-assertion: safe — container/heap only pushes the queue's private *jobItem values
 	*pq = append(*pq, x.(*jobItem))
 }
 
@@ -154,6 +155,7 @@ func (r *Runner) loop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		// unguarded-shared-field: safe — wake is immutable after construction and channels are concurrency-safe
 		case <-r.wake:
 			r.drain(ctx)
 		case <-tick.C:
@@ -229,6 +231,7 @@ func (r *Runner) enqueueStartup() {
 	r.Enqueue(PriorityCatchUp, "catchup_month", r.jobCatchUpMonth)
 	r.Enqueue(PriorityCatchUp, "catchup_year", r.jobCatchUpYear)
 	select {
+	// unguarded-shared-field: safe — wake is immutable after construction and channels are concurrency-safe
 	case r.wake <- struct{}{}:
 	default:
 	}
@@ -356,6 +359,7 @@ func (r *Runner) popNextJob() *jobItem {
 	if r.pq.Len() == 0 {
 		return nil
 	}
+	// type-assertion: safe — priorityQueue.Pop always returns its private *jobItem element type
 	it := heap.Pop(&r.pq).(*jobItem)
 	if it.key != "" {
 		delete(r.queued, it.key)

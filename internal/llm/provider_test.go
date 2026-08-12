@@ -30,6 +30,7 @@ func TestNewProvider_supportedTypes(t *testing.T) {
 			if typ != "ollama" {
 				cfg.APIKeyPath = keyPath
 			}
+			// test-external-service: safe — constructor creation performs no HTTP request
 			prov, err := NewProvider(cfg)
 			if err != nil {
 				t.Fatalf("NewProvider(%q): %v", typ, err)
@@ -44,6 +45,7 @@ func TestNewProvider_supportedTypes(t *testing.T) {
 // Covers AC-01.033 (US-19): NewProvider(unsupported type) returns error (startup validation).
 func TestNewProvider_unsupportedType(t *testing.T) {
 	cfg := &config.LLMProvider{Type: "unknown", Endpoint: "http://x", Model: "m", DefaultTemperature: 0.3, DefaultMaxTokens: 1024, DefaultResponseFormat: "text"}
+	// test-external-service: safe — unsupported-type validation returns before constructing an HTTP client
 	_, err := NewProvider(cfg)
 	if err == nil {
 		t.Fatal("NewProvider(unknown): expected error, got nil")

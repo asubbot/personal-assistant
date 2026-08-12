@@ -178,6 +178,7 @@ type jobsCommandSpec struct {
 	run     func(ctx context.Context, userID int64, args []string) (string, bool, error)
 }
 
+// multi-write-no-transaction: safe — the map registers mutually exclusive command callbacks
 func (m *Manager) commandSpecs() map[string]jobsCommandSpec {
 	return map[string]jobsCommandSpec{
 		"list": {

@@ -107,11 +107,13 @@ func (m *mockEmbedder) Embed(_ context.Context, _ string) ([]float32, error) {
 }
 
 type mockVectorStore struct {
+	// never-assigned-field: safe — nil is the default successful Add behavior for this test double
 	addErr        error
 	addChunks     []string // chunks passed to Add for assertion (REQ-01.007)
 	searchResults []vector.SearchResult
-	searchErr     error
-	searchCalls   int
+	// never-assigned-field: safe — nil is the default successful Search behavior for this test double
+	searchErr   error
+	searchCalls int
 }
 
 func (m *mockVectorStore) Add(_ context.Context, _ string, _ []float32, chunk string) error {
@@ -154,6 +156,7 @@ type mockNodeRunner struct {
 	stdout      string
 	err         error
 	// runFunc optional per-call behavior for multi-step tool round tests. When set, stdout/err are ignored.
+	// never-assigned-field: safe — nil disables the optional per-call test override
 	runFunc func(ctx context.Context, nodeID, command string) (string, error)
 }
 

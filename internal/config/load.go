@@ -677,8 +677,8 @@ func validateLLMProviders(c *Config) error {
 	if len(c.LLMProviders) == 0 {
 		return errors.New("config: at least one llm_providers entry is required")
 	}
-	for i, p := range c.LLMProviders {
-		if err := validateOneLLMProvider(i, &p); err != nil {
+	for i := range c.LLMProviders {
+		if err := validateOneLLMProvider(i, &c.LLMProviders[i]); err != nil {
 			return err
 		}
 	}

@@ -54,6 +54,7 @@ func DirExists(path string) (bool, error) {
 	st, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			// error-masked-as-false-bool: safe — a missing path is the expected negative predicate result
 			return false, nil
 		}
 		return false, err
