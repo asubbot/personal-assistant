@@ -143,6 +143,7 @@ func AppendToolToCatalogFile(absPath string, tool *Tool) error {
 		return fmt.Errorf("toolcatalog: marshal catalog: %w", err)
 	}
 	if testPostMarshalHook != nil {
+		// fallback-return: safe — test-only hook to inject invalid YAML; prod hook is nil
 		out = testPostMarshalHook(out)
 	}
 	if err := atomicReplaceContent(absPath, out); err != nil {

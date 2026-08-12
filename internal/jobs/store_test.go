@@ -106,6 +106,38 @@ func TestStore_CreateGetListUpdateDelete(t *testing.T) {
 	}
 }
 
+// Covers AC-19.004: CreateJob persists next_run_at in the initial insert.
+func TestStore_CreateJob_PersistsNextRunAtInInitialInsert(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+	sourceLocation := time.FixedZone("UTC+05:30", 5*60*60+30*60)
+	next := time.Date(2026, time.August, 13, 9, 30, 15, 123456789, sourceLocation)
+
+	created, err := st.CreateJob(ctx, JobInput{
+		Name:           "initial-next-run",
+		ScheduleExpr:   "30 9 * * *",
+		TimeZone:       "Asia/Kolkata",
+		Instruction:    "Run once daily",
+		DeliveryChatID: 1002,
+		Status:         StatusActive,
+		OverlapPolicy:  "single_instance",
+		TimeoutPolicy:  "cancel_after_limit",
+		NextRunAt:      &next,
+	})
+	if err != nil {
+		t.Fatalf("CreateJob: %v", err)
+	}
+	if created.NextRunAt == nil {
+		t.Fatal("CreateJob.NextRunAt is nil")
+	}
+	if !created.NextRunAt.Equal(next.UTC()) {
+		t.Fatalf("CreateJob.NextRunAt = %s, want %s", created.NextRunAt, next.UTC())
+	}
+	if created.NextRunAt.Location() != time.UTC {
+		t.Fatalf("CreateJob.NextRunAt location = %s, want UTC", created.NextRunAt.Location())
+	}
+}
+
 // Covers AC-19.002: store can load persisted jobs after reopen.
 func TestStore_Reopen_PreservesJobs(t *testing.T) {
 	ctx := context.Background()
@@ -225,8 +257,12 @@ func TestStore_DeleteJob_CascadesRelatedRows(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("RecordRun: %v", err)
 	}
-	if _, err := st.CreateDeleteChallenge(ctx, j.ID, 1, 5*time.Minute); err != nil {
-		t.Fatalf("CreateDeleteChallenge: %v", err)
+	challenges := make([]DeleteChallenge, 2)
+	for i := range challenges {
+		challenges[i], err = st.CreateDeleteChallenge(ctx, j.ID, int64(i+1), 5*time.Minute)
+		if err != nil {
+			t.Fatalf("CreateDeleteChallenge(%d): %v", i+1, err)
+		}
 	}
 	if err := st.DeleteJob(ctx, j.ID); err != nil {
 		t.Fatalf("DeleteJob: %v", err)
@@ -237,5 +273,10 @@ func TestStore_DeleteJob_CascadesRelatedRows(t *testing.T) {
 	}
 	if last != nil {
 		t.Fatalf("GetLastRun after delete = %+v, want nil", last)
+	}
+	for i, challenge := range challenges {
+		if _, err := st.GetDeleteChallenge(ctx, challenge.Token); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("GetDeleteChallenge(%d) after delete err = %v, want ErrNotFound", i+1, err)
+		}
 	}
 }

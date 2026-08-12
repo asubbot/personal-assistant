@@ -85,6 +85,7 @@ func (m *Manager) CreateScheduledJobFromSpec(
 	}
 	instruction = strings.TrimSpace(instruction)
 	if reply, ok := m.validateCreateSpec(userID, instruction, hour, minute, creationPath); !ok {
+		// empty-struct-return: safe — soft validation: reply text, no Job, nil err (AC-21.005)
 		return reply, Job{}, nil
 	}
 
@@ -144,6 +145,15 @@ func (m *Manager) persistCreateSpec(
 ) (Job, time.Time, error) {
 	name := fmt.Sprintf("nl-%d-%02d%02d", now.Unix(), hour, minute)
 	scheduleExpr := fmt.Sprintf("%d %d * * *", minute, hour)
+	next, err := ComputeNextRun(Job{
+		Name:         name,
+		ScheduleExpr: scheduleExpr,
+		TimeZone:     timezone,
+	}, now)
+	if err != nil {
+		m.audit(userID, "", "create_nl", "internal_error", "creation_path", creationPath)
+		return Job{}, time.Time{}, err
+	}
 	created, err := m.store.CreateJob(ctx, JobInput{
 		Name:           name,
 		ScheduleExpr:   scheduleExpr,
@@ -153,18 +163,10 @@ func (m *Manager) persistCreateSpec(
 		Status:         StatusActive,
 		OverlapPolicy:  OverlapSingleInstance,
 		TimeoutPolicy:  TimeoutCancelAfter,
+		NextRunAt:      &next,
 	})
 	if err != nil {
 		m.audit(userID, "", "create_nl", "internal_error", "creation_path", creationPath)
-		return Job{}, time.Time{}, err
-	}
-	next, err := ComputeNextRun(created, now)
-	if err != nil {
-		m.audit(userID, created.ID, "create_nl", "internal_error", "creation_path", creationPath)
-		return Job{}, time.Time{}, err
-	}
-	if err := m.store.SetJobNextRun(ctx, created.ID, &next); err != nil {
-		m.audit(userID, created.ID, "create_nl", "internal_error", "creation_path", creationPath)
 		return Job{}, time.Time{}, err
 	}
 	return created, next, nil
@@ -176,6 +178,7 @@ type jobsCommandSpec struct {
 	run     func(ctx context.Context, userID int64, args []string) (string, bool, error)
 }
 
+// multi-write-no-transaction: safe — the map registers mutually exclusive command callbacks
 func (m *Manager) commandSpecs() map[string]jobsCommandSpec {
 	return map[string]jobsCommandSpec{
 		"list": {
@@ -397,7 +400,6 @@ func (m *Manager) confirmDelete(ctx context.Context, userID int64, jobID, token 
 		m.audit(userID, jobID, "delete_confirm", "internal_error")
 		return "", true, err
 	}
-	_ = m.store.DeleteDeleteChallenge(ctx, token)
 	m.audit(userID, jobID, "delete_confirm", "success")
 	return fmt.Sprintf("Job %s deleted.", jobID), true, nil
 }

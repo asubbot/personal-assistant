@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"pa/internal/config"
+	"pa/internal/openaicompat"
 	"strings"
 	"time"
 )
@@ -228,16 +229,7 @@ func assistantTextFromMessage(decodedContent string, msg *openAIChoiceMessage) s
 
 func (p *OpenAICompatible) parseResponse(resp *http.Response) (*CompletionResult, error) {
 	if resp.StatusCode != http.StatusOK {
-		var errBody struct {
-			Error struct {
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		msg := errBody.Error.Message
-		if msg == "" {
-			msg = resp.Status
-		}
+		msg := openaicompat.DecodeErrorMessage(resp)
 		return nil, &APIError{StatusCode: resp.StatusCode, Err: fmt.Errorf("api %s: %s", resp.Status, msg)}
 	}
 	var out openAIResponse

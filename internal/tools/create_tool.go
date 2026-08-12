@@ -190,6 +190,7 @@ func stringFromParam(params map[string]any, key string) string {
 		return fmt.Sprintf("%v", x)
 	default:
 		b, err := json.Marshal(v)
+		// error-masking: safe — non-serializable param → empty; required fields fail later
 		if err != nil {
 			return ""
 		}

@@ -159,7 +159,7 @@ func NewIntegrationConversationHandler(p IntegrationConversationParams) MessageH
 		p.MaxDynamicSystemRunes = 4000
 	}
 	if p.MemoryVector.NotesTopK == 0 && p.MemoryVector.SummariesTopK == 0 && p.MemoryVector.TurnsTopK == 0 {
-		p.MemoryVector = config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}
+		p.MemoryVector = uniformMemoryVectorConfig(10)
 	}
 	mv := p.MemoryVectors
 	if mv == nil {

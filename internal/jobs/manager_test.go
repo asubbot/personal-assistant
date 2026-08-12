@@ -290,7 +290,7 @@ func TestManager_CreateScheduledJobFromSpec_DirectCreatesJob(t *testing.T) {
 	m := NewManager(st, &runtimeStub{}, slog.New(slog.DiscardHandler))
 	m.SetDefaultTimeZone("Europe/Berlin")
 
-	reply, _, err := m.CreateScheduledJobFromSpec(
+	reply, created, err := m.CreateScheduledJobFromSpec(
 		context.Background(),
 		11,
 		22,
@@ -308,6 +308,9 @@ func TestManager_CreateScheduledJobFromSpec_DirectCreatesJob(t *testing.T) {
 			t.Fatalf("reply missing %q: %q", token, reply)
 		}
 	}
+	if created.NextRunAt == nil {
+		t.Fatal("created.NextRunAt is nil")
+	}
 
 	items, err := st.ListJobs(context.Background())
 	if err != nil {
@@ -321,6 +324,9 @@ func TestManager_CreateScheduledJobFromSpec_DirectCreatesJob(t *testing.T) {
 	}
 	if items[0].TimeZone != "Europe/Berlin" {
 		t.Fatalf("timezone = %q, want Europe/Berlin", items[0].TimeZone)
+	}
+	if items[0].NextRunAt == nil {
+		t.Fatal("persisted NextRunAt is nil")
 	}
 }
 

@@ -27,6 +27,7 @@ func TestNewEmbedder_unsupportedType_returnsError(t *testing.T) {
 		Dimensions:  768,
 		HTTPTimeout: "30s",
 	}
+	// test-external-service: safe — unsupported-type validation returns before constructing an HTTP client
 	_, err := NewEmbedder(cfg)
 	if err == nil {
 		t.Fatal("NewEmbedder(unsupported type): expected error, got nil")
@@ -48,6 +49,7 @@ func TestNewEmbedder_supportedTypes_returnsEmbedder(t *testing.T) {
 				Dimensions:  768,
 				HTTPTimeout: "30s",
 			}
+			// test-external-service: safe — constructor creation performs no HTTP request
 			emb, err := NewEmbedder(cfg)
 			if err != nil {
 				t.Fatalf("NewEmbedder(%q): %v", typ, err)
@@ -69,6 +71,7 @@ func TestNewEmbedder_openaiWithAPIKeyPath_missingFile_returnsError(t *testing.T)
 		Dimensions:  1536,
 		HTTPTimeout: "30s",
 	}
+	// test-external-service: safe — missing local key-file validation returns before any HTTP request
 	_, err := NewEmbedder(cfg)
 	if err == nil {
 		t.Fatal("NewEmbedder(openai, missing key file): expected error, got nil")

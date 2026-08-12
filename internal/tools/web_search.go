@@ -150,6 +150,7 @@ func braveSearchRequestURL(query string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// sql-rows-close: safe — url.URL.Query returns url.Values, not database/sql rows
 	q := u.Query()
 	q.Set("q", query)
 	q.Set("count", "10")
@@ -227,6 +228,7 @@ func ddgHTMLSearchURL(query string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// sql-rows-close: safe — url.URL.Query returns url.Values, not database/sql rows
 	q := u.Query()
 	q.Set("q", query)
 	u.RawQuery = q.Encode()

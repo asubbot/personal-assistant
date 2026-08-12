@@ -201,6 +201,7 @@ func parseLLMLogFilename(name string) (time.Time, bool) {
 	}
 	date, err := time.Parse("2006-01-02", name[4:14])
 	if err != nil {
+		// error-masked-as-false-bool: safe — malformed filenames are non-matches and are skipped
 		return time.Time{}, false
 	}
 	return date, true

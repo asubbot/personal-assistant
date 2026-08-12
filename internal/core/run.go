@@ -83,7 +83,7 @@ func newRunConversationHandler(cfg *config.Config, logger *slog.Logger, redactor
 	} else {
 		// core.Run allows nil config only for narrow tests; match historical implicit defaults.
 		maxDynRunes = 4000
-		memVecTopK = config.MemoryVectorConfig{NotesTopK: 10, SummariesTopK: 10, TurnsTopK: 10}
+		memVecTopK = uniformMemoryVectorConfig(10)
 		toolTopK, toolMin, toolCap = 10, 1, 50
 	}
 	firstSupportsTools := baselineProviderSupportsTools(cfg)

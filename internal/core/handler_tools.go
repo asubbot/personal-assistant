@@ -148,6 +148,7 @@ func remoteCommandFromRunOnNodeArgs(toolID, argsJSON string) string {
 		return ""
 	}
 	var m map[string]any
+	// error-masking: safe — best-effort log enrichment only; omit remote_command on bad JSON
 	if err := json.Unmarshal([]byte(s), &m); err != nil {
 		return ""
 	}

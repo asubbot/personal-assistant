@@ -24,7 +24,11 @@ type jobsCommandHandler struct {
 }
 
 func (h *jobsCommandHandler) HandleMessage(ctx context.Context, userID int64, sessionKey string, text string) (string, error) {
-	ctxForBase := jobs.WithCreateContext(ctx, userID, parseDeliveryChatID(sessionKey, userID))
+	deliveryChatID, err := parseDeliveryChatID(sessionKey)
+	if err != nil {
+		return "", fmt.Errorf("parse delivery chat ID: %w", err)
+	}
+	ctxForBase := jobs.WithCreateContext(ctx, userID, deliveryChatID)
 	if reply, handled, err := h.handleJobsCommand(ctx, userID, text); handled || err != nil {
 		return reply, err
 	}
@@ -73,12 +77,15 @@ func isJobsCommandToken(token string) bool {
 	return strings.HasPrefix(lower, "/jobs@")
 }
 
-func parseDeliveryChatID(sessionKey string, fallback int64) int64 {
+func parseDeliveryChatID(sessionKey string) (int64, error) {
 	v, err := strconv.ParseInt(strings.TrimSpace(sessionKey), 10, 64)
-	if err != nil || v == 0 {
-		return fallback
+	if err != nil {
+		return 0, fmt.Errorf("session key is not a decimal chat ID")
 	}
-	return v
+	if v == 0 {
+		return 0, fmt.Errorf("session key contains a zero chat ID")
+	}
+	return v, nil
 }
 
 func startJobsRuntimeLoop(ctx context.Context, rt *jobs.Runtime, logger *slog.Logger) {
@@ -145,6 +152,7 @@ func initJobsRuntimeAsync(ctx context.Context, state *wire.JobsRuntimeState, dbP
 // wrapJobsHandler applies the /jobs command wrapper and starts async jobs DB init when configured.
 func wrapJobsHandler(ctx context.Context, app *wire.Application, baseHandler core.MessageHandler) core.MessageHandler {
 	if app == nil || app.Cfg == nil || app.Cfg.Paths.JobsDBPath == "" {
+		// fallback-return: safe — jobs disabled/unconfigured: same handler without /jobs wrapper
 		return baseHandler
 	}
 	state := app.JobsState

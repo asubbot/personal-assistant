@@ -215,14 +215,17 @@ func daySummaryPathForCheck(s *memory.Store, day time.Time) string {
 func underMemoryRoot(root, path string) bool {
 	rootAbs, err := filepath.Abs(root)
 	if err != nil {
+		// error-masked-as-false-bool: safe — path-resolution failures must fail closed
 		return false
 	}
 	pathAbs, err := filepath.Abs(path)
 	if err != nil {
+		// error-masked-as-false-bool: safe — path-resolution failures must fail closed
 		return false
 	}
 	rel, err := filepath.Rel(rootAbs, pathAbs)
 	if err != nil {
+		// error-masked-as-false-bool: safe — containment-check failures must fail closed
 		return false
 	}
 	rel = filepath.Clean(rel)
