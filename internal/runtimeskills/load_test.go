@@ -64,6 +64,7 @@ func TestValidateToolRefs_unknown(t *testing.T) {
 	}
 }
 
+// Covers AC-13.002: native tool IDs are accepted when allowlisted.
 func TestValidateToolRefs_native(t *testing.T) {
 	cat := &toolcatalog.Catalog{Tools: map[string]*toolcatalog.Tool{}}
 	pkgs := []*Package{{ID: "s", Tools: []string{"run_on_node"}}}

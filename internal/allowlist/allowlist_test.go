@@ -8,9 +8,6 @@ import (
 	"testing"
 )
 
-// REQ/AC trace: AC-01.007, AC-01.008 (REQ-01.005) — allowlist load, pattern rules, Allow/match.
-// Complemented by internal/noderunner/runner_test.go and cmdsafe tests for pre-exec command policy (REQ-04.031 / AC-04.029).
-
 // Covers AC-01.007 (US-04): Allow returns allowed for allowlisted commands.
 func TestChecker_Allow_allowlistedCommands(t *testing.T) {
 	checker := mustNewChecker(t)

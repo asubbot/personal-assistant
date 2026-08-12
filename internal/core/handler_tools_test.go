@@ -87,8 +87,6 @@ func TestExecuteOneToolCall_UnknownTool_ReturnsErrorNoRun(t *testing.T) {
 	}
 }
 
-// Covers AC-04.004, AC-04.008: tool_calls → execution → tool results → provider called again → final reply to user; errors surfaced in chat.
-
 // Covers AC-04.012: changed tool-loop prompt behavior is covered by unit tests.
 func TestTruncateToolResultForPrompt(t *testing.T) {
 	h := testHandlerDeps{toolResultPromptBytes: maxToolResultPromptBytes}.handler()
