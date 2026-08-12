@@ -51,6 +51,92 @@ func (m *mockMessageHandler) HandleMessage(_ context.Context, _ int64, _ string,
 	return m.reply, m.err
 }
 
+// Supporting AC-20.002: parsed chat ID supplies the current-chat delivery target.
+func TestParseDeliveryChatID(t *testing.T) {
+	tests := []struct {
+		name       string
+		sessionKey string
+		want       int64
+		wantErr    bool
+	}{
+		{name: "positive", sessionKey: "123", want: 123},
+		{name: "negative", sessionKey: "-100123", want: -100123},
+		{name: "empty", sessionKey: "", wantErr: true},
+		{name: "zero", sessionKey: "0", wantErr: true},
+		{name: "non decimal", sessionKey: "s1", wantErr: true},
+		{name: "scheduled job", sessionKey: "scheduled-job:x", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseDeliveryChatID(tt.sessionKey)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("parseDeliveryChatID(%q) error = nil, want error", tt.sessionKey)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseDeliveryChatID(%q): %v", tt.sessionKey, err)
+			}
+			if got != tt.want {
+				t.Fatalf("parseDeliveryChatID(%q) = %d, want %d", tt.sessionKey, got, tt.want)
+			}
+		})
+	}
+}
+
+// Supporting AC-19.002: malformed delivery session keys fail before command routing or base delegation.
+func TestJobsCommandHandler_InvalidSessionKeyFailsFastEveryPath(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "jobs.sqlite")
+	st, err := jobs.Open(dbPath, sqlitepragma.RecommendedPolicy(true))
+	if err != nil {
+		t.Fatalf("jobs.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	readyState := wire.NewJobsRuntimeState()
+	readyState.SetReady(jobs.NewManager(st, nil, slog.New(slog.DiscardHandler)))
+	failedState := wire.NewJobsRuntimeState()
+	failedState.SetFailed()
+
+	tests := []struct {
+		name       string
+		sessionKey string
+		text       string
+		state      *wire.JobsRuntimeState
+	}{
+		{name: "base handler path", sessionKey: "s1", text: "hello", state: wire.NewJobsRuntimeState()},
+		{name: "jobs initializing path", sessionKey: "", text: "/jobs list", state: wire.NewJobsRuntimeState()},
+		{name: "jobs failed path", sessionKey: "0", text: "/jobs list", state: failedState},
+		{name: "jobs ready list path", sessionKey: "scheduled-job:x", text: "/jobs list", state: readyState},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base := &mockMessageHandler{reply: "base"}
+			h := &jobsCommandHandler{base: base, state: tt.state}
+
+			reply, err := h.HandleMessage(context.Background(), 1, tt.sessionKey, tt.text)
+			if err == nil {
+				t.Fatal("HandleMessage error = nil, want error")
+			}
+			if reply != "" {
+				t.Fatalf("HandleMessage reply = %q, want empty", reply)
+			}
+			if !strings.Contains(err.Error(), "parse delivery chat ID") {
+				t.Fatalf("HandleMessage error = %q, want safe context", err)
+			}
+			if tt.sessionKey != "" && strings.Contains(err.Error(), tt.sessionKey) {
+				t.Fatalf("HandleMessage error = %q, contains malformed session key", err)
+			}
+			if base.callN != 0 {
+				t.Fatalf("base handler calls = %d, want 0", base.callN)
+			}
+		})
+	}
+}
+
 // Covers AC-19.006, AC-19.007: scheduled run executes through message handler and delivers result.
 func TestScheduledJobRunner_SuccessSendsResult(t *testing.T) {
 	handler := &mockMessageHandler{reply: "Digest body"}
@@ -93,7 +179,7 @@ func TestJobsCommandHandler_ReadinessGate(t *testing.T) {
 	state := wire.NewJobsRuntimeState()
 	h := &jobsCommandHandler{base: base, state: state}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "s1", "/jobs list")
+	reply, err := h.HandleMessage(context.Background(), 1, "1", "/jobs list")
 	if err != nil {
 		t.Fatalf("HandleMessage pre-ready: %v", err)
 	}
@@ -110,7 +196,7 @@ func TestJobsCommandHandler_ReadinessGate(t *testing.T) {
 	mgr := jobs.NewManager(st, nil, slog.New(slog.DiscardHandler))
 	state.SetReady(mgr)
 
-	reply, err = h.HandleMessage(context.Background(), 1, "s1", "/jobs list")
+	reply, err = h.HandleMessage(context.Background(), 1, "1", "/jobs list")
 	if err != nil {
 		t.Fatalf("HandleMessage ready: %v", err)
 	}
@@ -125,7 +211,7 @@ func TestJobsCommandHandler_NonManagementBypassesReadiness(t *testing.T) {
 	state := wire.NewJobsRuntimeState()
 	h := &jobsCommandHandler{base: base, state: state}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "s1", "hello")
+	reply, err := h.HandleMessage(context.Background(), 1, "1", "hello")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -140,7 +226,7 @@ func TestJobsCommandHandler_StrictJobsCommandPrefix(t *testing.T) {
 	state := wire.NewJobsRuntimeState()
 	h := &jobsCommandHandler{base: base, state: state}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "s1", "/jobsx list")
+	reply, err := h.HandleMessage(context.Background(), 1, "1", "/jobsx list")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}
@@ -256,7 +342,7 @@ func TestJobsCommandHandler_FailedStateMessage(t *testing.T) {
 	state.SetFailed()
 	h := &jobsCommandHandler{base: base, state: state}
 
-	reply, err := h.HandleMessage(context.Background(), 1, "s1", "/jobs list")
+	reply, err := h.HandleMessage(context.Background(), 1, "1", "/jobs list")
 	if err != nil {
 		t.Fatalf("HandleMessage: %v", err)
 	}

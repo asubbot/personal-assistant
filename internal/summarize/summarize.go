@@ -50,6 +50,7 @@ func llmMessagesDebugText(messages []llm.Message) string {
 // The provider HTTP body also includes model, max_tokens, temperature, etc.; this value is the messages payload only.
 func llmMessagesJSONByteLen(messages []llm.Message) int {
 	b, err := json.Marshal(messages)
+	// error-masking: safe — log metric only; 0 means size unknown, not pipeline success
 	if err != nil {
 		return 0
 	}

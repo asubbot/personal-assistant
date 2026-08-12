@@ -34,6 +34,7 @@ func SelectToolIDs(
 	}
 
 	if !indexReady || toolStore == nil {
+		// fallback-return: safe — REQ-04.023: bounded catalog subset while index builds
 		return doFallback("index not ready"), nil
 	}
 
@@ -42,11 +43,14 @@ func SelectToolIDs(
 		return nil, err
 	}
 	if len(ids) == 0 {
+		// fallback-return: safe — REQ-04.020: empty search → capped catalog IDs
 		return doFallback("empty result"), nil
 	}
 	if len(ids) < minTools {
+		// fallback-return: safe — REQ-04.020: below minTools → capped catalog IDs
 		return doFallback("below minimum"), nil
 	}
+	// fallback-return: safe — success path after pre-selection; not a silent degrade
 	return ids, nil
 }
 

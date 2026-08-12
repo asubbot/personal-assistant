@@ -50,6 +50,7 @@ type JobInput struct {
 	Status         string
 	OverlapPolicy  string
 	TimeoutPolicy  string
+	NextRunAt      *time.Time
 }
 
 type JobRun struct {
@@ -186,12 +187,16 @@ func (s *Store) CreateJob(ctx context.Context, in JobInput) (Job, error) {
 		status = StatusActive
 	}
 	created := now.Format(time.RFC3339Nano)
+	var nextRun any
+	if in.NextRunAt != nil {
+		nextRun = in.NextRunAt.UTC().Format(time.RFC3339Nano)
+	}
 	_, err = s.db.ExecContext(ctx, `INSERT INTO jobs(
 		id, name, schedule_expr, time_zone, instruction, delivery_chat_id, status,
-		overlap_policy, timeout_policy, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		overlap_policy, timeout_policy, next_run_at, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		id, in.Name, in.ScheduleExpr, in.TimeZone, in.Instruction, in.DeliveryChatID, status,
-		in.OverlapPolicy, in.TimeoutPolicy, created, created,
+		in.OverlapPolicy, in.TimeoutPolicy, nextRun, created, created,
 	)
 	if err != nil {
 		return Job{}, fmt.Errorf("jobs: insert job: %w", err)

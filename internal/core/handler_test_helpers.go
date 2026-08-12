@@ -11,7 +11,7 @@ import (
 )
 
 func testMemoryVectorTopK(n int) config.MemoryVectorConfig {
-	return config.MemoryVectorConfig{NotesTopK: n, SummariesTopK: n, TurnsTopK: n}
+	return uniformMemoryVectorConfig(n)
 }
 
 // captureHandler records log records for assertion (AC-01.031, REQ-01.021).
