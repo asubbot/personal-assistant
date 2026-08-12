@@ -111,6 +111,11 @@ verify-ai-sdlc-pin:
 
 check: verify-ai-sdlc-pin fmt vet vuln lint test-race test-e2e coverage check-boundaries
 
-# Allow `make validate EP-XXX` without "No rule to make target EP-XXX".
-%:
+# Absorb the arguments of `make validate [subcommand] [EP-XXX|all]` so make does
+# not treat them as targets. Listed explicitly rather than as a catch-all `%`,
+# which also swallowed misspelled targets and exited 0.
+EP-%:
+	@:
+
+ac req pipeline structure ears all:
 	@:
