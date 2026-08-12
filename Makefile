@@ -1,4 +1,4 @@
-.PHONY: help fmt test test-race test-e2e test-integration vet vuln lint coverage coverage-e2e coverage-html check check-boundaries verify-ai-sdlc-pin build run validate docker-build
+.PHONY: help fmt test test-race test-e2e test-integration vet vuln lint coverage coverage-e2e coverage-html check check-boundaries verify-ai-sdlc-pin build bin/pa bin/validate run validate docker-build
 
 GOLANGCI_LINT_VERSION ?= v2.5.0
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
@@ -35,11 +35,15 @@ help:
 	@echo ""
 	@echo "  make check  - Verify ai-sdlc pin, then fmt + vet + vuln + lint + test-race + test-e2e + coverage + check-boundaries"
 
-# Build targets
+# Build targets.
+# bin/pa and bin/validate are .PHONY: incrementality belongs to the Go build
+# cache, which tracks every input. Make prerequisites cannot express the ldflags
+# stamp below (git commit and build time), so a file target would report success
+# while leaving a binary that claims the wrong commit.
 build: bin/pa bin/validate
 	@echo "✅ All binaries built successfully"
 
-bin/pa: cmd/pa/main.go
+bin/pa:
 	@mkdir -p bin
 	go build -ldflags="$(PA_LDFLAGS)" -o ./bin/pa ./cmd/pa
 
