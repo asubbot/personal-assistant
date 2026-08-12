@@ -16,8 +16,7 @@ import (
 	"time"
 )
 
-// iterations is the per-writer work budget. The test asserts that every writer
-// completed the full budget (AC-22.010: no busy/locked under contention).
+// iterations is the per-writer work budget used by the concurrent write test.
 const iterations = 200
 
 // Covers AC-22.010, AC-35.004: with the PRAGMA policy applied, concurrent writers

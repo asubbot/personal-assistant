@@ -7,7 +7,6 @@ import (
 )
 
 // REQ-04.031 / AC-04.029 (with shellmeta_test.go, remote_test.go): command character and shell policy before node exec.
-
 func TestRejectDisallowedRunes_allowed(t *testing.T) {
 	cases := []string{
 		"uptime",

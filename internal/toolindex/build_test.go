@@ -13,7 +13,7 @@ import (
 
 const testDimensions = 4
 
-// mockEmbedder returns a fixed vector for any text (Covers AC-04.014: tool index build and search).
+// mockEmbedder returns a fixed vector for any text.
 type mockEmbedder struct {
 	vec []float32
 }
@@ -193,7 +193,7 @@ func TestBuild_nilInputs_noOp(t *testing.T) {
 	}
 }
 
-// mockBatchEmbedder implements both Embedder and BatchEmbedder (Covers AC-04.017: batch path).
+// mockBatchEmbedder implements both Embedder and BatchEmbedder.
 type mockBatchEmbedder struct {
 	vec []float32
 }

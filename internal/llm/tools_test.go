@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// mockProviderWithTools implements Provider; when opts has Tools, returns result with ToolCalls (Covers AC-04.009).
+// mockProviderWithTools implements Provider and returns tool calls when tools are provided.
 type mockProviderWithTools struct{}
 
 func (m *mockProviderWithTools) Complete(_ context.Context, _ []Message, opts *CompletionOptions) (*CompletionResult, error) {

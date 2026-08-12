@@ -13,9 +13,6 @@ import (
 	"testing"
 )
 
-// REQ/AC trace: AC-01.007, AC-01.008 (REQ-01.005) — RunOnNode + allowlist.
-// AC-04.029 / REQ-04.031 — cmdsafe.ValidateRemoteCommand before allowlist/exec (with internal/cmdsafe tests).
-
 // Covers AC-01.008 (US-04): RunOnNode does not execute empty/whitespace command; returns error.
 func TestRunOnNode_emptyCommand_returnsError(t *testing.T) {
 	dir := t.TempDir()

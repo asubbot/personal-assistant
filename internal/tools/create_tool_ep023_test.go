@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-// errEmbedder always fails (Covers AC-23.007).
+// errEmbedder always fails with an injected error.
 type errEmbedder struct{}
 
 func (errEmbedder) Embed(context.Context, string) ([]float32, error) {

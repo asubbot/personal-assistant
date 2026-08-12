@@ -6,7 +6,6 @@ import (
 )
 
 // Covers AC-04.029 (REQ-04.031): safe command strings pass rejection check.
-
 func TestRejectShellMetacharacters_safeCommands(t *testing.T) {
 	for _, cmd := range []string{
 		"",
@@ -21,7 +20,6 @@ func TestRejectShellMetacharacters_safeCommands(t *testing.T) {
 }
 
 // Covers AC-04.029 (REQ-04.031): forbidden shell sequences rejected before execution.
-
 func TestRejectShellMetacharacters_rejectsForbidden(t *testing.T) {
 	cases := []string{
 		"echo hi; rm -rf /",
