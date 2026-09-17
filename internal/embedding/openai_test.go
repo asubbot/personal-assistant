@@ -464,3 +464,128 @@ func TestNewOpenAICompatible_HTTPTimeout_EmptyRejected(t *testing.T) {
 		t.Fatalf("expected http_timeout error, got %v", err)
 	}
 }
+
+func embedErrorFromAPI(t *testing.T, status int, body string) string {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+	cfg := &config.EmbeddingProvider{
+		Type: "openai", Endpoint: server.URL, Model: "text-embedding-3-small",
+		Dimensions: 3, BatchSize: 10, HTTPTimeout: "30s",
+	}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatalf("NewOpenAICompatible: %v", err)
+	}
+	_, err = p.Embed(context.Background(), "hello")
+	if err == nil {
+		t.Fatal("Embed: expected error, got nil")
+	}
+	return err.Error()
+}
+
+func assertContains(t *testing.T, got string, want ...string) {
+	t.Helper()
+	for _, w := range want {
+		if !strings.Contains(got, w) {
+			t.Errorf("error %q: want substring %q", got, w)
+		}
+	}
+}
+
+func assertOmits(t *testing.T, got string, forbid ...string) {
+	t.Helper()
+	for _, w := range forbid {
+		if strings.Contains(got, w) {
+			t.Errorf("error %q: must not contain %q", got, w)
+		}
+	}
+}
+
+const creditsMessage = "You have no credits remaining. Add credits to continue using the API."
+
+// Covers AC-01.037: embedding HTTP 401 error includes config.embedding identity, not llm_providers.
+func TestOpenAICompatible_Embed_401_includesConfigEmbedding(t *testing.T) {
+	got := embedErrorFromAPI(t, http.StatusUnauthorized,
+		`{"error":{"message":"Invalid API key"}}`)
+	assertContains(t, got, "config.embedding", "type=openai", "HTTP 401", "Invalid API key", "not llm_providers")
+	assertOmits(t, got, "quota exhausted", "rate limited")
+}
+
+// Covers AC-01.037: HTTP 429 with error.code credit_balance_exhausted is quota exhausted, not rate limit.
+func TestOpenAICompatible_Embed_429_creditBalanceCode_quotaExhausted(t *testing.T) {
+	got := embedErrorFromAPI(t, http.StatusTooManyRequests,
+		`{"error":{"message":"`+creditsMessage+`","type":"insufficient_quota","code":"credit_balance_exhausted"}}`)
+	assertContains(t, got,
+		"config.embedding",
+		"type=openai",
+		"model=text-embedding-3-small",
+		"not llm_providers",
+		"quota exhausted",
+		"HTTP 429",
+		"credit_balance_exhausted",
+		creditsMessage,
+	)
+	assertOmits(t, got, "Too Many Requests")
+}
+
+// Covers AC-01.037: HTTP 429 without error.code/type is unclassified; message text is not a classifier.
+func TestOpenAICompatible_Embed_429_creditsMessageWithoutCodes_unclassified(t *testing.T) {
+	got := embedErrorFromAPI(t, http.StatusTooManyRequests,
+		`{"error":{"message":"`+creditsMessage+`"}}`)
+	assertContains(t, got, "config.embedding", "not llm_providers", "HTTP 429", creditsMessage)
+	assertOmits(t, got, "quota exhausted", "rate limited")
+}
+
+// Covers AC-01.037: HTTP 429 with error.type insufficient_quota is quota exhausted.
+func TestOpenAICompatible_Embed_429_insufficientQuotaType_quotaExhausted(t *testing.T) {
+	got := embedErrorFromAPI(t, http.StatusTooManyRequests,
+		`{"error":{"message":"`+creditsMessage+`","type":"insufficient_quota","code":null}}`)
+	assertContains(t, got, "quota exhausted", "insufficient_quota")
+	assertOmits(t, got, "rate limited", "Too Many Requests")
+}
+
+// Covers AC-01.037: HTTP 429 with error.code slow_down is rate limited.
+func TestOpenAICompatible_Embed_429_slowDownCode_rateLimited(t *testing.T) {
+	got := embedErrorFromAPI(t, http.StatusTooManyRequests,
+		`{"error":{"message":"Slow down","type":"rate_limit_error","code":"slow_down"}}`)
+	assertContains(t, got, "config.embedding", "rate limited", "HTTP 429", "slow_down", "not llm_providers")
+	assertOmits(t, got, "quota exhausted", "Too Many Requests")
+}
+
+// Covers AC-01.037: HTTP 429 with error.type rate_limit_error is rate limited.
+func TestOpenAICompatible_Embed_429_rateLimitType_rateLimited(t *testing.T) {
+	got := embedErrorFromAPI(t, http.StatusTooManyRequests,
+		`{"error":{"message":"Rate limit reached for requests","type":"rate_limit_error"}}`)
+	assertContains(t, got, "rate limited", "rate_limit_error")
+	assertOmits(t, got, "quota exhausted")
+}
+
+// Covers AC-01.037: EmbedBatch HTTP 429 with credit_balance_exhausted is quota exhausted.
+func TestOpenAICompatible_EmbedBatch_429_creditBalanceCode_quotaExhausted(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":{"message":"` + creditsMessage + `","code":"credit_balance_exhausted"}}`))
+	}))
+	t.Cleanup(server.Close)
+	cfg := &config.EmbeddingProvider{
+		Type: "openai", Endpoint: server.URL, Model: "text-embedding-3-small",
+		Dimensions: 3, BatchSize: 10, HTTPTimeout: "30s",
+	}
+	p, err := NewOpenAICompatible(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = p.EmbedBatch(context.Background(), []string{"a", "b"})
+	if err == nil {
+		t.Fatal("EmbedBatch: expected error")
+	}
+	got := err.Error()
+	assertContains(t, got, "config.embedding", "quota exhausted", "credit_balance_exhausted")
+	assertOmits(t, got, "Too Many Requests")
+}
