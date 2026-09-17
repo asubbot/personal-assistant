@@ -62,7 +62,7 @@ func Build(ctx context.Context, pkgs []*runtimeskills.Package, embedder embeddin
 		text := p.EmbeddingText()
 		emb, err := embedder.Embed(ctx, text)
 		if err != nil {
-			return err
+			return fmt.Errorf("embedding is required at process startup (synchronous rebuild, not a background job): %w", err)
 		}
 		if err := store.Add(ctx, p.ID, emb, text); err != nil {
 			return err

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"pa/internal/config"
-	"pa/internal/openaicompat"
 	"strings"
 	"time"
 )
@@ -17,11 +16,12 @@ const openAIEmbeddingsPath = "/embeddings"
 
 // OpenAICompatible is an OpenAI-compatible embeddings API client (e.g. OpenAI, Ollama with embedding models).
 type OpenAICompatible struct {
-	client    *http.Client
-	baseURL   string
-	apiKey    string
-	model     string
-	batchSize int // max texts per API request (from config); EmbedBatch chunks internally
+	client       *http.Client
+	baseURL      string
+	apiKey       string
+	providerType string
+	model        string
+	batchSize    int // max texts per API request (from config); EmbedBatch chunks internally
 }
 
 // parseHTTPTimeout enforces the fail-fast contract for embedding.http_timeout
@@ -66,11 +66,12 @@ func NewOpenAICompatible(cfg *config.EmbeddingProvider) (*OpenAICompatible, erro
 		return nil, err
 	}
 	return &OpenAICompatible{
-		client:    &http.Client{Timeout: timeout},
-		baseURL:   baseURL,
-		apiKey:    apiKey,
-		model:     model,
-		batchSize: batchSize,
+		client:       &http.Client{Timeout: timeout},
+		baseURL:      baseURL,
+		apiKey:       apiKey,
+		providerType: strings.TrimSpace(cfg.Type),
+		model:        model,
+		batchSize:    batchSize,
 	}, nil
 }
 
@@ -145,8 +146,7 @@ func (p *OpenAICompatible) EmbedBatch(ctx context.Context, texts []string) ([][]
 
 func (p *OpenAICompatible) parseResponse(resp *http.Response) ([]float32, error) {
 	if resp.StatusCode != http.StatusOK {
-		msg := openaicompat.DecodeErrorMessage(resp)
-		return nil, fmt.Errorf("embedding api %s: %s", resp.Status, msg)
+		return nil, p.embeddingAPIError(resp)
 	}
 	var out openAIEmbedResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
@@ -160,8 +160,7 @@ func (p *OpenAICompatible) parseResponse(resp *http.Response) ([]float32, error)
 
 func (p *OpenAICompatible) parseBatchResponse(resp *http.Response, wantLen int) ([][]float32, error) {
 	if resp.StatusCode != http.StatusOK {
-		msg := openaicompat.DecodeErrorMessage(resp)
-		return nil, fmt.Errorf("embedding api %s: %s", resp.Status, msg)
+		return nil, p.embeddingAPIError(resp)
 	}
 	var out openAIEmbedResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
